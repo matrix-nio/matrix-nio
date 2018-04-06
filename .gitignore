@@ -1,0 +1,9 @@
+.coverage
+.mypy_cache/
+.ropeproject/
+.pytest_cache/
+packages/
+__pycache__
+*.pyc
+.hypothesis/
+.tox/
