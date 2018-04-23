@@ -72,6 +72,7 @@ class TransportType(Enum):
 @unique
 class RequestType(Enum):
     LOGIN = 0
+    SYNC = 1
 
 
 class TransportRequest(object):
@@ -201,6 +202,16 @@ class Http2Request(TransportRequest):
 
         return cls(request, request_data)
 
+    @classmethod
+    def get(cls, host, target):
+        request = Http2Request._request(
+            method="GET",
+            target=target,
+            headers=Http2Request._headers(host)
+        )
+
+        return cls(request)
+
 
 class TransportResponse(object):
     def __init__(self, responses=None, data=b""):
@@ -260,10 +271,17 @@ class Api(object):
             raise NotImplementedError
 
     @staticmethod
-    def _build_path(path):
-        return ("{api}/{path}").format(api=MATRIX_API_PATH, path=path)
+    def _build_path(path, query_parameters=None):
+        # type: (str, dict) -> str
+        path = ("{api}/{path}").format(api=MATRIX_API_PATH, path=path)
+
+        if query_parameters:
+            path += "?{}".format(urlencode(query_parameters))
+
+        return path
 
     def login(self, user, password, device_name="", device_id=""):
+        # type: (str, str, str, str) -> Request
         path = self._build_path("login")
 
         post_data = {
@@ -281,6 +299,24 @@ class Api(object):
         request = self._builder.post(self.host, path, post_data)
 
         return Request(RequestType.LOGIN, request)
+
+    def sync(self, access_token, next_batch=None, filter=None):
+        # type: (str, Dict[Any, Any]) -> Request
+
+        query_parameters = {"access_token": access_token}
+
+        if next_batch:
+            query_parameters["next_batch"] = next_batch
+
+        if filter:
+            filter_json = json.dumps(filter, separators=(',', ':'))
+            query_parameters["filter"] = filter_json
+
+        path = self._build_path("sync", query_parameters)
+
+        request = self._builder.get(self.host, path)
+
+        return Request(RequestType.SYNC, request)
 
 
 class Connection(object):
@@ -452,7 +488,7 @@ class Client(object):
             self,
             host,  # type: str
             user,  # type: str
-            device_id="",  # type: Optional[str]
+            device_id="",    # type: Optional[str]
             session_dir="",  # type: Optional[str]
     ):
         # type: (...) -> None
@@ -464,7 +500,9 @@ class Client(object):
         self.user_id = ""
         self.txn_id = 0
         self.access_token = ""
+        self.next_batch = ""
 
+        self.api = None
         self.connection = None  # type: Union[HttpConnection, Http2Connection]
         self.olm = None
 
@@ -506,12 +544,24 @@ class Client(object):
 
     def login(self, password, device_name=""):
         # type: (str, Optional[str]) -> bytes
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
         request = self.api.login(
             self.user,
             password,
             device_name,
             self.device_id
         )
+
+        return self._send(request)
+
+    def sync(self, filter=None):
+        # type: (Optional[Dict[Any, Any]]) -> bytes
+        if not self.access_token:
+            raise LocalProtocolError("Not logged in.")
+
+        request = self.api.sync(self.access_token, self.next_batch, filter)
 
         return self._send(request)
 
