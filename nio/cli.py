@@ -26,9 +26,11 @@ click.disable_unicode_literals_warning = True
 
 
 class CliClient(object):
-    def __init__(self, host=None, port=None):
+    def __init__(self, user, password, host=None, port=None):
         self.host = host or "matrix.org"
         self.port = port or 443
+        self.user = user
+        self.password = password
         self.logger = Logger("matrix-cli")
 
 
@@ -42,32 +44,50 @@ def validate_host(ctx, param, value):
 
 @click.group()
 @click.argument("host", callback=validate_host)
+@click.argument("user")
+@click.argument("password")
 @click.option("--verbosity", type=click.Choice(["error", "warning", "info"]),
               default="error")
 @click.pass_context
-def cli(ctx, host, verbosity):
+def cli(ctx, host, user, password, verbosity):
     StderrHandler(level=verbosity.upper()).push_application()
-    ctx.obj = CliClient(host[0], host[1])
+    ctx.obj = CliClient(user, password, host[0], host[1])
 
 
 @cli.command()
-@click.argument("access_token")
 @click.pass_obj
-def sync(cli, access_token):
-    pass
+def sync(cli):
+    sock, client = connect(cli.host, cli.port, cli.user)
 
-
-@cli.command()
-@click.argument("user")
-@click.argument("password")
-@click.pass_obj
-def login(cli, user, password):
-    sock, transport_type = connect(cli.host, cli.port)
-    client = Client(cli.host, user)
-    data = client.connect(transport_type)
+    data = client.login(cli.password)
     sock.sendall(data)
 
-    data = client.login(password)
+    response = None
+
+    while not response:
+        received_data = sock.recv(4096)
+        response = client.receive(received_data)
+
+    data = client.sync()
+    sock.sendall(data)
+    response = None
+
+    while not response:
+        received_data = sock.recv(4096)
+        response = client.receive(received_data)
+
+    click.echo(response)
+
+    disconnect(sock, client)
+
+    return True
+
+@cli.command()
+@click.pass_obj
+def login(cli):
+    sock, client = connect(cli.host, cli.port, cli.user)
+
+    data = client.login(cli.password)
     sock.sendall(data)
 
     response = None
@@ -79,11 +99,7 @@ def login(cli, user, password):
     click.echo(response, err=True)
     click.echo(response.access_token)
 
-    data = client.disconnect()
-    sock.sendall(data)
-
-    sock.shutdown(socket.SHUT_RDWR)
-    sock.close()
+    disconnect(sock, client)
 
     return True
 
@@ -92,7 +108,15 @@ def main():
     cli()
 
 
-def connect(host, port):
+def disconnect(sock, client):
+    data = client.disconnect()
+    sock.sendall(data)
+
+    sock.shutdown(socket.SHUT_RDWR)
+    sock.close()
+
+
+def connect(host, port, user=""):
     context = ssl.create_default_context()
 
     context.check_hostname = False
@@ -120,7 +144,11 @@ def connect(host, port):
     else:
         raise NotImplementedError
 
-    return ssl_socket, transport_type
+    client = Client(host, user)
+    data = client.connect(transport_type)
+    ssl_socket.sendall(data)
+
+    return ssl_socket, client
 
 
 if __name__ == "__main__":
