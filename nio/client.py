@@ -337,6 +337,16 @@ class HttpConnection(Connection):
         self._current_request = None   # type: Request
         self._current_response = None  # type: HttpResponse
 
+    def data_to_send(self):
+        if self._current_request:
+            return b""
+
+        if not self._message_queue:
+            return b""
+
+        request = self._message_queue.popleft()
+        return self.send(request)
+
     def send(self, mrequest):
         # type: (Request) -> bytes
         data = b""
@@ -344,14 +354,15 @@ class HttpConnection(Connection):
         if not isinstance(mrequest.request, HttpRequest):
             raise TypeError("Invalid request type for HttpConnection")
 
-        try:
+        if self._connection.our_state == h11.IDLE:
             data = data + self._connection.send(mrequest.request._request)
-            data = data + self._connection.send(mrequest.request._data)
+            if mrequest.request._data:
+                data = data + self._connection.send(mrequest.request._data)
             data = data + self._connection.send(
                 mrequest.request._end_of_message
             )
             return data
-        except h11.LocalProtocolError:
+        else:
             self._message_queue.append(mrequest)
             return b""
 
@@ -542,6 +553,9 @@ class Client(object):
         self.api = None
         return data
 
+    def data_to_send(self):
+        return self.connection.data_to_send()
+
     def login(self, password, device_name=""):
         # type: (str, Optional[str]) -> bytes
         if not self.api:
@@ -573,6 +587,10 @@ class Client(object):
         if transport_response:
             parsed_dict = json.loads(bytes(transport_response.data),
                                      encoding="utf-8")
-            return LoginResponse.from_dict(parsed_dict)
+            if not self.access_token:
+                response = LoginResponse.from_dict(parsed_dict)
+                self.access_token = response.access_token
+                return response
+            return parsed_dict
 
         return None
