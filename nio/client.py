@@ -261,10 +261,9 @@ class Api(object):
         # type: (str, TransportType) -> None
         self.host = host
         self.transport_type = transport_type
-        self._builder = None  # type: Union[Type[HttpRequest], Type[Http2Request]]
 
         if transport_type == TransportType.HTTP:
-            self._builder = HttpRequest
+            self._builder = HttpRequest  # type: Union[Type[HttpRequest], Type[Http2Request]]
         elif transport_type == TransportType.HTTP2:
             self._builder = Http2Request
         else:
@@ -281,7 +280,7 @@ class Api(object):
         return path
 
     def login(self, user, password, device_name="", device_id=""):
-        # type: (str, str, str, str) -> Request
+        # type: (str, str, Optional[str], Optional[str]) -> Request
         path = self._build_path("login")
 
         post_data = {
@@ -301,7 +300,7 @@ class Api(object):
         return Request(RequestType.LOGIN, request)
 
     def sync(self, access_token, next_batch=None, filter=None):
-        # type: (str, Dict[Any, Any]) -> Request
+        # type: (str, Optional[str], Optional[Dict[Any, Any]]) -> Request
 
         query_parameters = {"access_token": access_token}
 
@@ -334,8 +333,8 @@ class HttpConnection(Connection):
         # type: () -> None
         self._connection = h11.Connection(our_role=h11.CLIENT)
         self._message_queue = deque()  # type: deque
-        self._current_request = None   # type: Request
-        self._current_response = None  # type: HttpResponse
+        self._current_request = None   # type: Optional[Request]
+        self._current_response = None  # type: Optional[HttpResponse]
 
     def data_to_send(self):
         if self._current_request:
@@ -513,8 +512,8 @@ class Client(object):
         self.access_token = ""
         self.next_batch = ""
 
-        self.api = None
-        self.connection = None  # type: Union[HttpConnection, Http2Connection]
+        self.api = None         # type: Optional[Api]
+        self.connection = None  # type: Optional[Union[HttpConnection, Http2Connection]]
         self.olm = None
 
         if not self._load_olm():
@@ -533,6 +532,9 @@ class Client(object):
 
     def _send(self, request):
         # type: (Request) -> bytes
+        if not self.connection:
+            raise LocalProtocolError("Not connected.")
+
         return self.connection.send(request)
 
     def connect(self, transport_type=TransportType.HTTP):
@@ -575,6 +577,9 @@ class Client(object):
         if not self.access_token:
             raise LocalProtocolError("Not logged in.")
 
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
         request = self.api.sync(self.access_token, self.next_batch, filter)
 
         return self._send(request)
@@ -582,6 +587,9 @@ class Client(object):
     def receive(self, data):
         # type: (bytes) -> Optional[TransportResponse]
         # TODO turn the TransportResponse in a MatrixResponse
+        if not self.connection:
+            raise LocalProtocolError("Not connected.")
+
         transport_response = self.connection.receive(data)
 
         if transport_response:

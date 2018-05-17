@@ -82,6 +82,7 @@ def sync(cli):
 
     return True
 
+
 @cli.command()
 @click.pass_obj
 def login(cli):
