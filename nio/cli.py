@@ -20,7 +20,7 @@ import click
 import socket
 import ssl
 from logbook import Logger, StderrHandler
-from client import Client, TransportType
+from client import Client, TransportType, LoginResponse, ErrorResponse
 
 click.disable_unicode_literals_warning = True
 
@@ -97,8 +97,11 @@ def login(cli):
         received_data = sock.recv(4096)
         response = client.receive(received_data)
 
-    click.echo(response, err=True)
-    click.echo(response.access_token)
+    if isinstance(response, LoginResponse):
+        click.echo(response, err=True)
+        click.echo(response.access_token)
+    elif isinstance(response, ErrorResponse):
+        click.echo(str(response))
 
     disconnect(sock, client)
 

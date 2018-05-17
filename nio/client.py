@@ -20,6 +20,8 @@ import json
 from builtins import bytes
 from collections import deque
 from enum import Enum, unique
+from jsonschema import validate
+from jsonschema.exceptions import SchemaError, ValidationError
 from typing import Any, Deque, Dict, List, Optional, Type, Union
 
 import h2.connection
@@ -474,13 +476,45 @@ class Response(object):
     pass
 
 
+class ErrorResponse(Response):
+    def __init__(self, message, code=""):
+        # type: (str, Optional[str]) -> None
+        self.message = message
+        self.code = code
+
+    def __str__(self):
+        # type: () -> str
+        return "Error: {}".format(self.message)
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> ErrorResponse
+        schema = {
+            "type": "object",
+            "properties": {
+                "error": {"type": "string"},
+                "errcode": {"type": "string"}
+            },
+            "required": ["error", "errcode"]
+        }
+
+        try:
+            validate(parsed_dict, schema)
+        except (SchemaError, ValidationError) as e:
+            return cls("Unknown error")
+
+        return cls(parsed_dict["error"], parsed_dict["errcode"])
+
+
 class LoginResponse(Response):
     def __init__(self, user_id, device_id, access_token):
+        # type: (str, str, str) -> None
         self.user_id = user_id
         self.device_id = device_id
         self.access_token = access_token
 
     def __str__(self):
+        # type: () -> str
         return "Logged in as {}, device id: {}.".format(
             self.user_id,
             self.device_id
@@ -488,6 +522,22 @@ class LoginResponse(Response):
 
     @classmethod
     def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[LoginResponse, ErrorResponse]
+        schema = {
+            "type": "object",
+            "properties": {
+                "user_id": {"type": "string"},
+                "device_id": {"type": "string"},
+                "access_token": {"type": "string"}
+            },
+            "required": ["user_id", "device_id", "access_token"]
+        }
+
+        try:
+            validate(parsed_dict, schema)
+        except (SchemaError, ValidationError) as e:
+            return ErrorResponse.from_dict(parsed_dict)
+
         return cls(parsed_dict["user_id"],
                    parsed_dict["device_id"],
                    parsed_dict["access_token"])
@@ -585,7 +635,7 @@ class Client(object):
         return self._send(request)
 
     def receive(self, data):
-        # type: (bytes) -> Optional[TransportResponse]
+        # type: (bytes) -> Optional[Response]
         # TODO turn the TransportResponse in a MatrixResponse
         if not self.connection:
             raise LocalProtocolError("Not connected.")
@@ -594,10 +644,12 @@ class Client(object):
 
         if transport_response:
             parsed_dict = json.loads(bytes(transport_response.data),
-                                     encoding="utf-8")
+                                     encoding="utf-8")  # type: Dict[Any, Any]
             if not self.access_token:
                 response = LoginResponse.from_dict(parsed_dict)
-                self.access_token = response.access_token
+
+                if isinstance(response, LoginResponse):
+                    self.access_token = response.access_token
                 return response
             return parsed_dict
 
