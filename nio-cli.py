@@ -35,6 +35,7 @@ class CliClient(object):
         password,
         host=None,
         port=None,
+        ssl_insecure=False,
         proxy=None,
         proxy_port=None,
         proxy_type=None
@@ -43,6 +44,7 @@ class CliClient(object):
         self.port = port or 443
         self.user = user
         self.password = password
+        self.ssl_insecure = ssl_insecure
 
         self.proxy = proxy or None
         self.proxy_port = proxy_port or None
@@ -84,17 +86,28 @@ def validate_proxy_type(ctx, param, value):
 @click.argument("password")
 @click.option("--verbosity", type=click.Choice(["error", "warning", "info"]),
               default="error")
+@click.option("-k", "--ssl-insecure/--no-ssl-insecure", default=False)
 @click.option("--proxy-host", callback=validate_host)
 @click.option("--proxy-type", type=click.Choice(["http", "socks4", "socks5"]),
               default="http", callback=validate_proxy_type)
 @click.pass_context
-def cli(ctx, host, user, password, verbosity, proxy_host, proxy_type):
+def cli(
+    ctx,
+    host,
+    user,
+    password,
+    verbosity,
+    ssl_insecure,
+    proxy_host,
+    proxy_type
+):
     StderrHandler(level=verbosity.upper()).push_application()
     ctx.obj = CliClient(
         user,
         password,
         host[0],
         host[1],
+        ssl_insecure,
         proxy_host[0],
         proxy_host[1],
         proxy_type
@@ -170,8 +183,10 @@ def disconnect(sock, client):
 def connect(cli):
     context = ssl.create_default_context()
 
-    context.check_hostname = False
-    context.verify_mode = ssl.CERT_NONE
+    if cli.ssl_insecure:
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+
     context.set_alpn_protocols(["h2", "http/1.1"])
 
     try:
