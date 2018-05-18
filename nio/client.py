@@ -37,7 +37,7 @@ try:
 except ImportError:
     from urllib.parse import quote, urlencode, urlparse
 
-from responses import Response, LoginResponse
+from . responses import Response, LoginResponse
 
 
 MATRIX_API_PATH = "/_matrix/client/r0"  # type: str
