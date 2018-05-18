@@ -29,13 +29,13 @@ import h11
 try:
     from json.decoder import JSONDecodeError
 except ImportError:
-    JSONDecodeError = ValueError  # type: Type[Exception]
+    JSONDecodeError = ValueError  # type: ignore
 
 try:
-    from urllib import quote, urlencode
-    from urlparse import urlparse
-except ImportError:
     from urllib.parse import quote, urlencode, urlparse
+except ImportError:
+    from urllib import quote, urlencode  # type: ignore
+    from urlparse import urlparse        # type: ignore
 
 from . responses import Response, LoginResponse
 
