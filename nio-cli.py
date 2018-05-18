@@ -19,6 +19,7 @@ from __future__ import unicode_literals
 
 import click
 import socket
+import socks
 import ssl
 from logbook import Logger, StderrHandler
 from nio.client import Client, TransportType
@@ -28,20 +29,53 @@ click.disable_unicode_literals_warning = True
 
 
 class CliClient(object):
-    def __init__(self, user, password, host=None, port=None):
+    def __init__(
+        self,
+        user,
+        password,
+        host=None,
+        port=None,
+        proxy=None,
+        proxy_port=None,
+        proxy_type=None
+    ):
         self.host = host or "matrix.org"
         self.port = port or 443
         self.user = user
         self.password = password
+
+        self.proxy = proxy or None
+        self.proxy_port = proxy_port or None
+        self.proxy_type = proxy_type or None
+
         self.logger = Logger("matrix-cli")
 
 
 def validate_host(ctx, param, value):
+    if not value:
+        return None, None
+
+    if (param.name) == "host":
+        default_port = 443
+    else:
+        default_port = None
+
     try:
         host, _, port = value.partition(":")
-        return (host, int(port) if port else 443)
+        return (host, int(port) if port else default_port)
     except ValueError:
         raise click.BadParameter("hosts need to be in format host:[port]")
+
+
+def validate_proxy_type(ctx, param, value):
+    if value == "http":
+        return socks.PROXY_TYPE_HTTP
+    elif value == "socks4":
+        return socks.PROXY_TYPE_SOCKS4
+    elif value == "socks5":
+        return socks.PROXY_TYPE_SOCKS5
+    else:
+        raise ValueError
 
 
 @click.group()
@@ -50,16 +84,27 @@ def validate_host(ctx, param, value):
 @click.argument("password")
 @click.option("--verbosity", type=click.Choice(["error", "warning", "info"]),
               default="error")
+@click.option("--proxy-host", callback=validate_host)
+@click.option("--proxy-type", type=click.Choice(["http", "socks4", "socks5"]),
+              default="http", callback=validate_proxy_type)
 @click.pass_context
-def cli(ctx, host, user, password, verbosity):
+def cli(ctx, host, user, password, verbosity, proxy_host, proxy_type):
     StderrHandler(level=verbosity.upper()).push_application()
-    ctx.obj = CliClient(user, password, host[0], host[1])
+    ctx.obj = CliClient(
+        user,
+        password,
+        host[0],
+        host[1],
+        proxy_host[0],
+        proxy_host[1],
+        proxy_type
+    )
 
 
 @cli.command()
 @click.pass_obj
 def sync(cli):
-    sock, client = connect(cli.host, cli.port, cli.user)
+    sock, client = connect(cli)
 
     data = client.login(cli.password)
     sock.sendall(data)
@@ -88,7 +133,7 @@ def sync(cli):
 @cli.command()
 @click.pass_obj
 def login(cli):
-    sock, client = connect(cli.host, cli.port, cli.user)
+    sock, client = connect(cli)
 
     data = client.login(cli.password)
     sock.sendall(data)
@@ -122,7 +167,7 @@ def disconnect(sock, client):
     sock.close()
 
 
-def connect(host, port, user=""):
+def connect(cli):
     context = ssl.create_default_context()
 
     context.check_hostname = False
@@ -134,8 +179,13 @@ def connect(host, port, user=""):
     except NotImplementedError:
         pass
 
-    sock = socket.create_connection((host, port))
-    ssl_socket = context.wrap_socket(sock, server_hostname=host)
+    sock = socks.socksocket()
+
+    if cli.proxy:
+        sock.set_proxy(cli.proxy_type, cli.proxy, cli.proxy_port)
+
+    sock.connect((cli.host, cli.port))
+    ssl_socket = context.wrap_socket(sock, server_hostname=cli.host)
 
     negotiated_protocol = ssl_socket.selected_alpn_protocol()
     if negotiated_protocol is None:
@@ -150,7 +200,7 @@ def connect(host, port, user=""):
     else:
         raise NotImplementedError
 
-    client = Client(host, user)
+    client = Client(cli.host, cli.user)
     data = client.connect(transport_type)
     ssl_socket.sendall(data)
 
