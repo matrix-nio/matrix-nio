@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
@@ -20,8 +21,8 @@ import click
 import socket
 import ssl
 from logbook import Logger, StderrHandler
-from client import Client, TransportType
-from responses import LoginResponse, ErrorResponse
+from nio.client import Client, TransportType
+from nio.responses import LoginResponse, ErrorResponse
 
 click.disable_unicode_literals_warning = True
 
