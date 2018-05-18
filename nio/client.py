@@ -265,7 +265,8 @@ class Api(object):
         self.transport_type = transport_type
 
         if transport_type == TransportType.HTTP:
-            self._builder = HttpRequest  # type: Union[Type[HttpRequest], Type[Http2Request]]
+            self._builder = HttpRequest  \
+                # type: Union[Type[HttpRequest], Type[Http2Request]]
         elif transport_type == TransportType.HTTP2:
             self._builder = Http2Request
         else:
@@ -492,7 +493,8 @@ class Client(object):
         self.next_batch = ""
 
         self.api = None         # type: Optional[Api]
-        self.connection = None  # type: Optional[Union[HttpConnection, Http2Connection]]
+        self.connection = None  \
+            # type: Optional[Union[HttpConnection, Http2Connection]]
         self.olm = None
 
         if not self._load_olm():
@@ -529,12 +531,20 @@ class Client(object):
         return self.connection.connect()
 
     def disconnect(self):
+        # type: () -> bytes
+        if not self.connection:
+            raise LocalProtocolError("Not connected.")
+
         data = self.connection.disconnect()
         self.connection = None
         self.api = None
         return data
 
     def data_to_send(self):
+        # type: () -> bytes
+        if not self.connection:
+            raise LocalProtocolError("Not connected.")
+
         return self.connection.data_to_send()
 
     def login(self, password, device_name=""):
