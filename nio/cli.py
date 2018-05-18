@@ -20,7 +20,8 @@ import click
 import socket
 import ssl
 from logbook import Logger, StderrHandler
-from client import Client, TransportType, LoginResponse, ErrorResponse
+from client import Client, TransportType
+from responses import LoginResponse, ErrorResponse
 
 click.disable_unicode_literals_warning = True
 
