@@ -199,8 +199,15 @@ def connect(cli):
     if cli.proxy:
         sock.set_proxy(cli.proxy_type, cli.proxy, cli.proxy_port)
 
-    sock.connect((cli.host, cli.port))
-    ssl_socket = context.wrap_socket(sock, server_hostname=cli.host)
+    try:
+        sock.connect((cli.host, cli.port))
+    except socket.error as e:
+        raise SystemExit(e)
+
+    try:
+        ssl_socket = context.wrap_socket(sock, server_hostname=cli.host)
+    except (ssl.SSLError, socket.error) as e:
+        raise SystemExit(e)
 
     negotiated_protocol = ssl_socket.selected_alpn_protocol()
     if negotiated_protocol is None:
@@ -217,7 +224,11 @@ def connect(cli):
 
     client = Client(cli.host, cli.user)
     data = client.connect(transport_type)
-    ssl_socket.sendall(data)
+
+    try:
+        ssl_socket.sendall(data)
+    except socket.error as e:
+        raise SystemExit(e)
 
     return ssl_socket, client
 
