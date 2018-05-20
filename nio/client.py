@@ -20,7 +20,7 @@ import json
 from builtins import bytes
 from collections import deque
 from enum import Enum, unique
-from typing import Any, Deque, Dict, List, Optional, Type, Union
+from typing import *
 
 import h2.connection
 import h2.events
@@ -259,18 +259,10 @@ class Request(object):
 
 
 class Api(object):
-    def __init__(self, host, transport_type):
-        # type: (str, TransportType) -> None
-        self.host = host
-        self.transport_type = transport_type
-
-        if transport_type == TransportType.HTTP:
-            self._builder = HttpRequest  \
-                # type: Union[Type[HttpRequest], Type[Http2Request]]
-        elif transport_type == TransportType.HTTP2:
-            self._builder = Http2Request
-        else:
-            raise NotImplementedError
+    @staticmethod
+    def _to_json(content_dict):
+        # type: (Dict[Any, Any]) -> str
+        return json.dumps(content_dict, separators=(',', ':'))
 
     @staticmethod
     def _build_path(path, query_parameters=None):
@@ -282,29 +274,28 @@ class Api(object):
 
         return path
 
-    def login(self, user, password, device_name="", device_id=""):
-        # type: (str, str, Optional[str], Optional[str]) -> Request
-        path = self._build_path("login")
+    @staticmethod
+    def login(user, password, device_name="", device_id=""):
+        # type: (str, str, Optional[str], Optional[str]) -> Tuple[str, str]
+        path = Api._build_path("login")
 
-        post_data = {
+        content_dict = {
             "type": "m.login.password",
             "user": user,
             "password": password
         }
 
         if device_id:
-            post_data["device_id"] = device_id
+            content_dict["device_id"] = device_id
 
         if device_name:
-            post_data["initial_device_display_name"] = device_name
+            content_dict["initial_device_display_name"] = device_name
 
-        request = self._builder.post(self.host, path, post_data)
+        return path, Api._to_json(content_dict)
 
-        return Request(RequestType.LOGIN, request)
-
-    def sync(self, access_token, next_batch=None, filter=None):
-        # type: (str, Optional[str], Optional[Dict[Any, Any]]) -> Request
-
+    @staticmethod
+    def sync(access_token, next_batch=None, filter=None):
+        # type: (str, Optional[str], Optional[Dict[Any, Any]]) -> str
         query_parameters = {"access_token": access_token}
 
         if next_batch:
@@ -314,11 +305,50 @@ class Api(object):
             filter_json = json.dumps(filter, separators=(',', ':'))
             query_parameters["filter"] = filter_json
 
-        path = self._build_path("sync", query_parameters)
+        return Api._build_path("sync", query_parameters)
 
-        request = self._builder.get(self.host, path)
 
-        return Request(RequestType.SYNC, request)
+class HttpApi(object):
+    def __init__(self, host):
+        # type: (str) -> None
+        self.host = host
+
+    def _build_request(self, method, path, data=None):
+        if method == "GET":
+            return HttpRequest.get(self.host, path)
+        elif method == "POST":
+            return HttpRequest.post(self.host, path, data)
+        elif method == "PUT":
+            return HttpRequest.put(self.host, path, data)
+        else:
+            raise LocalProtocolError("Invalid request method")
+
+    def login(self, user, password, device_name="", device_id=""):
+        # type: (str, str, Optional[str], Optional[str]) -> Request
+        path, post_data = Api.login(
+            user,
+            password,
+            device_name,
+            device_id
+        )
+        return self._build_request("POST", path, post_data)
+
+    def sync(self, access_token, next_batch=None, filter=None):
+        # type: (str, Optional[str], Optional[Dict[Any, Any]]) -> Request
+        path = Api.sync(access_token, next_batch, filter)
+        return self._build_request("GET", path)
+
+
+class Http2Api(HttpApi):
+    def _build_request(self, method, path, data=None):
+        if method == "GET":
+            return Http2Request.get(self.host, path)
+        elif method == "POST":
+            return Http2Request.post(self.host, path, data)
+        elif method == "PUT":
+            return Http2Request.put(self.host, path, data)
+        else:
+            raise LocalProtocolError("Invalid request method")
 
 
 class Connection(object):
@@ -353,15 +383,15 @@ class HttpConnection(Connection):
         # type: (Request) -> bytes
         data = b""
 
-        if not isinstance(mrequest.request, HttpRequest):
+        if not isinstance(mrequest, HttpRequest):
             raise TypeError("Invalid request type for HttpConnection")
 
         if self._connection.our_state == h11.IDLE:
-            data = data + self._connection.send(mrequest.request._request)
-            if mrequest.request._data:
-                data = data + self._connection.send(mrequest.request._data)
+            data = data + self._connection.send(mrequest._request)
+            if mrequest._data:
+                data = data + self._connection.send(mrequest._data)
             data = data + self._connection.send(
-                mrequest.request._end_of_message
+                mrequest._end_of_message
             )
             return data
         else:
@@ -405,14 +435,14 @@ class Http2Connection(Connection):
 
     def send(self, mrequest):
         # type: (Request) -> bytes
-        if not isinstance(mrequest.request, Http2Request):
+        if not isinstance(mrequest, Http2Request):
             raise TypeError("Invalid request type for HttpConnection")
 
         stream_id = self._connection.get_next_available_stream_id()
-        self._connection.send_headers(stream_id, mrequest.request._request)
+        self._connection.send_headers(stream_id, mrequest._request)
         # TODO we need to split the data here according to window
         # and frame size.
-        self._connection.send_data(stream_id, mrequest.request._data)
+        self._connection.send_data(stream_id, mrequest._data)
         # TODO store the request type so we know how to parse the response on
         # this stream id.
         self._connection.end_stream(stream_id)
@@ -492,7 +522,7 @@ class Client(object):
         self.access_token = ""
         self.next_batch = ""
 
-        self.api = None         # type: Optional[Api]
+        self.api = None         # type: Optional[Union[HttpApi, Http2Api]]
         self.connection = None  \
             # type: Optional[Union[HttpConnection, Http2Connection]]
         self.olm = None
@@ -522,12 +552,13 @@ class Client(object):
         # type: (Optional[TransportType]) -> bytes
         if transport_type == TransportType.HTTP:
             self.connection = HttpConnection()
+            self.api = HttpApi(self.host)
         elif transport_type == TransportType.HTTP2:
             self.connection = Http2Connection()
+            self.api = Http2Api(self.host)
         else:
             raise NotImplementedError
 
-        self.api = Api(self.host, transport_type)
         return self.connection.connect()
 
     def disconnect(self):
