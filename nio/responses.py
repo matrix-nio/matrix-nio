@@ -16,9 +16,27 @@
 
 from __future__ import unicode_literals
 
-from jsonschema import validate
+from jsonschema import validate, FormatChecker
 from jsonschema.exceptions import SchemaError, ValidationError
 from typing import *
+
+
+@FormatChecker.cls_checks("user_id", ValueError)
+def check_user_id(value):
+    # type: (str) -> bool
+    if not value.startswith("@"):
+        raise ValueError("UserIDs start with @")
+
+    if ":" not in value:
+        raise ValueError(
+            "UserIDs must have a domain component, seperated by a :"
+        )
+
+    return True
+
+
+def validate_json(instance, schema):
+    validate(instance, schema, format_checker=FormatChecker())
 
 
 class Response(object):
@@ -75,7 +93,7 @@ class LoginResponse(Response):
         schema = {
             "type": "object",
             "properties": {
-                "user_id": {"type": "string"},
+                "user_id": {"type": "string", "format": "user_id"},
                 "device_id": {"type": "string"},
                 "access_token": {"type": "string"}
             },
@@ -83,7 +101,7 @@ class LoginResponse(Response):
         }
 
         try:
-            validate(parsed_dict, schema)
+            validate_json(parsed_dict, schema)
         except (SchemaError, ValidationError) as e:
             return ErrorResponse.from_dict(parsed_dict)
 

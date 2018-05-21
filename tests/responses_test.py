@@ -25,3 +25,9 @@ class TestClass(object):
             "tests/data/login_response_error.json")
         response = LoginResponse.from_dict(parsed_dict)
         assert isinstance(response, ErrorResponse)
+
+    def test_login_failure_format(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/login_invalid_format.json")
+        response = LoginResponse.from_dict(parsed_dict)
+        assert isinstance(response, ErrorResponse)
