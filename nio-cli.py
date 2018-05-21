@@ -22,7 +22,7 @@ import socket
 import socks
 import ssl
 from logbook import Logger, StderrHandler
-from nio.client import Client, TransportType
+from nio.client import HttpClient, TransportType
 from nio.responses import LoginResponse, ErrorResponse
 
 click.disable_unicode_literals_warning = True
@@ -222,7 +222,7 @@ def connect(cli):
     else:
         raise NotImplementedError
 
-    client = Client(cli.host, cli.user)
+    client = HttpClient(cli.host, cli.user)
     data = client.connect(transport_type)
 
     try:

@@ -312,6 +312,13 @@ class HttpApi(object):
     def __init__(self, host):
         # type: (str) -> None
         self.host = host
+        self.txn_id = 0
+
+    def _get_txn_id(self):
+        # type: () -> int
+        txn_id = self.txn_id
+        self.txn_id += 1
+        return txn_id
 
     def _build_request(self, method, path, data=None):
         if method == "GET":
@@ -506,6 +513,56 @@ class Http2Connection(Connection):
 class Client(object):
     def __init__(
             self,
+            user=None,       # type: Optional[str]
+            device_id=None,  # type: Optional[str]
+            session_dir="",  # type: Optional[str]
+    ):
+        # type: (...) -> None
+        self.user = user
+        self.device_id = device_id
+        self.session_dir = session_dir
+
+        self.user_id = ""
+        self.access_token = ""
+        self.next_batch = ""
+
+    def _load_olm(self):
+        # TODO load the olm account and sessions from the session dir
+        return False
+
+    @property
+    def logged_in(self):
+        # type: () -> bool
+        return True if self.access_token else False
+
+    def _handle_response(self, response):
+        # type: (Response) -> None
+        if isinstance(response, LoginResponse):
+            self.access_token = response.access_token
+            self.user_id = response.user_id
+            self.device_id = response.device_id
+
+    def receive(self, response_type, json_string):
+        # type: (str, Union[str, bytes]) -> Response
+        try:
+            parsed_dict = json.loads(json_string, encoding="utf-8")  \
+                # type: Dict[Any, Any]
+        except ValueError as e:
+            # TODO return a error response
+            return None
+
+        if response_type == "login":
+            response = LoginResponse.from_dict(parsed_dict)
+            self._handle_response(response)
+            return response
+
+        # TODO parse the other response types
+        return parsed_dict
+
+
+class HttpClient(object):
+    def __init__(
+            self,
             host,  # type: str
             user,  # type: str
             device_id="",    # type: Optional[str]
@@ -513,33 +570,11 @@ class Client(object):
     ):
         # type: (...) -> None
         self.host = host
-        self.user = user
-        self.device_id = device_id
-        self.session_dir = session_dir
 
-        self.user_id = ""
-        self.txn_id = 0
-        self.access_token = ""
-        self.next_batch = ""
-
+        self._client = Client(user, device_id, session_dir)
         self.api = None         # type: Optional[Union[HttpApi, Http2Api]]
         self.connection = None  \
             # type: Optional[Union[HttpConnection, Http2Connection]]
-        self.olm = None
-
-        if not self._load_olm():
-            # TODO create a new olm account
-            pass
-
-    def _load_olm(self):
-        # TODO load the olm account and sessions from the session dir
-        return False
-
-    def _get_txn_id(self):
-        # type: () -> int
-        txn_id = self.txn_id
-        self.txn_id = self.txn_id + 1
-        return txn_id
 
     def _send(self, request):
         # type: (Request) -> bytes
@@ -583,24 +618,31 @@ class Client(object):
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
+        if not self._client.user:
+            raise LocalProtocolError("No user defined.")
+
         request = self.api.login(
-            self.user,
+            self._client.user,
             password,
             device_name,
-            self.device_id
+            self._client.device_id
         )
 
         return self._send(request)
 
     def sync(self, filter=None):
         # type: (Optional[Dict[Any, Any]]) -> bytes
-        if not self.access_token:
+        if not self._client.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
-        request = self.api.sync(self.access_token, self.next_batch, filter)
+        request = self.api.sync(
+            self._client.access_token,
+            self._client.next_batch,
+            filter
+        )
 
         return self._send(request)
 
@@ -613,14 +655,10 @@ class Client(object):
         transport_response = self.connection.receive(data)
 
         if transport_response:
-            parsed_dict = json.loads(bytes(transport_response.data),
-                                     encoding="utf-8")  # type: Dict[Any, Any]
-            if not self.access_token:
-                response = LoginResponse.from_dict(parsed_dict)
-
-                if isinstance(response, LoginResponse):
-                    self.access_token = response.access_token
-                return response
-            return parsed_dict
+            response_type = ("login" if not self._client.logged_in
+                             else "sync")
+            response = self._client.receive(response_type,
+                                            transport_response.data)
+            return response
 
         return None
