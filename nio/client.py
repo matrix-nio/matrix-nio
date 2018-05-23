@@ -583,6 +583,7 @@ class HttpClient(object):
     ):
         # type: (...) -> None
         self.host = host
+        self.requests_made = {}  # type: Dict[str, str]
 
         self._client = Client(user, device_id, session_dir)
         self.api = None         # type: Optional[Union[HttpApi, Http2Api]]
@@ -590,12 +591,12 @@ class HttpClient(object):
             # type: Optional[Union[HttpConnection, Http2Connection]]
 
     def _send(self, request):
-        # type: (Request) -> bytes
+        # type: (Request) -> Tuple[str, bytes]
         if not self.connection:
             raise LocalProtocolError("Not connected.")
 
         uuid, data = self.connection.send(request)
-        return data
+        return uuid, data
 
     def connect(self, transport_type=TransportType.HTTP):
         # type: (Optional[TransportType]) -> bytes
@@ -642,7 +643,9 @@ class HttpClient(object):
             self._client.device_id
         )
 
-        return self._send(request)
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = "login"
+        return data
 
     def sync(self, filter=None):
         # type: (Optional[Dict[Any, Any]]) -> bytes
@@ -658,7 +661,9 @@ class HttpClient(object):
             filter
         )
 
-        return self._send(request)
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = "sync"
+        return data
 
     def receive(self, data):
         # type: (bytes) -> Optional[Response]
@@ -669,9 +674,8 @@ class HttpClient(object):
         uuid, transport_response = self.connection.receive(data)
 
         if transport_response:
-            response_type = ("login" if not self._client.logged_in
-                             else "sync")
-            response = self._client.receive(response_type,
+            request_type = self.requests_made.pop(uuid)
+            response = self._client.receive(request_type,
                                             transport_response.data)
             return response
 
