@@ -18,7 +18,7 @@ from __future__ import unicode_literals
 
 import json
 from builtins import bytes
-from collections import deque, OrderedDict
+from collections import OrderedDict
 from enum import Enum, unique
 from typing import *
 from uuid import uuid4
