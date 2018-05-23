@@ -18,9 +18,10 @@ from __future__ import unicode_literals
 
 import json
 from builtins import bytes
-from collections import deque
+from collections import deque, OrderedDict
 from enum import Enum, unique
 from typing import *
+from uuid import uuid4
 
 import h2.connection
 import h2.events
@@ -372,22 +373,27 @@ class HttpConnection(Connection):
     def __init__(self):
         # type: () -> None
         self._connection = h11.Connection(our_role=h11.CLIENT)
-        self._message_queue = deque()  # type: deque
-        self._current_request = None   # type: Optional[Request]
+        self._message_queue = OrderedDict()  # type: OrderedDict
+        self._current_uuid = None      # type: Optional[str]
         self._current_response = None  # type: Optional[HttpResponse]
 
     def data_to_send(self):
-        if self._current_request:
+        # type: () -> bytes
+        if self._current_uuid:
             return b""
 
         if not self._message_queue:
             return b""
 
-        request = self._message_queue.popleft()
-        return self.send(request)
+        if not self._connection.our_state == h11.IDLE:
+            return b""
+
+        uuid, request = self._message_queue.popitem(last=False)
+        _, data = self.send(request)
+        return data
 
     def send(self, mrequest):
-        # type: (Request) -> bytes
+        # type: (Request) -> Tuple[str, bytes]
         data = b""
 
         if not isinstance(mrequest, HttpRequest):
@@ -395,18 +401,23 @@ class HttpConnection(Connection):
 
         if self._connection.our_state == h11.IDLE:
             data = data + self._connection.send(mrequest._request)
+
             if mrequest._data:
                 data = data + self._connection.send(mrequest._data)
+
             data = data + self._connection.send(
                 mrequest._end_of_message
             )
-            return data
+
+            self._current_uuid = uuid4()
+            return self._current_uuid, data
         else:
-            self._message_queue.append(mrequest)
-            return b""
+            uuid = uuid4()
+            self._message_queue[uuid] = mrequest
+            return uuid, b""
 
     def _get_response(self):
-        # type: () -> Optional[HttpResponse]
+        # type: () -> Tuple[Optional[str], Optional[HttpResponse]]
         ret = self._connection.next_event()
 
         if not self._current_response:
@@ -416,8 +427,10 @@ class HttpConnection(Connection):
             if ret == h11.PAUSED or isinstance(ret, h11.EndOfMessage):
                 self._connection.start_next_cycle()
                 response = self._current_response
+                uuid = self._current_uuid
                 self._current_response = None
-                return response
+                self._current_uuid = None
+                return uuid, response
             elif isinstance(ret, h11.InformationalResponse):
                 self._current_response.add_response(ret)
             elif isinstance(ret, h11.Response):
@@ -427,7 +440,7 @@ class HttpConnection(Connection):
 
             ret = self._connection.next_event()
 
-        return None
+        return None, None
 
     def receive(self, data):
         self._connection.receive_data(data)
@@ -581,7 +594,8 @@ class HttpClient(object):
         if not self.connection:
             raise LocalProtocolError("Not connected.")
 
-        return self.connection.send(request)
+        uuid, data = self.connection.send(request)
+        return data
 
     def connect(self, transport_type=TransportType.HTTP):
         # type: (Optional[TransportType]) -> bytes
@@ -652,7 +666,7 @@ class HttpClient(object):
         if not self.connection:
             raise LocalProtocolError("Not connected.")
 
-        transport_response = self.connection.receive(data)
+        uuid, transport_response = self.connection.receive(data)
 
         if transport_response:
             response_type = ("login" if not self._client.logged_in
