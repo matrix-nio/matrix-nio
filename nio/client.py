@@ -231,6 +231,14 @@ class TransportResponse(object):
     def add_data(self, data):
         raise NotImplementedError
 
+    @property
+    def is_ok(self):
+        last = self.responses[-1]
+        if last.status_code == 200:
+            return True
+
+        return False
+
 
 class HttpResponse(TransportResponse):
     def add_response(self, response):
@@ -674,9 +682,13 @@ class HttpClient(object):
         uuid, transport_response = self.connection.receive(data)
 
         if transport_response:
-            request_type = self.requests_made.pop(uuid)
-            response = self._client.receive(request_type,
-                                            transport_response.data)
-            return response
+            if transport_response.is_ok:
+                request_type = self.requests_made.pop(uuid)
+                response = self._client.receive(request_type,
+                                                transport_response.data)
+                return response
+            else:
+                # TODO return an error repsonse
+                raise RemoteTransportError
 
         return None
