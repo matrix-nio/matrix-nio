@@ -19,6 +19,8 @@ from __future__ import unicode_literals
 import json
 from typing import *
 
+from logbook import Logger
+from .log import logger_group
 
 try:
     from json.decoder import JSONDecodeError
@@ -36,6 +38,9 @@ from . http import (
     Http2Request,
     HttpRequest
 )
+
+logger = Logger('nio.client')
+logger_group.add_logger(logger)
 
 
 class Client(object):
@@ -191,6 +196,8 @@ class HttpClient(object):
         if transport_response:
             if transport_response.is_ok:
                 request_type = self.requests_made.pop(uuid)
+                logger.info("Received response of type: {}".format(
+                    request_type))
                 response = self._client.receive(request_type,
                                                 transport_response.data)
                 return response

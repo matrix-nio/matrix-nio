@@ -21,6 +21,10 @@ import click
 import socket
 import socks
 import ssl
+import logbook
+
+import nio
+
 from logbook import Logger, StderrHandler
 from nio.client import HttpClient, TransportType
 from nio.responses import LoginResponse, ErrorResponse
@@ -102,6 +106,14 @@ def cli(
     proxy_type
 ):
     StderrHandler(level=verbosity.upper()).push_application()
+
+    if verbosity == "info":
+        nio.logger_group.level = logbook.INFO
+    elif verbosity == "warning":
+        nio.logger_group.level = logbook.WARNING
+    elif verbosity == "error":
+        nio.logger_group.level = logbook.ERROR
+
     ctx.obj = CliClient(
         user,
         password,
