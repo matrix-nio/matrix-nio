@@ -138,7 +138,8 @@ def sync(cli):
 
     while not response:
         received_data = sock.recv(4096)
-        response = client.receive(received_data)
+        client.receive(received_data)
+        response = client.next_response()
 
     data = client.sync()
     sock.sendall(data)
@@ -146,7 +147,8 @@ def sync(cli):
 
     while not response:
         received_data = sock.recv(4096)
-        response = client.receive(received_data)
+        client.receive(received_data)
+        response = client.next_response()
 
     click.echo(response)
 
@@ -167,7 +169,8 @@ def login(cli):
 
     while not response:
         received_data = sock.recv(4096)
-        response = client.receive(received_data)
+        client.receive(received_data)
+        response = client.next_response()
 
     if isinstance(response, LoginResponse):
         click.echo(response, err=True)

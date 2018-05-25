@@ -18,6 +18,7 @@ from __future__ import unicode_literals
 
 import json
 from typing import *
+from collections import deque, namedtuple
 
 from logbook import Logger
 from .log import logger_group
@@ -33,6 +34,7 @@ from . api import HttpApi, Http2Api
 from . http import (
     Request,
     TransportType,
+    TransportResponse,
     Http2Connection,
     HttpConnection,
     Http2Request,
@@ -41,6 +43,9 @@ from . http import (
 
 logger = Logger('nio.client')
 logger_group.add_logger(logger)
+
+
+TypedResponse = namedtuple("TypedResponse", ["type", "data"])
 
 
 class Client(object):
@@ -54,6 +59,7 @@ class Client(object):
         self.user = user
         self.device_id = device_id
         self.session_dir = session_dir
+        self.parse_queue = deque()  # type: Deque[TypedResponse]
 
         self.user_id = ""
         self.access_token = ""
@@ -76,21 +82,32 @@ class Client(object):
             self.device_id = response.device_id
 
     def receive(self, response_type, json_string):
-        # type: (str, Union[str, bytes]) -> Response
+        # type: (str, Union[str, bytes]) -> bool
         try:
             parsed_dict = json.loads(json_string, encoding="utf-8")  \
                 # type: Dict[Any, Any]
         except ValueError as e:
             # TODO return a error response
+            return False
+
+        response = TypedResponse(response_type, parsed_dict)
+        self.parse_queue.append(response)
+
+        return True
+
+    def next_response(self, max_events=0):
+        # type: (int) -> Optional[Response]
+        if not self.parse_queue:
             return None
 
-        if response_type == "login":
-            response = LoginResponse.from_dict(parsed_dict)
+        typed_response = self.parse_queue.popleft()
+
+        if typed_response.type == "login":
+            response = LoginResponse.from_dict(typed_response.data)
             self._handle_response(response)
             return response
 
-        # TODO parse the other response types
-        return parsed_dict
+        return typed_response.data
 
 
 class HttpClient(object):
@@ -186,7 +203,7 @@ class HttpClient(object):
         return data
 
     def receive(self, data):
-        # type: (bytes) -> Optional[Response]
+        # type: (bytes) -> None
         # TODO turn the TransportResponse in a MatrixResponse
         if not self.connection:
             raise LocalProtocolError("Not connected.")
@@ -198,11 +215,13 @@ class HttpClient(object):
                 request_type = self.requests_made.pop(uuid)
                 logger.info("Received response of type: {}".format(
                     request_type))
-                response = self._client.receive(request_type,
-                                                transport_response.data)
-                return response
+                self._client.receive(request_type,
+                                     transport_response.data)
             else:
                 # TODO return an error repsonse
                 raise RemoteTransportError
+        return
 
-        return None
+    def next_response(self, max_events=0):
+        # type: (int) -> Optional[Union[TransportResponse, Response]]
+        return self._client.next_response(max_events)
