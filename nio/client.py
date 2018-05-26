@@ -28,7 +28,7 @@ try:
 except ImportError:
     JSONDecodeError = ValueError  # type: ignore
 
-from . responses import Response, LoginResponse
+from . responses import Response, LoginResponse, SyncRepsponse
 from . exceptions import LocalProtocolError, RemoteTransportError
 from . api import HttpApi, Http2Api
 from . http import (
@@ -103,11 +103,17 @@ class Client(object):
         typed_response = self.parse_queue.popleft()
 
         if typed_response.type == "login":
-            response = LoginResponse.from_dict(typed_response.data)
+            response = LoginResponse.from_dict(typed_response.data)  \
+                # type: Response
             self._handle_response(response)
             return response
-
-        return typed_response.data
+        elif typed_response.type == "sync":
+            response = SyncRepsponse.from_dict(typed_response.data)
+            return response
+        else:
+            raise NotImplementedError(
+                "Response type {} not implemented".format(typed_response.type)
+            )
 
 
 class HttpClient(object):

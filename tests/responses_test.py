@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 import json
 
-from nio.responses import ErrorResponse, LoginResponse
+from nio.responses import ErrorResponse, LoginResponse, SyncRepsponse
 
 
 class TestClass(object):
@@ -31,3 +31,9 @@ class TestClass(object):
             "tests/data/login_invalid_format.json")
         response = LoginResponse.from_dict(parsed_dict)
         assert isinstance(response, ErrorResponse)
+
+    def test_sync_parse(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/sync.json")
+        response = SyncRepsponse.from_dict(parsed_dict)
+        assert isinstance(response, SyncRepsponse)
