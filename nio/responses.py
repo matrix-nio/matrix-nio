@@ -29,6 +29,9 @@ logger = Logger('nio.responses')
 logger_group.add_logger(logger)
 
 
+RoomRegex = "^![a-zA-Z0-9]+:.+$"
+
+
 @FormatChecker.cls_checks("user_id", ValueError)
 def check_user_id(value):
     # type: (str) -> bool
@@ -363,9 +366,27 @@ class SyncRepsponse(Response):
                 "rooms": {
                     "type": "object",
                     "properties": {
-                        "invite": {"type": "object"},
-                        "join": {"type": "object"},
-                        "leave": {"type": "object"}
+                        "invite": {
+                            "type": "object",
+                            "patternProperties": {
+                                RoomRegex: {"type": "object"}
+                            },
+                            "additionalProperties": False
+                        },
+                        "join": {
+                            "type": "object",
+                            "patternProperties": {
+                                RoomRegex: {"type": "object"}
+                            },
+                            "additionalProperties": False
+                        },
+                        "leave": {
+                            "type": "object",
+                            "patternProperties": {
+                                RoomRegex: {"type": "object"}
+                            },
+                            "additionalProperties": False
+                        }
                     }
                 },
                 "to_device": {
