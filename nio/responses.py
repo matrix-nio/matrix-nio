@@ -21,6 +21,13 @@ from jsonschema.exceptions import SchemaError, ValidationError
 from typing import NamedTuple
 from typing import *
 
+from logbook import Logger
+from .log import logger_group
+
+
+logger = Logger('nio.responses')
+logger_group.add_logger(logger)
+
 
 @FormatChecker.cls_checks("user_id", ValueError)
 def check_user_id(value):
@@ -375,6 +382,7 @@ class SyncRepsponse(Response):
         }
 
         try:
+            logger.info("Validating sync response schema")
             validate_json(parsed_dict, schema)
             rooms = SyncRepsponse._get_room_info(
                 parsed_dict["rooms"],
@@ -382,6 +390,7 @@ class SyncRepsponse(Response):
                 olm
             )
         except (SchemaError, ValidationError) as e:
+            logger.error("Error validating sync response: " + str(e.message))
             return ErrorResponse.from_dict(parsed_dict)
 
         return cls(parsed_dict["next_batch"],
