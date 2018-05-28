@@ -82,6 +82,77 @@ class Event(object):
         self.server_timestamp = server_ts
 
 
+class RedactedEvent(Event):
+    def __init__(
+        self,
+        event_id,    # type: str
+        sender,      # type: str
+        server_ts,   # type: int
+        event_type,  # type: str
+        redacter,    # type: str
+        reason=None  # type: Optional[str]
+    ):
+        # type: (...) -> None
+        self.event_type = event_type
+        self.redacter = redacter
+        self.reason = reason
+        super(RedactedEvent, self).__init__(event_id, sender, server_ts)
+
+    def __str__(self):
+        reason = ", reason: {}".format(self.reason) if self.reason else ""
+        return "Redacted event of type {}, by {}{}.".format(
+            self.event_type,
+            self.redacter,
+            reason
+        )
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        schema = {
+            "type": "object",
+            "properties": {
+                "unsigned": {
+                    "type": "object",
+                    "properties": {
+                        "redacted_because": {
+                            "type": "object",
+                            "properties": {
+                                "sender": {
+                                    "type": "string",
+                                    "format": "user_id"
+                                },
+                                "content": {
+                                    "type": "object",
+                                    "properties": {
+                                        "reason": {"type": "string"}
+                                    }
+                                }
+                            },
+                            "required": ["sender", "content"]
+                        },
+                    },
+                    "required": ["redacted_because"]
+                }
+            },
+            "required": ["unsigned"]
+        }
+
+        validate_json(parsed_dict, schema)
+
+        redacter = parsed_dict["unsigned"]["redacted_because"]["sender"]
+        content_dict = parsed_dict["unsigned"]["redacted_because"]["content"]
+        reason = content_dict["reason"] if "reason" in content_dict else None
+
+        return cls(
+            parsed_dict["event_id"],
+            parsed_dict["sender"],
+            parsed_dict["origin_server_ts"],
+            parsed_dict["type"],
+            redacter,
+            reason
+        )
+
+
 class RoomMessage(Event):
     @staticmethod
     def from_dict(parsed_dict, olm=None):
@@ -291,6 +362,11 @@ class SyncRepsponse(Response):
         for event_dict in parsed_dict:
             try:
                 validate_json(event_dict, schema)
+
+                if "unsigned" in event_dict:
+                    if "redacted_because" in event_dict["unsigned"]:
+                        events.append(RedactedEvent.from_dict(event_dict))
+                        continue
 
                 if event_dict["type"] == "m.room.message":
                     events.append(RoomMessage.from_dict(event_dict, olm))
