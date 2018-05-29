@@ -32,7 +32,8 @@ class TestClass(object):
         response = LoginResponse.from_dict(parsed_dict)
         assert isinstance(response, ErrorResponse)
 
-    def test_sync_parse(self):
+    def test_sync_parse(self, benchmark):
+        benchmark.weave(SyncRepsponse.from_dict, lazy=True)
         parsed_dict = TestClass._load_response(
             "tests/data/sync.json")
         response = SyncRepsponse.from_dict(parsed_dict)
