@@ -16,6 +16,7 @@
 
 from __future__ import unicode_literals
 
+import json
 
 from enum import Enum, unique
 from uuid import uuid4

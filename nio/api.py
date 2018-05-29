@@ -34,7 +34,7 @@ MATRIX_API_PATH = "/_matrix/client/r0"  # type: str
 
 class Api(object):
     @staticmethod
-    def _to_json(content_dict):
+    def to_json(content_dict):
         # type: (Dict[Any, Any]) -> str
         return json.dumps(content_dict, separators=(',', ':'))
 
@@ -65,7 +65,7 @@ class Api(object):
         if device_name:
             content_dict["initial_device_display_name"] = device_name
 
-        return path, Api._to_json(content_dict)
+        return path, Api.to_json(content_dict)
 
     @staticmethod
     def sync(access_token, next_batch=None, filter=None):

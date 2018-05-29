@@ -22,7 +22,8 @@ from typing import NamedTuple
 from typing import *
 
 from logbook import Logger
-from .log import logger_group
+from . log import logger_group
+from . api import Api
 
 
 logger = Logger('nio.responses')
@@ -82,6 +83,30 @@ class Event(object):
         self.server_timestamp = server_ts
 
 
+class BadEvent(Event):
+    def __init__(self, event_id, sender, server_ts, event_type, source):
+        # type: (str, str, int, str, str) -> None
+        self.source = source
+        self.type = event_type
+        super(BadEvent, self).__init__(event_id, sender, server_ts)
+
+    def __str__(self):
+        return "Bad event of type {}, from {}.".format(
+            self.sender,
+            self.type
+        )
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        return cls(
+            parsed_dict["event_id"],
+            parsed_dict["sender"],
+            parsed_dict["origin_server_ts"],
+            parsed_dict["type"],
+            Api.to_json(parsed_dict)
+        )
+
+
 class RedactedEvent(Event):
     def __init__(
         self,
@@ -137,7 +162,10 @@ class RedactedEvent(Event):
             "required": ["unsigned"]
         }
 
-        validate_json(parsed_dict, schema)
+        try:
+            validate_json(parsed_dict, schema)
+        except (ValidationError, SchemaError):
+            return BadEvent.from_dict(parsed_dict)
 
         redacter = parsed_dict["unsigned"]["redacted_because"]["sender"]
         content_dict = parsed_dict["unsigned"]["redacted_because"]["content"]
@@ -156,7 +184,7 @@ class RedactedEvent(Event):
 class RoomMessage(Event):
     @staticmethod
     def from_dict(parsed_dict, olm=None):
-        # type: (Dict[Any, Any], Any) -> RoomMessage
+        # type: (Dict[Any, Any], Any) -> Union[Event, BadEvent]
         schema = {
             "type": "object",
             "properties": {
@@ -172,8 +200,7 @@ class RoomMessage(Event):
         try:
             validate_json(parsed_dict, schema)
         except (SchemaError, ValidationError):
-            # TODO return Error Event
-            return None
+            return BadEvent.from_dict(parsed_dict)
 
         content_dict = parsed_dict["content"]
 
@@ -184,7 +211,7 @@ class RoomMessage(Event):
         return None
 
 
-class RoomMessageText(RoomMessage):
+class RoomMessageText(Event):
     def __init__(
         self,
         event_id,        # type: str
@@ -206,6 +233,7 @@ class RoomMessageText(RoomMessage):
 
     @classmethod
     def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomMessageText, BadEvent]
         schema = {
             "type": "object",
             "properties": {
@@ -224,8 +252,7 @@ class RoomMessageText(RoomMessage):
         try:
             validate_json(parsed_dict, schema)
         except (SchemaError, ValidationError):
-            # TODO return Error Event
-            return None
+            return BadEvent.from_dict(parsed_dict)
 
         body = parsed_dict["content"]["body"]
         formatted_body = (parsed_dict["content"]["formatted_body"] if
