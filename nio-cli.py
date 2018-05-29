@@ -17,17 +17,17 @@
 
 from __future__ import unicode_literals
 
-import click
 import socket
-import socks
 import ssl
+
+import click
 import logbook
+import socks
+from logbook import Logger, StderrHandler
 
 import nio
-
-from logbook import Logger, StderrHandler
 from nio.client import HttpClient, TransportType
-from nio.responses import LoginResponse, ErrorResponse
+from nio.responses import ErrorResponse, LoginResponse
 
 click.disable_unicode_literals_warning = True
 

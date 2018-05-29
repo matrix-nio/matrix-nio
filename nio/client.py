@@ -17,29 +17,23 @@
 from __future__ import unicode_literals
 
 import json
-from typing import *
 from collections import deque, namedtuple
+from typing import *
 
 from logbook import Logger
+
+from .api import Http2Api, HttpApi
+from .exceptions import LocalProtocolError, RemoteTransportError
+from .http import (Http2Connection, Http2Request, HttpConnection, HttpRequest,
+                   Request, TransportResponse, TransportType)
 from .log import logger_group
+from .responses import LoginResponse, Response, SyncRepsponse
 
 try:
     from json.decoder import JSONDecodeError
 except ImportError:
     JSONDecodeError = ValueError  # type: ignore
 
-from . responses import Response, LoginResponse, SyncRepsponse
-from . exceptions import LocalProtocolError, RemoteTransportError
-from . api import HttpApi, Http2Api
-from . http import (
-    Request,
-    TransportType,
-    TransportResponse,
-    Http2Connection,
-    HttpConnection,
-    Http2Request,
-    HttpRequest
-)
 
 logger = Logger('nio.client')
 logger_group.add_logger(logger)

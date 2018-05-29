@@ -19,14 +19,14 @@ from __future__ import unicode_literals
 import json
 from typing import *
 
+from .exceptions import LocalProtocolError
+from .http import Http2Request, HttpRequest, Request
+
 try:
     from urllib.parse import quote, urlencode, urlparse
 except ImportError:
     from urllib import quote, urlencode  # type: ignore
     from urlparse import urlparse        # type: ignore
-
-from . http import Request, HttpRequest, Http2Request
-from . exceptions import LocalProtocolError
 
 
 MATRIX_API_PATH = "/_matrix/client/r0"  # type: str

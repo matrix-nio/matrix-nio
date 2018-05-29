@@ -17,12 +17,11 @@
 from __future__ import unicode_literals
 
 import json
-
-from enum import Enum, unique
-from uuid import uuid4
 from builtins import bytes
 from collections import OrderedDict
+from enum import Enum, unique
 from typing import *
+from uuid import uuid4
 
 import h2.connection
 import h2.events

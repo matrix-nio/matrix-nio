@@ -16,15 +16,15 @@
 
 from __future__ import unicode_literals
 
-from jsonschema import validate, FormatChecker
-from jsonschema.exceptions import SchemaError, ValidationError
-from typing import NamedTuple
 from typing import *
+from typing import NamedTuple
 
+from jsonschema import FormatChecker, validate
+from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
-from . log import logger_group
-from . api import Api
 
+from .api import Api
+from .log import logger_group
 
 logger = Logger('nio.responses')
 logger_group.add_logger(logger)
