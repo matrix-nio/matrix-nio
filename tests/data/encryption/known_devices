@@ -1,0 +1,6 @@
+# Test device store file
+example DEVICEID matrix-ed25519 2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA
+# Malformed line that gets ignored
+example DEVICEID matrix-ed25519
+# Line with unknown key type, gets ignored as well
+example DEVICEID matrix-rsa AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA

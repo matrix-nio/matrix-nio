@@ -19,6 +19,7 @@ from __future__ import unicode_literals
 import json
 import os
 import sqlite3
+import pprint
 # pylint: disable=redefined-builtin
 from builtins import str
 from collections import defaultdict
@@ -37,8 +38,8 @@ logger_group.add_logger(logger)
 
 
 try:
-    FileNotFoundError
-except NameError:
+    FileNotFoundError  # type: ignore
+except NameError:  # pragma: no cover
     FileNotFoundError = IOError
 
 
@@ -219,19 +220,20 @@ class OlmDevice():
 
     def __str__(self):
         # type: () -> str
-        return "{} {} {}".format(
-            self.user_id, self.device_id, self.keys["ed25519"])
-
-    def __repr__(self):
-        # type: () -> str
-        return str(self)
+        line = "{} {} {}".format(
+            self.user_id,
+            self.device_id,
+            pprint.pformat(self.keys)
+        )
+        return line
 
     def __eq__(self, value):
         # type: (object) -> bool
         if not isinstance(value, OlmDevice):
-            raise NotImplementedError
+            return NotImplemented
 
         try:
+            # We only care for the fingerprint key.
             if (self.user_id == value.user_id
                     and self.device_id == value.device_id
                     and self.keys["ed25519"] == value.keys["ed25519"]):
@@ -243,11 +245,12 @@ class OlmDevice():
 
 
 class OneTimeKey():
-    def __init__(self, user_id, device_id, key):
+    def __init__(self, user_id, device_id, key, key_type):
         # type: (str, str, str) -> None
         self.user_id = user_id
         self.device_id = device_id
         self.key = key
+        self.key_type = key_type
 
 
 class Olm():
