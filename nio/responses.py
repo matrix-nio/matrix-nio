@@ -298,7 +298,7 @@ class ErrorResponse(Response):
 
         try:
             validate(parsed_dict, schema)
-        except (SchemaError, ValidationError) as e:
+        except (SchemaError, ValidationError):
             return cls("Unknown error")
 
         return cls(parsed_dict["error"], parsed_dict["errcode"])
@@ -333,7 +333,7 @@ class LoginResponse(Response):
 
         try:
             validate_json(parsed_dict, schema)
-        except (SchemaError, ValidationError) as e:
+        except (SchemaError, ValidationError):
             return ErrorResponse.from_dict(parsed_dict)
 
         return cls(parsed_dict["user_id"],

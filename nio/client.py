@@ -80,7 +80,7 @@ class Client(object):
         try:
             parsed_dict = json.loads(json_string, encoding="utf-8")  \
                 # type: Dict[Any, Any]
-        except ValueError as e:
+        except ValueError:
             # TODO return a error response
             return False
 
