@@ -21,15 +21,16 @@ import os
 import sqlite3
 import pprint
 # pylint: disable=redefined-builtin
-from builtins import str
+from builtins import str, bytes
 from collections import defaultdict
 from functools import wraps
 from typing import *
 
 from logbook import Logger
 from olm import (Account, InboundGroupSession, InboundSession, OlmAccountError,
-                 OlmGroupSessionError, OlmPreKeyMessage, OlmSessionError,
-                 OutboundGroupSession, OutboundSession, Session)
+                 OlmGroupSessionError, OlmMessage, OlmPreKeyMessage,
+                 OlmSessionError, OutboundGroupSession, OutboundSession,
+                 Session)
 
 from .log import logger_group
 
@@ -246,7 +247,7 @@ class OlmDevice():
 
 class OneTimeKey():
     def __init__(self, user_id, device_id, key, key_type):
-        # type: (str, str, str) -> None
+        # type: (str, str, str, str) -> None
         self.user_id = user_id
         self.device_id = device_id
         self.key = key
@@ -382,7 +383,13 @@ class Olm():
 
         return missing
 
-    def decrypt(self, sender, sender_key, message):
+    def decrypt(
+        self,
+        sender,      # type: str
+        sender_key,  # type: str
+        message      # type: Union[OlmPreKeyMessage, OlmMessage]
+    ):
+        # type: (...) -> Optional[Dict[Any, Any]]
         plaintext = None
 
         for device_id, session_list in self.sessions[sender].items():
@@ -434,11 +441,11 @@ class Olm():
         room_id,         # type: str
         plaintext_dict,  # type: Dict[str, str]
         own_id,          # type: str
-        users            # type: str
+        users            # type: List[str]
     ):
         # type: (...) -> Tuple[Dict[str, str], Optional[Dict[Any, Any]]]
         plaintext_dict["room_id"] = room_id
-        to_device_dict = None
+        to_device_dict = None  # type: Optional[Dict[str, Any]]
 
         if room_id not in self.outbound_group_sessions:
             self.create_outbound_group_session(room_id)
@@ -465,6 +472,7 @@ class Olm():
         return payload_dict, to_device_dict
 
     def group_decrypt(self, room_id, session_id, ciphertext):
+        # type: (str, str, str) -> Optional[str]
         if session_id not in self.inbound_group_sessions[room_id]:
             return None
 
@@ -477,6 +485,7 @@ class Olm():
         return plaintext
 
     def share_group_session(self, room_id, own_id, users):
+        # type: (str, str, List[str]) -> Dict[str, Any]
         group_session = self.outbound_group_sessions[room_id]
 
         key_content = {
@@ -500,7 +509,7 @@ class Olm():
 
         to_device_dict = {
             "messages": {}
-        }
+        }  # type: Dict[str, Any]
 
         for user in users:
             if user not in self.devices:
