@@ -588,14 +588,31 @@ class Olm():
         cursor.close()
 
         try:
+            try:
+                account_pickle = bytes(account_pickle, "utf-8")
+            except TypeError:
+                pass
+
             self.account = Account.from_pickle(account_pickle)
 
             for db_session in db_sessions:
-                s = Session.from_pickle(db_session[2])
+                session_pickle = db_session[2]
+                try:
+                    session_pickle = bytes(session_pickle, "utf-8")
+                except TypeError:
+                    pass
+
+                s = Session.from_pickle(session_pickle)
                 self.sessions[db_session[0]][db_session[1]].append(s)
 
             for db_session in db_inbound_group_sessions:
-                s = InboundGroupSession.from_pickle(db_session[1])
+                session_pickle = db_session[1]
+                try:
+                    session_pickle = bytes(session_pickle, "utf-8")
+                except TypeError:
+                    pass
+
+                s = InboundGroupSession.from_pickle(session_pickle)
                 self.inbound_group_sessions[db_session[0]][s.id] = s
 
         except (OlmAccountError, OlmSessionError) as error:
