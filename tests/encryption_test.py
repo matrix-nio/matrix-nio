@@ -2,7 +2,6 @@
 
 import os
 
-import pytest
 from olm import Account, OutboundSession
 
 from nio.encryption import (DeviceStore, Olm, OlmDevice, OlmSession,
@@ -19,8 +18,11 @@ class TestClass(object):
         assert isinstance(olm.account, Account)
         os.remove(os.path.join(self._test_dir, "ephermal_DEVICEID.db"))
 
+    def _load(self, user_id, device_id):
+        return Olm(user_id, device_id, self._test_dir)
+
     def test_account_loading(self):
-        olm = Olm("example", "DEVICEID", self._test_dir)
+        olm = self._load("example", "DEVICEID")
         assert isinstance(olm.account, Account)
         assert (olm.account.identity_keys["curve25519"]
                 == "Q9k8uSdBnfAdYWyLtBgr7XCz3Nie3nvpSZkwLeeSmXQ")
