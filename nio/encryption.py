@@ -37,6 +37,11 @@ from .log import logger_group
 logger = Logger('nio.encryption')
 logger_group.add_logger(logger)
 
+try:
+    from json.decoder import JSONDecodeError
+except ImportError:
+    JSONDecodeError = ValueError  # type: ignore
+
 
 try:
     FileNotFoundError  # type: ignore
@@ -384,11 +389,15 @@ class Olm(object):
             trust_file_path
         ))
 
-    def _create_session(self, sender, sender_key, message):
+    def _create_inbound_session(self, sender, sender_key, message):
         logger.info("Creating Inbound session for {}".format(sender))
+        # Let's create a new inbound session.
         session = InboundSession(self.account, message, sender_key)
         logger.info("Created Inbound session for {}".format(sender))
+        # Remove the one time keys the session used so it can't be reused
+        # anymore.
         self.account.remove_one_time_keys(session)
+        # Save the account now that we removed the one time key.
         self.save_account()
 
         return session
@@ -468,20 +477,25 @@ class Olm(object):
 
         return missing
 
-    def decrypt(
+    def _try_decrypt(
         self,
         sender,      # type: str
         sender_key,  # type: str
         message      # type: Union[OlmPreKeyMessage, OlmMessage]
     ):
-        # type: (...) -> Optional[Dict[Any, Any]]
+        # type: (...) -> Optional[str]
         plaintext = None
 
+        # Let's try to decrypt with each known session for the sender.
         for session_list in self.session_store[sender].values():
             for session in session_list:
+                matches = False
                 try:
                     if isinstance(message, OlmPreKeyMessage):
-                        if not session.matches(message):
+                        # It's a prekey message, check if the session matches
+                        # if it doesn't no need to try to decrypt.
+                        matches = session.matches(message)
+                        if not matches:
                             continue
 
                     logger.info("Trying to decrypt olm message using existing "
@@ -491,13 +505,29 @@ class Olm(object):
                                 ))
 
                     plaintext = session.decrypt(message)
-                    parsed_plaintext = json.loads(plaintext, encoding='utf-8')
+                    # TODO do we need to save the session in the database here?
 
                     logger.info("Succesfully decrypted olm message "
                                 "using existing session")
-                    return parsed_plaintext
+                    return plaintext
+
                 except OlmSessionError as e:
-                    logger.warn("Error decrypting olm message from {} "
+                    # Decryption failed using a matching session, we don't want
+                    # to create a new session using this prekey message so
+                    # raise an exception and log the error.
+                    if matches:
+                        logger.error("Found matching session yet decryption "
+                                     "failed for sender {} and "
+                                     "device {}".format(
+                                         sender,
+                                         session.device_id
+                                     ))
+                        raise EncryptionError("Decryption failed for matching "
+                                              "session")
+
+                    # Decryption failed, we'll try another session in the next
+                    # iteration.
+                    logger.info("Error decrypting olm message from {} "
                                 "and device {}: {}".format(
                                     sender,
                                     session.device_id,
@@ -505,22 +535,66 @@ class Olm(object):
                                 ))
                     pass
 
+        return None
+
+    def decrypt(
+        self,
+        sender,      # type: str
+        sender_key,  # type: str
+        message      # type: Union[OlmPreKeyMessage, OlmMessage]
+    ):
+        # type: (...) -> Optional[Dict[Any, Any]]
+
+        s = None
         try:
-            s = self._create_session(sender, sender_key, message)
-        except OlmSessionError:
+            # First try to decrypt using an existing session.
+            plaintext = self._try_decrypt(sender, sender_key, message)
+        except EncryptionError:
+            # We found a matching session for a prekey message but decryption
+            # failed, don't try to decrypt any further.
             return None
 
-        try:
-            plaintext = s.decrypt(message)
-            parsed_plaintext = json.loads(plaintext, encoding='utf-8')
+        # Decryption failed with every known session or no known sessions,
+        # let's try to create a new session.
+        if not plaintext:
+            # New sessions can only be created if it's a prekey message, we
+            # can't decrypt the message if it isn't one at this point in time
+            # anymore, so return early
+            if not isinstance(message, OlmPreKeyMessage):
+                return None
 
-            device_id = parsed_plaintext["sender_device"]
+            try:
+                # Let's create a new session.
+                s = self._create_inbound_session(sender, sender_key, message)
+                # Now let's decrypt the message using the new session.
+                plaintext = s.decrypt(message)
+            except OlmSessionError as e:
+                logger.error("Failed to create new session from prekey"
+                             "message: {}".format(str(e)))
+                return None
+
+        # The plaintext should be valid json, let's parse it and verify it.
+        try:
+            parsed_payload = json.loads(plaintext, encoding='utf-8')
+        except JSONDecodeError as e:
+            # Failed parsing the payload, return early.
+            logger.error("Failed to parse Olm message payload: {}".format(
+                str(e)
+            ))
+            return None
+
+        # TODO schema validation and sender verification
+
+        if s:
+            # We created a new session, find out the device id for it and store
+            # it in the session store as well as in the database.
+            device_id = parsed_payload["sender_device"]
             session = OlmSession(sender, device_id, s)
             self.session_store.add(session)
-            self.save_session(session)
-            return parsed_plaintext
-        except OlmSessionError:
-            return None
+            self.save_session(session, new=True)
+
+        # Finaly return the parsed dict of the payload
+        return parsed_payload
 
     def group_encrypt(
         self,
