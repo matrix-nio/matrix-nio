@@ -429,7 +429,6 @@ class Olm(object):
         session = OlmSession(user_id, device_id, s)
         self.session_store.add(session)
         self.save_session(session, new=True)
-        self.save_session(user_id, device_id, session)
         logger.info("Created OutboundSession for device {}".format(device_id))
 
     def create_group_session(self, room_id, session_id, session_key):
