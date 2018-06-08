@@ -413,29 +413,39 @@ class Olm(object):
         self.trust_db.remove(device)
 
     def create_session(self, user_id, device_id, one_time_key):
+        # TODO the one time key needs to be verified before calling this
+
         id_key = None
 
+        # Let's create a new outbound session
         logger.info("Creating Outbound for {} and device {}".format(
             user_id, device_id))
 
+        # We need to find the device key for the wanted user and his device.
         for user, keys in self.devices.items():
             if user != user_id:
                 continue
 
             for key in keys:
                 if key.device_id == device_id:
+                    # Found a device let's get the curve25519 key
                     id_key = key.keys["curve25519"]
                     break
 
         if not id_key:
-            logger.error("Identity key for device {} not found".format(
-                device_id))
-            # TODO raise error here
+            message = "Identity key for device {} not found".format(device_id)
+            logger.error(message)
+            raise EncryptionError(message)
 
         logger.info("Found identity key for device {}".format(device_id))
+        # Create the session
+        # TODO this can fail
         s = OutboundSession(self.account, id_key, one_time_key)
+        # Save the account, add the session to the store and save it to the
+        # database.
         self.save_account()
         session = OlmSession(user_id, device_id, s)
+
         self.session_store.add(session)
         self.save_session(session, new=True)
         logger.info("Created OutboundSession for device {}".format(device_id))
