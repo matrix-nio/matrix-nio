@@ -7,6 +7,9 @@ from olm import Account, OutboundSession
 from nio.encryption import (DeviceStore, Olm, OlmDevice, OlmSession,
                             OneTimeKey, SessionStore, StoreEntry)
 
+BobId = "@bob:example.org"
+Bob_device = "BOBDEVICE"
+
 
 class TestClass(object):
     @property
@@ -123,14 +126,14 @@ class TestClass(object):
         bob = Account()
         bob.generate_one_time_keys(1)
         one_time = list(bob.one_time_keys["curve25519"].values())[0]
-        OneTimeKey("@bob:example.org", "BOBDEVICE", one_time, "curve25519")
+        OneTimeKey(BobId, Bob_device, one_time, "curve25519")
         id_key = bob.identity_keys["curve25519"]
         s = OutboundSession(alice, id_key, one_time)
         return alice, bob, s
 
     def test_session_store(self):
         alice, bob, s = self._create_session()
-        session = OlmSession("@bob:example.org", "BOBDEVICE", s)
+        session = OlmSession(BobId, Bob_device, s)
         store = SessionStore()
         store.add(session)
         assert store.check(session)
@@ -143,13 +146,36 @@ class TestClass(object):
         id_key = bob.identity_keys["curve25519"]
         s2 = OutboundSession(alice, id_key, one_time)
 
-        session = OlmSession("@bob:example.org", "BOBDEVICE", s)
-        session2 = OlmSession("@bob:example.org", "BOBDEVICE", s2)
+        session = OlmSession(BobId, Bob_device, s)
+        session2 = OlmSession(BobId, Bob_device, s2)
         store = SessionStore()
         store.add(session)
         store.add(session2)
 
         if session.session.id < session2.session.id:
-            assert session == store.get("@bob:example.org", "BOBDEVICE")
+            assert session == store.get(BobId, Bob_device)
         else:
-            assert session2 == store.get("@bob:example.org", "BOBDEVICE")
+            assert session2 == store.get(BobId, Bob_device)
+
+    def test_olm_outbound_session_create(self, monkeypatch):
+        def mocksave_sql(self, new=False):
+            return
+
+        bob = Account()
+        bob.generate_one_time_keys(1)
+        one_time = list(bob.one_time_keys["curve25519"].values())[0]
+
+        bob_device = OlmDevice(BobId, Bob_device, bob.identity_keys)
+
+        olm = Olm("ephermal", "DEVICEID", self._test_dir)
+        olm.devices[BobId] = [bob_device]
+        olm.create_session(BobId, Bob_device, one_time)
+        assert olm.session_store.get(BobId, Bob_device)
+        os.remove(os.path.join(self._test_dir, "ephermal_DEVICEID.db"))
+
+    def test_olm_session_load(self):
+        olm = self._load("example", "DEVICEID")
+        bob_session = olm.session_store.get(BobId, Bob_device)
+        assert (bob_session.session.id ==
+                "/Pueq/kLxk8o2b+wD6RsQrCgjnV2U6tYN9P+6MBmk6Y")
+        assert len(olm.session_store.getall(BobId, Bob_device)) == 2
