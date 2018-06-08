@@ -212,7 +212,7 @@ class StoreEntry(object):
         return False
 
 
-class OlmDevice():
+class OlmDevice(object):
     def __init__(self, user_id, device_id, key_dict):
         # type: (str, str, Dict[str, str]) -> None
         self.user_id = user_id
@@ -245,7 +245,7 @@ class OlmDevice():
         return False
 
 
-class OneTimeKey():
+class OneTimeKey(object):
     def __init__(self, user_id, device_id, key, key_type):
         # type: (str, str, str, str) -> None
         self.user_id = user_id
