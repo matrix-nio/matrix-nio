@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import os
+
 import pytest
+from olm import Account, OutboundSession
 
-from olm import Account
-
-from nio.encryption import Olm, OlmDevice, DeviceStore, StoreEntry, OneTimeKey
+from nio.encryption import (DeviceStore, Olm, OlmDevice, OlmSession,
+                            OneTimeKey, SessionStore, StoreEntry)
 
 
 class TestClass(object):
@@ -114,3 +115,39 @@ class TestClass(object):
             "curve25519"
         )
         assert isinstance(key, OneTimeKey)
+
+    def _create_session(self):
+        alice = Account()
+        bob = Account()
+        bob.generate_one_time_keys(1)
+        one_time = list(bob.one_time_keys["curve25519"].values())[0]
+        OneTimeKey("@bob:example.org", "BOBDEVICE", one_time, "curve25519")
+        id_key = bob.identity_keys["curve25519"]
+        s = OutboundSession(alice, id_key, one_time)
+        return alice, bob, s
+
+    def test_session_store(self):
+        alice, bob, s = self._create_session()
+        session = OlmSession("@bob:example.org", "BOBDEVICE", s)
+        store = SessionStore()
+        store.add(session)
+        assert store.check(session)
+        assert session in store
+
+    def test_session_store_sort(self):
+        alice, bob, s = self._create_session()
+        bob.generate_one_time_keys(1)
+        one_time = list(bob.one_time_keys["curve25519"].values())[0]
+        id_key = bob.identity_keys["curve25519"]
+        s2 = OutboundSession(alice, id_key, one_time)
+
+        session = OlmSession("@bob:example.org", "BOBDEVICE", s)
+        session2 = OlmSession("@bob:example.org", "BOBDEVICE", s2)
+        store = SessionStore()
+        store.add(session)
+        store.add(session2)
+
+        if session.session.id < session2.session.id:
+            assert session == store.get("@bob:example.org", "BOBDEVICE")
+        else:
+            assert session2 == store.get("@bob:example.org", "BOBDEVICE")

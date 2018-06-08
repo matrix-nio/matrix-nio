@@ -254,7 +254,84 @@ class OneTimeKey():
         self.key_type = key_type
 
 
-class Olm():
+class OlmSession(object):
+    def __init__(self, user_id, device_id, session):
+        self.user_id = user_id
+        self.device_id = device_id
+        self.session = session
+
+    @property
+    def id(self):
+        return "{}:{}:{}".format(self.user_id, self.device_id, self.session.id)
+
+    def __eq__(self, value):
+        # type: (object) -> bool
+        if not isinstance(value, OlmSession):
+            return NotImplemented
+
+        if (self.user_id == value.user_id
+                and self.device_id == value.device_id
+                and self.session.id == value.session.id):
+            return True
+
+        return False
+
+    def encrypt(self, plaintext):
+        return self.session.encrypt(plaintext)
+
+    def decrypt(self, message):
+        return self.session.decrypt(message)
+
+
+class SessionStore(object):
+    def __init__(self):
+        self._entries = defaultdict(lambda: defaultdict(list)) \
+            # type: DefaultDict[str, DefaultDict[str, List[Session]]]
+
+    def add(self, session):
+        # type: (OlmSession) -> bool
+        if session in self._entries[session.user_id][session.device_id]:
+            return False
+
+        self._entries[session.user_id][session.device_id].append(session)
+        self._entries[session.user_id][session.device_id].sort(
+            key=lambda x: x.session.id
+        )
+        return True
+
+    def __iter__(self):
+        for user in self._entries.values():
+            for device in user.values():
+                for session in device:
+                    yield session
+
+    def check(self, session):
+        # type: (OlmSession) -> bool
+        if session in self._entries[session.user_id][session.device_id]:
+            return True
+        return False
+
+    def remove(self, session):
+        # type: (OlmSession) -> bool
+        if session in self._entries[session.user_id][session.device_id]:
+            self._entries[session.user_id][session.device_id].remove(session)
+            return True
+
+        return False
+
+    def get(self, user_id, device_id):
+        # type: (str, str) -> Optional[OlmSession]
+        if self._entries[user_id][device_id]:
+            return self._entries[user_id][device_id][0]
+
+        return None
+
+    def getall(self, user_id, device_id):
+        # type: (str, str) -> List[OlmSession]
+        return self._entries[user_id][device_id]
+
+
+class Olm(object):
     def __init__(
         self,
         user,                        # type: str
