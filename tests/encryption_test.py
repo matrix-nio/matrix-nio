@@ -7,6 +7,10 @@ from olm import Account, OutboundSession
 from nio.encryption import (DeviceStore, Olm, OlmDevice, OlmSession,
                             OneTimeKey, SessionStore, StoreEntry)
 
+
+AliceId = "@alice:example.org"
+Alice_device = "ALDEVICE"
+
 BobId = "@bob:example.org"
 Bob_device = "BOBDEVICE"
 
@@ -179,3 +183,64 @@ class TestClass(object):
         assert (bob_session.session.id ==
                 "/Pueq/kLxk8o2b+wD6RsQrCgjnV2U6tYN9P+6MBmk6Y")
         assert len(olm.session_store.getall(BobId, Bob_device)) == 2
+
+    def test_olm_inbound_session(self):
+        # create two new accounts
+        alice = self._load(AliceId, Alice_device)
+        bob = self._load(BobId, Bob_device)
+
+        # create olm devices for each others known devices list
+        alice_device = OlmDevice(
+            AliceId,
+            Alice_device,
+            alice.account.identity_keys
+        )
+        bob_device = OlmDevice(BobId, Bob_device, bob.account.identity_keys)
+
+        # add the devices to the device list
+        alice.devices[BobId] = [bob_device]
+        bob.devices[AliceId] = [alice_device]
+
+        # bob creates one time keys
+        bob.account.generate_one_time_keys(1)
+        one_time = list(bob.account.one_time_keys["curve25519"].values())[0]
+        # Mark the keys as published
+        bob.account.mark_keys_as_published()
+
+        # alice creates an outbound olm session with bob
+        # pdb.set_trace()
+        alice.create_session(BobId, Bob_device, one_time)
+
+        alice_session = alice.session_store.get(BobId, Bob_device)
+
+        payload_dict = {
+            "type": "m.room_key",
+            "content": {},
+            "sender": AliceId,
+            "sender_device": Alice_device,
+            "keys": {
+                "ed25519": alice_device.keys["ed25519"]
+            },
+            "recepient": BobId,
+            "recipient_keys": {
+                "ed25519": bob_device.keys["ed25519"]
+            }
+        }
+
+        # alice encrypts the payload for bob
+        message = alice_session.encrypt(Olm._to_json(payload_dict))
+
+        # bob decrypts the message and creates a new inbound session with alice
+        bob.decrypt(AliceId, alice_device.keys["curve25519"], message)
+
+        # we check that the session is there
+        assert bob.session_store.get(AliceId, Alice_device)
+
+        os.remove(os.path.join(
+            self._test_dir,
+            "{}_{}.db".format(AliceId, Alice_device)
+        ))
+        os.remove(os.path.join(
+            self._test_dir,
+            "{}_{}.db".format(BobId, Bob_device)
+        ))
