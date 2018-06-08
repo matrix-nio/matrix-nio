@@ -24,15 +24,19 @@ class TestClass(object):
         assert (olm.account.identity_keys["curve25519"]
                 == "Q9k8uSdBnfAdYWyLtBgr7XCz3Nie3nvpSZkwLeeSmXQ")
 
-    def test_device_store(self):
+    def test_device_store(self, monkeypatch):
+        def mocksave(self):
+            return
+
+        monkeypatch.setattr(DeviceStore, '_save', mocksave)
         store = DeviceStore(os.path.join(self._test_dir, "ephermal_devices"))
         account = Account()
         device = OlmDevice("example", "DEVICEID", account.identity_keys)
+        assert device not in store
         store.add(device)
         assert device in store
         store.remove(device)
         assert store.check(device) is False
-        os.remove(os.path.join(self._test_dir, "ephermal_devices"))
 
     def test_device_store_loading(self):
         store = DeviceStore(os.path.join(self._test_dir, "known_devices"))
