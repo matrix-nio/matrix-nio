@@ -19,36 +19,15 @@ from __future__ import unicode_literals
 from typing import *
 from typing import NamedTuple
 
-from jsonschema import FormatChecker, validate
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
 from .api import Api
 from .log import logger_group
+from .schemas import validate_json, Schemas
 
 logger = Logger('nio.responses')
 logger_group.add_logger(logger)
-
-
-RoomRegex = "^![a-zA-Z0-9]+:.+$"
-
-
-@FormatChecker.cls_checks("user_id", ValueError)
-def check_user_id(value):
-    # type: (str) -> bool
-    if not value.startswith("@"):
-        raise ValueError("UserIDs start with @")
-
-    if ":" not in value:
-        raise ValueError(
-            "UserIDs must have a domain component, seperated by a :"
-        )
-
-    return True
-
-
-def validate_json(instance, schema):
-    validate(instance, schema, format_checker=FormatChecker())
 
 
 RoomInfo = NamedTuple("RoomInfo", [
@@ -133,37 +112,8 @@ class RedactedEvent(Event):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        schema = {
-            "type": "object",
-            "properties": {
-                "unsigned": {
-                    "type": "object",
-                    "properties": {
-                        "redacted_because": {
-                            "type": "object",
-                            "properties": {
-                                "sender": {
-                                    "type": "string",
-                                    "format": "user_id"
-                                },
-                                "content": {
-                                    "type": "object",
-                                    "properties": {
-                                        "reason": {"type": "string"}
-                                    }
-                                }
-                            },
-                            "required": ["sender", "content"]
-                        },
-                    },
-                    "required": ["redacted_because"]
-                }
-            },
-            "required": ["unsigned"]
-        }
-
         try:
-            validate_json(parsed_dict, schema)
+            validate_json(parsed_dict, Schemas.redacted_event)
         except (ValidationError, SchemaError):
             return BadEvent.from_dict(parsed_dict)
 
@@ -185,20 +135,8 @@ class RoomMessage(Event):
     @staticmethod
     def from_dict(parsed_dict, olm=None):
         # type: (Dict[Any, Any], Any) -> Union[Event, BadEvent]
-        schema = {
-            "type": "object",
-            "properties": {
-                "content": {
-                    "type": "object",
-                    "properties": {
-                        "msgtype": {"type": "string"},
-                    },
-                    "required": ["msgtype"]
-                }
-            }
-        }
         try:
-            validate_json(parsed_dict, schema)
+            validate_json(parsed_dict, Schemas.room_message)
         except (SchemaError, ValidationError):
             return BadEvent.from_dict(parsed_dict)
 
@@ -234,23 +172,8 @@ class RoomMessageText(Event):
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomMessageText, BadEvent]
-        schema = {
-            "type": "object",
-            "properties": {
-                "msgtype": {"type": "string", "const": "m.text"},
-                "content": {
-                    "type": "object",
-                    "properties": {
-                        "body": {"type": "string"},
-                        "formatted_body": {"type": "string"},
-                        "format": {"type": "string"}
-                    },
-                    "required": ["body"]
-                }
-            }
-        }
         try:
-            validate_json(parsed_dict, schema)
+            validate_json(parsed_dict, Schemas.room_message_text)
         except (SchemaError, ValidationError):
             return BadEvent.from_dict(parsed_dict)
 
@@ -287,17 +210,8 @@ class ErrorResponse(Response):
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> ErrorResponse
-        schema = {
-            "type": "object",
-            "properties": {
-                "error": {"type": "string"},
-                "errcode": {"type": "string"}
-            },
-            "required": ["error", "errcode"]
-        }
-
         try:
-            validate(parsed_dict, schema)
+            validate_json(parsed_dict, Schemas.error)
         except (SchemaError, ValidationError):
             return cls("Unknown error")
 
@@ -321,18 +235,8 @@ class LoginResponse(Response):
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[LoginResponse, ErrorResponse]
-        schema = {
-            "type": "object",
-            "properties": {
-                "user_id": {"type": "string", "format": "user_id"},
-                "device_id": {"type": "string"},
-                "access_token": {"type": "string"}
-            },
-            "required": ["user_id", "device_id", "access_token"]
-        }
-
         try:
-            validate_json(parsed_dict, schema)
+            validate_json(parsed_dict, Schemas.login)
         except (SchemaError, ValidationError):
             return ErrorResponse.from_dict(parsed_dict)
 
@@ -374,21 +278,11 @@ class SyncRepsponse(Response):
     @staticmethod
     def _get_room_events(parsed_dict, max_events=0, olm=None):
         # type: (Dict[Any, Any], int, Any) -> List[Any]
-        schema = {
-            "type": "object",
-            "properties": {
-                "event_id": {"type": "string"},
-                "sender": {"type": "string", "format": "user_id"},
-                "type": {"type": "string"}
-            },
-            "required": ["event_id", "sender", "type"]
-        }
-
         events = []  # type: List[Any]
 
         for event_dict in parsed_dict:
             try:
-                validate_json(event_dict, schema)
+                validate_json(event_dict, Schemas.room_event)
 
                 if "unsigned" in event_dict:
                     if "redacted_because" in event_dict["unsigned"]:
@@ -407,17 +301,7 @@ class SyncRepsponse(Response):
     @staticmethod
     def _get_timeline(parsed_dict, max_events=0, olm=None):
         # type: (Dict[Any, Any], int, Any) -> Timeline
-        schema = {
-            "type": "object",
-            "properties": {
-                "events": {"type": "array"},
-                "limited": {"type": "boolean"},
-                "prev_batch": {"type": "string"}
-            },
-            "required": ["events", "limited", "prev_batch"]
-        }
-
-        validate_json(parsed_dict, schema)
+        validate_json(parsed_dict, Schemas.room_timeline)
 
         events = SyncRepsponse._get_room_events(
             parsed_dict["events"],
@@ -461,53 +345,9 @@ class SyncRepsponse(Response):
         # type: (...) -> Union[SyncRepsponse, ErrorResponse]
         partial = False
 
-        schema = {
-            "type": "object",
-            "properties": {
-                "device_one_time_keys_count": {"type": "object"},
-                "next_batch": {"type": "string"},
-                "rooms": {
-                    "type": "object",
-                    "properties": {
-                        "invite": {
-                            "type": "object",
-                            "patternProperties": {
-                                RoomRegex: {"type": "object"}
-                            },
-                            "additionalProperties": False
-                        },
-                        "join": {
-                            "type": "object",
-                            "patternProperties": {
-                                RoomRegex: {"type": "object"}
-                            },
-                            "additionalProperties": False
-                        },
-                        "leave": {
-                            "type": "object",
-                            "patternProperties": {
-                                RoomRegex: {"type": "object"}
-                            },
-                            "additionalProperties": False
-                        }
-                    }
-                },
-                "to_device": {
-                    "type": "object",
-                    "properties": {"events": {"type": "array"}}
-                }
-            },
-            "required": [
-                "next_batch",
-                "device_one_time_keys_count",
-                "rooms",
-                "to_device"
-            ]
-        }
-
         try:
             logger.info("Validating sync response schema")
-            validate_json(parsed_dict, schema)
+            validate_json(parsed_dict, Schemas.sync)
             rooms = SyncRepsponse._get_room_info(
                 parsed_dict["rooms"],
                 max_events,
