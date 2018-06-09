@@ -59,21 +59,17 @@ class EncryptionError(Exception):
     pass
 
 
-class DeviceStore(object):
+class FingerprintStore(object):
     def __init__(self, filename):
         # type: (str) -> None
-        self._entries = []  # type: List[StoreEntry]
+        self._entries = []  # type: List[DeviceFingerprint]
         self._filename = filename  # type: str
 
         self._load(filename)
 
     def __iter__(self):
         for entry in self._entries:
-            yield OlmDevice(
-                entry.user_id,
-                entry.device_id,
-                {entry.key_type: entry.key}
-            )
+            yield entry
 
     def _load(self, filename):
         # type: (str) -> None
@@ -85,7 +81,7 @@ class DeviceStore(object):
                     if not line or line.startswith("#"):
                         continue
 
-                    entry = StoreEntry.from_line(line)
+                    entry = DeviceFingerprint.from_line(line)
 
                     if not entry:
                         continue
@@ -113,36 +109,30 @@ class DeviceStore(object):
 
     @_save_store
     def add(self, device):
-        # type: (OlmDevice) -> None
-        new_entries = StoreEntry.from_olmdevice(device)
-        self._entries += new_entries
+        # type: (DeviceFingerprint) -> bool
+        if device in self._entries:
+            return False
 
-        # Remove duplicate entries
-        self._entries = list(set(self._entries))
-
+        self._entries.append(device)
         self._save()
+        return True
 
     @_save_store
     def remove(self, device):
-        # type: (OlmDevice) -> int
-        removed = 0
-        entries = StoreEntry.from_olmdevice(device)
+        # type: (DeviceFingerprint) -> bool
+        if device in self._entries:
+            self._entries.remove(device)
+            self._save()
+            return True
 
-        for entry in entries:
-            if entry in self._entries:
-                self._entries.remove(entry)
-                removed += 1
-
-        self._save()
-
-        return removed
+        return False
 
     def check(self, device):
         # type: (OlmDevice) -> bool
-        return device in self
+        return device in self._entries
 
 
-class StoreEntry(object):
+class DeviceFingerprint(object):
     def __init__(self, user_id, device_id, key_type, key):
         # type: (str, str, str, str) -> None
         self.user_id = user_id
@@ -152,7 +142,7 @@ class StoreEntry(object):
 
     @classmethod
     def from_line(cls, line):
-        # type: (str) -> Optional[StoreEntry]
+        # type: (str) -> Optional[DeviceFingerprint]
         fields = line.split(' ')
 
         if len(fields) < 4:
@@ -167,7 +157,7 @@ class StoreEntry(object):
 
     @classmethod
     def from_olmdevice(cls, device_key):
-        # type: (OlmDevice) -> List[StoreEntry]
+        # type: (OlmDevice) -> List[DeviceFingerprint]
         entries = []
 
         user_id = device_key.user_id
@@ -207,7 +197,7 @@ class StoreEntry(object):
 
     def __eq__(self, value):
         # type: (object) -> bool
-        if not isinstance(value, StoreEntry):
+        if not isinstance(value, DeviceFingerprint):
             return NotImplemented
 
         if (self.user_id == value.user_id
@@ -386,7 +376,7 @@ class Olm(object):
 
         # TODO we need a db for untrusted device as well as for seen devices.
         trust_file_path = "{}_{}.trusted_devices".format(user_id, device_id)
-        self.trust_db = DeviceStore(os.path.join(
+        self.trust_db = FingerprintStore(os.path.join(
             session_path,
             trust_file_path
         ))

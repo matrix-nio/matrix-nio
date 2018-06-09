@@ -4,8 +4,8 @@ import os
 
 from olm import Account, OutboundSession
 
-from nio.encryption import (DeviceStore, Olm, OlmDevice, OlmSession,
-                            OneTimeKey, SessionStore, StoreEntry)
+from nio.encryption import (FingerprintStore, Olm, OlmDevice, OlmSession,
+                            OneTimeKey, SessionStore, DeviceFingerprint)
 
 
 AliceId = "@alice:example.org"
@@ -38,28 +38,33 @@ class TestClass(object):
         def mocksave(self):
             return
 
-        monkeypatch.setattr(DeviceStore, '_save', mocksave)
-        store = DeviceStore(os.path.join(self._test_dir, "ephermal_devices"))
+        monkeypatch.setattr(FingerprintStore, '_save', mocksave)
+        store = FingerprintStore(os.path.join(
+            self._test_dir,
+            "ephermal_devices"
+        ))
         account = Account()
         device = OlmDevice("example", "DEVICEID", account.identity_keys)
-        assert device not in store
-        store.add(device)
-        assert device in store
-        store.remove(device)
-        assert store.check(device) is False
+        fingerprint = DeviceFingerprint.from_olmdevice(device)
+
+        assert fingerprint not in store
+        assert store.add(fingerprint)
+        assert fingerprint in store
+        assert store.remove(fingerprint)
+        assert store.check(fingerprint) is False
 
     def test_device_store_loading(self):
-        store = DeviceStore(os.path.join(self._test_dir, "known_devices"))
+        store = FingerprintStore(os.path.join(self._test_dir, "known_devices"))
         device = OlmDevice(
             "example",
             "DEVICEID",
             {"ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
         )
 
-        assert device in store
+        assert DeviceFingerprint.from_olmdevice(device)[0] in store
 
     def test_invalid_store_entry_equality(self):
-        entry = StoreEntry(
+        entry = DeviceFingerprint(
             "example",
             "DEVICEID",
             "ed25519",
@@ -69,14 +74,14 @@ class TestClass(object):
         assert entry != 1
 
     def test_differing_store_entries(self):
-        alice = StoreEntry(
+        alice = DeviceFingerprint(
             "alice",
             "DEVICEID",
             "ed25519",
             "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
         )
 
-        bob = StoreEntry(
+        bob = DeviceFingerprint(
             "bob",
             "DEVICEDI",
             "ed25519",
