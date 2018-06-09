@@ -660,7 +660,6 @@ class Olm(object):
                 not in self.shared_sessions):
             to_device_dict = self.share_group_session(
                 room_id,
-                self.user_id,
                 users
             )
             self.shared_sessions.append(
@@ -695,7 +694,7 @@ class Olm(object):
         return plaintext
 
     def share_group_session(self, room_id, users):
-        # type: (str, str, List[str]) -> Dict[str, Any]
+        # type: (str, List[str]) -> Dict[str, Any]
         group_session = self.outbound_group_sessions[room_id]
 
         key_content = {
