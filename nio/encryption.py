@@ -586,6 +586,12 @@ class Olm(object):
                              "message: {}".format(str(e)))
                 return None
 
+        # Mypy complains that the plaintext can still be empty here,
+        # realistically this can't happen but let's make mypy happy
+        if not plaintext:
+            logger.error("Failed to decrypt Olm message: unknown error")
+            return None
+
         # The plaintext should be valid json, let's parse it and verify it.
         try:
             parsed_payload = json.loads(plaintext, encoding='utf-8')
