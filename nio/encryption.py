@@ -350,12 +350,12 @@ class SessionStore(object):
 class Olm(object):
     def __init__(
         self,
-        user,                        # type: str
+        user_id,                     # type: str
         device_id,                   # type: str
         session_path,                # type: str
     ):
         # type: (...) -> None
-        self.user = user
+        self.user_id = user_id
         self.device_id = device_id
         self.session_path = session_path
 
@@ -385,7 +385,7 @@ class Olm(object):
             self.save_account(True)
 
         # TODO we need a db for untrusted device as well as for seen devices.
-        trust_file_path = "{}_{}.trusted_devices".format(user, device_id)
+        trust_file_path = "{}_{}.trusted_devices".format(user_id, device_id)
         self.trust_db = DeviceStore(os.path.join(
             session_path,
             trust_file_path
@@ -557,9 +557,8 @@ class Olm(object):
             return False
 
         # Verify that we're the recipient of the payload.
-        # TODO we need the user id in the Olm class
-        # if self.user_id != payload["recipient"]:
-            # return False
+        if self.user_id != payload["recipient"]:
+            return False
 
         # Verify that the recipient fingerprint key matches our own
         if (self.account.identity_keys["ed25519"] !=
@@ -658,7 +657,6 @@ class Olm(object):
         self,
         room_id,         # type: str
         plaintext_dict,  # type: Dict[str, str]
-        own_id,          # type: str
         users            # type: List[str]
     ):
         # type: (...) -> Tuple[Dict[str, str], Optional[Dict[Any, Any]]]
@@ -670,7 +668,11 @@ class Olm(object):
 
         if (self.outbound_group_sessions[room_id].id
                 not in self.shared_sessions):
-            to_device_dict = self.share_group_session(room_id, own_id, users)
+            to_device_dict = self.share_group_session(
+                room_id,
+                self.user_id,
+                users
+            )
             self.shared_sessions.append(
                 self.outbound_group_sessions[room_id].id
             )
@@ -702,7 +704,7 @@ class Olm(object):
 
         return plaintext
 
-    def share_group_session(self, room_id, own_id, users):
+    def share_group_session(self, room_id, users):
         # type: (str, str, List[str]) -> Dict[str, Any]
         group_session = self.outbound_group_sessions[room_id]
 
@@ -717,8 +719,7 @@ class Olm(object):
         payload_dict = {
             "type": "m.room_key",
             "content": key_content,
-            # TODO we don't have the user_id in the Olm class
-            "sender": own_id,
+            "sender": self.user_id,
             "sender_device": self.device_id,
             "keys": {
                 "ed25519": self.account.identity_keys()["ed25519"]
@@ -779,7 +780,7 @@ class Olm(object):
     def load(self):
         # type: () -> bool
 
-        db_file = "{}_{}.db".format(self.user, self.device_id)
+        db_file = "{}_{}.db".format(self.user_id, self.device_id)
         db_path = os.path.join(self.session_path, db_file)
 
         self.database = sqlite3.connect(db_path)
@@ -792,7 +793,7 @@ class Olm(object):
 
         cursor.execute(
             "select pickle from olmaccount where user = ?",
-            (self.user,)
+            (self.user_id,)
         )
         row = cursor.fetchone()
         account_pickle = row[0]
@@ -882,10 +883,10 @@ class Olm(object):
 
         if new:
             cursor.execute("insert into olmaccount values (?,?)",
-                           (self.user, self.account.pickle()))
+                           (self.user_id, self.account.pickle()))
         else:
             cursor.execute("update olmaccount set pickle=? where user = ?",
-                           (self.account.pickle(), self.user))
+                           (self.account.pickle(), self.user_id))
 
         self.database.commit()
         cursor.close()
