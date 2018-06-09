@@ -490,13 +490,14 @@ class Olm(object):
     def _try_decrypt(
         self,
         sender,      # type: str
-        sender_key,  # type: str
         message      # type: Union[OlmPreKeyMessage, OlmMessage]
     ):
         # type: (...) -> Optional[str]
         plaintext = None
 
         # Let's try to decrypt with each known session for the sender.
+        # TODO do we wan't to try this with every session or just every session
+        # for a specific device?
         for session_list in self.session_store[sender].values():
             for session in session_list:
                 matches = False
@@ -558,7 +559,7 @@ class Olm(object):
         s = None
         try:
             # First try to decrypt using an existing session.
-            plaintext = self._try_decrypt(sender, sender_key, message)
+            plaintext = self._try_decrypt(sender, message)
         except EncryptionError:
             # We found a matching session for a prekey message but decryption
             # failed, don't try to decrypt any further.
