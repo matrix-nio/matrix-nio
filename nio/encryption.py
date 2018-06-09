@@ -550,6 +550,27 @@ class Olm(object):
 
         return None
 
+    def _verify_olm_payload(self, sender, payload):
+        # type: (str, Dict[Any, Any]) -> bool
+        # Verify that the sender in the payload matches the sender of the event
+        if sender != payload["sender"]:
+            return False
+
+        # Verify that we're the recipient of the payload.
+        # TODO we need the user id in the Olm class
+        # if self.user_id != payload["recipient"]:
+            # return False
+
+        # Verify that the recipient fingerprint key matches our own
+        if (self.account.identity_keys["ed25519"] !=
+                payload["recipient_keys"]["ed25519"]):
+            return False
+
+        # TODO check fingerprint key of the sender with the fingerprint key in
+        # the keys payload key.
+
+        return True
+
     def decrypt(
         self,
         sender,      # type: str
@@ -615,7 +636,12 @@ class Olm(object):
                          ": {}".format(sender, str(e.message)))
             return None
 
-        # TODO sender verification
+        # Verify that the payload properties contain correct values:
+        # sender/recipient/keys/recipient_keys
+        if not self._verify_olm_payload(sender, parsed_payload):
+            logger.error("Error verifying decrypted Olm event from {}".format(
+                         sender))
+            return None
 
         if s:
             # We created a new session, find out the device id for it and store
