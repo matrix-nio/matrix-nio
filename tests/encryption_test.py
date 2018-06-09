@@ -221,7 +221,7 @@ class TestClass(object):
             "keys": {
                 "ed25519": alice_device.keys["ed25519"]
             },
-            "recepient": BobId,
+            "recipient": BobId,
             "recipient_keys": {
                 "ed25519": bob_device.keys["ed25519"]
             }

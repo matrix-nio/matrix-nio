@@ -26,12 +26,14 @@ from collections import defaultdict
 from functools import wraps
 from typing import *
 
+from jsonschema import ValidationError, SchemaError
 from logbook import Logger
 from olm import (Account, InboundGroupSession, InboundSession, OlmAccountError,
                  OlmGroupSessionError, OlmMessage, OlmPreKeyMessage,
                  OlmSessionError, OutboundGroupSession, OutboundSession,
                  Session)
 
+from .schemas import Schemas, validate_json
 from .log import logger_group
 
 logger = Logger('nio.encryption')
@@ -594,7 +596,20 @@ class Olm(object):
             ))
             return None
 
-        # TODO schema validation and sender verification
+        # Validate the payload, check that it contains all required keys as
+        # well that the types of the values are the one we expect.
+        # Note: The keys of the content object aren't checked here, the caller
+        # should check the content depending on the type of the event
+        try:
+            validate_json(parsed_payload, Schemas.olm_event)
+        except (ValidationError, SchemaError) as e:
+            # Something is wrong with the payload log an error and return
+            # early.
+            logger.error("Error validating decrypted Olm event from {}"
+                         ": {}".format(sender, str(e.message)))
+            return None
+
+        # TODO sender verification
 
         if s:
             # We created a new session, find out the device id for it and store

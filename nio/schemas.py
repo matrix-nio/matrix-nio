@@ -181,3 +181,35 @@ class Schemas(object):
         },
         "required": ["events", "limited", "prev_batch"]
     }
+
+    olm_event = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "sender_device": {"type": "string"},
+            "keys": {
+                "type": "object",
+                "properties": {
+                    "ed25519": {"type": "string"}
+                }
+            },
+            "recipient": {"type": "string", "format": "user_id"},
+            "recipient_keys": {
+                "type": "object",
+                "properties": {
+                    "ed25519": {"type": "string"}
+                }
+            },
+            "type": {"type": "string"},
+            "content": {"type": "object"}
+        },
+        "required": [
+            "type",
+            "sender",
+            "sender_device",
+            "keys",
+            "recipient",
+            "recipient_keys",
+            "content"
+        ]
+    }
