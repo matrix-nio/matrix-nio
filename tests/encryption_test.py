@@ -35,6 +35,8 @@ class TestClass(object):
         assert isinstance(olm.account, Account)
         assert (olm.account.identity_keys["curve25519"]
                 == "Q9k8uSdBnfAdYWyLtBgr7XCz3Nie3nvpSZkwLeeSmXQ")
+        assert (olm.account.identity_keys["ed25519"]
+                == "LPm6hMOdnbKPsnqp0u84JE6Gprg45Yj3rt+m2bbW0Ag")
 
     def test_fingerprint_store(self, monkeypatch):
         def mocksave(self):
