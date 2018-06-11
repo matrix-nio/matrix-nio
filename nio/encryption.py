@@ -107,6 +107,14 @@ class FingerprintStore(object):
         except FileNotFoundError:
             pass
 
+    def fingerprint(self, user_id, device_id):
+        # type: (str, str) -> Optional[Key]
+        for entry in self._entries:
+            if user_id == entry.user_id and device_id == entry.device_id:
+                return entry.fingerprint
+
+        return None
+
     def _save_store(f):
         @wraps(f)
         def decorated(*args, **kwargs):
@@ -127,7 +135,15 @@ class FingerprintStore(object):
     @_save_store
     def add(self, device):
         # type: (DeviceFingerprint) -> bool
-        if device in self._entries:
+        existing_print = self.fingerprint(device.user_id, device.device_id)
+
+        if existing_print:
+            if device.fingerprint != existing_print:
+                message = ("Error: adding existing device to trust store with"
+                           " mismatching fingerprint")
+                logger.error(message)
+                raise OlmTrustError(message)
+
             return False
 
         self._entries.append(device)
