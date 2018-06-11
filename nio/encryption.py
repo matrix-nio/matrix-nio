@@ -65,12 +65,15 @@ class Key(object):
 
 class Ed25519Key(Key):
     def __init__(self, key):
+        # type: (str) -> None
         self.key = key
 
     def __str__(self):
+        # type: () -> str
         return self.key
 
     def __eq__(self, value):
+        # type: (object) -> bool
         if not isinstance(value, Ed25519Key):
             return NotImplemented
         return self.key == value.key
@@ -132,10 +135,12 @@ class FingerprintStore(object):
         self._load(filename)
 
     def __iter__(self):
+        # type: () -> Iterator[DeviceFingerprint]
         for entry in self._entries:
             yield entry
 
     def __repr__(self):
+        # type: () -> str
         return "FingerprintStore object, store file: {}".format(self._filename)
 
     def _load(self, filename):
@@ -350,12 +355,14 @@ class OneTimeKey(object):
 
 class OlmSession(object):
     def __init__(self, user_id, device_id, session):
+        # type: (str, str, Session) -> None
         self.user_id = user_id
         self.device_id = device_id
         self.session = session
 
     @property
     def id(self):
+        # type: () -> str
         return "{}:{}:{}".format(self.user_id, self.device_id, self.session.id)
 
     def __eq__(self, value):
@@ -371,6 +378,7 @@ class OlmSession(object):
         return False
 
     def encrypt(self, plaintext):
+        # type: (str) -> Union[OlmPreKeyMessage, OlmMessage]
         return self.session.encrypt(plaintext)
 
     def decrypt(self, message):
@@ -384,6 +392,7 @@ class OlmSession(object):
 
 class SessionStore(object):
     def __init__(self):
+        # type: () -> None
         self._entries = defaultdict(lambda: defaultdict(list)) \
             # type: DefaultDict[str, DefaultDict[str, List[Session]]]
 
@@ -399,6 +408,7 @@ class SessionStore(object):
         return True
 
     def __iter__(self):
+        # type: () -> Iterator[OlmSession]
         for user in self._entries.values():
             for device in user.values():
                 for session in device:
@@ -485,7 +495,13 @@ class Olm(object):
             trust_file_path
         ))
 
-    def _create_inbound_session(self, sender, sender_key, message):
+    def _create_inbound_session(
+        self,
+        sender,      # type: str
+        sender_key,  # type: str
+        message      # type: Union[OlmPreKeyMessage, OlmMessage]
+    ):
+        # type: (...) -> InboundSession
         logger.info("Creating Inbound session for {}".format(sender))
         # Let's create a new inbound session.
         session = InboundSession(self.account, message, sender_key)
@@ -499,6 +515,7 @@ class Olm(object):
         return session
 
     def verify_device(self, device):
+        # type: (DeviceFingerprint) -> bool
         if device in self.trust_db:
             return False
 
@@ -511,9 +528,11 @@ class Olm(object):
         return all(map(lambda x: x in self.trust_db, fingerprint_keys))
 
     def unverify_device(self, device):
+        # type: (DeviceFingerprint) -> None
         self.trust_db.remove(device)
 
     def create_session(self, user_id, device_id, one_time_key):
+        # type: (str, str, str) -> None
         # TODO the one time key needs to be verified before calling this
 
         id_key = None
@@ -550,6 +569,7 @@ class Olm(object):
         logger.info("Created OutboundSession for device {}".format(device_id))
 
     def create_group_session(self, room_id, session_id, session_key):
+        # type: (str, str, str) -> None
         logger.info("Creating inbound group session for {}".format(room_id))
         session = InboundGroupSession(session_key)
         self.inbound_group_sessions[room_id][session_id] = session
@@ -557,6 +577,7 @@ class Olm(object):
         logger.info("Created inbound group session for {}".format(room_id))
 
     def create_outbound_group_session(self, room_id):
+        # type: (str) -> None
         logger.info("Creating outbound group session for {}".format(room_id))
         session = OutboundGroupSession()
         self.outbound_group_sessions[room_id] = session
@@ -938,12 +959,14 @@ class Olm(object):
         return True
 
     def save(self):
+        # type: () -> None
         self.save_account()
 
         for session in self.session_store:
             self.save_session(session)
 
     def save_session(self, session, new=False):
+        # type: (OlmSession, bool) -> None
         cursor = self.database.cursor()
         if new:
             cursor.execute("insert into olmsessions values(?,?,?,?)", (
@@ -966,6 +989,7 @@ class Olm(object):
         cursor.close()
 
     def save_inbound_group_session(self, room_id, session):
+        # type: (str, InboundGroupSession) -> None
         cursor = self.database.cursor()
 
         cursor.execute("insert into inbound_group_sessions values(?,?,?)",
@@ -976,6 +1000,7 @@ class Olm(object):
         cursor.close()
 
     def save_account(self, new=False):
+        # type: (bool) -> None
         cursor = self.database.cursor()
 
         if new:
@@ -1035,4 +1060,5 @@ class Olm(object):
         )
 
     def mark_keys_as_published(self):
+        # type: () -> None
         self.account.mark_keys_as_published()
