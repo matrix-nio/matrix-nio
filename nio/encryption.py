@@ -59,6 +59,23 @@ class EncryptionError(Exception):
     pass
 
 
+class Key(object):
+    pass
+
+
+class Ed25519Key(Key):
+    def __init__(self, key):
+        self.key = key
+
+    def __str__(self):
+        return self.key
+
+    def __eq__(self, value):
+        if not isinstance(value, Ed25519Key):
+            return NotImplemented
+        return self.key == value.key
+
+
 class FingerprintStore(object):
     def __init__(self, filename):
         # type: (str) -> None
@@ -133,11 +150,10 @@ class FingerprintStore(object):
 
 
 class DeviceFingerprint(object):
-    def __init__(self, user_id, device_id, key_type, key):
-        # type: (str, str, str, str) -> None
+    def __init__(self, user_id, device_id, key):
+        # type: (str, str, str) -> None
         self.user_id = user_id
         self.device_id = device_id
-        self.key_type = key_type
         self.key = key
 
     @classmethod
@@ -151,7 +167,7 @@ class DeviceFingerprint(object):
         user_id, device_id, key_type, key = fields[:4]
 
         if key_type == "matrix-ed25519":
-            return cls(user_id, device_id, "ed25519", key)
+            return cls(user_id, device_id, Ed25519Key(key))
         else:
             return None
 
@@ -165,18 +181,25 @@ class DeviceFingerprint(object):
 
         for key_type, key in device_key.keys.items():
             if key_type == "ed25519":
-                entries.append(cls(user_id, device_id, "ed25519", key))
+                entries.append(cls(user_id, device_id, Ed25519Key(key)))
 
         return entries
 
     def to_line(self):
         # type: () -> str
-        key_type = "matrix-{}".format(self.key_type)
+        key_type = ""
+
+        if isinstance(self.key, Ed25519Key):
+            key_type = "matrix-ed25519"
+        else:
+            raise NotImplementedError("Invalid key type {}".format(
+                type(self.key)))
+
         line = "{} {} {} {}\n".format(
             self.user_id,
             self.device_id,
             key_type,
-            self.key
+            str(self.key)
         )
         return line
 
@@ -202,7 +225,6 @@ class DeviceFingerprint(object):
 
         if (self.user_id == value.user_id
                 and self.device_id == value.device_id
-                and self.key_type == value.key_type
                 and self.key == value.key):
             return True
 

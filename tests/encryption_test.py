@@ -5,7 +5,8 @@ import os
 from olm import Account, OutboundSession
 
 from nio.encryption import (FingerprintStore, Olm, OlmDevice, OlmSession,
-                            OneTimeKey, SessionStore, DeviceFingerprint)
+                            OneTimeKey, SessionStore, DeviceFingerprint,
+                            Ed25519Key)
 
 
 AliceId = "@alice:example.org"
@@ -45,7 +46,7 @@ class TestClass(object):
         ))
         account = Account()
         device = OlmDevice("example", "DEVICEID", account.identity_keys)
-        fingerprint = DeviceFingerprint.from_olmdevice(device)
+        fingerprint = DeviceFingerprint.from_olmdevice(device)[0]
 
         assert fingerprint not in store
         assert store.add(fingerprint)
@@ -67,8 +68,7 @@ class TestClass(object):
         entry = DeviceFingerprint(
             "example",
             "DEVICEID",
-            "ed25519",
-            "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
+            Ed25519Key("2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA")
         )
 
         assert entry != 1
@@ -77,15 +77,13 @@ class TestClass(object):
         alice = DeviceFingerprint(
             "alice",
             "DEVICEID",
-            "ed25519",
-            "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
+            Ed25519Key("2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA")
         )
 
         bob = DeviceFingerprint(
             "bob",
             "DEVICEDI",
-            "ed25519",
-            "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
+            Ed25519Key("3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA")
         )
 
         assert alice != bob
