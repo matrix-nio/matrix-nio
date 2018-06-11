@@ -84,6 +84,7 @@ class DeviceStore(object):
             # type: FingerprintStore
 
     def __iter__(self):
+        # type: () -> Iterator[OlmDevice]
         for entry in self._entries:
             yield entry
 
@@ -240,14 +241,14 @@ class DeviceFingerprint(object):
             return None
 
     @classmethod
-    def from_olmdevice(cls, device_key):
+    def from_olmdevice(cls, device):
         # type: (OlmDevice) -> List[DeviceFingerprint]
         entries = []
 
-        user_id = device_key.user_id
-        device_id = device_key.device_id
+        user_id = device.user_id
+        device_id = device.id
 
-        for key_type, key in device_key.keys.items():
+        for key_type, key in device.keys.items():
             if key_type == "ed25519":
                 entries.append(cls(user_id, device_id, Ed25519Key(key)))
 
@@ -309,14 +310,14 @@ class OlmDevice(object):
     def __init__(self, user_id, device_id, key_dict):
         # type: (str, str, Dict[str, str]) -> None
         self.user_id = user_id
-        self.device_id = device_id
+        self.id = device_id
         self.keys = key_dict
 
     def __str__(self):
         # type: () -> str
         line = "{} {} {}".format(
             self.user_id,
-            self.device_id,
+            self.id,
             pprint.pformat(self.keys)
         )
         return line
@@ -329,7 +330,7 @@ class OlmDevice(object):
         try:
             # We only care for the fingerprint key.
             if (self.user_id == value.user_id
-                    and self.device_id == value.device_id
+                    and self.id == value.id
                     and self.keys["ed25519"] == value.keys["ed25519"]):
                 return True
         except KeyError:
@@ -458,7 +459,7 @@ class Olm(object):
         self.devices = DeviceStore(os.path.join(
             session_path,
             device_store_file
-        ))
+        ))  # type: DeviceStore
 
         self.session_store = SessionStore()  # type: SessionStore
 
@@ -523,7 +524,7 @@ class Olm(object):
 
         # We need to find the device key for the wanted user and his device.
         for device in self.devices:
-            if device.user_id != user_id or device.device_id != device_id:
+            if device.user_id != user_id or device.id != device_id:
                 continue
 
             # Found a device let's get the curve25519 key
@@ -571,13 +572,13 @@ class Olm(object):
 
             for device in self.devices.user_devices(user_id):
                 # we don't need a session for our own device, skip it
-                if device.device_id == self.device_id:
+                if device.id == self.device_id:
                     continue
 
-                if not self.session_store.get(user_id, device.device_id):
+                if not self.session_store.get(user_id, device.id):
                     logger.warn("Missing session for device {}".format(
-                        device.device_id))
-                    devices.append(device.device_id)
+                        device.id))
+                    devices.append(device.id)
 
             if devices:
                 missing[user_id] = {device: "signed_curve25519" for
@@ -831,10 +832,10 @@ class Olm(object):
         for user_id in users:
             for device in self.devices.user_devices(user_id):
                 # No need to share the session with our own device
-                if device.device_id == self.device_id:
+                if device.id == self.device_id:
                     continue
 
-                session = self.session_store.get(user_id, device.device_id)
+                session = self.session_store.get(user_id, device.id)
 
                 if not session:
                     continue
@@ -869,7 +870,7 @@ class Olm(object):
                 if user_id not in to_device_dict["messages"]:
                     to_device_dict["messages"][user_id] = {}
 
-                to_device_dict["messages"][user_id][device.device_id] = olm_dict
+                to_device_dict["messages"][user_id][device.id] = olm_dict
 
         return to_device_dict
 
