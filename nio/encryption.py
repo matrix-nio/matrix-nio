@@ -661,10 +661,13 @@ class Olm(object):
                 payload["recipient_keys"]["ed25519"]):
             return False
 
-        # TODO check fingerprint key of the sender with the fingerprint key in
-        # the keys payload key.
-
-        return True
+        # Verify that the fingerprint key in the payload matches the previously
+        # known sender fingerprint key.
+        return self.devices.verify_key(
+            sender,
+            payload["sender_device"],
+            Ed25519Key(payload["keys"]["ed25519"])
+            )
 
     def decrypt(
         self,
