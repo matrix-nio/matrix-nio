@@ -76,6 +76,52 @@ class Ed25519Key(Key):
         return self.key == value.key
 
 
+class DeviceStore(object):
+    def __init__(self, filename):
+        # type: (str) -> None
+        self._entries = []  # type: List[OlmDevice]
+        self._fingerprint_store = FingerprintStore(filename)  \
+            # type: FingerprintStore
+
+    def __iter__(self):
+        for entry in self._entries:
+            yield entry
+
+    def add(self, device):
+        # type: (OlmDevice) -> bool
+        if device in self._entries:
+            return False
+
+        for fingerprint in DeviceFingerprint.from_olmdevice(device):
+            self._fingerprint_store.add(fingerprint)
+
+        self._entries.append(device)
+        return True
+
+    def user_devices(self, user_id):
+        # type: (str) -> List[OlmDevice]
+        devices = []
+
+        for entry in self._entries:
+            if user_id == entry.user_id:
+                devices.append(entry)
+
+        return devices
+
+    def verify_key(self, user_id, device_id, fingerprint_key):
+        # type: (str, str, Key) -> bool
+        self._fingerprint_store.fingerprint(user_id, device_id)
+        for entry in self._fingerprint_store:
+            if user_id == entry.user_id and device_id == entry.device_id:
+                if fingerprint_key == entry.key:
+                    return True
+                else:
+                    return False
+
+        raise KeyError("No key found for user {} and device {}".format(
+            user_id, device_id))
+
+
 class FingerprintStore(object):
     def __init__(self, filename):
         # type: (str) -> None
@@ -87,6 +133,9 @@ class FingerprintStore(object):
     def __iter__(self):
         for entry in self._entries:
             yield entry
+
+    def __repr__(self):
+        return "FingerprintStore object, store file: {}".format(self._filename)
 
     def _load(self, filename):
         # type: (str) -> None
@@ -111,7 +160,7 @@ class FingerprintStore(object):
         # type: (str, str) -> Optional[Key]
         for entry in self._entries:
             if user_id == entry.user_id and device_id == entry.device_id:
-                return entry.fingerprint
+                return entry.key
 
         return None
 
@@ -138,9 +187,12 @@ class FingerprintStore(object):
         existing_print = self.fingerprint(device.user_id, device.device_id)
 
         if existing_print:
-            if device.fingerprint != existing_print:
+            if device.key != existing_print:
                 message = ("Error: adding existing device to trust store with"
-                           " mismatching fingerprint")
+                           " mismatching fingerprint {} {}".format(
+                               device.key,
+                               existing_print
+                           ))
                 logger.error(message)
                 raise OlmTrustError(message)
 
@@ -167,7 +219,7 @@ class FingerprintStore(object):
 
 class DeviceFingerprint(object):
     def __init__(self, user_id, device_id, key):
-        # type: (str, str, str) -> None
+        # type: (str, str, Key) -> None
         self.user_id = user_id
         self.device_id = device_id
         self.key = key
@@ -225,7 +277,13 @@ class DeviceFingerprint(object):
 
     def __str__(self):
         # type: () -> str
-        key_type = "matrix-{}".format(self.key_type)
+        key_type = ""
+        if isinstance(self.key, Ed25519Key):
+            key_type = "matrix-ed25519"
+        else:
+            raise NotImplementedError("Invalid key type {}".format(
+                type(self.key)))
+
         line = "{} {} {} {}".format(
             self.user_id,
             self.device_id,
@@ -392,8 +450,15 @@ class Olm(object):
 
         # TODO the folowing dicts should probably be turned into classes with
         # nice interfaces for their operations
-        # Dict containing devices of users that are members of encrypted rooms
-        self.devices = {}  # type: Dict[str, List[OlmDevice]]
+
+        # Store containing devices of users that are members of encrypted rooms
+        # the fingerprint keys get stored in a file so that we catch fingeprint
+        # key swaps.
+        device_store_file = "{}_{}.known_devices".format(user_id, device_id)
+        self.devices = DeviceStore(os.path.join(
+            session_path,
+            device_store_file
+        ))
 
         self.session_store = SessionStore()  # type: SessionStore
 
@@ -439,6 +504,11 @@ class Olm(object):
         self.trust_db.add(device)
         return True
 
+    def device_trusted(self, device):
+        # type: (OlmDevice) -> bool
+        fingerprint_keys = DeviceFingerprint.from_olmdevice(device)
+        return all(map(lambda x: x in self.trust_db, fingerprint_keys))
+
     def unverify_device(self, device):
         self.trust_db.remove(device)
 
@@ -452,15 +522,13 @@ class Olm(object):
             user_id, device_id))
 
         # We need to find the device key for the wanted user and his device.
-        for user, keys in self.devices.items():
-            if user != user_id:
+        for device in self.devices:
+            if device.user_id != user_id or device.device_id != device_id:
                 continue
 
-            for key in keys:
-                if key.device_id == device_id:
-                    # Found a device let's get the curve25519 key
-                    id_key = key.keys["curve25519"]
-                    break
+            # Found a device let's get the curve25519 key
+            id_key = device.keys["curve25519"]
+            break
 
         if not id_key:
             message = "Identity key for device {} not found".format(device_id)
@@ -498,22 +566,22 @@ class Olm(object):
         # type: (List[str]) -> Dict[str, Dict[str, str]]
         missing = {}
 
-        for user in users:
+        for user_id in users:
             devices = []
 
-            for key in self.devices[user]:
+            for device in self.devices.user_devices(user_id):
                 # we don't need a session for our own device, skip it
-                if key.device_id == self.device_id:
+                if device.device_id == self.device_id:
                     continue
 
-                if not self.session_store.get(user, key.device_id):
+                if not self.session_store.get(user_id, device.device_id):
                     logger.warn("Missing session for device {}".format(
-                        key.device_id))
-                    devices.append(key.device_id)
+                        device.device_id))
+                    devices.append(device.device_id)
 
             if devices:
-                missing[user] = {device: "signed_curve25519" for
-                                 device in devices}
+                missing[user_id] = {device: "signed_curve25519" for
+                                    device in devices}
 
         return missing
 
@@ -757,26 +825,24 @@ class Olm(object):
             "messages": {}
         }  # type: Dict[str, Any]
 
-        for user in users:
-            if user not in self.devices:
-                continue
-
-            for key in self.devices[user]:
-                if key.device_id == self.device_id:
+        for user_id in users:
+            for device in self.devices.user_devices(user_id):
+                # No need to share the session with our own device
+                if device.device_id == self.device_id:
                     continue
 
-                session = self.session_store.get(user, key.device_id)
+                session = self.session_store.get(user_id, device.device_id)
 
                 if not session:
                     continue
 
-                if key not in self.trust_db:
+                if self.device_trusted(device):
                     raise OlmTrustError
 
                 device_payload_dict = payload_dict.copy()
-                device_payload_dict["recipient"] = user
+                device_payload_dict["recipient"] = user_id
                 device_payload_dict["recipient_keys"] = {
-                    "ed25519": key.keys["ed25519"]
+                    "ed25519": device.keys["ed25519"]
                 }
 
                 olm_message = session.encrypt(
@@ -787,7 +853,7 @@ class Olm(object):
                     "algorithm": "m.olm.v1.curve25519-aes-sha2",
                     "sender_key": self.account.identity_keys()["curve25519"],
                     "ciphertext": {
-                        key.keys["curve25519"]: {
+                        device.keys["curve25519"]: {
                             "type": (0 if isinstance(
                                 olm_message,
                                 OlmPreKeyMessage
@@ -797,10 +863,10 @@ class Olm(object):
                     }
                 }
 
-                if user not in to_device_dict["messages"]:
-                    to_device_dict["messages"][user] = {}
+                if user_id not in to_device_dict["messages"]:
+                    to_device_dict["messages"][user_id] = {}
 
-                to_device_dict["messages"][user][key.device_id] = olm_dict
+                to_device_dict["messages"][user_id][device.device_id] = olm_dict
 
         return to_device_dict
 

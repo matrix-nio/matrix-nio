@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import os
+import pytest
 
 from olm import Account, OutboundSession
 
 from nio.encryption import (FingerprintStore, Olm, OlmDevice, OlmSession,
                             OneTimeKey, SessionStore, DeviceFingerprint,
-                            Ed25519Key)
+                            Ed25519Key, DeviceStore, OlmTrustError)
 
 
 AliceId = "@alice:example.org"
@@ -35,7 +36,7 @@ class TestClass(object):
         assert (olm.account.identity_keys["curve25519"]
                 == "Q9k8uSdBnfAdYWyLtBgr7XCz3Nie3nvpSZkwLeeSmXQ")
 
-    def test_device_store(self, monkeypatch):
+    def test_fingerprint_store(self, monkeypatch):
         def mocksave(self):
             return
 
@@ -54,7 +55,7 @@ class TestClass(object):
         assert store.remove(fingerprint)
         assert store.check(fingerprint) is False
 
-    def test_device_store_loading(self):
+    def test_fingerprint_store_loading(self):
         store = FingerprintStore(os.path.join(self._test_dir, "known_devices"))
         device = OlmDevice(
             "example",
@@ -164,9 +165,59 @@ class TestClass(object):
         else:
             assert session2 == store.get(BobId, Bob_device)
 
-    def test_olm_outbound_session_create(self, monkeypatch):
-        def mocksave_sql(self, new=False):
+    def test_device_store(self):
+        alice = OlmDevice(
+            "example",
+            "DEVICEID",
+            {"ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
+        )
+
+        store = DeviceStore(os.path.join(
+            self._test_dir,
+            "ephermal_devices"
+        ))
+
+        assert store.add(alice)
+        assert store.add(alice) is False
+        assert alice in store
+        os.remove(os.path.join(self._test_dir, "ephermal_devices"))
+
+    def test_device_load(self, monkeypatch):
+        def mocksave(self):
             return
+
+        monkeypatch.setattr(FingerprintStore, '_save', mocksave)
+
+        alice = OlmDevice(
+            "example",
+            "DEVICEID",
+            {"ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
+        )
+        store = DeviceStore(os.path.join(self._test_dir, "known_devices"))
+        assert (DeviceFingerprint.from_olmdevice(alice)[0]
+                in store._fingerprint_store)
+        assert store.add(alice)
+        assert alice in store
+
+    def test_device_invalid(self, monkeypatch):
+        def mocksave(self):
+            return
+
+        monkeypatch.setattr(FingerprintStore, '_save', mocksave)
+        eve = OlmDevice(
+            "example",
+            "DEVICEID",
+            {"ed25519": "3MX2WOCAmE0eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpB"}
+        )
+        store = DeviceStore(os.path.join(self._test_dir, "known_devices"))
+        with pytest.raises(OlmTrustError):
+            store.add(eve)
+
+    def test_olm_outbound_session_create(self, monkeypatch):
+        def mocksave(self):
+            return
+
+        monkeypatch.setattr(FingerprintStore, '_save', mocksave)
 
         bob = Account()
         bob.generate_one_time_keys(1)
@@ -175,7 +226,7 @@ class TestClass(object):
         bob_device = OlmDevice(BobId, Bob_device, bob.identity_keys)
 
         olm = Olm("ephermal", "DEVICEID", self._test_dir)
-        olm.devices[BobId] = [bob_device]
+        olm.devices.add(bob_device)
         olm.create_session(BobId, Bob_device, one_time)
         assert olm.session_store.get(BobId, Bob_device)
         os.remove(os.path.join(self._test_dir, "ephermal_DEVICEID.db"))
@@ -187,7 +238,12 @@ class TestClass(object):
                 "/Pueq/kLxk8o2b+wD6RsQrCgjnV2U6tYN9P+6MBmk6Y")
         assert len(olm.session_store.getall(BobId, Bob_device)) == 2
 
-    def test_olm_inbound_session(self):
+    def test_olm_inbound_session(self, monkeypatch):
+        def mocksave(self):
+            return
+
+        monkeypatch.setattr(FingerprintStore, '_save', mocksave)
+
         # create two new accounts
         alice = self._load(AliceId, Alice_device)
         bob = self._load(BobId, Bob_device)
@@ -201,8 +257,8 @@ class TestClass(object):
         bob_device = OlmDevice(BobId, Bob_device, bob.account.identity_keys)
 
         # add the devices to the device list
-        alice.devices[BobId] = [bob_device]
-        bob.devices[AliceId] = [alice_device]
+        alice.devices.add(bob_device)
+        bob.devices.add(alice_device)
 
         # bob creates one time keys
         bob.account.generate_one_time_keys(1)
@@ -211,7 +267,6 @@ class TestClass(object):
         bob.account.mark_keys_as_published()
 
         # alice creates an outbound olm session with bob
-        # pdb.set_trace()
         alice.create_session(BobId, Bob_device, one_time)
 
         alice_session = alice.session_store.get(BobId, Bob_device)
@@ -239,6 +294,8 @@ class TestClass(object):
         # we check that the session is there
         assert bob.session_store.get(AliceId, Alice_device)
 
+        # remove the databases, the known devices store is handled by
+        # monkeypatching
         os.remove(os.path.join(
             self._test_dir,
             "{}_{}.db".format(AliceId, Alice_device)
