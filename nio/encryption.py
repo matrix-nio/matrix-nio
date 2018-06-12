@@ -323,10 +323,11 @@ class OneTimeKey(object):
 
 
 class OlmSession(object):
-    def __init__(self, user_id, device_id, session):
-        # type: (str, str, Session) -> None
+    def __init__(self, user_id, device_id, identity_key, session):
+        # type: (str, str, str, Session) -> None
         self.user_id = user_id
         self.device_id = device_id
+        self.identity_key = identity_key
         self.session = session
 
     @property
@@ -341,6 +342,7 @@ class OlmSession(object):
 
         if (self.user_id == value.user_id
                 and self.device_id == value.device_id
+                and self.identity_key == value.identity_key
                 and self.session.id == value.session.id):
             return True
 
@@ -362,55 +364,50 @@ class OlmSession(object):
 class SessionStore(object):
     def __init__(self):
         # type: () -> None
-        self._entries = defaultdict(lambda: defaultdict(list)) \
-            # type: DefaultDict[str, DefaultDict[str, List[Session]]]
+        self._entries = defaultdict(list)  \
+            # type: DefaultDict[str, List[Session]]
 
     def add(self, session):
         # type: (OlmSession) -> bool
-        if session in self._entries[session.user_id][session.device_id]:
+        if session in self._entries[session.identity_key]:
             return False
 
-        self._entries[session.user_id][session.device_id].append(session)
-        self._entries[session.user_id][session.device_id].sort(
+        self._entries[session.identity_key].append(session)
+        self._entries[session.identity_key].sort(
             key=lambda x: x.session.id
         )
         return True
 
     def __iter__(self):
         # type: () -> Iterator[OlmSession]
-        for user in self._entries.values():
-            for device in user.values():
-                for session in device:
-                    yield session
+        for session_list in self._entries.values():
+            for session in session_list:
+                yield session
 
     def check(self, session):
         # type: (OlmSession) -> bool
-        if session in self._entries[session.user_id][session.device_id]:
+        if session in self._entries[session.identity_key]:
             return True
         return False
 
     def remove(self, session):
         # type: (OlmSession) -> bool
-        if session in self._entries[session.user_id][session.device_id]:
-            self._entries[session.user_id][session.device_id].remove(session)
+        if session in self._entries[session.identity_key]:
+            self._entries[session.identity_key].remove(session)
             return True
 
         return False
 
-    def get(self, user_id, device_id):
-        # type: (str, str) -> Optional[OlmSession]
-        if self._entries[user_id][device_id]:
-            return self._entries[user_id][device_id][0]
+    def get(self, identity_key):
+        # type: (str) -> Optional[OlmSession]
+        if self._entries[identity_key]:
+            return self._entries[identity_key][0]
 
         return None
 
-    def __getitem__(self, user_id):
-        # type: (str) -> Dict[str, List[OlmSession]]
-        return self._entries[user_id]
-
-    def getall(self, user_id, device_id):
-        # type: (str, str) -> List[OlmSession]
-        return self._entries[user_id][device_id]
+    def __getitem__(self, identity_key):
+        # type: (str) -> List[OlmSession]
+        return self._entries[identity_key]
 
 
 class Olm(object):
@@ -534,7 +531,7 @@ class Olm(object):
         # Save the account, add the session to the store and save it to the
         # database.
         self.save_account()
-        session = OlmSession(user_id, device_id, s)
+        session = OlmSession(user_id, device_id, id_key, s)
 
         self.session_store.add(session)
         self.save_session(session, new=True)
@@ -568,7 +565,7 @@ class Olm(object):
                 if device.id == self.device_id:
                     continue
 
-                if not self.session_store.get(user_id, device.id):
+                if not self.session_store.get(device.keys["curve25519"]):
                     logger.warn("Missing session for device {}".format(
                         device.id))
                     devices.append(device.id)
@@ -582,6 +579,7 @@ class Olm(object):
     def _try_decrypt(
         self,
         sender,      # type: str
+        sender_key,  # type: str
         message      # type: Union[OlmPreKeyMessage, OlmMessage]
     ):
         # type: (...) -> Optional[str]
@@ -589,53 +587,52 @@ class Olm(object):
 
         # Let's try to decrypt with each known session for the sender.
         # for a specific device?
-        for session_list in self.session_store[sender].values():
-            for session in session_list:
-                matches = False
-                try:
-                    if isinstance(message, OlmPreKeyMessage):
-                        # It's a prekey message, check if the session matches
-                        # if it doesn't no need to try to decrypt.
-                        matches = session.matches(message)
-                        if not matches:
-                            continue
+        for session in self.session_store[sender_key]:
+            matches = False
+            try:
+                if isinstance(message, OlmPreKeyMessage):
+                    # It's a prekey message, check if the session matches
+                    # if it doesn't no need to try to decrypt.
+                    matches = session.matches(message)
+                    if not matches:
+                        continue
 
-                    logger.info("Trying to decrypt olm message using existing "
-                                "session for {} and device {}".format(
-                                    sender,
-                                    session.device_id
-                                ))
+                logger.info("Trying to decrypt olm message using existing "
+                            "session for {} and device {}".format(
+                                sender,
+                                session.device_id
+                            ))
 
-                    plaintext = session.decrypt(message)
-                    # TODO do we need to save the session in the database here?
+                plaintext = session.decrypt(message)
+                # TODO do we need to save the session in the database here?
 
-                    logger.info("Succesfully decrypted olm message "
-                                "using existing session")
-                    return plaintext
+                logger.info("Succesfully decrypted olm message "
+                            "using existing session")
+                return plaintext
 
-                except OlmSessionError as e:
-                    # Decryption failed using a matching session, we don't want
-                    # to create a new session using this prekey message so
-                    # raise an exception and log the error.
-                    if matches:
-                        logger.error("Found matching session yet decryption "
-                                     "failed for sender {} and "
-                                     "device {}".format(
-                                         sender,
-                                         session.device_id
-                                     ))
-                        raise EncryptionError("Decryption failed for matching "
-                                              "session")
+            except OlmSessionError as e:
+                # Decryption failed using a matching session, we don't want
+                # to create a new session using this prekey message so
+                # raise an exception and log the error.
+                if matches:
+                    logger.error("Found matching session yet decryption "
+                                 "failed for sender {} and "
+                                 "device {}".format(
+                                     sender,
+                                     session.device_id
+                                 ))
+                    raise EncryptionError("Decryption failed for matching "
+                                          "session")
 
-                    # Decryption failed, we'll try another session in the next
-                    # iteration.
-                    logger.info("Error decrypting olm message from {} "
-                                "and device {}: {}".format(
-                                    sender,
-                                    session.device_id,
-                                    str(e)
-                                ))
-                    pass
+                # Decryption failed, we'll try another session in the next
+                # iteration.
+                logger.info("Error decrypting olm message from {} "
+                            "and device {}: {}".format(
+                                sender,
+                                session.device_id,
+                                str(e)
+                            ))
+                pass
 
         return None
 
@@ -701,7 +698,7 @@ class Olm(object):
         s = None
         try:
             # First try to decrypt using an existing session.
-            plaintext = self._try_decrypt(sender, message)
+            plaintext = self._try_decrypt(sender, sender_key, message)
         except EncryptionError:
             # We found a matching session for a prekey message but decryption
             # failed, don't try to decrypt any further.
@@ -775,7 +772,7 @@ class Olm(object):
         if s:
             # We created a new session, find out the device id for it and store
             # it in the session store as well as in the database.
-            session = OlmSession(sender, sender_device, s)
+            session = OlmSession(sender, sender_device, sender_key, s)
             self.session_store.add(session)
             self.save_session(session, new=True)
 
@@ -864,7 +861,7 @@ class Olm(object):
                 if device.id == self.device_id:
                     continue
 
-                session = self.session_store.get(user_id, device.id)
+                session = self.session_store.get(device.keys["curve25519"])
 
                 if not session:
                     continue
@@ -924,7 +921,8 @@ class Olm(object):
         row = cursor.fetchone()
         account_pickle = row[0]
 
-        cursor.execute("select user, device_id, pickle from olmsessions")
+        cursor.execute("select user, device_id, identity_key, pickle "
+                       "from olmsessions")
         db_sessions = cursor.fetchall()
 
         cursor.execute("select room_id, pickle from inbound_group_sessions")
@@ -941,14 +939,19 @@ class Olm(object):
             self.account = Account.from_pickle(account_pickle)
 
             for db_session in db_sessions:
-                session_pickle = db_session[2]
+                session_pickle = db_session[3]
                 try:
                     session_pickle = bytes(session_pickle, "utf-8")
                 except TypeError:
                     pass
 
                 s = Session.from_pickle(session_pickle)
-                session = OlmSession(db_session[0], db_session[1], s)
+                session = OlmSession(
+                    db_session[0],
+                    db_session[1],
+                    db_session[2],
+                    s
+                )
                 self.session_store.add(session)
 
             for db_session in db_inbound_group_sessions:
@@ -977,18 +980,21 @@ class Olm(object):
         # type: (OlmSession, bool) -> None
         cursor = self.database.cursor()
         if new:
-            cursor.execute("insert into olmsessions values(?,?,?,?)", (
+            cursor.execute("insert into olmsessions values(?,?,?,?,?)", (
                 session.user_id,
                 session.device_id,
+                session.identity_key,
                 session.session.id,
                 session.session.pickle()
             ))
         else:
             cursor.execute("update olmsessions set pickle=? where user = ? "
-                           "and device_id = ? and session_id = ?", (
+                           "and device_id = ? and identity_key = ? "
+                           "and session_id = ?", (
                                session.session.pickle(),
                                session.user_id,
                                session.device_id,
+                               session.identity_key,
                                session.session.id
                            ))
 
@@ -1037,7 +1043,8 @@ class Olm(object):
                           and name='olmsessions'""")
         if not cursor.fetchone():
             cursor.execute("""create table olmsessions (user text,
-                              device_id text, session_id text, pickle text)""")
+                              device_id text, identity_key text,
+                              session_id text, pickle text)""")
             database.commit()
             new = True
 

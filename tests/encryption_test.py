@@ -34,9 +34,9 @@ class TestClass(object):
         olm = self._load("example", "DEVICEID")
         assert isinstance(olm.account, Account)
         assert (olm.account.identity_keys["curve25519"]
-                == "Q9k8uSdBnfAdYWyLtBgr7XCz3Nie3nvpSZkwLeeSmXQ")
+                == "c5YwzI4WTkCdGAMGAtgdRDr6B5qhtMopsfyTzQab7n4")
         assert (olm.account.identity_keys["ed25519"]
-                == "LPm6hMOdnbKPsnqp0u84JE6Gprg45Yj3rt+m2bbW0Ag")
+                == "3z6yMDw78UddqDGd4yZFPY32deAc8JlQH1CP+jWdMcI")
 
     def test_fingerprint_store(self, monkeypatch):
         def mocksave(self):
@@ -143,7 +143,12 @@ class TestClass(object):
 
     def test_session_store(self):
         alice, bob, s = self._create_session()
-        session = OlmSession(BobId, Bob_device, s)
+        session = OlmSession(
+            BobId,
+            Bob_device,
+            bob.identity_keys["curve25519"],
+            s
+        )
         store = SessionStore()
         store.add(session)
         assert store.check(session)
@@ -156,16 +161,16 @@ class TestClass(object):
         id_key = bob.identity_keys["curve25519"]
         s2 = OutboundSession(alice, id_key, one_time)
 
-        session = OlmSession(BobId, Bob_device, s)
-        session2 = OlmSession(BobId, Bob_device, s2)
+        session = OlmSession(BobId, Bob_device, id_key, s)
+        session2 = OlmSession(BobId, Bob_device, id_key, s2)
         store = SessionStore()
         store.add(session)
         store.add(session2)
 
         if session.session.id < session2.session.id:
-            assert session == store.get(BobId, Bob_device)
+            assert session == store.get(id_key)
         else:
-            assert session2 == store.get(BobId, Bob_device)
+            assert session2 == store.get(id_key)
 
     def test_device_store(self):
         alice = OlmDevice(
@@ -229,15 +234,17 @@ class TestClass(object):
         olm = Olm("ephermal", "DEVICEID", self._test_dir)
         olm.devices.add(bob_device)
         olm.create_session(BobId, Bob_device, one_time)
-        assert olm.session_store.get(BobId, Bob_device)
+        assert olm.session_store.get(bob.identity_keys["curve25519"])
         os.remove(os.path.join(self._test_dir, "ephermal_DEVICEID.db"))
 
     def test_olm_session_load(self):
         olm = self._load("example", "DEVICEID")
-        bob_session = olm.session_store.get(BobId, Bob_device)
-        assert (bob_session.session.id ==
-                "/Pueq/kLxk8o2b+wD6RsQrCgjnV2U6tYN9P+6MBmk6Y")
-        assert len(olm.session_store.getall(BobId, Bob_device)) == 2
+        bob_session = olm.session_store.get(
+            "qVjhz3Oa8O5gk4JqY/Sqsdixb/94kHrxAfUiOwZuil8"
+        )
+        assert bob_session
+        assert (bob_session.session.id
+                == "1Fn/V37Zv6qHDCZpx9Xl7R9c4ziClmwybxNDuNEdDXo")
 
     def test_olm_inbound_session(self, monkeypatch):
         def mocksave(self):
@@ -270,7 +277,7 @@ class TestClass(object):
         # alice creates an outbound olm session with bob
         alice.create_session(BobId, Bob_device, one_time)
 
-        alice_session = alice.session_store.get(BobId, Bob_device)
+        alice_session = alice.session_store.get(bob_device.keys["curve25519"])
 
         payload_dict = {
             "type": "m.room_key",
@@ -293,7 +300,7 @@ class TestClass(object):
         bob.decrypt(AliceId, alice_device.keys["curve25519"], message)
 
         # we check that the session is there
-        assert bob.session_store.get(AliceId, Alice_device)
+        assert bob.session_store.get(alice_device.keys["curve25519"])
 
         # remove the databases, the known devices store is handled by
         # monkeypatching
