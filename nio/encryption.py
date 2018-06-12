@@ -41,7 +41,7 @@ logger_group.add_logger(logger)
 
 try:
     from json.decoder import JSONDecodeError
-except ImportError:
+except ImportError:  # pragma: no cover
     JSONDecodeError = ValueError  # type: ignore
 
 
@@ -117,10 +117,6 @@ class Key(object):
 
 
 class Ed25519Key(Key):
-    def __str__(self):
-        # type: () -> str
-        return self.key
-
     def __eq__(self, value):
         # type: (object) -> bool
         if not isinstance(value, Ed25519Key):
@@ -687,6 +683,34 @@ class Olm(object):
         # We haven't seen the key yet, just return False
         return False
 
+    def _handle_olm_event(self, sender, sender_key, payload):
+        # type: (str, str, Dict[Any, Any]) -> None
+        logger.info("Recieved Olm event of type: {}".format(payload["type"]))
+
+        if payload["type"] != "m.room_key":
+            return
+
+        try:
+            validate_json(payload, Schemas.room_key_event)
+        except (ValidationError, SchemaError) as e:
+            logger.error("Error m.room_key event event from {}"
+                         ": {}".format(sender, str(e.message)))
+            return None
+
+        content = payload["content"]
+
+        if content["algorithm"] != "m.megolm.v1.aes-sha2":
+            logger.error("Error: unsuported room key of type {}".format(
+                payload["algorithm"]))
+            return
+
+        room_id = content["room_id"]
+
+        logger.info("Recieved new group session key for room {} "
+                    "from {}".format(room_id, sender))
+
+        raise NotImplementedError("Group session store not implemented")
+
     def decrypt(
         self,
         sender,      # type: str
@@ -777,6 +801,7 @@ class Olm(object):
             self.save_session(session, new=True)
 
         # Finaly return the parsed dict of the payload
+        self._handle_olm_event(sender, sender_key, parsed_payload)
         return parsed_payload
 
     def group_encrypt(

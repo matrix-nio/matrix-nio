@@ -213,3 +213,34 @@ class Schemas(object):
             "content"
         ]
     }
+
+    room_key_event = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "sender_device": {"type": "string"},
+            "type": {"type": "string", "enum": ["m.room_key"]},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "algorithm": {"type": "string"},
+                    "room_id": {"type": "string", "format": "room_id"},
+                    "session_id": {"type": "string"},
+                    "session_key": {"type": "string"},
+                    "chain_index": {"type": "integer"},
+                },
+                "required": [
+                    "algorithm",
+                    "room_id",
+                    "session_id",
+                    "session_key"
+                ]
+            }
+        },
+        "required": [
+            "type",
+            "sender",
+            "sender_device",
+            "content"
+        ]
+    }

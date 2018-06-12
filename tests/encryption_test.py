@@ -3,7 +3,7 @@
 import os
 import pytest
 
-from olm import Account, OutboundSession
+from olm import Account, OutboundSession, OutboundGroupSession
 
 from nio.encryption import (KeyStore, Olm, OlmDevice, OlmSession, OneTimeKey,
                             SessionStore, Ed25519Key, DeviceStore, Key,
@@ -34,9 +34,9 @@ class TestClass(object):
         olm = self._load("example", "DEVICEID")
         assert isinstance(olm.account, Account)
         assert (olm.account.identity_keys["curve25519"]
-                == "c5YwzI4WTkCdGAMGAtgdRDr6B5qhtMopsfyTzQab7n4")
+                == "RKSnNbkK6hjhbrMLPgeVrSeRAblXkqni9TrQ1EWqcRE")
         assert (olm.account.identity_keys["ed25519"]
-                == "3z6yMDw78UddqDGd4yZFPY32deAc8JlQH1CP+jWdMcI")
+                == "7ghkECn0yUiDEDpd7C03ErLItloNU1hNvwqpmkxl6qU")
 
     def test_fingerprint_store(self, monkeypatch):
         def mocksave(self):
@@ -240,11 +240,11 @@ class TestClass(object):
     def test_olm_session_load(self):
         olm = self._load("example", "DEVICEID")
         bob_session = olm.session_store.get(
-            "qVjhz3Oa8O5gk4JqY/Sqsdixb/94kHrxAfUiOwZuil8"
+            "W4pNkTQs6iwJLquwTSWrPDIp54RzjN3SsnDMK9+uOG4"
         )
         assert bob_session
         assert (bob_session.session.id
-                == "1Fn/V37Zv6qHDCZpx9Xl7R9c4ziClmwybxNDuNEdDXo")
+                == "QFRswzEBDl8rSG2drxPQ8rx5gWkr/GF3+E3dwDnOeBo")
 
     def test_olm_inbound_session(self, monkeypatch):
         def mocksave(self):
@@ -279,9 +279,17 @@ class TestClass(object):
 
         alice_session = alice.session_store.get(bob_device.keys["curve25519"])
 
+        group_session = OutboundGroupSession()
+
         payload_dict = {
             "type": "m.room_key",
-            "content": {},
+            "content": {
+                "algorithm": "m.megolm.v1.aes-sha2",
+                "room_id": "!test:example.org",
+                "session_id": group_session.id,
+                "session_key": group_session.session_key,
+                "chain_index": group_session.message_index
+            },
             "sender": AliceId,
             "sender_device": Alice_device,
             "keys": {
@@ -297,7 +305,8 @@ class TestClass(object):
         message = alice_session.encrypt(Olm._to_json(payload_dict))
 
         # bob decrypts the message and creates a new inbound session with alice
-        bob.decrypt(AliceId, alice_device.keys["curve25519"], message)
+        with pytest.raises(NotImplementedError):
+            bob.decrypt(AliceId, alice_device.keys["curve25519"], message)
 
         # we check that the session is there
         assert bob.session_store.get(alice_device.keys["curve25519"])
