@@ -59,15 +59,64 @@ class EncryptionError(Exception):
     pass
 
 
-class Key(object):
+class VerificationError(Exception):
     pass
 
 
-class Ed25519Key(Key):
-    def __init__(self, key):
-        # type: (str) -> None
+class Key(object):
+    def __init__(self, user_id, device_id, key):
+        # type: (str, str, str) -> None
+        self.user_id = user_id
+        self.device_id = device_id
         self.key = key
 
+    @classmethod
+    def from_line(cls, line):
+        # type: (str) -> Optional[Key]
+        fields = line.split(' ')
+
+        if len(fields) < 4:
+            return None
+
+        user_id, device_id, key_type, key = fields[:4]
+
+        if key_type == "matrix-ed25519":
+            return Ed25519Key(user_id, device_id, key)
+        else:
+            return None
+
+    def to_line(self):
+        # type: () -> str
+        key_type = ""
+
+        if isinstance(self, Ed25519Key):
+            key_type = "matrix-ed25519"
+        else:
+            raise NotImplementedError("Invalid key type {}".format(
+                type(self.key)))
+
+        line = "{} {} {} {}\n".format(
+            self.user_id,
+            self.device_id,
+            key_type,
+            str(self.key)
+        )
+        return line
+
+    @classmethod
+    def from_olmdevice(cls, device):
+        # type: (OlmDevice) -> Optional[Ed25519Key]
+        user_id = device.user_id
+        device_id = device.id
+
+        for key_type, key in device.keys.items():
+            if key_type == "ed25519":
+                return Ed25519Key(user_id, device_id, key)
+
+        return None
+
+
+class Ed25519Key(Key):
     def __str__(self):
         # type: () -> str
         return self.key
@@ -76,15 +125,21 @@ class Ed25519Key(Key):
         # type: (object) -> bool
         if not isinstance(value, Ed25519Key):
             return NotImplemented
-        return self.key == value.key
+
+        if (self.user_id == value.user_id
+                and self.device_id == value.device_id
+                and self.key == value.key):
+            return True
+
+        return False
 
 
 class DeviceStore(object):
     def __init__(self, filename):
         # type: (str) -> None
         self._entries = []  # type: List[OlmDevice]
-        self._fingerprint_store = FingerprintStore(filename)  \
-            # type: FingerprintStore
+        self._fingerprint_store = KeyStore(filename)  \
+            # type: KeyStore
 
     def __iter__(self):
         # type: () -> Iterator[OlmDevice]
@@ -96,8 +151,7 @@ class DeviceStore(object):
         if device in self._entries:
             return False
 
-        for fingerprint in DeviceFingerprint.from_olmdevice(device):
-            self._fingerprint_store.add(fingerprint)
+        self._fingerprint_store.add(Key.from_olmdevice(device))
 
         self._entries.append(device)
         return True
@@ -112,30 +166,32 @@ class DeviceStore(object):
 
         return devices
 
-    def verify_key(self, user_id, device_id, fingerprint_key):
-        # type: (str, str, Key) -> bool
-        self._fingerprint_store.fingerprint(user_id, device_id)
+    def verify_key(self, key):
+        # type: (Key) -> bool
         for entry in self._fingerprint_store:
-            if user_id == entry.user_id and device_id == entry.device_id:
-                if fingerprint_key == entry.key:
+            if (key.user_id == entry.user_id
+                    and key.device_id == entry.device_id):
+                if key.key == entry.key:
                     return True
                 else:
                     return False
 
         raise KeyError("No key found for user {} and device {}".format(
-            user_id, device_id))
+            key.user_id,
+            key.device_id
+        ))
 
 
-class FingerprintStore(object):
+class KeyStore(object):
     def __init__(self, filename):
         # type: (str) -> None
-        self._entries = []  # type: List[DeviceFingerprint]
+        self._entries = []  # type: List[Key]
         self._filename = filename  # type: str
 
         self._load(filename)
 
     def __iter__(self):
-        # type: () -> Iterator[DeviceFingerprint]
+        # type: () -> Iterator[Key]
         for entry in self._entries:
             yield entry
 
@@ -153,7 +209,7 @@ class FingerprintStore(object):
                     if not line or line.startswith("#"):
                         continue
 
-                    entry = DeviceFingerprint.from_line(line)
+                    entry = Key.from_line(line)
 
                     if not entry:
                         continue
@@ -162,11 +218,11 @@ class FingerprintStore(object):
         except FileNotFoundError:
             pass
 
-    def fingerprint(self, user_id, device_id):
+    def get_key(self, user_id, device_id):
         # type: (str, str) -> Optional[Key]
         for entry in self._entries:
             if user_id == entry.user_id and device_id == entry.device_id:
-                return entry.key
+                return entry
 
         return None
 
@@ -188,127 +244,40 @@ class FingerprintStore(object):
                 f.write(line)
 
     @_save_store
-    def add(self, device):
-        # type: (DeviceFingerprint) -> bool
-        existing_print = self.fingerprint(device.user_id, device.device_id)
+    def add(self, key):
+        # type: (Key) -> bool
+        existing_key = self.get_key(key.user_id, key.device_id)
 
-        if existing_print:
-            if device.key != existing_print:
-                message = ("Error: adding existing device to trust store with"
-                           " mismatching fingerprint {} {}".format(
-                               device.key,
-                               existing_print
-                           ))
-                logger.error(message)
-                raise OlmTrustError(message)
+        if existing_key:
+            if (existing_key.user_id == key.user_id
+                    and existing_key.device_id == key.device_id
+                    and type(existing_key) is type(key)):
+                if existing_key.key != key.key:
+                    message = ("Error: adding existing device to trust store "
+                               "with mismatching fingerprint {} {}".format(
+                                   key.key,
+                                   existing_key.key
+                               ))
+                    logger.error(message)
+                    raise OlmTrustError(message)
 
-            return False
-
-        self._entries.append(device)
+        self._entries.append(key)
         self._save()
         return True
 
     @_save_store
-    def remove(self, device):
-        # type: (DeviceFingerprint) -> bool
-        if device in self._entries:
-            self._entries.remove(device)
+    def remove(self, key):
+        # type: (Key) -> bool
+        if key in self._entries:
+            self._entries.remove(key)
             self._save()
             return True
 
         return False
 
-    def check(self, device):
-        # type: (OlmDevice) -> bool
-        return device in self._entries
-
-
-class DeviceFingerprint(object):
-    def __init__(self, user_id, device_id, key):
-        # type: (str, str, Key) -> None
-        self.user_id = user_id
-        self.device_id = device_id
-        self.key = key
-
-    @classmethod
-    def from_line(cls, line):
-        # type: (str) -> Optional[DeviceFingerprint]
-        fields = line.split(' ')
-
-        if len(fields) < 4:
-            return None
-
-        user_id, device_id, key_type, key = fields[:4]
-
-        if key_type == "matrix-ed25519":
-            return cls(user_id, device_id, Ed25519Key(key))
-        else:
-            return None
-
-    @classmethod
-    def from_olmdevice(cls, device):
-        # type: (OlmDevice) -> List[DeviceFingerprint]
-        entries = []
-
-        user_id = device.user_id
-        device_id = device.id
-
-        for key_type, key in device.keys.items():
-            if key_type == "ed25519":
-                entries.append(cls(user_id, device_id, Ed25519Key(key)))
-
-        return entries
-
-    def to_line(self):
-        # type: () -> str
-        key_type = ""
-
-        if isinstance(self.key, Ed25519Key):
-            key_type = "matrix-ed25519"
-        else:
-            raise NotImplementedError("Invalid key type {}".format(
-                type(self.key)))
-
-        line = "{} {} {} {}\n".format(
-            self.user_id,
-            self.device_id,
-            key_type,
-            str(self.key)
-        )
-        return line
-
-    def __hash__(self):
-        # type: () -> int
-        return hash(str(self))
-
-    def __str__(self):
-        # type: () -> str
-        key_type = ""
-        if isinstance(self.key, Ed25519Key):
-            key_type = "matrix-ed25519"
-        else:
-            raise NotImplementedError("Invalid key type {}".format(
-                type(self.key)))
-
-        line = "{} {} {} {}".format(
-            self.user_id,
-            self.device_id,
-            key_type,
-            self.key
-        )
-        return line
-
-    def __eq__(self, value):
-        # type: (object) -> bool
-        if not isinstance(value, DeviceFingerprint):
-            return NotImplemented
-
-        if (self.user_id == value.user_id
-                and self.device_id == value.device_id
-                and self.key == value.key):
-            return True
-
-        return False
+    def check(self, key):
+        # type: (Key) -> bool
+        return key in self._entries
 
 
 class OlmDevice(object):
@@ -490,7 +459,7 @@ class Olm(object):
 
         # TODO we need a db for untrusted device as well as for seen devices.
         trust_file_path = "{}_{}.trusted_devices".format(user_id, device_id)
-        self.trust_db = FingerprintStore(os.path.join(
+        self.trust_db = KeyStore(os.path.join(
             session_path,
             trust_file_path
         ))
@@ -514,22 +483,25 @@ class Olm(object):
 
         return session
 
-    def verify_device(self, device):
-        # type: (DeviceFingerprint) -> bool
-        if device in self.trust_db:
+    def verify_device(self, key):
+        # type: (Key) -> bool
+        if key in self.trust_db:
             return False
 
-        self.trust_db.add(device)
+        self.trust_db.add(key)
         return True
 
     def device_trusted(self, device):
         # type: (OlmDevice) -> bool
-        fingerprint_keys = DeviceFingerprint.from_olmdevice(device)
-        return all(map(lambda x: x in self.trust_db, fingerprint_keys))
+        key = Key.from_olmdevice(device)
+        if key:
+            return key in self.trust_db
 
-    def unverify_device(self, device):
-        # type: (DeviceFingerprint) -> None
-        self.trust_db.remove(device)
+        return False
+
+    def unverify_device(self, key):
+        # type: (Key) -> None
+        self.trust_db.remove(key)
 
     def create_session(self, user_id, device_id, one_time_key):
         # type: (str, str, str) -> None
@@ -616,7 +588,6 @@ class Olm(object):
         plaintext = None
 
         # Let's try to decrypt with each known session for the sender.
-        # TODO do we wan't to try this with every session or just every session
         # for a specific device?
         for session_list in self.session_store[sender].values():
             for session in session_list:
@@ -672,24 +643,52 @@ class Olm(object):
         # type: (str, Dict[Any, Any]) -> bool
         # Verify that the sender in the payload matches the sender of the event
         if sender != payload["sender"]:
-            return False
+            raise VerificationError("Error: missmatched sender in Olm payload")
 
         # Verify that we're the recipient of the payload.
         if self.user_id != payload["recipient"]:
-            return False
+            raise VerificationError("Error: missmatched recipient in Olm "
+                                    "payload")
 
         # Verify that the recipient fingerprint key matches our own
         if (self.account.identity_keys["ed25519"] !=
                 payload["recipient_keys"]["ed25519"]):
-            return False
+            raise VerificationError("Error: missmatched recipient key in "
+                                    "Olm payload")
 
-        # Verify that the fingerprint key in the payload matches the previously
-        # known sender fingerprint key.
-        return self.devices.verify_key(
+        sender_device = payload["sender_device"]
+        sender_fp_key = Ed25519Key(
             sender,
-            payload["sender_device"],
-            Ed25519Key(payload["keys"]["ed25519"])
+            sender_device,
+            payload["keys"]["ed25519"])
+
+        # Check if we trust this fingerprint key already
+        if sender_fp_key in self.trust_db:
+            return True
+
+        # We're not trusting the fingerprint but we can still check if we have
+        # already seen the device, if the fingerprints missmatch raise an
+        # error, if they match don't raise an error but return False since the
+        # device still isn't verified
+        try:
+            old_key = self.devices._fingerprint_store.get_key(
+                sender,
+                sender_device
             )
+            if not old_key:
+                return False
+
+            if not self.devices.verify_key(sender_fp_key):
+                raise VerificationError("Error: missmatched sender key in "
+                                        "Olm payload: {} : {}".format(
+                                            sender_fp_key.key,
+                                            old_key
+                                        ))
+        except KeyError:
+            pass
+
+        # We haven't seen the key yet, just return False
+        return False
 
     def decrypt(
         self,
@@ -756,18 +755,27 @@ class Olm(object):
                          ": {}".format(sender, str(e.message)))
             return None
 
+        sender_device = parsed_payload["sender_device"]
+
         # Verify that the payload properties contain correct values:
-        # sender/recipient/keys/recipient_keys
-        if not self._verify_olm_payload(sender, parsed_payload):
-            logger.error("Error verifying decrypted Olm event from {}".format(
-                         sender))
+        # sender/recipient/keys/recipient_keys and check if the sender device
+        # is alread verified by us
+        try:
+            if self._verify_olm_payload(sender, parsed_payload):
+                parsed_payload["verified"] = True
+            else:
+                logger.warn("Can't verify olm payload from {} and "
+                            "device {}".format(sender, sender_device))
+                parsed_payload["verified"] = False
+
+        except VerificationError as e:
+            logger.error(e)
             return None
 
         if s:
             # We created a new session, find out the device id for it and store
             # it in the session store as well as in the database.
-            device_id = parsed_payload["sender_device"]
-            session = OlmSession(sender, device_id, s)
+            session = OlmSession(sender, sender_device, s)
             self.session_store.add(session)
             self.save_session(session, new=True)
 

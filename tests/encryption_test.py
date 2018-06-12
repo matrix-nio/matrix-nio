@@ -5,9 +5,9 @@ import pytest
 
 from olm import Account, OutboundSession
 
-from nio.encryption import (FingerprintStore, Olm, OlmDevice, OlmSession,
-                            OneTimeKey, SessionStore, DeviceFingerprint,
-                            Ed25519Key, DeviceStore, OlmTrustError)
+from nio.encryption import (KeyStore, Olm, OlmDevice, OlmSession, OneTimeKey,
+                            SessionStore, Ed25519Key, DeviceStore, Key,
+                            OlmTrustError)
 
 
 AliceId = "@alice:example.org"
@@ -42,51 +42,51 @@ class TestClass(object):
         def mocksave(self):
             return
 
-        monkeypatch.setattr(FingerprintStore, '_save', mocksave)
-        store = FingerprintStore(os.path.join(
+        monkeypatch.setattr(KeyStore, '_save', mocksave)
+        store = KeyStore(os.path.join(
             self._test_dir,
             "ephermal_devices"
         ))
         account = Account()
         device = OlmDevice("example", "DEVICEID", account.identity_keys)
-        fingerprint = DeviceFingerprint.from_olmdevice(device)[0]
+        key = Key.from_olmdevice(device)
 
-        assert fingerprint not in store
-        assert store.add(fingerprint)
-        assert fingerprint in store
-        assert store.remove(fingerprint)
-        assert store.check(fingerprint) is False
+        assert key not in store
+        assert store.add(key)
+        assert key in store
+        assert store.remove(key)
+        assert store.check(key) is False
 
     def test_fingerprint_store_loading(self):
-        store = FingerprintStore(os.path.join(self._test_dir, "known_devices"))
-        device = OlmDevice(
+        store = KeyStore(os.path.join(self._test_dir, "known_devices"))
+        key = Ed25519Key(
             "example",
             "DEVICEID",
-            {"ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
+            "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
         )
 
-        assert DeviceFingerprint.from_olmdevice(device)[0] in store
+        assert key in store
 
     def test_invalid_store_entry_equality(self):
-        entry = DeviceFingerprint(
+        entry = Ed25519Key(
             "example",
             "DEVICEID",
-            Ed25519Key("2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA")
+            "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
         )
 
         assert entry != 1
 
     def test_differing_store_entries(self):
-        alice = DeviceFingerprint(
+        alice = Ed25519Key(
             "alice",
             "DEVICEID",
-            Ed25519Key("2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA")
+            "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
         )
 
-        bob = DeviceFingerprint(
+        bob = Ed25519Key(
             "bob",
             "DEVICEDI",
-            Ed25519Key("3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA")
+            "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
         )
 
         assert alice != bob
@@ -188,7 +188,7 @@ class TestClass(object):
         def mocksave(self):
             return
 
-        monkeypatch.setattr(FingerprintStore, '_save', mocksave)
+        monkeypatch.setattr(KeyStore, '_save', mocksave)
 
         alice = OlmDevice(
             "example",
@@ -196,8 +196,7 @@ class TestClass(object):
             {"ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
         )
         store = DeviceStore(os.path.join(self._test_dir, "known_devices"))
-        assert (DeviceFingerprint.from_olmdevice(alice)[0]
-                in store._fingerprint_store)
+        assert (Key.from_olmdevice(alice) in store._fingerprint_store)
         assert store.add(alice)
         assert alice in store
 
@@ -205,7 +204,7 @@ class TestClass(object):
         def mocksave(self):
             return
 
-        monkeypatch.setattr(FingerprintStore, '_save', mocksave)
+        monkeypatch.setattr(KeyStore, '_save', mocksave)
         eve = OlmDevice(
             "example",
             "DEVICEID",
@@ -219,7 +218,7 @@ class TestClass(object):
         def mocksave(self):
             return
 
-        monkeypatch.setattr(FingerprintStore, '_save', mocksave)
+        monkeypatch.setattr(KeyStore, '_save', mocksave)
 
         bob = Account()
         bob.generate_one_time_keys(1)
@@ -244,7 +243,7 @@ class TestClass(object):
         def mocksave(self):
             return
 
-        monkeypatch.setattr(FingerprintStore, '_save', mocksave)
+        monkeypatch.setattr(KeyStore, '_save', mocksave)
 
         # create two new accounts
         alice = self._load(AliceId, Alice_device)
