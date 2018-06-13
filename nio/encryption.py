@@ -22,7 +22,7 @@ import sqlite3
 import pprint
 # pylint: disable=redefined-builtin
 from builtins import str, bytes
-from collections import defaultdict
+from collections import defaultdict, deque
 from functools import wraps
 from typing import *
 
@@ -61,6 +61,13 @@ class EncryptionError(Exception):
 
 class VerificationError(Exception):
     pass
+
+
+OlmEvent = NamedTuple("OlmEvent", [
+    ("sender", str),
+    ("sender_key", str),
+    ("payload_dict", Dict[Any, Any])
+    ])
 
 
 class Key(object):
@@ -162,15 +169,21 @@ class DeviceStore(object):
 
         return devices
 
+    @staticmethod
+    def _verify_key(device, key):
+        # type: (OlmDevice, Key) -> bool
+        if isinstance(key, Ed25519Key):
+            return device.keys["ed25519"] == key.key
+        else:
+            raise NotImplementedError("Key verification for key type {} not "
+                                      "implemented".format(type(key)))
+
     def verify_key(self, key):
         # type: (Key) -> bool
-        for entry in self._fingerprint_store:
+        for entry in self._entries:
             if (key.user_id == entry.user_id
-                    and key.device_id == entry.device_id):
-                if key.key == entry.key:
-                    return True
-                else:
-                    return False
+                    and key.device_id == entry.id):
+                return self._verify_key(entry, key)
 
         raise KeyError("No key found for user {} and device {}".format(
             key.user_id,
@@ -418,6 +431,8 @@ class Olm(object):
         self.device_id = device_id
         self.session_path = session_path
 
+        self.olm_queue = deque()  # type: Deque[OlmEvent]
+
         # List of group session ids that we shared with people
         self.shared_sessions = []  # type: List[str]
 
@@ -636,17 +651,17 @@ class Olm(object):
         # type: (str, Dict[Any, Any]) -> bool
         # Verify that the sender in the payload matches the sender of the event
         if sender != payload["sender"]:
-            raise VerificationError("Error: missmatched sender in Olm payload")
+            raise VerificationError("Missmatched sender in Olm payload")
 
         # Verify that we're the recipient of the payload.
         if self.user_id != payload["recipient"]:
-            raise VerificationError("Error: missmatched recipient in Olm "
+            raise VerificationError("Missmatched recipient in Olm "
                                     "payload")
 
         # Verify that the recipient fingerprint key matches our own
         if (self.account.identity_keys["ed25519"] !=
                 payload["recipient_keys"]["ed25519"]):
-            raise VerificationError("Error: missmatched recipient key in "
+            raise VerificationError("Missmatched recipient key in "
                                     "Olm payload")
 
         sender_device = payload["sender_device"]
@@ -655,39 +670,30 @@ class Olm(object):
             sender_device,
             payload["keys"]["ed25519"])
 
-        # Check if we trust this fingerprint key already
-        if sender_fp_key in self.trust_db:
-            return True
-
-        # We're not trusting the fingerprint but we can still check if we have
-        # already seen the device, if the fingerprints missmatch raise an
-        # error, if they match don't raise an error but return False since the
-        # device still isn't verified
+        # Check that the ed25519 sender key matches to the one we previously
+        # downloaded using a key query, if we didn't query the keys yet raise a
+        # trust error so we can put the payload in a queue and process it later
+        # on
         try:
-            old_key = self.devices._fingerprint_store.get_key(
-                sender,
-                sender_device
-            )
-            if not old_key:
-                return False
-
             if not self.devices.verify_key(sender_fp_key):
-                raise VerificationError("Error: missmatched sender key in "
-                                        "Olm payload: {} : {}".format(
-                                            sender_fp_key.key,
-                                            old_key
+                raise VerificationError("Missmatched sender key in Olm payload"
+                                        " for {} and device {}".format(
+                                            sender,
+                                            sender_device
                                         ))
         except KeyError:
-            pass
+            raise OlmTrustError("Fingerprint key for {} on device {} "
+                                "not found".format(sender, sender_device))
 
-        # We haven't seen the key yet, just return False
-        return False
+        return True
 
     def _handle_olm_event(self, sender, sender_key, payload):
         # type: (str, str, Dict[Any, Any]) -> None
         logger.info("Recieved Olm event of type: {}".format(payload["type"]))
 
         if payload["type"] != "m.room_key":
+            logger.warn("Received unsuported Olm event of type {}".format(
+                payload["type"]))
             return
 
         try:
@@ -717,7 +723,7 @@ class Olm(object):
         sender_key,  # type: str
         message      # type: Union[OlmPreKeyMessage, OlmMessage]
     ):
-        # type: (...) -> Optional[Dict[Any, Any]]
+        # type: (...) -> None
 
         s = None
         try:
@@ -726,7 +732,7 @@ class Olm(object):
         except EncryptionError:
             # We found a matching session for a prekey message but decryption
             # failed, don't try to decrypt any further.
-            return None
+            return
 
         # Decryption failed with every known session or no known sessions,
         # let's try to create a new session.
@@ -735,7 +741,7 @@ class Olm(object):
             # can't decrypt the message if it isn't one at this point in time
             # anymore, so return early
             if not isinstance(message, OlmPreKeyMessage):
-                return None
+                return
 
             try:
                 # Let's create a new session.
@@ -745,13 +751,13 @@ class Olm(object):
             except OlmSessionError as e:
                 logger.error("Failed to create new session from prekey"
                              "message: {}".format(str(e)))
-                return None
+                return
 
         # Mypy complains that the plaintext can still be empty here,
         # realistically this can't happen but let's make mypy happy
         if not plaintext:
             logger.error("Failed to decrypt Olm message: unknown error")
-            return None
+            return
 
         # The plaintext should be valid json, let's parse it and verify it.
         try:
@@ -761,7 +767,7 @@ class Olm(object):
             logger.error("Failed to parse Olm message payload: {}".format(
                 str(e)
             ))
-            return None
+            return
 
         # Validate the payload, check that it contains all required keys as
         # well that the types of the values are the one we expect.
@@ -774,7 +780,7 @@ class Olm(object):
             # early.
             logger.error("Error validating decrypted Olm event from {}"
                          ": {}".format(sender, str(e.message)))
-            return None
+            return
 
         sender_device = parsed_payload["sender_device"]
 
@@ -782,27 +788,32 @@ class Olm(object):
         # sender/recipient/keys/recipient_keys and check if the sender device
         # is alread verified by us
         try:
-            if self._verify_olm_payload(sender, parsed_payload):
-                parsed_payload["verified"] = True
-            else:
-                logger.warn("Can't verify olm payload from {} and "
-                            "device {}".format(sender, sender_device))
-                parsed_payload["verified"] = False
+            self._verify_olm_payload(sender, parsed_payload)
 
         except VerificationError as e:
+            # We found a missmatched property don't process the event any
+            # further
             logger.error(e)
-            return None
+            return
 
-        if s:
-            # We created a new session, find out the device id for it and store
-            # it in the session store as well as in the database.
-            session = OlmSession(sender, sender_device, sender_key, s)
-            self.session_store.add(session)
-            self.save_session(session, new=True)
+        except OlmTrustError as e:
+            # We couldn't verify the sender fingerprint key, put the event into
+            # the queue for later processing
+            logger.warn(e)
+            olm_event = OlmEvent(sender, sender_key, parsed_payload)
+            self.olm_queue.append(olm_event)
 
-        # Finaly return the parsed dict of the payload
-        self._handle_olm_event(sender, sender_key, parsed_payload)
-        return parsed_payload
+        else:
+            # Verification succeded, handle the event
+            self._handle_olm_event(sender, sender_key, parsed_payload)
+
+        finally:
+            if s:
+                # We created a new session, find out the device id for it and
+                # store it in the session store as well as in the database.
+                session = OlmSession(sender, sender_device, sender_key, s)
+                self.session_store.add(session)
+                self.save_session(session, new=True)
 
     def group_encrypt(
         self,
