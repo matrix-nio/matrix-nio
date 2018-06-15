@@ -18,6 +18,7 @@ from __future__ import unicode_literals
 
 from typing import *
 from typing import NamedTuple
+from builtins import super
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
@@ -67,7 +68,7 @@ class BadEvent(Event):
         # type: (str, str, int, str, str) -> None
         self.source = source
         self.type = event_type
-        super(BadEvent, self).__init__(event_id, sender, server_ts)
+        super().__init__(event_id, sender, server_ts)
 
     def __str__(self):
         return "Bad event of type {}, from {}.".format(
@@ -100,7 +101,7 @@ class RedactedEvent(Event):
         self.event_type = event_type
         self.redacter = redacter
         self.reason = reason
-        super(RedactedEvent, self).__init__(event_id, sender, server_ts)
+        super().__init__(event_id, sender, server_ts)
 
     def __str__(self):
         reason = ", reason: {}".format(self.reason) if self.reason else ""
@@ -160,7 +161,7 @@ class RoomMessageText(Event):
         body_format      # type: Optional[str]
     ):
         # type: (...) -> None
-        super(RoomMessageText, self).__init__(event_id, sender, server_ts)
+        super().__init__(event_id, sender, server_ts)
         self.body = body
         self.formatted_body = formatted_body
         self.format = body_format

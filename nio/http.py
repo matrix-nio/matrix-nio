@@ -17,7 +17,7 @@
 from __future__ import unicode_literals
 
 import json
-from builtins import bytes
+from builtins import bytes, super
 from collections import OrderedDict
 from enum import Enum, unique
 from typing import *
@@ -63,7 +63,7 @@ class TransportRequest(object):
 
 class HttpRequest(TransportRequest):
     def __init__(self, request, data=b""):
-        super(HttpRequest, self).__init__(request, data)
+        super().__init__(request, data)
         self._end_of_message = h11.EndOfMessage()
 
     @classmethod
