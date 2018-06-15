@@ -277,7 +277,7 @@ class TestClass(object):
         # alice creates an outbound olm session with bob
         alice.create_session(BobId, Bob_device, one_time)
 
-        alice_session = alice.session_store.get(bob_device.keys["curve25519"])
+        session = alice.session_store.get(bob_device.keys["curve25519"])
 
         group_session = OutboundGroupSession()
 
@@ -302,22 +302,26 @@ class TestClass(object):
         }
 
         # alice encrypts the payload for bob
-        message = alice_session.encrypt(Olm._to_json(payload_dict))
+        message = session.encrypt(Olm._to_json(payload_dict))
 
         # bob decrypts the message and creates a new inbound session with alice
-        with pytest.raises(NotImplementedError):
+        try:
+            # pdb.set_trace()
             bob.decrypt(AliceId, alice_device.keys["curve25519"], message)
 
-        # we check that the session is there
-        assert bob.session_store.get(alice_device.keys["curve25519"])
+            # we check that the session is there
+            assert bob.session_store.get(alice_device.keys["curve25519"])
+            # we check that the group session is there
+            assert bob.inbound_group_sessions["!test:example.org"][group_session.id]
 
-        # remove the databases, the known devices store is handled by
-        # monkeypatching
-        os.remove(os.path.join(
-            self._test_dir,
-            "{}_{}.db".format(AliceId, Alice_device)
-        ))
-        os.remove(os.path.join(
-            self._test_dir,
-            "{}_{}.db".format(BobId, Bob_device)
-        ))
+        finally:
+            # remove the databases, the known devices store is handled by
+            # monkeypatching
+            os.remove(os.path.join(
+                self._test_dir,
+                "{}_{}.db".format(AliceId, Alice_device)
+            ))
+            os.remove(os.path.join(
+                self._test_dir,
+                "{}_{}.db".format(BobId, Bob_device)
+            ))

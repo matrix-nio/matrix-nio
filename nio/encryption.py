@@ -21,7 +21,7 @@ import os
 import sqlite3
 import pprint
 # pylint: disable=redefined-builtin
-from builtins import str, bytes
+from builtins import str, bytes, super
 from collections import defaultdict, deque
 from functools import wraps
 from typing import *
@@ -419,6 +419,36 @@ class SessionStore(object):
         return self._entries[identity_key]
 
 
+class InGroupSession(InboundGroupSession):
+    def __new__(
+        cls,
+        sender_key,     # type: str
+        sender_fp_key,  # type: str
+        room_id,        # type: str
+        session_id,     # type: str
+        session_key     # type: str
+    ):
+        return super().__new__(cls, session_key)
+
+    def __init__(
+        self,
+        sender_key,     # type: str
+        sender_fp_key,  # type: str
+        room_id,        # type: str
+        session_id,     # type: str
+        session_key     # type: str
+    ):
+        # type: (...) -> None
+        self.sender_key = sender_key
+        self.sender_fp_key = sender_fp_key
+        self.room_id = room_id
+        super().__init__(session_key)
+
+        if self.id != session_id:
+            raise OlmSessionError("Session id misssmatch while importing "
+                                  "megolm session key")
+
+
 class Olm(object):
     def __init__(
         self,
@@ -548,13 +578,34 @@ class Olm(object):
         self.save_session(session, new=True)
         logger.info("Created OutboundSession for device {}".format(device_id))
 
-    def create_group_session(self, room_id, session_id, session_key):
-        # type: (str, str, str) -> None
-        logger.info("Creating inbound group session for {}".format(room_id))
-        session = InboundGroupSession(session_key)
+    def create_group_session(
+        self,
+        sender_key,
+        sender_fp_key,
+        room_id,
+        session_id,
+        session_key
+    ):
+        # type: (str, str, str, str, str) -> None
+        logger.info("Creating inbound group session for {} from {}".format(
+            room_id,
+            sender_key
+        ))
+
+        try:
+            session = InGroupSession(
+                sender_key,
+                sender_fp_key,
+                room_id,
+                session_id,
+                session_key
+            )
+        except OlmSessionError as e:
+            logger.warn(e)
+            return
+
         self.inbound_group_sessions[room_id][session_id] = session
-        self.save_inbound_group_session(room_id, session)
-        logger.info("Created inbound group session for {}".format(room_id))
+        # self.save_inbound_group_session(room_id, session)
 
     def create_outbound_group_session(self, room_id):
         # type: (str) -> None
@@ -715,7 +766,15 @@ class Olm(object):
         logger.info("Recieved new group session key for room {} "
                     "from {}".format(room_id, sender))
 
-        raise NotImplementedError("Group session store not implemented")
+        self.create_group_session(
+                sender_key,
+                payload["keys"]["ed25519"],
+                content["room_id"],
+                content["session_id"],
+                content["session_key"]
+        )
+
+        return
 
     def decrypt(
         self,
