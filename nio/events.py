@@ -23,8 +23,19 @@ from .api import Api
 from .log import logger_group
 from .schemas import validate_json, Schemas
 
-logger = Logger('nio.responses')
+logger = Logger('nio.events')
 logger_group.add_logger(logger)
+
+
+def validate_or_badevent(parsed_dict, schema):
+    # type: (Dict[Any, Any], Dict[Any, Any]) -> Optional[BadEvent]
+    try:
+        validate_json(parsed_dict, schema)
+    except (ValidationError, SchemaError) as e:
+        logger.error("Error validating event: {}".format(str(e)))
+        return BadEvent.from_dict(parsed_dict)
+
+    return None
 
 
 class Event(object):
@@ -96,10 +107,10 @@ class RedactedEvent(Event):
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RedactedEvent, BadEvent]
-        try:
-            validate_json(parsed_dict, Schemas.redacted_event)
-        except (ValidationError, SchemaError):
-            return BadEvent.from_dict(parsed_dict)
+        bad = validate_or_badevent(parsed_dict, Schemas.redacted_event)
+
+        if bad:
+            return bad
 
         redacter = parsed_dict["unsigned"]["redacted_because"]["sender"]
         content_dict = parsed_dict["unsigned"]["redacted_because"]["content"]
@@ -127,10 +138,10 @@ class RoomAliasEvent(Event):
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomAliasEvent, BadEvent]
-        try:
-            validate_json(parsed_dict, Schemas.room_canonical_alias)
-        except (SchemaError, ValidationError):
-            return BadEvent.from_dict(parsed_dict)
+        bad = validate_or_badevent(parsed_dict, Schemas.room_canonical_alias)
+
+        if bad:
+            return bad
 
         event_id = parsed_dict["event_id"]
         sender = parsed_dict["sender"]
@@ -149,10 +160,10 @@ class RoomNameEvent(Event):
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomNameEvent, BadEvent]
-        try:
-            validate_json(parsed_dict, Schemas.room_name)
-        except (SchemaError, ValidationError):
-            return BadEvent.from_dict(parsed_dict)
+        bad = validate_or_badevent(parsed_dict, Schemas.room_name)
+
+        if bad:
+            return bad
 
         event_id = parsed_dict["event_id"]
         sender = parsed_dict["sender"]
@@ -171,10 +182,10 @@ class RoomTopicEvent(Event):
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomTopicEvent, BadEvent]
-        try:
-            validate_json(parsed_dict, Schemas.room_topic)
-        except (SchemaError, ValidationError):
-            return BadEvent.from_dict(parsed_dict)
+        bad = validate_or_badevent(parsed_dict, Schemas.room_topic)
+
+        if bad:
+            return bad
 
         event_id = parsed_dict["event_id"]
         sender = parsed_dict["sender"]
@@ -189,10 +200,10 @@ class RoomMessage(Event):
     @staticmethod
     def from_dict(parsed_dict, olm=None):
         # type: (Dict[Any, Any], Any) -> Union[Event, BadEvent]
-        try:
-            validate_json(parsed_dict, Schemas.room_message)
-        except (SchemaError, ValidationError):
-            return BadEvent.from_dict(parsed_dict)
+        bad = validate_or_badevent(parsed_dict, Schemas.room_message)
+
+        if bad:
+            return bad
 
         content_dict = parsed_dict["content"]
 
@@ -226,10 +237,10 @@ class RoomMessageText(Event):
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomMessageText, BadEvent]
-        try:
-            validate_json(parsed_dict, Schemas.room_message_text)
-        except (SchemaError, ValidationError):
-            return BadEvent.from_dict(parsed_dict)
+        bad = validate_or_badevent(parsed_dict, Schemas.room_message_text)
+
+        if bad:
+            return bad
 
         body = parsed_dict["content"]["body"]
         formatted_body = (parsed_dict["content"]["formatted_body"] if
