@@ -244,3 +244,63 @@ class Schemas(object):
             "content"
         ]
     }
+
+    room_canonical_alias = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "alias": {"type": "string"},
+                },
+                "required": ["alias"]
+                }
+            },
+        "required": [
+            "type",
+            "sender",
+            "content"
+        ]
+    }
+
+    room_name = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                },
+                "required": ["name"]
+                }
+            },
+        "required": [
+            "type",
+            "sender",
+            "content"
+        ]
+    }
+
+    room_topic = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "topic": {"type": "string"},
+                },
+                "required": ["topic"]
+                }
+            },
+        "required": [
+            "type",
+            "sender",
+            "content"
+        ]
+    }

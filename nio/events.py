@@ -34,6 +34,15 @@ class Event(object):
         self.sender = sender
         self.server_timestamp = server_ts
 
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Event
+        return cls(
+            parsed_dict["event_id"],
+            parsed_dict["sender"],
+            parsed_dict["origin_server_ts"],
+        )
+
 
 class BadEvent(Event):
     def __init__(self, event_id, sender, server_ts, event_type, source):
@@ -50,6 +59,7 @@ class BadEvent(Event):
 
     @classmethod
     def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> BadEvent
         return cls(
             parsed_dict["event_id"],
             parsed_dict["sender"],
@@ -85,6 +95,7 @@ class RedactedEvent(Event):
 
     @classmethod
     def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RedactedEvent, BadEvent]
         try:
             validate_json(parsed_dict, Schemas.redacted_event)
         except (ValidationError, SchemaError):
@@ -102,6 +113,76 @@ class RedactedEvent(Event):
             redacter,
             reason
         )
+
+
+class RoomEncryptionEvent(Event):
+    pass
+
+
+class RoomAliasEvent(Event):
+    def __init__(self, event_id, sender, server_ts, canonical_alias):
+        self.canonical_alias = canonical_alias
+        super().__init__(event_id, sender, server_ts)
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomAliasEvent, BadEvent]
+        try:
+            validate_json(parsed_dict, Schemas.room_canonical_alias)
+        except (SchemaError, ValidationError):
+            return BadEvent.from_dict(parsed_dict)
+
+        event_id = parsed_dict["event_id"]
+        sender = parsed_dict["sender"]
+        timestamp = parsed_dict["origin_server_ts"]
+
+        canonical_alias = parsed_dict["content"]["alias"]
+
+        return cls(event_id, sender, timestamp, canonical_alias)
+
+
+class RoomNameEvent(Event):
+    def __init__(self, event_id, sender, server_ts, name):
+        self.name = name
+        super().__init__(event_id, sender, server_ts)
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomNameEvent, BadEvent]
+        try:
+            validate_json(parsed_dict, Schemas.room_name)
+        except (SchemaError, ValidationError):
+            return BadEvent.from_dict(parsed_dict)
+
+        event_id = parsed_dict["event_id"]
+        sender = parsed_dict["sender"]
+        timestamp = parsed_dict["origin_server_ts"]
+
+        canonical_alias = parsed_dict["content"]["name"]
+
+        return cls(event_id, sender, timestamp, canonical_alias)
+
+
+class RoomTopicEvent(Event):
+    def __init__(self, event_id, sender, server_ts, topic):
+        self.topic = topic
+        super().__init__(event_id, sender, server_ts)
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomTopicEvent, BadEvent]
+        try:
+            validate_json(parsed_dict, Schemas.room_topic)
+        except (SchemaError, ValidationError):
+            return BadEvent.from_dict(parsed_dict)
+
+        event_id = parsed_dict["event_id"]
+        sender = parsed_dict["sender"]
+        timestamp = parsed_dict["origin_server_ts"]
+
+        canonical_alias = parsed_dict["content"]["topic"]
+
+        return cls(event_id, sender, timestamp, canonical_alias)
 
 
 class RoomMessage(Event):
