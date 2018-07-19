@@ -24,7 +24,14 @@ from logbook import Logger
 
 from .log import logger_group
 from .schemas import validate_json, Schemas
-from .events import RoomMessage, RedactedEvent
+from .events import (
+    RoomMessage,
+    RedactedEvent,
+    RoomAliasEvent,
+    RoomNameEvent,
+    RoomTopicEvent,
+    RoomEncryptionEvent
+)
 
 logger = Logger('nio.responses')
 logger_group.add_logger(logger)
@@ -152,6 +159,16 @@ class SyncRepsponse(Response):
 
                 if event_dict["type"] == "m.room.message":
                     events.append(RoomMessage.from_dict(event_dict, olm))
+                elif event_dict["type"] == "m.room.canonical_alias":
+                    events.append(RoomAliasEvent.from_dict(event_dict))
+                elif event_dict["type"] == "m.room.name":
+                    events.append(RoomNameEvent.from_dict(event_dict))
+                elif event_dict["type"] == "m.room.topic":
+                    events.append(RoomTopicEvent.from_dict(event_dict))
+                elif event_dict["type"] == "m.room.topic":
+                    events.append(RoomTopicEvent.from_dict(event_dict))
+                elif event_dict["type"] == "m.room.encryption":
+                    events.append(RoomEncryptionEvent.from_dict(event_dict))
 
             except (SchemaError, ValidationError) as e:
                 print(e)
