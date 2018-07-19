@@ -158,6 +158,14 @@ class SyncRepsponse(Response):
                         continue
 
                 if event_dict["type"] == "m.room.message":
+                    # The transaction id will only be present for events that
+                    # are send out from this client, since we print out our own
+                    # messages as soon as we get a receive confirmation from
+                    # the server we don't care about our own messages in a
+                    # sync event. More info under:
+                    # https://github.com/matrix-org/matrix-doc/blob/master/api/client-server/definitions/event.yaml#L53
+                    if "transaction_id" in event_dict["unsigned"]:
+                        continue
                     events.append(RoomMessage.from_dict(event_dict, olm))
                 elif event_dict["type"] == "m.room.canonical_alias":
                     events.append(RoomAliasEvent.from_dict(event_dict))
