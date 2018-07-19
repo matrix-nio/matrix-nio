@@ -54,6 +54,12 @@ class Event(object):
             parsed_dict["origin_server_ts"],
         )
 
+    def __str__(self):
+        return "Got event of type {} from {}.".format(
+            type(self).__name__,
+            self.sender
+        )
+
 
 class BadEvent(Event):
     def __init__(self, event_id, sender, server_ts, event_type, source):
