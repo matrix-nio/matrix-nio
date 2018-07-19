@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 import json
 
-from nio.responses import BadEvent, RedactedEvent
+from nio.events import BadEvent, RedactedEvent
 
 
 class TestClass(object):
