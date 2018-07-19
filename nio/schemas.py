@@ -70,6 +70,22 @@ class Schemas(object):
         }
     }
 
+    room_message_emote = {
+        "type": "object",
+        "properties": {
+            "msgtype": {"type": "string", "const": "m.emote"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "body": {"type": "string"},
+                    "formatted_body": {"type": "string"},
+                    "format": {"type": "string"}
+                },
+                "required": ["body"]
+            }
+        }
+    }
+
     redacted_event = {
         "type": "object",
         "properties": {

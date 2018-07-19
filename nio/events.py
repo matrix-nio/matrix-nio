@@ -240,10 +240,15 @@ class RoomMessageText(Event):
         # type: () -> str
         return "{}: {}".format(self.sender, self.body)
 
+    @staticmethod
+    def _validate(parsed_dict):
+        # type: Dict[Any, Any] -> Optional[BadEvent]
+        return validate_or_badevent(parsed_dict, Schemas.room_message_text)
+
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomMessageText, BadEvent]
-        bad = validate_or_badevent(parsed_dict, Schemas.room_message_text)
+        bad = cls._validate(parsed_dict)
 
         if bad:
             return bad
@@ -262,3 +267,10 @@ class RoomMessageText(Event):
             formatted_body,
             body_format
         )
+
+
+class RoomMessageEmote(RoomMessageText):
+    @staticmethod
+    def _validate(parsed_dict):
+        # type: Dict[Any, Any] -> Optional[BadEvent]
+        return validate_or_badevent(parsed_dict, Schemas.room_message_emote)

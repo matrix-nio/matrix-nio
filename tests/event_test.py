@@ -10,7 +10,9 @@ from nio.events import (
     RedactedEvent,
     RoomTopicEvent,
     RoomNameEvent,
-    RoomAliasEvent
+    RoomAliasEvent,
+    RoomMessageText,
+    RoomMessageEmote
 )
 
 
@@ -50,3 +52,15 @@ class TestClass(object):
             "tests/data/events/alias.json")
         event = RoomAliasEvent.from_dict(parsed_dict)
         assert isinstance(event, RoomAliasEvent)
+
+    def test_message_text(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/message_text.json")
+        event = RoomMessageText.from_dict(parsed_dict)
+        assert isinstance(event, RoomMessageText)
+
+    def test_message_emote(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/message_emote.json")
+        event = RoomMessageEmote.from_dict(parsed_dict)
+        assert isinstance(event, RoomMessageEmote)
