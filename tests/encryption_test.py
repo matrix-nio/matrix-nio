@@ -246,6 +246,34 @@ class TestClass(object):
         assert (bob_session.session.id
                 == "QFRswzEBDl8rSG2drxPQ8rx5gWkr/GF3+E3dwDnOeBo")
 
+    def test_olm_group_session_store(self):
+        try:
+            olm = Olm("ephermal", "DEVICEID", self._test_dir)
+            bob_account = Account()
+            outbound_session = OutboundGroupSession()
+            olm.create_group_session(
+                bob_account.identity_keys["curve25519"],
+                bob_account.identity_keys["ed25519"],
+                "!test_room",
+                outbound_session.id,
+                outbound_session.session_key)
+
+            del olm
+
+            olm = self._load("ephermal", "DEVICEID")
+
+            bob_session = olm.inbound_group_store.get(
+                "!test_room",
+                outbound_session.id
+            )
+
+            assert bob_session
+            assert (bob_session.id
+                    == outbound_session.id)
+
+        finally:
+            os.remove(os.path.join(self._test_dir, "ephermal_DEVICEID.db"))
+
     def test_olm_inbound_session(self, monkeypatch):
         def mocksave(self):
             return
@@ -312,7 +340,10 @@ class TestClass(object):
             # we check that the session is there
             assert bob.session_store.get(alice_device.keys["curve25519"])
             # we check that the group session is there
-            assert bob.inbound_group_sessions["!test:example.org"][group_session.id]
+            assert bob.inbound_group_store.get(
+                "!test:example.org",
+                group_session.id
+            )
 
         finally:
             # remove the databases, the known devices store is handled by

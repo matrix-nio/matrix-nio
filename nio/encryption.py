@@ -419,34 +419,74 @@ class SessionStore(object):
         return self._entries[identity_key]
 
 
-class InGroupSession(InboundGroupSession):
-    def __new__(
-        cls,
-        sender_key,     # type: str
-        sender_fp_key,  # type: str
-        room_id,        # type: str
-        session_id,     # type: str
-        session_key     # type: str
-    ):
-        return super().__new__(cls, session_key)
-
+class InGroupSession(object):
     def __init__(
         self,
-        sender_key,     # type: str
-        sender_fp_key,  # type: str
-        room_id,        # type: str
-        session_id,     # type: str
-        session_key     # type: str
+        room_id,       # type: str
+        session,       # type: InboundGroupSession
+        sender_key,    # type: str
+        sender_fp_key  # type: str
     ):
         # type: (...) -> None
+        self._session = session
         self.sender_key = sender_key
         self.sender_fp_key = sender_fp_key
         self.room_id = room_id
-        super().__init__(session_key)
 
-        if self.id != session_id:
-            raise OlmSessionError("Session id misssmatch while importing "
-                                  "megolm session key")
+    def __eq__(self, value):
+        if not isinstance(value, InGroupSession):
+            return NotImplemented
+
+        # A group session is uniquely idenfitied by room_id, together with the
+        # sender_key of the room_key event before it was decrypted, and the
+        # session_id. If those properties match the sessions are considered to
+        # be equal.
+        if (self.room_id == value.room_id
+                and self.sender_key == value.sender_key
+                and self._session.id == value._session.id):
+            return True
+
+        return False
+
+    @property
+    def id(self):
+        # type: () -> str
+        return self._session.id
+
+    def decrypt(self, ciphertext):
+        # type: (str) -> Tuple[str, int]
+        return self._session.decrypt(ciphertext)
+
+    def pickle(self, passphrase=""):
+        # type: (Optional[str]) -> bytes
+        return self._session.pickle(passphrase)
+
+
+class GroupSessionStore(object):
+    def __init__(self):
+        self._entries = defaultdict(dict) \
+            # type: DefaultDict[str, Dict[str, InGroupSession]]
+
+    def __iter__(self):
+        # type: () -> Iterator[InGroupSession]
+        for room_sessions in self._entries.values():
+            for session in room_sessions.values():
+                yield session
+
+    def add(self, session):
+        # type: (InGroupSession) -> bool
+        if session in self._entries[session.room_id].values():
+            return False
+
+        self._entries[session.room_id][session.id] = session
+        return True
+
+    def get(self, room_id, session_id):
+        # type: (str, str) -> Optional[InGroupSession]
+        if session_id in self._entries[room_id]:
+            return self._entries[room_id][session_id]
+
+        return None
 
 
 class Olm(object):
@@ -479,11 +519,8 @@ class Olm(object):
         ))  # type: DeviceStore
 
         self.session_store = SessionStore()  # type: SessionStore
-
-        # Dict of inbound Megolm sessions
-        # Dict[room_id, Dict[session_id, session]]
-        self.inbound_group_sessions = defaultdict(dict) \
-            # type: DefaultDict[str, Dict[str, InboundGroupSession]]
+        self.inbound_group_store = GroupSessionStore()  \
+            # type: GroupSessionStore
 
         # Dict of outbound Megolm sessions Dict[room_id]
         self.outbound_group_sessions = {} \
@@ -593,26 +630,40 @@ class Olm(object):
         ))
 
         try:
+            s = InboundGroupSession(session_key)
+            if s.id != session_id:
+                raise OlmSessionError("Mismatched session id while creating "
+                                      "inbound group session")
+
             session = InGroupSession(
+                room_id,
+                s,
                 sender_key,
                 sender_fp_key,
-                room_id,
-                session_id,
-                session_key
             )
         except OlmSessionError as e:
             logger.warn(e)
             return
 
-        self.inbound_group_sessions[room_id][session_id] = session
-        # self.save_inbound_group_session(room_id, session)
+        self.inbound_group_store.add(session)
+        self.save_inbound_group_session(session)
 
     def create_outbound_group_session(self, room_id):
         # type: (str) -> None
         logger.info("Creating outbound group session for {}".format(room_id))
         session = OutboundGroupSession()
         self.outbound_group_sessions[room_id] = session
-        self.create_group_session(room_id, session.id, session.session_key)
+
+        id_key = self.account.identity_keys["curve25519"]
+        fp_key = self.account.identity_keys["ed25519"]
+
+        self.create_group_session(
+            id_key,
+            fp_key,
+            room_id,
+            session.id,
+            session.session_key
+        )
         logger.info("Created outbound group session for {}".format(room_id))
 
     def get_missing_sessions(self, users):
@@ -903,7 +954,7 @@ class Olm(object):
 
         payload_dict = {
             "algorithm": "m.megolm.v1.aes-sha2",
-            "sender_key": self.account.identity_keys()["curve25519"],
+            "sender_key": self.account.identity_keys["curve25519"],
             "ciphertext": ciphertext,
             "session_id": session.id,
             "device_id": self.device_id
@@ -913,16 +964,20 @@ class Olm(object):
 
     def group_decrypt(self, room_id, session_id, ciphertext):
         # type: (str, str, str) -> Optional[str]
-        if session_id not in self.inbound_group_sessions[room_id]:
+        session = self.inbound_group_store.get(room_id, session_id)
+
+        if not session:
+            logger.warn("No session found with session id {} for "
+                        "room {}".format(session_id, room_id))
             return None
 
-        session = self.inbound_group_sessions[room_id][session_id]
         try:
-            plaintext = session.decrypt(ciphertext)
+            plaintext, message_index = session.decrypt(ciphertext)
+            # TODO check that this isn't a replay attack.
+            # TODO return the verification status of the message
+            return plaintext
         except OlmGroupSessionError:
             return None
-
-        return plaintext
 
     def share_group_session(self, room_id, users):
         # type: (str, List[str]) -> Dict[str, Any]
@@ -942,7 +997,7 @@ class Olm(object):
             "sender": self.user_id,
             "sender_device": self.device_id,
             "keys": {
-                "ed25519": self.account.identity_keys()["ed25519"]
+                "ed25519": self.account.identity_keys["ed25519"]
             }
         }
 
@@ -976,7 +1031,7 @@ class Olm(object):
 
                 olm_dict = {
                     "algorithm": "m.olm.v1.curve25519-aes-sha2",
-                    "sender_key": self.account.identity_keys()["curve25519"],
+                    "sender_key": self.account.identity_keys["curve25519"],
                     "ciphertext": {
                         device.keys["curve25519"]: {
                             "type": (0 if isinstance(
@@ -1020,7 +1075,8 @@ class Olm(object):
                        "from olmsessions")
         db_sessions = cursor.fetchall()
 
-        cursor.execute("select room_id, pickle from inbound_group_sessions")
+        cursor.execute("select room_id, sender_key, sender_fp_key, "
+                       "pickle from inbound_group_sessions")
         db_inbound_group_sessions = cursor.fetchall()
 
         cursor.close()
@@ -1050,14 +1106,26 @@ class Olm(object):
                 self.session_store.add(session)
 
             for db_session in db_inbound_group_sessions:
-                session_pickle = db_session[1]
+                session_pickle = db_session[3]
                 try:
                     session_pickle = bytes(session_pickle, "utf-8")
                 except TypeError:
                     pass
 
                 s = InboundGroupSession.from_pickle(session_pickle)
-                self.inbound_group_sessions[db_session[0]][s.id] = s
+
+                room_id = db_session[0]
+                sender_key = db_session[1]
+                sender_fp_key = db_session[2]
+
+                group_session = InGroupSession(
+                    room_id,
+                    s,
+                    sender_key,
+                    sender_fp_key
+                )
+
+                self.inbound_group_store.add(group_session)
 
         except (OlmAccountError, OlmSessionError) as error:
             raise EncryptionError(error)
@@ -1097,12 +1165,18 @@ class Olm(object):
 
         cursor.close()
 
-    def save_inbound_group_session(self, room_id, session):
-        # type: (str, InboundGroupSession) -> None
+    def save_inbound_group_session(self, session):
+        # type: (InGroupSession) -> None
         cursor = self.database.cursor()
 
-        cursor.execute("insert into inbound_group_sessions values(?,?,?)",
-                       (room_id, session.id, session.pickle()))
+        cursor.execute("insert into inbound_group_sessions values(?,?,?,?,?)",
+                       (
+                           session.room_id,
+                           session.id,
+                           session.sender_key,
+                           session.sender_fp_key,
+                           session.pickle()
+                       ))
 
         self.database.commit()
 
@@ -1147,7 +1221,8 @@ class Olm(object):
                           and name='inbound_group_sessions'""")
         if not cursor.fetchone():
             cursor.execute("""create table inbound_group_sessions
-                              (room_id text, session_id text, pickle text)""")
+                              (room_id text, session_id text, sender_key text,
+                               sender_fp_key text, pickle text)""")
             database.commit()
             new = True
 
