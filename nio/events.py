@@ -250,6 +250,8 @@ class RoomMessage(Event):
 
         if content_dict["msgtype"] == "m.text":
             return RoomMessageText.from_dict(parsed_dict)
+        elif content_dict["msgtype"] == "m.emote":
+            return RoomMessageText.from_dict(parsed_dict)
 
         # TODO return unknown msgtype event
         return None
