@@ -30,7 +30,8 @@ from .events import (
     RoomAliasEvent,
     RoomNameEvent,
     RoomTopicEvent,
-    RoomEncryptionEvent
+    RoomEncryptionEvent,
+    PowerLevelsEvent
 )
 
 logger = Logger('nio.responses')
@@ -173,8 +174,8 @@ class SyncRepsponse(Response):
                     events.append(RoomNameEvent.from_dict(event_dict))
                 elif event_dict["type"] == "m.room.topic":
                     events.append(RoomTopicEvent.from_dict(event_dict))
-                elif event_dict["type"] == "m.room.topic":
-                    events.append(RoomTopicEvent.from_dict(event_dict))
+                elif event_dict["type"] == "m.room.power_levels":
+                    events.append(PowerLevelsEvent.from_dict(event_dict))
                 elif event_dict["type"] == "m.room.encryption":
                     events.append(RoomEncryptionEvent.from_dict(event_dict))
 
@@ -202,6 +203,17 @@ class SyncRepsponse(Response):
         )
 
     @staticmethod
+    def _get_state(parsed_dict, max_events=0, olm=None):
+        validate_json(parsed_dict, Schemas.room_state)
+        events = SyncRepsponse._get_room_events(
+            parsed_dict["events"],
+            max_events,
+            olm
+        )
+
+        return events
+
+    @staticmethod
     def _get_room_info(parsed_dict, max_events=0, olm=None):
         # type: (Dict[Any, Any], int, Any) -> RoomInfo
         joined_rooms = {
@@ -211,9 +223,8 @@ class SyncRepsponse(Response):
         left_rooms = {}  # type: Dict[str, Any]
 
         for room_id, room_dict in parsed_dict["join"].items():
+            state = SyncRepsponse._get_state(room_dict["state"])
             timeline = SyncRepsponse._get_timeline(room_dict["timeline"])
-            # TODO parse state
-            state = []  # type: List[Any]
             info = JoindedInfo(
                 timeline,
                 state,

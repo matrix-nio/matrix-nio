@@ -221,6 +221,14 @@ class Schemas(object):
         "required": ["events", "limited", "prev_batch"]
     }
 
+    room_state = {
+        "type": "object",
+        "properties": {
+            "events": {"type": "array"},
+        },
+        "required": ["events"]
+    }
+
     olm_event = {
         "type": "object",
         "properties": {
