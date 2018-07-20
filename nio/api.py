@@ -73,7 +73,7 @@ class Api(object):
         query_parameters = {"access_token": access_token}
 
         if next_batch:
-            query_parameters["next_batch"] = next_batch
+            query_parameters["since"] = next_batch
 
         if filter:
             filter_json = json.dumps(filter, separators=(',', ':'))

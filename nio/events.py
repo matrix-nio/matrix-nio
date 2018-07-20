@@ -417,8 +417,8 @@ class RoomMemberEvent(Event):
             return bad
 
         content = parsed_dict.pop("content")
-        prev_content = (parsed_dict.pop("prev_content") if "prev_content" in
-                        parsed_dict else None)
+        prev_content = (parsed_dict["unsigned"].pop("prev_content") if
+                        "prev_content" in parsed_dict["unsigned"] else None)
 
         return cls(
             parsed_dict["event_id"],

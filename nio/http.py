@@ -298,6 +298,7 @@ class HttpConnection(Connection):
 
         while ret != h11.NEED_DATA:
             if ret == h11.PAUSED or isinstance(ret, h11.EndOfMessage):
+                # TODO this can fail, restart the connection if it does
                 self._connection.start_next_cycle()
                 response = self._current_response
                 uuid = self._current_uuid
