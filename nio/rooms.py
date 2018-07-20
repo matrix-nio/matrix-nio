@@ -95,7 +95,7 @@ class MatrixRoom:
         # TODO: Hook the user display name disambiguation algorithm here.
         # Currently, we use the user display names as is, which may not be
         # unique.
-        users = [user.name for mxid, user
+        users = [user.user_id for mxid, user
                  in sorted(self.users.items(), key=lambda t: t[0])
                  if mxid != self.own_user_id]
 

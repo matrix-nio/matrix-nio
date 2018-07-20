@@ -21,6 +21,7 @@ from collections import deque, namedtuple
 from typing import *
 
 from logbook import Logger
+from builtins import str, bytes
 
 from .api import Http2Api, HttpApi
 from .exceptions import LocalProtocolError, RemoteTransportError
@@ -78,6 +79,11 @@ class Client(object):
             self.user_id = response.user_id
             self.device_id = response.device_id
         elif isinstance(response, SyncRepsponse):
+            if self.next_batch == response.next_batch:
+                return
+
+            self.next_batch = response.next_batch
+
             for room_id, join_info in response.rooms.join.items():
                 if room_id not in self.rooms:
                     logger.info("New joined room {}".format(room_id))
@@ -94,7 +100,9 @@ class Client(object):
     def receive(self, response_type, json_string):
         # type: (str, Union[str, bytes]) -> bool
         try:
-            parsed_dict = json.loads(json_string, encoding="utf-8")  \
+            string = json_string.decode("utf-8")
+
+            parsed_dict = json.loads(string, encoding="utf-8")  \
                 # type: Dict[Any, Any]
         except ValueError:
             # TODO return a error response
@@ -131,7 +139,7 @@ class HttpClient(object):
     def __init__(
             self,
             host,  # type: str
-            user,  # type: str
+            user="",  # type: str
             device_id="",    # type: Optional[str]
             session_dir="",  # type: Optional[str]
     ):
@@ -151,6 +159,18 @@ class HttpClient(object):
 
         uuid, data = self.connection.send(request)
         return uuid, data
+
+    @property
+    def user(self):
+        return self._client.user
+
+    @property
+    def rooms(self):
+        return self._client.rooms
+
+    @user.setter
+    def user(self, user):
+        self._client.user = user
 
     def connect(self, transport_type=TransportType.HTTP):
         # type: (Optional[TransportType]) -> bytes
