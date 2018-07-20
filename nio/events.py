@@ -22,6 +22,7 @@ from typing import *
 from .api import Api
 from .log import logger_group
 from .schemas import validate_json, Schemas
+from .encryption import Olm
 
 logger = Logger('nio.events')
 logger_group.add_logger(logger)
@@ -59,6 +60,38 @@ class Event(object):
             type(self).__name__,
             self.sender
         )
+
+    @classmethod
+    def parse_event(cls, event_dict, olm=None):
+        # type: (Dict[Any, Any], Optional[Olm]) -> Optional[Event]
+        if "unsigned" in event_dict:
+            if "redacted_because" in event_dict["unsigned"]:
+                return RedactedEvent.from_dict(event_dict)
+
+        if event_dict["type"] == "m.room.message":
+            # The transaction id will only be present for events that
+            # are send out from this client, since we print out our own
+            # messages as soon as we get a receive confirmation from
+            # the server we don't care about our own messages in a
+            # sync event. More info under:
+            # https://github.com/matrix-org/matrix-doc/blob/master/api/client-server/definitions/event.yaml#L53
+            if "transaction_id" in event_dict["unsigned"]:
+                return None
+
+            return RoomMessage.from_dict(event_dict, olm)
+
+        elif event_dict["type"] == "m.room.canonical_alias":
+            return RoomAliasEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.room.name":
+            return RoomNameEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.room.topic":
+            return RoomTopicEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.room.power_levels":
+            return PowerLevelsEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.room.encryption":
+            return RoomEncryptionEvent.from_dict(event_dict)
+
+        return None
 
 
 class BadEvent(Event):

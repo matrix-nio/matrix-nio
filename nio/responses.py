@@ -25,6 +25,7 @@ from logbook import Logger
 from .log import logger_group
 from .schemas import validate_json, Schemas
 from .events import (
+    Event,
     RoomMessage,
     RedactedEvent,
     RoomAliasEvent,
@@ -152,36 +153,15 @@ class SyncRepsponse(Response):
         for event_dict in parsed_dict:
             try:
                 validate_json(event_dict, Schemas.room_event)
-
-                if "unsigned" in event_dict:
-                    if "redacted_because" in event_dict["unsigned"]:
-                        events.append(RedactedEvent.from_dict(event_dict))
-                        continue
-
-                if event_dict["type"] == "m.room.message":
-                    # The transaction id will only be present for events that
-                    # are send out from this client, since we print out our own
-                    # messages as soon as we get a receive confirmation from
-                    # the server we don't care about our own messages in a
-                    # sync event. More info under:
-                    # https://github.com/matrix-org/matrix-doc/blob/master/api/client-server/definitions/event.yaml#L53
-                    if "transaction_id" in event_dict["unsigned"]:
-                        continue
-                    events.append(RoomMessage.from_dict(event_dict, olm))
-                elif event_dict["type"] == "m.room.canonical_alias":
-                    events.append(RoomAliasEvent.from_dict(event_dict))
-                elif event_dict["type"] == "m.room.name":
-                    events.append(RoomNameEvent.from_dict(event_dict))
-                elif event_dict["type"] == "m.room.topic":
-                    events.append(RoomTopicEvent.from_dict(event_dict))
-                elif event_dict["type"] == "m.room.power_levels":
-                    events.append(PowerLevelsEvent.from_dict(event_dict))
-                elif event_dict["type"] == "m.room.encryption":
-                    events.append(RoomEncryptionEvent.from_dict(event_dict))
-
             except (SchemaError, ValidationError) as e:
+                # TODO how to handle this
                 print(e)
                 pass
+
+            event = Event.parse_event(event_dict, olm)
+
+            if event:
+                events.append(event)
 
         return events
 
