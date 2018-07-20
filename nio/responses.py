@@ -212,6 +212,7 @@ class SyncRepsponse(Response):
 
         for room_id, room_dict in parsed_dict["join"].items():
             timeline = SyncRepsponse._get_timeline(room_dict["timeline"])
+            # TODO parse state
             state = []  # type: List[Any]
             info = JoindedInfo(
                 timeline,

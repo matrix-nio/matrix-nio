@@ -242,7 +242,7 @@ class RoomMessageText(Event):
 
     @staticmethod
     def _validate(parsed_dict):
-        # type: Dict[Any, Any] -> Optional[BadEvent]
+        # type: (Dict[Any, Any]) -> Optional[BadEvent]
         return validate_or_badevent(parsed_dict, Schemas.room_message_text)
 
     @classmethod
@@ -272,5 +272,5 @@ class RoomMessageText(Event):
 class RoomMessageEmote(RoomMessageText):
     @staticmethod
     def _validate(parsed_dict):
-        # type: Dict[Any, Any] -> Optional[BadEvent]
+        # type: (Dict[Any, Any]) -> Optional[BadEvent]
         return validate_or_badevent(parsed_dict, Schemas.room_message_emote)

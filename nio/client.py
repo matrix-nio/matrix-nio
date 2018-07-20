@@ -28,6 +28,7 @@ from .http import (Http2Connection, Http2Request, HttpConnection, HttpRequest,
                    Request, TransportResponse, TransportType)
 from .log import logger_group
 from .responses import LoginResponse, Response, SyncRepsponse
+from .rooms import MatrixRoom
 
 try:
     from json.decoder import JSONDecodeError
@@ -59,6 +60,8 @@ class Client(object):
         self.access_token = ""
         self.next_batch = ""
 
+        self.rooms = dict()  # type: Dict[str, MatrixRoom]
+
     def _load_olm(self):
         # TODO load the olm account and sessions from the session dir
         return False
@@ -74,6 +77,19 @@ class Client(object):
             self.access_token = response.access_token
             self.user_id = response.user_id
             self.device_id = response.device_id
+        elif isinstance(response, SyncRepsponse):
+            for room_id, join_info in response.rooms.join.items():
+                if room_id not in self.rooms:
+                    logger.info("New joined room {}".format(room_id))
+                    self.rooms[room_id] = MatrixRoom(room_id, self.user_id)
+
+                room = self.rooms[room_id]
+
+                for event in join_info.state:
+                    room.handle_event(event)
+
+                for event in join_info.timeline.events:
+                    room.handle_event(event)
 
     def receive(self, response_type, json_string):
         # type: (str, Union[str, bytes]) -> bool
@@ -103,6 +119,7 @@ class Client(object):
             return response
         elif typed_response.type == "sync":
             response = SyncRepsponse.from_dict(typed_response.data)
+            self._handle_response(response)
             return response
         else:
             raise NotImplementedError(
