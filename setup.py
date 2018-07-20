@@ -12,5 +12,6 @@ setup(
                  "I/O principles."),
     license="ISC",
     packages=["nio"],
+    install_requires=["future", "typing", "h11", "h2"],
     zip_safe=False
 )
