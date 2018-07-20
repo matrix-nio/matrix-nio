@@ -16,10 +16,33 @@
 
 from __future__ import unicode_literals
 
-from jsonschema import FormatChecker, validate
+from jsonschema import FormatChecker, Draft4Validator, validators
 
 
 RoomRegex = "^![a-zA-Z0-9]+:.+$"
+UserIdRegex = "^@.+:.+$"
+EventTypeRegex = r"^m\..+"
+
+
+def extend_with_default(validator_class):
+    validate_properties = validator_class.VALIDATORS["properties"]
+
+    def set_defaults(validator, properties, instance, schema):
+        for property, subschema in properties.items():
+            if "default" in subschema:
+                instance.setdefault(property, subschema["default"])
+
+        for error in validate_properties(
+            validator, properties, instance, schema,
+        ):
+            yield error
+
+    return validators.extend(
+        validator_class, {"properties": set_defaults},
+    )
+
+
+Validator = extend_with_default(Draft4Validator)
 
 
 @FormatChecker.cls_checks("user_id", ValueError)
@@ -37,7 +60,7 @@ def check_user_id(value):
 
 
 def validate_json(instance, schema):
-    validate(instance, schema, format_checker=FormatChecker())
+    Validator(schema, format_checker=FormatChecker()).validate(instance)
 
 
 class Schemas(object):
@@ -314,6 +337,45 @@ class Schemas(object):
                 "required": ["topic"]
                 }
             },
+        "required": [
+            "type",
+            "sender",
+            "content"
+        ]
+    }
+
+    room_power_levels = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "ban": {"type": "integer", "default": 50},
+                    "kick": {"type": "integer", "default": 50},
+                    "invite": {"type": "integer", "default": 50},
+                    "redact": {"type": "integer", "default": 50},
+                    "users_default": {"type": "integer", "default": 0},
+                    "events_default": {"type": "integer", "default": 0},
+                    "state_default": {"type": "integer", "default": 50},
+                    "events": {
+                        "type": "object",
+                        "patternProperties": {
+                            EventTypeRegex: {"type": "integer"}
+                        },
+                        "additionalProperties": False
+                    },
+                    "users": {
+                        "type": "object",
+                        "patternProperties": {
+                            UserIdRegex: {"type": "integer"}
+                        },
+                        "additionalProperties": False
+                    }
+                },
+            }
+        },
         "required": [
             "type",
             "sender",

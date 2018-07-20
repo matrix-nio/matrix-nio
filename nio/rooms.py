@@ -25,10 +25,12 @@ from logbook import Logger
 from .log import logger_group
 from .events import (
     Event,
+    PowerLevels,
     RoomAliasEvent,
     RoomTopicEvent,
     RoomNameEvent,
-    RoomEncryptionEvent
+    RoomEncryptionEvent,
+    PowerLevelsEvent
 )
 
 logger = Logger('nio.rooms')
@@ -47,7 +49,7 @@ class MatrixRoom:
         self.users = dict()           # type: Dict[str, MatrixUser]
         self.encrypted = False        # type: bool
         self.backlog_pending = False  # type: bool
-        self.power_levels = dict()    # type: Dict[str, int]
+        self.power_levels = PowerLevels()  # type: PowerLevels
         # yapf: enable
 
     def display_name(self):
@@ -145,9 +147,9 @@ class MatrixRoom:
                 if "display_name" in event.content:
                     user.display_name = event.content["display_name"]
             else:
-                # TODO the default power level doesn't have to be 0
-                level = (self.power_levels[event.sender] if event.sender in
-                         self.power_levels else 0)
+                level = (self.power_levels.users[event.sender] if
+                         event.sender in self.power_levels.users else
+                         self.power_levels.defaults.users_default)
                 display_name = (event.content["display_name"]
                                 if "display_name" in event.content else None)
 
@@ -183,13 +185,17 @@ class MatrixRoom:
         elif isinstance(event, RoomEncryptionEvent):
             self.encrypted = True
 
-        # elif isinstance(event, RoomPowerLevels):
-        #     self.power_levels = event.power_levels
+        elif isinstance(event, PowerLevelsEvent):
+            self.power_levels.update(event.power_levels)
 
-        #     # Update the power levels of the joined users
-        #     for user_id, level in self.power_levels.items():
-        #         if user_id in self.users:
-        #             self.users[user_id].power_level = level
+            # Update the power levels of the joined users
+            for user_id, level in self.power_levels.users.items():
+                if user_id in self.users:
+                    logger.info("Changing power level for user {} from {} to "
+                                "{}".format(user_id,
+                                            self.users[user_id].power_level,
+                                            level))
+                    self.users[user_id].power_level = level
 
 
 class MatrixUser:

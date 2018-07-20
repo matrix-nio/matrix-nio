@@ -274,3 +274,82 @@ class RoomMessageEmote(RoomMessageText):
     def _validate(parsed_dict):
         # type: (Dict[Any, Any]) -> Optional[BadEvent]
         return validate_or_badevent(parsed_dict, Schemas.room_message_emote)
+
+
+class DefaultLevels(object):
+    def __init__(self):
+        self.ban = 50
+        self.invite = 50
+        self.kick = 50
+        self.redact = 50
+        self.state_default = 0
+        self.events_default = 0
+        self.users_default = 0
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        obj = cls()
+        content = parsed_dict["content"]
+        obj.ban = content["ban"]
+        obj.invite = content["invite"]
+        obj.kick = content["kick"]
+        obj.redact = content["redact"]
+        obj.state_default = content["state_default"]
+        obj.events_default = content["events_default"]
+        obj.users_default = content["users_default"]
+        return obj
+
+
+class PowerLevels(object):
+    def __init__(self, defaults=None, users=None, events=None):
+        self.users = users or dict()
+        self.events = events or dict()
+        self.defaults = defaults or DefaultLevels()
+
+    def get_user_level(self, user_id):
+        # type: (str) -> int
+        if user_id in self.users:
+            return self.users[user_id]
+
+        return self.defaults.users_default
+
+    def update(self, new_levels):
+        if not isinstance(new_levels, PowerLevels):
+            return
+
+        self.defaults = new_levels.defaults
+        self.events.update(new_levels.events)
+        self.users.update(new_levels.users)
+
+
+class PowerLevelsEvent(Event):
+    def __init__(
+        self,
+        event_id,
+        sender,
+        server_ts,
+        power_levels
+    ):
+        super().__init__(event_id, sender, server_ts)
+        self.power_levels = power_levels
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        bad = validate_or_badevent(parsed_dict, Schemas.room_power_levels)
+
+        if bad:
+            return bad
+
+        default_levels = DefaultLevels.from_dict(parsed_dict)
+
+        users = parsed_dict["content"].pop("users")
+        events = parsed_dict["content"].pop("events")
+
+        levels = PowerLevels(default_levels, users, events)
+
+        return cls(
+            parsed_dict["event_id"],
+            parsed_dict["sender"],
+            parsed_dict["origin_server_ts"],
+            levels
+        )
