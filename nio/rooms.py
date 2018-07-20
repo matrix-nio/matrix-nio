@@ -142,21 +142,30 @@ class MatrixRoom:
 
     def _handle_membership(self, event):
         # type: (Any) -> None
-        if event.content["membership"] == "join":
-            if event.sender in self.users:
-                user = self.users[event.sender]
-                if "display_name" in event.content:
-                    user.display_name = event.content["display_name"]
-            else:
-                level = (self.power_levels.users[event.sender] if
-                         event.sender in self.power_levels.users else
-                         self.power_levels.defaults.users_default)
-                display_name = (event.content["display_name"]
-                                if "display_name" in event.content else None)
+        def join(event):
+            level = (self.power_levels.users[event.sender] if
+                     event.sender in self.power_levels.users else
+                     self.power_levels.defaults.users_default)
+            display_name = (event.content["display_name"]
+                            if "display_name" in event.content else None)
 
-                user = MatrixUser(event.sender, display_name, level)
-                self.users[event.sender] = user
-                return
+            user = MatrixUser(event.sender, display_name, level)
+            self.users[event.sender] = user
+            return
+
+        if event.content["membership"] == "join":
+            if event.prev_content:
+                if event.prev_content["membership"] != "join":
+                    join(event)
+                    return
+
+                else:
+                    if event.sender in self.users:
+                        user = self.users[event.sender]
+                        if "display_name" in event.content:
+                            user.display_name = event.content["display_name"]
+            else:
+                join(event)
 
         elif event.content["membership"] == "leave":
             if event.state_key in self.users:
