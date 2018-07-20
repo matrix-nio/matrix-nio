@@ -390,3 +390,43 @@ class Schemas(object):
             "content"
         ]
     }
+
+    room_membership = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string", "format": "user_id"},
+            "type": {"type": "string", "enum": ["m.room.member"]},
+            "prev_content": {
+                "type": "object",
+                "properties": {
+                    "membership": {
+                        "type": "string",
+                        "enum": ["invite", "join", "knock", "leave", "ban"]
+                    },
+                    "avatar_url": {"type": ["string", "null"]},
+                    "displayname": {"type": ["string", "null"]},
+                },
+                "required": ["membership"]
+            },
+            "content": {
+                "type": "object",
+                "properties": {
+                    "membership": {
+                        "type": "string",
+                        "enum": ["invite", "join", "knock", "leave", "ban"]
+                    },
+                    "avatar_url": {"type": ["string", "null"]},
+                    "displayname": {"type": ["string", "null"]},
+                },
+                "required": ["membership"]
+            }
+        },
+
+        "required": [
+            "type",
+            "sender",
+            "state_key",
+            "content"
+        ]
+    }

@@ -80,6 +80,8 @@ class Event(object):
 
             return RoomMessage.from_dict(event_dict, olm)
 
+        elif event_dict["type"] == "m.room.member":
+            return RoomMemberEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.canonical_alias":
             return RoomAliasEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.name":
@@ -385,4 +387,42 @@ class PowerLevelsEvent(Event):
             parsed_dict["sender"],
             parsed_dict["origin_server_ts"],
             levels
+        )
+
+
+class RoomMemberEvent(Event):
+    def __init__(
+        self,
+        event_id,           # type: str
+        sender,             # type: str
+        server_ts,          # type: int
+        state_key,          # type: str
+        content,            # type: Dict[str, str]
+        prev_content=None   # type: Optional[Dict[str, str]]
+    ):
+        # type: (...) -> None
+        super().__init__(event_id, sender, server_ts)
+        self.state_key = state_key
+        self.content = content
+        self.prev_content = prev_content
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomMemberEvent, BadEvent]
+        bad = validate_or_badevent(parsed_dict, Schemas.room_membership)
+
+        if bad:
+            return bad
+
+        content = parsed_dict.pop("content")
+        prev_content = (parsed_dict.pop("prev_content") if "prev_content" in
+                        parsed_dict else None)
+
+        return cls(
+            parsed_dict["event_id"],
+            parsed_dict["sender"],
+            parsed_dict["origin_server_ts"],
+            parsed_dict["state_key"],
+            content,
+            prev_content
         )

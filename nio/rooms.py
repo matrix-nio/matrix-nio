@@ -30,7 +30,8 @@ from .events import (
     RoomTopicEvent,
     RoomNameEvent,
     RoomEncryptionEvent,
-    PowerLevelsEvent
+    PowerLevelsEvent,
+    RoomMemberEvent
 )
 
 logger = Logger('nio.rooms')
@@ -167,13 +168,14 @@ class MatrixRoom:
 
     def handle_event(self, event):
         # type: (Event) -> None
-        # if isinstance(event, RoomMembershipEvent):
-        #     return self._handle_membership(event)
         logger.info("Room {} handling event of type {}".format(
             self.room_id,
             type(event).__name__))
 
-        if isinstance(event, RoomNameEvent):
+        if isinstance(event, RoomMemberEvent):
+            self._handle_membership(event)
+
+        elif isinstance(event, RoomNameEvent):
             self.name = event.name
 
         elif isinstance(event, RoomAliasEvent):
