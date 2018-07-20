@@ -27,7 +27,7 @@ import h2.connection
 import h2.events
 import h11
 
-from . import USER_AGENT
+USER_AGENT = "nio"
 
 
 @unique
