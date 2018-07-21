@@ -21,7 +21,7 @@ from collections import deque, namedtuple
 from typing import *
 
 from logbook import Logger
-from builtins import str, bytes
+from builtins import bytes, str
 
 from .api import Http2Api, HttpApi
 from .exceptions import LocalProtocolError, RemoteTransportError
@@ -97,14 +97,10 @@ class Client(object):
                 for event in join_info.timeline.events:
                     room.handle_event(event)
 
-    def receive(self, response_type, json_string):
-        # type: (str, Union[str, bytes]) -> bool
+    def receive(self, response_type, byte_string):
+        # type: (str, bytes) -> bool
         try:
-            if isinstance(json_string, bytes):
-                string = json_string.decode("utf-8")
-            else:
-                string = json_string
-
+            string = byte_string.decode("utf-8")
             parsed_dict = json.loads(string, encoding="utf-8")  \
                 # type: Dict[Any, Any]
         except ValueError:

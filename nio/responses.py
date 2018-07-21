@@ -18,6 +18,7 @@ from __future__ import unicode_literals
 
 from typing import *
 from typing import NamedTuple
+from  builtins import str
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
