@@ -19,6 +19,7 @@ from __future__ import unicode_literals
 
 import socket
 import ssl
+import time
 
 import click
 import logbook
@@ -135,7 +136,25 @@ def cli(
 
 @cli.command()
 @click.pass_obj
-def sync(cli):
+@click.option('--loop/--no-loop', default=False)
+def sync(cli, loop):
+    def sync_func():
+        data = client.sync()
+        sock.sendall(data)
+        response = None
+
+        while not response:
+            data = client.data_to_send()
+
+            if data:
+                sock.sendall(data)
+
+            received_data = sock.recv(4096)
+            client.receive(received_data)
+            response = client.next_response()
+
+        click.echo(response)
+
     sock, client = connect(cli)
 
     data = client.login(cli.password)
@@ -153,24 +172,16 @@ def sync(cli):
         client.receive(received_data)
         response = client.next_response()
 
-    data = client.sync()
-    sock.sendall(data)
-    response = None
+    if not loop:
+        sync_func()
+        disconnect(sock, client)
+        return True
 
-    while not response:
-        data = client.data_to_send()
-
-        if data:
-            sock.sendall(data)
-
-        received_data = sock.recv(4096)
-        client.receive(received_data)
-        response = client.next_response()
-
-    click.echo(response)
+    while True:
+        sync_func()
+        time.sleep(3)
 
     disconnect(sock, client)
-
     return True
 
 
