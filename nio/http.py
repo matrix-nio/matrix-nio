@@ -26,6 +26,14 @@ from uuid import uuid4
 import h2.connection
 import h2.events
 import h11
+import pprint
+
+from logbook import Logger
+
+from .log import logger_group
+
+logger = Logger('nio.http')
+logger_group.add_logger(logger)
 
 USER_AGENT = "nio"
 
@@ -186,6 +194,7 @@ class TransportResponse(object):
         # type: (List[Any], bytes) -> None
         self.responses = responses if responses else []
         self.data = data
+        self.status_code = None  # type: Optional[int]
 
     def __repr__(self):
         return repr(self.responses) + repr(self.data)
@@ -216,13 +225,29 @@ class HttpResponse(TransportResponse):
 
 
 class Http2Response(TransportResponse):
-    def add_response(self, response):
-        # type: (Union[h11.Response, h11.InformationalResponse]) -> None
-        self.responses.append(response)
+    def add_response(self, responses):
+        # type: (Union[h2.Response, h2.InformationalResponse]) -> None
+        for response in responses:
+            logger.debug("Got Http2 header {}".format(
+                pprint.pformat(response)
+            ))
+            try:
+                name, value = response
+                if name == b":status":
+                    self.status_code = int(value)
+            except ValueError:
+                pass
 
     def add_data(self, data):
         # type: (bytes) -> None
         self.data = self.data + data
+
+    @property
+    def is_ok(self):
+        return True
+        if self.status_code == 200:
+            return True
+        return False
 
 
 class Request(object):
@@ -326,24 +351,31 @@ class Http2Connection(Connection):
         # type: () -> None
         self._connection = h2.connection.H2Connection()
         self._responses = {}  # type: Dict[int, Http2Response]
+        self._uuids = {}      # type: Dict[int, str]
 
     def send(self, mrequest):
         # type: (Request) -> bytes
         if not isinstance(mrequest, Http2Request):
             raise TypeError("Invalid request type for HttpConnection")
 
+        logger.info("Making Http2 request.")
+
         stream_id = self._connection.get_next_available_stream_id()
+        logger.debug("New stream id {}".format(stream_id))
         self._connection.send_headers(stream_id, mrequest._request)
         # TODO we need to split the data here according to window
         # and frame size.
         self._connection.send_data(stream_id, mrequest._data)
-        # TODO store the request type so we know how to parse the response on
-        # this stream id.
         self._connection.end_stream(stream_id)
         ret = self._connection.data_to_send()
         self._responses[stream_id] = Http2Response()
+        uuid = uuid4()
+        self._uuids[stream_id] = uuid
 
-        return ret
+        return uuid, ret
+
+    def data_to_send(self):
+        return self._connection.data_to_send()
 
     def connect(self):
         # type: () -> bytes
@@ -368,30 +400,49 @@ class Http2Connection(Connection):
         stream_id = event.stream_id
         data = event.data
 
+        self._connection.acknowledge_received_data(
+            event.flow_controlled_length, event.stream_id)
+
         response = self._responses[stream_id]
         response.add_data(data)
 
-    def _handle_events(self, events):
-        # type: (h2.events.Event) -> Optional[Http2Response]
+    def _handle_events(
+        self,
+        events  # type: (h2.events.Event)
+    ):
+        # type: (...) -> Tuple[Optional[str], Optional[Http2Response]]
         for event in events:
+            logger.info("Handling Http2 event of type {}".format(
+                type(event).__name__))
             if isinstance(event, h2.events.ResponseReceived):
                 self._handle_headers(event)
             elif isinstance(event, h2.events.DataReceived):
                 self._handle_data(event)
+                logger.debug("Data received stream id {} "
+                             "stream ended {}".format(
+                                event.stream_id,
+                                event.stream_ended
+                             ))
+                if event.stream_ended:
+                    response = self._responses.pop(event.stream_id)
+                    uuid = self._uuids.pop(event.stream_id)
+                    return uuid, response
             elif isinstance(event, h2.events.StreamEnded):
                 response = self._responses.pop(event.stream_id)
-                return response
+                uuid = self._uuids.pop(event.stream_id)
+                return uuid, response
             elif isinstance(event, h2.events.SettingsAcknowledged):
                 pass
             elif isinstance(event, h2.events.StreamReset):
                 # TODO signal an error
                 self._responses.pop(event.stream_id)
+                self._uuids.pop(event.stream_id)
             elif isinstance(event, h2.events.WindowUpdated):
                 pass
 
-        return None
+        return None, None
 
     def receive(self, data):
-        # type: (bytes) -> Optional[Http2Response]
+        # type: (bytes) -> Tuple[Optional[str], Optional[Http2Response]]
         events = self._connection.receive_data(data)
         return self._handle_events(events)
