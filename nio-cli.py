@@ -144,6 +144,11 @@ def sync(cli):
     response = None
 
     while not response:
+        data = client.data_to_send()
+
+        if data:
+            sock.sendall(data)
+
         received_data = sock.recv(4096)
         client.receive(received_data)
         response = client.next_response()
@@ -153,6 +158,11 @@ def sync(cli):
     response = None
 
     while not response:
+        data = client.data_to_send()
+
+        if data:
+            sock.sendall(data)
+
         received_data = sock.recv(4096)
         client.receive(received_data)
         response = client.next_response()
