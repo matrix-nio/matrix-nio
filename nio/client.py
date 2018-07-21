@@ -100,7 +100,10 @@ class Client(object):
     def receive(self, response_type, json_string):
         # type: (str, Union[str, bytes]) -> bool
         try:
-            string = json_string.decode("utf-8")
+            if isinstance(json_string, bytes):
+                string = json_string.decode("utf-8")
+            else:
+                string = json_string
 
             parsed_dict = json.loads(string, encoding="utf-8")  \
                 # type: Dict[Any, Any]
@@ -164,13 +167,13 @@ class HttpClient(object):
     def user(self):
         return self._client.user
 
-    @property
-    def rooms(self):
-        return self._client.rooms
-
     @user.setter
     def user(self, user):
         self._client.user = user
+
+    @property
+    def rooms(self):
+        return self._client.rooms
 
     def connect(self, transport_type=TransportType.HTTP):
         # type: (Optional[TransportType]) -> bytes
@@ -247,7 +250,7 @@ class HttpClient(object):
 
         uuid, transport_response = self.connection.receive(data)
 
-        if transport_response:
+        if transport_response and uuid:
             if transport_response.is_ok:
                 request_type = self.requests_made.pop(uuid)
                 logger.info("Received response of type: {}".format(
