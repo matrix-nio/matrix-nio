@@ -20,8 +20,8 @@ from jsonschema import FormatChecker, Draft4Validator, validators
 
 
 RoomRegex = "^![a-zA-Z0-9]+:.+$"
-UserIdRegex = "^@.+:.+$"
-EventTypeRegex = r"^m\..+"
+UserIdRegex = "^@.*:.+$"
+EventTypeRegex = r"^.+\..+"
 
 
 def extend_with_default(validator_class):
