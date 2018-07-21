@@ -88,7 +88,12 @@ def validate_proxy_type(ctx, param, value):
 @click.argument("host", callback=validate_host)
 @click.argument("user")
 @click.argument("password")
-@click.option("--verbosity", type=click.Choice(["error", "warning", "info"]),
+@click.option("--verbosity", type=click.Choice([
+    "error",
+    "warning",
+    "info",
+    "debug"
+]),
               default="error")
 @click.option("-k", "--ssl-insecure/--no-ssl-insecure", default=False)
 @click.option("--proxy-host", callback=validate_host)
@@ -113,6 +118,8 @@ def cli(
         nio.logger_group.level = logbook.WARNING
     elif verbosity == "error":
         nio.logger_group.level = logbook.ERROR
+    elif verbosity == "debug":
+        nio.logger_group.level = logbook.DEBUG
 
     ctx.obj = CliClient(
         user,
