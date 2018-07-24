@@ -369,6 +369,7 @@ class Schemas(object):
                     "state_default": {"type": "integer", "default": 50},
                     "events": {
                         "type": "object",
+                        "default": {},
                         "patternProperties": {
                             EventTypeRegex: {"type": "integer"}
                         },
@@ -376,6 +377,7 @@ class Schemas(object):
                     },
                     "users": {
                         "type": "object",
+                        "default": {},
                         "patternProperties": {
                             UserIdRegex: {"type": "integer"}
                         },
