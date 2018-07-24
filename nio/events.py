@@ -80,7 +80,7 @@ class Event(object):
             if "transaction_id" in event_dict["unsigned"]:
                 return None
 
-            return RoomMessage.from_dict(event_dict, olm)
+            return RoomMessage.parse_event(event_dict, olm)
 
         elif event_dict["type"] == "m.room.member":
             return RoomMemberEvent.from_dict(event_dict)
@@ -241,8 +241,8 @@ class RoomTopicEvent(Event):
 
 class RoomMessage(Event):
     @staticmethod
-    def from_dict(parsed_dict, olm=None):
-        # type: (Dict[Any, Any], Any) -> Union[Event, BadEvent]
+    def parse_event(parsed_dict, olm=None):
+        # type: (Dict[Any, Any], Any) -> Union[RoomMessage, BadEvent]
         bad = validate_or_badevent(parsed_dict, Schemas.room_message)
 
         if bad:
@@ -255,11 +255,29 @@ class RoomMessage(Event):
         elif content_dict["msgtype"] == "m.emote":
             return RoomMessageEmote.from_dict(parsed_dict)
 
-        # TODO return unknown msgtype event
-        return None
+        return RoomMessageUnknown.from_dict(parsed_dict)
 
 
-class RoomMessageText(Event):
+class RoomMessageUnknown(RoomMessage):
+    def __init__(self, event_id, sender, server_ts, message_type, content):
+        # type: (str, str, int, str, str) -> None
+        self.content = content
+        self.type = message_type
+        super().__init__(event_id, sender, server_ts)
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> RoomMessage
+        return cls(
+            parsed_dict["event_id"],
+            parsed_dict["sender"],
+            parsed_dict["origin_server_ts"],
+            parsed_dict["content"]["type"],
+            parsed_dict.pop("content")
+        )
+
+
+class RoomMessageText(RoomMessage):
     def __init__(
         self,
         event_id,        # type: str
@@ -286,7 +304,7 @@ class RoomMessageText(Event):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomMessageText, BadEvent]
+        # type: (Dict[Any, Any]) -> Union[RoomMessage, BadEvent]
         bad = cls._validate(parsed_dict)
 
         if bad:
