@@ -2,7 +2,8 @@
 
 from __future__ import unicode_literals
 
-from nio.client import HttpClient, RemoteTransportError
+from nio.client import HttpClient
+from nio.http import TransportResponse
 
 
 class TestClass(object):
@@ -17,17 +18,15 @@ class TestClass(object):
         client.connect()
         client.login("test")
         transport_response = self._load_response("tests/data/http_503.txt")
-        try:
-            client.receive(transport_response)
-        except RemoteTransportError:
-            pass
+        client.receive(transport_response)
+        response = client.next_response()
+        assert response.status_code == 503
 
     def test_502(self):
         client = HttpClient("localhost", "example")
         client.connect()
         client.login("test")
         transport_response = self._load_response("tests/data/http_502.txt")
-        try:
-            client.receive(transport_response)
-        except RemoteTransportError:
-            pass
+        client.receive(transport_response)
+        response = client.next_response()
+        assert response.status_code == 502

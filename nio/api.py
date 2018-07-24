@@ -20,7 +20,7 @@ import json
 from typing import *
 
 from .exceptions import LocalProtocolError
-from .http import Http2Request, HttpRequest, Request
+from .http import Http2Request, HttpRequest, TransportRequest
 
 try:
     from urllib.parse import quote, urlencode, urlparse
@@ -105,7 +105,7 @@ class HttpApi(object):
             raise LocalProtocolError("Invalid request method")
 
     def login(self, user, password, device_name="", device_id=""):
-        # type: (str, str, Optional[str], Optional[str]) -> Request
+        # type: (str, str, Optional[str], Optional[str]) -> TransportRequest
         path, post_data = Api.login(
             user,
             password,
@@ -115,7 +115,7 @@ class HttpApi(object):
         return self._build_request("POST", path, post_data)
 
     def sync(self, access_token, next_batch=None, filter=None):
-        # type: (str, Optional[str], Optional[Dict[Any, Any]]) -> Request
+        # type: (str, Optional[str], Optional[Dict[Any, Any]]) -> TransportRequest
         path = Api.sync(access_token, next_batch, filter)
         return self._build_request("GET", path)
 

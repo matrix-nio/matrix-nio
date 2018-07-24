@@ -17,8 +17,12 @@
 from __future__ import unicode_literals
 
 import json
+from uuid import UUID
 from collections import deque, namedtuple
 from typing import *
+
+import h11
+import h2
 
 from logbook import Logger
 from builtins import bytes, str
@@ -26,7 +30,7 @@ from builtins import bytes, str
 from .api import Http2Api, HttpApi
 from .exceptions import LocalProtocolError, RemoteTransportError
 from .http import (Http2Connection, Http2Request, HttpConnection, HttpRequest,
-                   Request, TransportResponse, TransportType)
+                   TransportResponse, TransportType, TransportRequest)
 from .log import logger_group
 from .responses import LoginResponse, Response, SyncRepsponse
 from .rooms import MatrixRoom
@@ -97,11 +101,10 @@ class Client(object):
                 for event in join_info.timeline.events:
                     room.handle_event(event)
 
-    def receive(self, response_type, byte_string):
-        # type: (str, bytes) -> bool
+    def receive(self, response_type, json_string):
+        # type: (str, str) -> bool
         try:
-            string = byte_string.decode("utf-8")
-            parsed_dict = json.loads(string, encoding="utf-8")  \
+            parsed_dict = json.loads(json_string, encoding="utf-8")  \
                 # type: Dict[Any, Any]
         except ValueError:
             # TODO return a error response
@@ -144,7 +147,8 @@ class HttpClient(object):
     ):
         # type: (...) -> None
         self.host = host
-        self.requests_made = {}  # type: Dict[str, str]
+        self.requests_made = {}        # type: Dict[UUID, str]
+        self.response_queue = deque()  # type: Deque[TransportResponse]
 
         self._client = Client(user, device_id, session_dir)
         self.api = None         # type: Optional[Union[HttpApi, Http2Api]]
@@ -152,7 +156,7 @@ class HttpClient(object):
             # type: Optional[Union[HttpConnection, Http2Connection]]
 
     def _send(self, request):
-        # type: (Request) -> Tuple[str, bytes]
+        # type: (TransportRequest) -> Tuple[UUID, bytes]
         if not self.connection:
             raise LocalProtocolError("Not connected.")
 
@@ -240,24 +244,34 @@ class HttpClient(object):
 
     def receive(self, data):
         # type: (bytes) -> None
-        # TODO turn the TransportResponse in a MatrixResponse
         if not self.connection:
             raise LocalProtocolError("Not connected.")
 
-        uuid, transport_response = self.connection.receive(data)
+        try:
+            response = self.connection.receive(data)
+        except (
+            h11.RemoteProtocolError,
+            h2.exceptions.RemoteProtocolError
+        ) as e:
+            raise RemoteTransportError(e)
 
-        if transport_response and uuid:
-            if transport_response.is_ok:
-                request_type = self.requests_made.pop(uuid)
+        if response:
+            request_type = self.requests_made.pop(response.uuid)
+            if response.is_ok:
                 logger.info("Received response of type: {}".format(
                     request_type))
-                self._client.receive(request_type,
-                                     transport_response.data)
+                self._client.receive(request_type, response.text)
             else:
-                # TODO return an error repsonse
-                raise RemoteTransportError
+                logger.info(("Error with response of type type: {}, "
+                             "error code {}").format(
+                            request_type, response.status_code))
+
+                self.response_queue.append(response)
         return
 
     def next_response(self, max_events=0):
         # type: (int) -> Optional[Union[TransportResponse, Response]]
+        if self.response_queue:
+            return self.response_queue.popleft()
+
         return self._client.next_response(max_events)
