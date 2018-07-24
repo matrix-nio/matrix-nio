@@ -251,7 +251,7 @@ class HttpClient(object):
             response = self.connection.receive(data)
         except (
             h11.RemoteProtocolError,
-            h2.exceptions.RemoteProtocolError
+            h2.exceptions.ProtocolError
         ) as e:
             raise RemoteTransportError(e)
 
