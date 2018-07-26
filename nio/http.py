@@ -201,8 +201,9 @@ class TransportResponse(object):
         self.content = b""           # type: bytes
         self.status_code = None      # type: Optional[int]
         self.uuid = uuid4()
-        self._send_time = time.time()
-        self._end_time = None        # type: Optional[int]
+        self.creation_time = time.time()
+        self.send_time = None           # type: Optional[int]
+        self.receive_time = None        # type: Optional[int]
 
     def __repr__(self):
         return repr(self.responses) + repr(self.content)
@@ -214,15 +215,18 @@ class TransportResponse(object):
         # type: (bytes) -> None
         self.content = self.content + content
 
-    def close(self):
-        self._end_time = time.time()
+    def mark_as_sent(self):
+        self.send_time = time.time()
+
+    def mark_as_received(self):
+        self.receive_time = time.time()
 
     @property
     def elapsed(self):
         if self._end_time:
-            return self._end_time - self._send_time
+            return self.receive_time - self.send_time
 
-        return time.time() - self._send_time
+        return time.time() - self.send_time
 
     @property
     def text(self):
@@ -328,10 +332,13 @@ class HttpConnection(Connection):
 
         while ret != h11.NEED_DATA:
             if ret == h11.PAUSED or isinstance(ret, h11.EndOfMessage):
-                # TODO this can fail, restart the connection if it does
-                self._connection.start_next_cycle()
+                try:
+                    self._connection.start_next_cycle()
+                except h11.ProtocolError:
+                    self._connection = h11.Connection(our_role=h11.CLIENT)
                 response = self._current_response
                 self._current_response = None
+                response.mark_as_received()
                 return response
             elif isinstance(ret, h11.InformationalResponse):
                 pass
@@ -423,7 +430,7 @@ class Http2Connection(Connection):
                 self._handle_data(event)
             elif isinstance(event, h2.events.StreamEnded):
                 response = self._responses.pop(event.stream_id)
-                response.close()
+                response.mark_as_received()
                 return response
             elif isinstance(event, h2.events.SettingsAcknowledged):
                 pass

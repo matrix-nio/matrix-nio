@@ -28,7 +28,11 @@ from logbook import Logger
 from builtins import bytes, str
 
 from .api import Http2Api, HttpApi
-from .exceptions import LocalProtocolError, RemoteTransportError
+from .exceptions import (
+    LocalProtocolError,
+    RemoteTransportError,
+    RemoteProtocolError
+)
 from .http import (Http2Connection, Http2Request, HttpConnection, HttpRequest,
                    TransportResponse, TransportType, TransportRequest)
 from .log import logger_group
@@ -106,9 +110,8 @@ class Client(object):
         try:
             parsed_dict = json.loads(json_string, encoding="utf-8")  \
                 # type: Dict[Any, Any]
-        except ValueError:
-            # TODO return a error response
-            return False
+        except JSONDecodeError as e:
+            raise RemoteProtocolError("Error parsing json: {}".format(str(e)))
 
         response = TypedResponse(response_type, parsed_dict)
         self.parse_queue.append(response)
