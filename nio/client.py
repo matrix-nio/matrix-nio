@@ -50,7 +50,8 @@ logger = Logger('nio.client')
 logger_group.add_logger(logger)
 
 
-TypedResponse = namedtuple("TypedResponse", ["type", "data", "uuid"])
+TypedResponse = namedtuple("TypedResponse", ["type", "data", "uuid", "timing"])
+TimingInfo = namedtuple("TimingInfo", ["start", "end"])
 
 
 class Client(object):
@@ -106,15 +107,15 @@ class Client(object):
                 for event in join_info.timeline.events:
                     room.handle_event(event)
 
-    def receive(self, response_type, json_string, uuid=""):
-        # type: (str, str, UUID) -> bool
+    def receive(self, response_type, json_string, uuid=None, timing=None):
+        # type: (str, str, Optional[UUID], Optional[TimingInfo]) -> bool
         try:
             parsed_dict = json.loads(json_string, encoding="utf-8")  \
                 # type: Dict[Any, Any]
         except JSONDecodeError as e:
             raise RemoteProtocolError("Error parsing json: {}".format(str(e)))
 
-        response = TypedResponse(response_type, parsed_dict, uuid)
+        response = TypedResponse(response_type, parsed_dict, uuid, timing)
         self.parse_queue.append(response)
 
         return True
@@ -130,21 +131,22 @@ class Client(object):
             response = LoginResponse.from_dict(typed_response.data)  \
                 # type: Response
             self._handle_response(response)
-            response.uuid = typed_response.uuid
-            return response
         elif typed_response.type == "sync":
             response = SyncRepsponse.from_dict(typed_response.data)
             self._handle_response(response)
-            response.uuid = typed_response.uuid
-            return response
         elif typed_response.type == "room_send":
             response = RoomSendResponse.from_dict(typed_response.data)
-            response.uuid = typed_response.uuid
-            return response
-        else:
+
+        if not response:
             raise NotImplementedError(
                 "Response type {} not implemented".format(typed_response.type)
             )
+
+        response.uuid = typed_response.uuid
+        if typed_response.timing:
+            response.start_time = typed_response.timing.start
+            response.end_time = typed_response.timing.end
+        return response
 
 
 class HttpClient(object):
@@ -184,6 +186,14 @@ class HttpClient(object):
     @property
     def rooms(self):
         return self._client.rooms
+
+    @property
+    def lag(self):
+        # type: () -> float
+        if not self.connection:
+            return 0
+
+        return self.connection.lag
 
     def connect(self, transport_type=TransportType.HTTP):
         # type: (Optional[TransportType]) -> bytes
@@ -295,10 +305,12 @@ class HttpClient(object):
             if response.is_ok:
                 logger.info("Received response of type: {}".format(
                     request_type))
+                timing = TimingInfo(response.send_time, response.receive_time)
                 self._client.receive(
                     request_type,
                     response.text,
-                    response.uuid
+                    response.uuid,
+                    timing
                 )
             else:
                 logger.info(("Error with response of type type: {}, "

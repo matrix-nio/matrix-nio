@@ -20,7 +20,7 @@ import json
 import time
 
 from builtins import bytes, super
-from collections import deque
+from collections import deque, OrderedDict
 from enum import Enum, unique
 from typing import *
 from uuid import uuid4, UUID
@@ -235,7 +235,7 @@ class TransportResponse(object):
 
     @property
     def elapsed(self):
-        if self._end_time:
+        if self.receive_time:
             return self.receive_time - self.send_time
 
         return time.time() - self.send_time
@@ -324,6 +324,16 @@ class HttpConnection(Connection):
         _, data = self.send(request)
         return data
 
+    @property
+    def lag(self):
+        # type: () -> float
+        if not self._current_response:
+            return 0
+
+        response = self._current_response
+
+        return response.elapsed
+
     def send(self, request):
         # type: (TransportRequest) -> Tuple[UUID, bytes]
         data = b""
@@ -331,7 +341,8 @@ class HttpConnection(Connection):
         if not isinstance(request, HttpRequest):
             raise TypeError("Invalid request type for HttpConnection")
 
-        if self._connection.our_state == h11.IDLE:
+        if (self._connection.our_state == h11.IDLE
+                and not self._current_response):
             data = data + self._connection.send(request._request)
 
             if request._data:
@@ -346,6 +357,7 @@ class HttpConnection(Connection):
             else:
                 self._current_response = HttpResponse()
 
+            self._current_response.mark_as_sent()
             return self._current_response.uuid, data
         else:
             request.response = HttpResponse()
@@ -389,7 +401,18 @@ class Http2Connection(Connection):
     def __init__(self):
         # type: () -> None
         self._connection = h2.connection.H2Connection()
-        self._responses = {}  # type: Dict[int, Http2Response]
+        self._responses = OrderedDict()  \
+            # type: OrderedDict[int, Http2Response]
+
+    @property
+    def lag(self):
+        # type: () -> float
+        if not self._responses:
+            return 0
+
+        response = list(self._responses.values())[0]
+
+        return response.elapsed
 
     def send(self, request):
         # type: (TransportRequest) -> Tuple[UUID, bytes]
@@ -408,6 +431,7 @@ class Http2Connection(Connection):
         self._connection.end_stream(stream_id)
         ret = self._connection.data_to_send()
         response = Http2Response()
+        response.mark_as_sent()
         self._responses[stream_id] = response
 
         return response.uuid, ret

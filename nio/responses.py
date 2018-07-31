@@ -67,6 +67,14 @@ JoindedInfo = NamedTuple(
 class Response(object):
     def __init__(self):
         self.uuid = ""
+        self.start_time = None
+        self.end_time = None
+
+    @property
+    def elapsed(self):
+        if not self.start_time or not self.end_time:
+            return 0
+        return self.end_time - self.start_time
 
 
 class ErrorResponse(Response):
