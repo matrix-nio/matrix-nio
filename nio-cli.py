@@ -139,7 +139,7 @@ def cli(
 @click.option('--loop/--no-loop', default=False)
 def sync(cli, loop):
     def sync_func():
-        data = client.sync()
+        _, data = client.sync()
         sock.sendall(data)
         response = None
 
@@ -157,7 +157,7 @@ def sync(cli, loop):
 
     sock, client = connect(cli)
 
-    data = client.login(cli.password)
+    _, data = client.login(cli.password)
     sock.sendall(data)
 
     response = None
@@ -190,7 +190,7 @@ def sync(cli, loop):
 def login(cli):
     sock, client = connect(cli)
 
-    data = client.login(cli.password)
+    _, data = client.login(cli.password)
     sock.sendall(data)
 
     response = None

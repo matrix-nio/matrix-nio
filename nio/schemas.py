@@ -432,3 +432,12 @@ class Schemas(object):
             "content"
         ]
     }
+
+    room_send = {
+        "type": "object",
+        "properties": {
+            "event_id": {"type": "string"}
+        },
+        "required": ["event_id"],
+        "additionalProperties": False
+    }

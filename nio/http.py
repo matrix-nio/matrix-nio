@@ -266,6 +266,10 @@ class HttpResponse(TransportResponse):
 
 
 class Http2Response(TransportResponse):
+    def __init__(self):
+        super().__init__()
+        self.is_reset = False
+
     def add_response(self, headers):
         # type: (h2.events.ResponseReceived) -> None
         for header in headers:
@@ -276,6 +280,16 @@ class Http2Response(TransportResponse):
                 self.status_code = int(value)
             else:
                 self.headers[name] = value
+
+    @property
+    def is_ok(self):
+        if self.is_reset:
+            return False
+
+        if self.status_code == 200:
+            return True
+
+        return False
 
 
 class Connection(object):
@@ -327,7 +341,10 @@ class HttpConnection(Connection):
                 request._end_of_message
             )
 
-            self._current_response = HttpResponse()
+            if request.response:
+                self._current_response = request.response
+            else:
+                self._current_response = HttpResponse()
 
             return self._current_response.uuid, data
         else:
@@ -379,7 +396,8 @@ class Http2Connection(Connection):
         if not isinstance(request, Http2Request):
             raise TypeError("Invalid request type for HttpConnection")
 
-        logger.info("Making Http2 request.")
+        logger.debug("Making Http2 request {} {}.".format(
+            pprint.pformat(request._request), pprint.pformat(request._data)))
 
         stream_id = self._connection.get_next_available_stream_id()
         logger.debug("New stream id {}".format(stream_id))
@@ -433,8 +451,7 @@ class Http2Connection(Connection):
     ):
         # type: (...) -> Optional[Http2Response]
         for event in events:
-            logger.info("Handling Http2 event of type {}".format(
-                type(event).__name__))
+            logger.info("Handling Http2 event: {}".format(repr(event)))
 
             if isinstance(event, h2.events.ResponseReceived):
                 self._handle_response(event)

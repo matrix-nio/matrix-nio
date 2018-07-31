@@ -18,7 +18,7 @@ from __future__ import unicode_literals
 
 from typing import *
 from typing import NamedTuple
-from  builtins import str
+from  builtins import str, super
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
@@ -65,12 +65,14 @@ JoindedInfo = NamedTuple(
 
 
 class Response(object):
-    pass
+    def __init__(self):
+        self.uuid = ""
 
 
 class ErrorResponse(Response):
     def __init__(self, message, code=""):
         # type: (str, Optional[str]) -> None
+        super().__init__()
         self.message = message
         self.code = code
 
@@ -92,6 +94,7 @@ class ErrorResponse(Response):
 class LoginResponse(Response):
     def __init__(self, user_id, device_id, access_token):
         # type: (str, str, str) -> None
+        super().__init__()
         self.user_id = user_id
         self.device_id = device_id
         self.access_token = access_token
@@ -116,9 +119,26 @@ class LoginResponse(Response):
                    parsed_dict["access_token"])
 
 
+class RoomSendResponse(Response):
+    def __init__(self, event_id):
+        super().__init__()
+        self.event_id = event_id
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomSendResponse, ErrorResponse]
+        try:
+            validate_json(parsed_dict, Schemas.room_send)
+        except (SchemaError, ValidationError):
+            return ErrorResponse.from_dict(parsed_dict)
+
+        return cls(parsed_dict["event_id"])
+
+
 class SyncRepsponse(Response):
     def __init__(self, next_batch, rooms, partial):
         # type: (str, RoomInfo, bool) -> None
+        super().__init__()
         self.next_batch = next_batch
         self.rooms = rooms
         self.partial = partial

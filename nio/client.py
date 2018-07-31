@@ -17,6 +17,7 @@
 from __future__ import unicode_literals
 
 import json
+import pprint
 from uuid import UUID
 from collections import deque, namedtuple
 from typing import *
@@ -36,7 +37,7 @@ from .exceptions import (
 from .http import (Http2Connection, Http2Request, HttpConnection, HttpRequest,
                    TransportResponse, TransportType, TransportRequest)
 from .log import logger_group
-from .responses import LoginResponse, Response, SyncRepsponse
+from .responses import LoginResponse, Response, SyncRepsponse, RoomSendResponse
 from .rooms import MatrixRoom
 
 try:
@@ -49,7 +50,7 @@ logger = Logger('nio.client')
 logger_group.add_logger(logger)
 
 
-TypedResponse = namedtuple("TypedResponse", ["type", "data"])
+TypedResponse = namedtuple("TypedResponse", ["type", "data", "uuid"])
 
 
 class Client(object):
@@ -105,15 +106,15 @@ class Client(object):
                 for event in join_info.timeline.events:
                     room.handle_event(event)
 
-    def receive(self, response_type, json_string):
-        # type: (str, str) -> bool
+    def receive(self, response_type, json_string, uuid=""):
+        # type: (str, str, UUID) -> bool
         try:
             parsed_dict = json.loads(json_string, encoding="utf-8")  \
                 # type: Dict[Any, Any]
         except JSONDecodeError as e:
             raise RemoteProtocolError("Error parsing json: {}".format(str(e)))
 
-        response = TypedResponse(response_type, parsed_dict)
+        response = TypedResponse(response_type, parsed_dict, uuid)
         self.parse_queue.append(response)
 
         return True
@@ -129,10 +130,16 @@ class Client(object):
             response = LoginResponse.from_dict(typed_response.data)  \
                 # type: Response
             self._handle_response(response)
+            response.uuid = typed_response.uuid
             return response
         elif typed_response.type == "sync":
             response = SyncRepsponse.from_dict(typed_response.data)
             self._handle_response(response)
+            response.uuid = typed_response.uuid
+            return response
+        elif typed_response.type == "room_send":
+            response = RoomSendResponse.from_dict(typed_response.data)
+            response.uuid = typed_response.uuid
             return response
         else:
             raise NotImplementedError(
@@ -209,7 +216,7 @@ class HttpClient(object):
         return self.connection.data_to_send()
 
     def login(self, password, device_name=""):
-        # type: (str, Optional[str]) -> bytes
+        # type: (str, Optional[str]) -> Tuple[UUID, bytes]
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
@@ -225,10 +232,30 @@ class HttpClient(object):
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = "login"
-        return data
+        return uuid, data
+
+    def room_send(self, room_id, message_type, content):
+        if not self._client.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
+        logger.debug("Room send access token: {}".format(
+            self._client.access_token))
+
+        request = self.api.room_send(
+            self._client.access_token,
+            room_id,
+            message_type,
+            content)
+
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = "room_send"
+        return uuid, data
 
     def sync(self, filter=None):
-        # type: (Optional[Dict[Any, Any]]) -> bytes
+        # type: (Optional[Dict[Any, Any]]) -> Tuple[UUID, bytes]
         if not self._client.logged_in:
             raise LocalProtocolError("Not logged in.")
 
@@ -243,7 +270,7 @@ class HttpClient(object):
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = "sync"
-        return data
+        return uuid, data
 
     def receive(self, data):
         # type: (bytes) -> None
@@ -259,11 +286,20 @@ class HttpClient(object):
             raise RemoteTransportError(e)
 
         if response:
-            request_type = self.requests_made.pop(response.uuid)
+            try:
+                request_type = self.requests_made.pop(response.uuid)
+            except KeyError:
+                logger.error("{}".format(pprint.pformat(self.requests_made)))
+                raise
+
             if response.is_ok:
                 logger.info("Received response of type: {}".format(
                     request_type))
-                self._client.receive(request_type, response.text)
+                self._client.receive(
+                    request_type,
+                    response.text,
+                    response.uuid
+                )
             else:
                 logger.info(("Error with response of type type: {}, "
                              "error code {}").format(

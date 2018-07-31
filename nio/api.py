@@ -81,18 +81,28 @@ class Api(object):
 
         return Api._build_path("sync", query_parameters)
 
+    @staticmethod
+    def room_send(access_token, room_id, msg_type, content, tx_id):
+        query_parameters = {"access_token": access_token}
+
+        path = "rooms/{room}/send/{msg_type}/{tx_id}".format(
+            room=room_id, msg_type=msg_type, tx_id=tx_id)
+
+        return Api._build_path(path, query_parameters), Api.to_json(content)
+
 
 class HttpApi(object):
     def __init__(self, host):
         # type: (str) -> None
         self.host = host
-        self.txn_id = 0
+        self._txn_id = 0
 
-    def _get_txn_id(self):
+    @property
+    def txn_id(self):
         # type: () -> int
-        txn_id = self.txn_id
-        self.txn_id += 1
-        return txn_id
+        ret = self._txn_id
+        self._txn_id += 1
+        return ret
 
     def _build_request(self, method, path, data=None):
         if method == "GET":
@@ -114,10 +124,26 @@ class HttpApi(object):
         )
         return self._build_request("POST", path, post_data)
 
-    def sync(self, access_token, next_batch=None, filter=None):
-        # type: (str, Optional[str], Optional[Dict[Any, Any]]) -> TransportRequest
+    def sync(
+        self,
+        access_token,     # type: str
+        next_batch=None,  # type: str
+        filter=None       # type: Optional[Dict[Any, Any]]
+    ):
+        # type: (...) -> TransportRequest
         path = Api.sync(access_token, next_batch, filter)
         return self._build_request("GET", path)
+
+    def room_send(self, access_token, room_id, msg_type, content):
+        # type: (str, str, str, Dict[Any, Any]) -> TransportRequest
+        path, data = Api.room_send(
+            access_token,
+            room_id,
+            msg_type,
+            content,
+            self.txn_id
+        )
+        return self._build_request("PUT", path, data)
 
 
 class Http2Api(HttpApi):
