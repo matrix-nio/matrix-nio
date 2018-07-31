@@ -93,7 +93,7 @@ class HttpRequest(TransportRequest):
 
         if data:
             headers.append(
-                ("Content-Type", "application/x-www-form-urlencoded")
+                ("Content-Type", "application/json")
             )
 
             headers.append(
@@ -149,9 +149,13 @@ class Http2Request(TransportRequest):
             ("user-agent", "{agent}".format(agent=USER_AGENT)),
         ]
 
+        headers.append(
+            ("accept", "application/json")
+        )
+
         if data:
             headers.append(
-                ("content-type", "application/x-www-form-urlencoded")
+                ("content-type", "application/json")
             )
 
             headers.append(
@@ -161,19 +165,27 @@ class Http2Request(TransportRequest):
         return headers
 
     @classmethod
-    def post(cls, host, target, data):
+    def _post_or_put(cls, method, host, target, data):
         request_data = (json.dumps(data, separators=(',', ':'))
                         if isinstance(data, dict) else data)
 
         request_data = bytes(request_data, "utf-8")
 
         request = Http2Request._request(
-            method="POST",
+            method=method,
             target=target,
             headers=Http2Request._headers(host, request_data)
         )
 
         return cls(request, request_data)
+
+    @classmethod
+    def put(cls, host, target, data):
+        return cls._post_or_put("PUT", host, target, data)
+
+    @classmethod
+    def post(cls, host, target, data):
+        return cls._post_or_put("POST", host, target, data)
 
     @classmethod
     def get(cls, host, target):
