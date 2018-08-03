@@ -68,12 +68,20 @@ class Api(object):
         return path, Api.to_json(content_dict)
 
     @staticmethod
-    def sync(access_token, next_batch=None, filter=None):
-        # type: (str, Optional[str], Optional[Dict[Any, Any]]) -> str
+    def sync(
+        access_token,     # type: str
+        next_batch=None,  # type: Optional[str]
+        timeout=None,     # type: Optional[int]
+        filter=None       # type: Optional[Dict[Any, Any]]
+    ):
+        # type: (...) -> str
         query_parameters = {"access_token": access_token}
 
         if next_batch:
             query_parameters["since"] = next_batch
+
+        if timeout:
+            query_parameters["timeout"] = str(timeout)
 
         if filter:
             filter_json = json.dumps(filter, separators=(',', ':'))
@@ -127,11 +135,12 @@ class HttpApi(object):
     def sync(
         self,
         access_token,     # type: str
-        next_batch=None,  # type: str
+        next_batch=None,  # type: Optional[str]
+        timeout=None,     # type: Optional[int]
         filter=None       # type: Optional[Dict[Any, Any]]
     ):
         # type: (...) -> TransportRequest
-        path = Api.sync(access_token, next_batch, filter)
+        path = Api.sync(access_token, next_batch, timeout, filter)
         return self._build_request("GET", path)
 
     def room_send(self, access_token, room_id, msg_type, content):

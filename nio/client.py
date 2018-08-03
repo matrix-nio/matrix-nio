@@ -52,6 +52,7 @@ logger_group.add_logger(logger)
 
 TypedResponse = namedtuple("TypedResponse", ["type", "data", "uuid", "timing"])
 TimingInfo = namedtuple("TimingInfo", ["start", "end"])
+RequestInfo = namedtuple("RequestInfo", ["type", "timeout"])
 
 
 class Client(object):
@@ -159,7 +160,7 @@ class HttpClient(object):
     ):
         # type: (...) -> None
         self.host = host
-        self.requests_made = {}        # type: Dict[UUID, str]
+        self.requests_made = {}        # type: Dict[UUID, RequestInfo]
         self.response_queue = deque()  # type: Deque[TransportResponse]
 
         self._client = Client(user, device_id, session_dir)
@@ -193,7 +194,16 @@ class HttpClient(object):
         if not self.connection:
             return 0
 
-        return self.connection.lag
+        uuid, elapsed = self.connection.elapsed
+
+        if not uuid:
+            return 0
+
+        request_info = self.requests_made[uuid]
+        # The timestamp are in seconds and the timeout is in ms
+        lag = max(0, elapsed - (request_info.timeout / 1000))
+
+        return lag
 
     def connect(self, transport_type=TransportType.HTTP):
         # type: (Optional[TransportType]) -> bytes
@@ -241,7 +251,7 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = "login"
+        self.requests_made[uuid] = RequestInfo("login", 0)
         return uuid, data
 
     def room_send(self, room_id, message_type, content):
@@ -261,11 +271,11 @@ class HttpClient(object):
             content)
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = "room_send"
+        self.requests_made[uuid] = RequestInfo("room_send", 0)
         return uuid, data
 
-    def sync(self, filter=None):
-        # type: (Optional[Dict[Any, Any]]) -> Tuple[UUID, bytes]
+    def sync(self, timeout=None, filter=None):
+        # type: (Optional[int], Optional[Dict[Any, Any]]) -> Tuple[UUID, bytes]
         if not self._client.logged_in:
             raise LocalProtocolError("Not logged in.")
 
@@ -275,11 +285,12 @@ class HttpClient(object):
         request = self.api.sync(
             self._client.access_token,
             self._client.next_batch,
+            timeout,
             filter
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = "sync"
+        self.requests_made[uuid] = RequestInfo("sync", timeout or 0)
         return uuid, data
 
     def receive(self, data):
@@ -297,17 +308,17 @@ class HttpClient(object):
 
         if response:
             try:
-                request_type = self.requests_made.pop(response.uuid)
+                request_info = self.requests_made.pop(response.uuid)
             except KeyError:
                 logger.error("{}".format(pprint.pformat(self.requests_made)))
                 raise
 
             if response.is_ok:
                 logger.info("Received response of type: {}".format(
-                    request_type))
+                    request_info.type))
                 timing = TimingInfo(response.send_time, response.receive_time)
                 self._client.receive(
-                    request_type,
+                    request_info.type,
                     response.text,
                     response.uuid,
                     timing
@@ -315,7 +326,7 @@ class HttpClient(object):
             else:
                 logger.info(("Error with response of type type: {}, "
                              "error code {}").format(
-                            request_type, response.status_code))
+                            request_info.type, response.status_code))
 
                 self.response_queue.append(response)
         return

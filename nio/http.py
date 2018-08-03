@@ -325,14 +325,14 @@ class HttpConnection(Connection):
         return data
 
     @property
-    def lag(self):
-        # type: () -> float
+    def elapsed(self):
+        # type: () -> Tuple[Optional[UUID], float]
         if not self._current_response:
-            return 0
+            return None, 0
 
         response = self._current_response
 
-        return response.elapsed
+        return response.uuid, response.elapsed
 
     def send(self, request):
         # type: (TransportRequest) -> Tuple[UUID, bytes]
@@ -405,14 +405,14 @@ class Http2Connection(Connection):
             # type: OrderedDict[int, Http2Response]
 
     @property
-    def lag(self):
-        # type: () -> float
+    def elapsed(self):
+        # type: () -> Tuple[Optional[UUID], float]
         if not self._responses:
-            return 0
+            return None, 0
 
         response = list(self._responses.values())[0]
 
-        return response.elapsed
+        return response.uuid, response.elapsed
 
     def send(self, request):
         # type: (TransportRequest) -> Tuple[UUID, bytes]
