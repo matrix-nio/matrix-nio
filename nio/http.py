@@ -235,10 +235,14 @@ class TransportResponse(object):
 
     @property
     def elapsed(self):
-        if self.receive_time:
+        # type: () -> float
+        if (self.receive_time is not None) and (self.send_time is not None):
             return self.receive_time - self.send_time
 
-        return time.time() - self.send_time
+        if self.send_time is not None:
+            return time.time() - self.send_time
+
+        return 0
 
     @property
     def text(self):
