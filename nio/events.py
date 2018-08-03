@@ -94,6 +94,8 @@ class Event(object):
             return PowerLevelsEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.encryption":
             return RoomEncryptionEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.room.redaction":
+            return RedactionEvent.from_dict(event_dict)
 
         return None
 
