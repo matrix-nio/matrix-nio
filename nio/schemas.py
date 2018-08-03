@@ -433,6 +433,24 @@ class Schemas(object):
         ]
     }
 
+    room_redaction = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "redacts": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "reason": {"type": "string"},
+                },
+            }
+        },
+        "required": [
+            "sender",
+            "redacts"
+        ]
+    }
+
     room_send = {
         "type": "object",
         "properties": {

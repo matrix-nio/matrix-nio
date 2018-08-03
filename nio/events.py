@@ -412,6 +412,42 @@ class PowerLevelsEvent(Event):
         )
 
 
+class RedactionEvent(Event):
+    def __init__(
+        self,
+        event_id,           # type: str
+        sender,             # type: str
+        server_ts,          # type: int
+        redacts,            # type: str
+        reason=None,        # type: Optional[str]
+    ):
+        # type: (...) -> None
+        super().__init__(event_id, sender, server_ts)
+        self.redacts = redacts
+        self.reason = reason
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomMemberEvent, BadEvent]
+        bad = validate_or_badevent(parsed_dict, Schemas.room_redaction)
+
+        if bad:
+            return bad
+
+        content = (parsed_dict.pop("content") if
+                   "content" in parsed_dict else None)
+
+        reason = (content["reason"] if "reason" in content else None)
+
+        return cls(
+            parsed_dict["event_id"],
+            parsed_dict["sender"],
+            parsed_dict["origin_server_ts"],
+            parsed_dict["redacts"],
+            reason
+        )
+
+
 class RoomMemberEvent(Event):
     def __init__(
         self,
