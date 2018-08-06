@@ -164,7 +164,9 @@ class TestClass(object):
         client.connect(TransportType.HTTP2)
         uuid, request = client.login("wordpass")
 
-        server = h2.connection.H2Connection(client_side=False)
+        conf = h2.config.H2Configuration(client_side=True)
+
+        server = h2.connection.H2Connection(conf)
         server.initiate_connection()
         server.receive_data(frame_factory.preamble())
 
@@ -189,7 +191,7 @@ class TestClass(object):
 
         sync_uuid, request = client.sync()
 
-        events = server.receive_data(request)
+        server.receive_data(request)
 
         content = {
             "body": "test",
@@ -201,6 +203,3 @@ class TestClass(object):
             "m.room.message",
             content
         )
-
-        events = server.receive_data(send_request)
-        assert isinstance(events[0], RequestReceived)

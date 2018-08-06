@@ -217,9 +217,6 @@ class TransportResponse(object):
         self.send_time = None           # type: Optional[int]
         self.receive_time = None        # type: Optional[int]
 
-    def __repr__(self):
-        return repr(self.responses) + repr(self.content)
-
     def add_response(self, response):
         raise NotImplementedError
 
@@ -280,7 +277,7 @@ class Http2Response(TransportResponse):
             name, value = header
             logger.debug("Got http2 header {}: {}".format(name, value))
 
-            if name == ":status":
+            if name == b":status" or name == ":status":
                 self.status_code = int(value)
             else:
                 self.headers[name] = value
