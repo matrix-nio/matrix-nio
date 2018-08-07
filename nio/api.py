@@ -98,6 +98,15 @@ class Api(object):
 
         return Api._build_path(path, query_parameters), Api.to_json(content)
 
+    @staticmethod
+    def room_put_state(access_token, room_id, event_type, body):
+        query_parameters = {"access_token": access_token}
+
+        path = "rooms/{room}/state/{event_type}".format(
+            room=room_id, event_type=event_type)
+
+        return Api._build_path(path, query_parameters), Api.to_json(body)
+
 
 class HttpApi(object):
     def __init__(self, host):
@@ -151,6 +160,15 @@ class HttpApi(object):
             msg_type,
             content,
             self.txn_id
+        )
+        return self._build_request("PUT", path, data)
+
+    def room_put_state(self, access_token, room_id, event_type, body):
+        path, data = Api.room_put_state(
+            access_token,
+            room_id,
+            event_type,
+            body
         )
         return self._build_request("PUT", path, data)
 

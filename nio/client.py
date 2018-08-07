@@ -37,7 +37,15 @@ from .exceptions import (
 from .http import (Http2Connection, Http2Request, HttpConnection, HttpRequest,
                    TransportResponse, TransportType, TransportRequest)
 from .log import logger_group
-from .responses import LoginResponse, Response, SyncRepsponse, RoomSendResponse
+
+from .responses import (
+    LoginResponse,
+    Response,
+    SyncRepsponse,
+    RoomSendResponse,
+    RoomPutStateResponse
+)
+
 from .rooms import MatrixRoom
 
 try:
@@ -137,6 +145,8 @@ class Client(object):
             self._handle_response(response)
         elif typed_response.type == "room_send":
             response = RoomSendResponse.from_dict(typed_response.data)
+        elif typed_response.type == "room_put_state":
+            response = RoomPutStateResponse.from_dict(typed_response.data)
 
         if not response:
             raise NotImplementedError(
@@ -261,9 +271,6 @@ class HttpClient(object):
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
-        logger.debug("Room send access token: {}".format(
-            self._client.access_token))
-
         request = self.api.room_send(
             self._client.access_token,
             room_id,
@@ -272,6 +279,23 @@ class HttpClient(object):
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo("room_send", 0)
+        return uuid, data
+
+    def room_put_state(self, room_id, event_type, body):
+        if not self._client.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
+        request = self.api.room_put_state(
+            self._client.access_token,
+            room_id,
+            event_type,
+            body)
+
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = RequestInfo("room_put_state", 0)
         return uuid, data
 
     def sync(self, timeout=None, filter=None):
@@ -328,6 +352,7 @@ class HttpClient(object):
                              "error code {}").format(
                             request_info.type, response.status_code))
 
+                response.request_info = request_info
                 self.response_queue.append(response)
         return
 

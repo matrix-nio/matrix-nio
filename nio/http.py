@@ -52,6 +52,7 @@ class TransportRequest(object):
         self._request = request
         self._data = data
         self.response = None  # Optional[TransportResponse]
+        self.request_info = None  # Optional[Any]
 
     @classmethod
     def get(host, target, data=None):
