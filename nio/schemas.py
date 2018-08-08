@@ -80,15 +80,15 @@ class Schemas(object):
     room_message_text = {
         "type": "object",
         "properties": {
-            "msgtype": {"type": "string", "const": "m.text"},
             "content": {
                 "type": "object",
                 "properties": {
+                    "msgtype": {"type": "string", "const": "m.text"},
                     "body": {"type": "string"},
                     "formatted_body": {"type": "string"},
                     "format": {"type": "string"}
                 },
-                "required": ["body"]
+                "required": ["msgtype", "body"]
             }
         }
     }
@@ -96,15 +96,33 @@ class Schemas(object):
     room_message_emote = {
         "type": "object",
         "properties": {
-            "msgtype": {"type": "string", "const": "m.emote"},
             "content": {
                 "type": "object",
                 "properties": {
+                    "msgtype": {"type": "string", "const": "m.emote"},
                     "body": {"type": "string"},
                     "formatted_body": {"type": "string"},
                     "format": {"type": "string"}
                 },
-                "required": ["body"]
+                "required": ["msgtype", "body"]
+            }
+        }
+    }
+
+    room_message_media = {
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "object",
+                "properties": {
+                    "body": {"type": "string"},
+                    "url": {"type": "string"},
+                    "msgtype": {
+                        "type": "string",
+                        "enum": ["m.image", "m.audio", "m.video", "m.file"]
+                    },
+                },
+                "required": ["body", "url", "msgtype"]
             }
         }
     }

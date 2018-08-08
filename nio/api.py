@@ -39,6 +39,25 @@ class Api(object):
         return json.dumps(content_dict, separators=(',', ':'))
 
     @staticmethod
+    def mxc_to_http(mxc):
+        # type: (str) -> str
+        url = urlparse(mxc)
+
+        if url.scheme != "mxc":
+            return None
+
+        if not url.netloc or not url.path:
+            return None
+
+        http_url = ("https://{host}/_matrix/media/r0/download/"
+                    "{server_name}{mediaId}").format(
+                        host=url.netloc,
+                        server_name=url.netloc,
+                        mediaId=url.path)
+
+        return http_url
+
+    @staticmethod
     def _build_path(path, query_parameters=None):
         # type: (str, dict) -> str
         path = ("{api}/{path}").format(api=MATRIX_API_PATH, path=path)
