@@ -109,6 +109,20 @@ class Schemas(object):
         }
     }
 
+    room_message_notice = {
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "object",
+                "properties": {
+                    "msgtype": {"type": "string", "const": "m.notice"},
+                    "body": {"type": "string"},
+                },
+                "required": ["msgtype", "body"]
+            }
+        }
+    }
+
     room_message_media = {
         "type": "object",
         "properties": {

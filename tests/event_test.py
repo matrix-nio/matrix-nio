@@ -15,7 +15,8 @@ from nio.events import (
     RoomMessageEmote,
     PowerLevelsEvent,
     RoomMemberEvent,
-    RedactionEvent
+    RedactionEvent,
+    RoomMessageNotice
 )
 
 
@@ -67,6 +68,12 @@ class TestClass(object):
             "tests/data/events/message_emote.json")
         event = RoomMessageEmote.from_dict(parsed_dict)
         assert isinstance(event, RoomMessageEmote)
+
+    def test_message_notice(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/message_notice.json")
+        event = RoomMessageNotice.from_dict(parsed_dict)
+        assert isinstance(event, RoomMessageNotice)
 
     def test_power_levels(self):
         parsed_dict = TestClass._load_response(

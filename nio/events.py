@@ -256,6 +256,8 @@ class RoomMessage(Event):
             return RoomMessageText.from_dict(parsed_dict)
         elif content_dict["msgtype"] == "m.emote":
             return RoomMessageEmote.from_dict(parsed_dict)
+        elif content_dict["msgtype"] == "m.notice":
+            return RoomMessageNotice.from_dict(parsed_dict)
         elif content_dict["msgtype"] == "m.image":
             return RoomMessageImage.from_dict(parsed_dict)
         elif content_dict["msgtype"] == "m.audio":
@@ -322,6 +324,27 @@ class RoomMessageUnknown(RoomMessage):
             parsed_dict["origin_server_ts"],
             parsed_dict["type"],
             parsed_dict.pop("content")
+        )
+
+
+class RoomMessageNotice(RoomMessage):
+    def __init__(self, event_id, sender, server_ts, body):
+        # type: (str, str, int, str, str) -> None
+        self.body = body
+        super().__init__(event_id, sender, server_ts)
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        bad = validate_or_badevent(parsed_dict, Schemas.room_message_notice)
+
+        if bad:
+            return bad
+
+        return cls(
+            parsed_dict["event_id"],
+            parsed_dict["sender"],
+            parsed_dict["origin_server_ts"],
+            parsed_dict["content"]["body"]
         )
 
 
