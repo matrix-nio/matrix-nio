@@ -195,6 +195,14 @@ class HttpClient(object):
         self._client.user = user
 
     @property
+    def device_id(self):
+        return self._client.device_id
+
+    @device_id.setter
+    def device_id(self, device_id):
+        self._client.device_id = device_id
+
+    @property
     def rooms(self):
         return self._client.rooms
 
