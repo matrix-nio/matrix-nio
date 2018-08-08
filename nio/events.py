@@ -258,6 +258,12 @@ class RoomMessage(Event):
             return RoomMessageEmote.from_dict(parsed_dict)
         elif content_dict["msgtype"] == "m.image":
             return RoomMessageImage.from_dict(parsed_dict)
+        elif content_dict["msgtype"] == "m.audio":
+            return RoomMessageAudio.from_dict(parsed_dict)
+        elif content_dict["msgtype"] == "m.video":
+            return RoomMessageVideo.from_dict(parsed_dict)
+        elif content_dict["msgtype"] == "m.file":
+            return RoomMessageFile.from_dict(parsed_dict)
 
         return RoomMessageUnknown.from_dict(parsed_dict)
 
@@ -285,6 +291,18 @@ class RoomMessageMedia(RoomMessage):
 
 
 class RoomMessageImage(RoomMessageMedia):
+    pass
+
+
+class RoomMessageAudio(RoomMessageMedia):
+    pass
+
+
+class RoomMessageVideo(RoomMessageMedia):
+    pass
+
+
+class RoomMessageFile(RoomMessageMedia):
     pass
 
 
