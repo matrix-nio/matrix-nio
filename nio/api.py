@@ -40,7 +40,7 @@ class Api(object):
 
     @staticmethod
     def mxc_to_http(mxc):
-        # type: (str) -> str
+        # type: (str) -> Optional[str]
         url = urlparse(mxc)
 
         if url.scheme != "mxc":

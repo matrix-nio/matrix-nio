@@ -329,7 +329,7 @@ class RoomMessageUnknown(RoomMessage):
 
 class RoomMessageNotice(RoomMessage):
     def __init__(self, event_id, sender, server_ts, body):
-        # type: (str, str, int, str, str) -> None
+        # type: (str, str, int, str) -> None
         self.body = body
         super().__init__(event_id, sender, server_ts)
 
@@ -499,7 +499,7 @@ class RedactionEvent(Event):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomMemberEvent, BadEvent]
+        # type: (Dict[Any, Any]) -> Union[RedactionEvent, BadEvent]
         bad = validate_or_badevent(parsed_dict, Schemas.room_redaction)
 
         if bad:

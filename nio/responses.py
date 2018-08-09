@@ -150,7 +150,7 @@ class RoomPutStateResponse(Response):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomSendResponse, ErrorResponse]
+        # type: (Dict[Any, Any]) -> Union[RoomPutStateResponse, ErrorResponse]
         try:
             validate_json(parsed_dict, Schemas.room_send)
         except (SchemaError, ValidationError):

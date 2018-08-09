@@ -52,7 +52,6 @@ class TransportRequest(object):
         self._request = request
         self._data = data
         self.response = None  # Optional[TransportResponse]
-        self.request_info = None  # Optional[Any]
 
     @classmethod
     def get(host, target, data=None):
@@ -217,6 +216,7 @@ class TransportResponse(object):
         self.creation_time = time.time()
         self.send_time = None           # type: Optional[int]
         self.receive_time = None        # type: Optional[int]
+        self.request_info = None        # type: Optional[Any]
 
     def add_response(self, response):
         raise NotImplementedError

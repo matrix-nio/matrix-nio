@@ -190,13 +190,13 @@ class HttpClient(object):
     def user(self):
         return self._client.user
 
-    @property
-    def logged_in(self):
-        return self._client.logged_in
-
     @user.setter
     def user(self, user):
         self._client.user = user
+
+    @property
+    def logged_in(self):
+        return self._client.logged_in
 
     @property
     def device_id(self):
