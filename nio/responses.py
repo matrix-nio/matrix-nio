@@ -127,36 +127,32 @@ class LoginResponse(Response):
                    parsed_dict["access_token"])
 
 
-class RoomSendResponse(Response):
+class RoomEventIdResponse(Response):
     def __init__(self, event_id):
         super().__init__()
         self.event_id = event_id
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomSendResponse, ErrorResponse]
+        # type: (Dict[Any, Any]) -> Union[RoomEventIdResponse, ErrorResponse]
         try:
-            validate_json(parsed_dict, Schemas.room_send)
+            validate_json(parsed_dict, Schemas.room_event_id)
         except (SchemaError, ValidationError):
             return ErrorResponse.from_dict(parsed_dict)
 
         return cls(parsed_dict["event_id"])
 
 
-class RoomPutStateResponse(Response):
-    def __init__(self, event_id):
-        super().__init__()
-        self.event_id = event_id
+class RoomSendResponse(RoomEventIdResponse):
+    pass
 
-    @classmethod
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomPutStateResponse, ErrorResponse]
-        try:
-            validate_json(parsed_dict, Schemas.room_send)
-        except (SchemaError, ValidationError):
-            return ErrorResponse.from_dict(parsed_dict)
 
-        return cls(parsed_dict["event_id"])
+class RoomPutStateResponse(RoomEventIdResponse):
+    pass
+
+
+class RoomRedactResponse(RoomEventIdResponse):
+    pass
 
 
 class SyncRepsponse(Response):

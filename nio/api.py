@@ -126,6 +126,20 @@ class Api(object):
 
         return Api._build_path(path, query_parameters), Api.to_json(body)
 
+    @staticmethod
+    def room_redact(access_token, room_id, event_id, tx_id, reason=None):
+        query_parameters = {"access_token": access_token}
+
+        body = {}
+
+        if reason:
+            body["reason"] = reason
+
+        path = "rooms/{room}/redact/{event_id}/{tx_id}".format(
+            room=room_id, event_id=event_id, tx_id=tx_id)
+
+        return Api._build_path(path, query_parameters), Api.to_json(body)
+
 
 class HttpApi(object):
     def __init__(self, host):
@@ -188,6 +202,16 @@ class HttpApi(object):
             room_id,
             event_type,
             body
+        )
+        return self._build_request("PUT", path, data)
+
+    def room_redact(self, access_token, room_id, event_id, reason=None):
+        path, data = Api.room_redact(
+            access_token,
+            room_id,
+            event_id,
+            self.txn_id,
+            reason
         )
         return self._build_request("PUT", path, data)
 

@@ -483,7 +483,7 @@ class Schemas(object):
         ]
     }
 
-    room_send = {
+    room_event_id = {
         "type": "object",
         "properties": {
             "event_id": {"type": "string"}
