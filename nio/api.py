@@ -155,6 +155,14 @@ class Api(object):
 
         return Api._build_path(path, query_parameters), Api.to_json(body)
 
+    @staticmethod
+    def room_invite(access_token, room_id, user_id):
+        query_parameters = {"access_token": access_token}
+        body = {"user_id": user_id}
+        path = "rooms/{room}/invite".format(room=room_id)
+
+        return Api._build_path(path, query_parameters), Api.to_json(body)
+
 
 class HttpApi(object):
     def __init__(self, host):
@@ -236,6 +244,14 @@ class HttpApi(object):
             room_id,
             user_id,
             reason
+        )
+        return self._build_request("POST", path, data)
+
+    def room_invite(self, access_token, room_id, user_id):
+        path, data = Api.room_invite(
+            access_token,
+            room_id,
+            user_id
         )
         return self._build_request("POST", path, data)
 

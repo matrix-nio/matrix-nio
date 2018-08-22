@@ -45,7 +45,8 @@ from .responses import (
     RoomSendResponse,
     RoomPutStateResponse,
     RoomRedactResponse,
-    RoomKickResponse
+    RoomKickResponse,
+    RoomInviteResponse
 )
 
 from .rooms import MatrixRoom
@@ -153,6 +154,8 @@ class Client(object):
             response = RoomRedactResponse.from_dict(typed_response.data)
         elif typed_response.type == "room_kick":
             response = RoomKickResponse.from_dict(typed_response.data)
+        elif typed_response.type == "room_invite":
+            response = RoomInviteResponse.from_dict(typed_response.data)
 
         if not response:
             raise NotImplementedError(
@@ -348,6 +351,22 @@ class HttpClient(object):
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo("room_kick", 0)
+        return uuid, data
+
+    def room_invite(self, room_id, user_id):
+        if not self._client.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
+        request = self.api.room_invite(
+            self._client.access_token,
+            room_id,
+            user_id)
+
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = RequestInfo("room_invite", 0)
         return uuid, data
 
     def sync(self, timeout=None, filter=None):

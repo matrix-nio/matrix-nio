@@ -171,6 +171,10 @@ class RoomKickResponse(EmptyResponse):
     pass
 
 
+class RoomInviteResponse(EmptyResponse):
+    pass
+
+
 class SyncRepsponse(Response):
     def __init__(self, next_batch, rooms, partial):
         # type: (str, RoomInfo, bool) -> None
