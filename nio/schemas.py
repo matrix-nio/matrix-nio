@@ -450,6 +450,7 @@ class Schemas(object):
                         "type": "string",
                         "enum": ["invite", "join", "knock", "leave", "ban"]
                     },
+                    "reason": {"type": ["string", "null"]},
                     "avatar_url": {"type": ["string", "null"]},
                     "displayname": {"type": ["string", "null"]},
                 },
@@ -489,5 +490,11 @@ class Schemas(object):
             "event_id": {"type": "string"}
         },
         "required": ["event_id"],
+        "additionalProperties": False
+    }
+
+    empty = {
+        "type": "object",
+        "properties": {},
         "additionalProperties": False
     }

@@ -140,6 +140,21 @@ class Api(object):
 
         return Api._build_path(path, query_parameters), Api.to_json(body)
 
+    @staticmethod
+    def room_kick(access_token, room_id, user_id, reason=None):
+        query_parameters = {"access_token": access_token}
+
+        body = {
+            "user_id": user_id
+        }
+
+        if reason:
+            body["reason"] = reason
+
+        path = "rooms/{room}/kick".format(room=room_id)
+
+        return Api._build_path(path, query_parameters), Api.to_json(body)
+
 
 class HttpApi(object):
     def __init__(self, host):
@@ -214,6 +229,15 @@ class HttpApi(object):
             reason
         )
         return self._build_request("PUT", path, data)
+
+    def room_kick(self, access_token, room_id, user_id, reason=None):
+        path, data = Api.room_kick(
+            access_token,
+            room_id,
+            user_id,
+            reason
+        )
+        return self._build_request("POST", path, data)
 
 
 class Http2Api(HttpApi):

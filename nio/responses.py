@@ -155,6 +155,22 @@ class RoomRedactResponse(RoomEventIdResponse):
     pass
 
 
+class EmptyResponse(Response):
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[EmptyResponse, ErrorResponse]
+        try:
+            validate_json(parsed_dict, Schemas.empty)
+        except (SchemaError, ValidationError):
+            return ErrorResponse.from_dict(parsed_dict)
+
+        return cls()
+
+
+class RoomKickResponse(EmptyResponse):
+    pass
+
+
 class SyncRepsponse(Response):
     def __init__(self, next_batch, rooms, partial):
         # type: (str, RoomInfo, bool) -> None
