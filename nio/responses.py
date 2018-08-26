@@ -40,7 +40,7 @@ logger = Logger('nio.responses')
 logger_group.add_logger(logger)
 
 
-RoomInfo = NamedTuple("RoomInfo", [
+Rooms = NamedTuple("Rooms", [
     ("invite", dict),
     ("join", dict),
     ("leave", dict)
@@ -55,8 +55,8 @@ Timeline = NamedTuple(
     ]
 )
 
-JoindedInfo = NamedTuple(
-    "JoinedInfo",
+RoomInfo = NamedTuple(
+    "RoomInfo",
     [
         ("timeline", Timeline),
         ("state", list),
@@ -201,7 +201,7 @@ class RoomLeaveResponse(EmptyResponse):
 
 class SyncRepsponse(Response):
     def __init__(self, next_batch, rooms, partial):
-        # type: (str, RoomInfo, bool) -> None
+        # type: (str, Rooms, bool) -> None
         super().__init__()
         self.next_batch = next_batch
         self.rooms = rooms
@@ -280,23 +280,32 @@ class SyncRepsponse(Response):
 
     @staticmethod
     def _get_room_info(parsed_dict, max_events=0, olm=None):
-        # type: (Dict[Any, Any], int, Any) -> RoomInfo
+        # type: (Dict[Any, Any], int, Any) -> Rooms
         joined_rooms = {
             key: None for key in parsed_dict["join"].keys()
-        }  # type: Dict[str, Optional[JoindedInfo]]
+        }  # type: Dict[str, Optional[RoomInfo]]
         invited_rooms = {}  # type: Dict[str, Any]
         left_rooms = {}  # type: Dict[str, Any]
+
+        for room_id, room_dict in parsed_dict["leave"].items():
+            state = SyncRepsponse._get_state(room_dict["state"])
+            timeline = SyncRepsponse._get_timeline(room_dict["timeline"])
+            info = RoomInfo(
+                timeline,
+                state,
+            )
+            left_rooms[room_id] = info
 
         for room_id, room_dict in parsed_dict["join"].items():
             state = SyncRepsponse._get_state(room_dict["state"])
             timeline = SyncRepsponse._get_timeline(room_dict["timeline"])
-            info = JoindedInfo(
+            info = RoomInfo(
                 timeline,
                 state,
             )
             joined_rooms[room_id] = info
 
-        return RoomInfo(invited_rooms, joined_rooms, left_rooms)
+        return Rooms(invited_rooms, joined_rooms, left_rooms)
 
     @classmethod
     def from_dict(
