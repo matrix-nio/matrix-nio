@@ -175,6 +175,30 @@ class RoomInviteResponse(EmptyResponse):
     pass
 
 
+class RoomIdResponse(Response):
+    def __init__(self, room_id):
+        super().__init__()
+        self.room_id = room_id
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomIdResponse, ErrorResponse]
+        try:
+            validate_json(parsed_dict, Schemas.room_id)
+        except (SchemaError, ValidationError):
+            return ErrorResponse.from_dict(parsed_dict)
+
+        return cls(parsed_dict["room_id"])
+
+
+class JoinResponse(RoomIdResponse):
+    pass
+
+
+class RoomLeaveResponse(EmptyResponse):
+    pass
+
+
 class SyncRepsponse(Response):
     def __init__(self, next_batch, rooms, partial):
         # type: (str, RoomInfo, bool) -> None

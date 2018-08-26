@@ -493,6 +493,15 @@ class Schemas(object):
         "additionalProperties": False
     }
 
+    room_id = {
+        "type": "object",
+        "properties": {
+            "room_id": {"type": "string"}
+        },
+        "required": ["room_id"],
+        "additionalProperties": False
+    }
+
     empty = {
         "type": "object",
         "properties": {},

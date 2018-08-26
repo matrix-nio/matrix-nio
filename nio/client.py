@@ -46,7 +46,9 @@ from .responses import (
     RoomPutStateResponse,
     RoomRedactResponse,
     RoomKickResponse,
-    RoomInviteResponse
+    RoomInviteResponse,
+    JoinResponse,
+    RoomLeaveResponse
 )
 
 from .rooms import MatrixRoom
@@ -139,9 +141,10 @@ class Client(object):
 
         typed_response = self.parse_queue.popleft()
 
+        response = None  # type: Optional[Response]
+
         if typed_response.type == "login":
-            response = LoginResponse.from_dict(typed_response.data)  \
-                # type: Response
+            response = LoginResponse.from_dict(typed_response.data)
             self._handle_response(response)
         elif typed_response.type == "sync":
             response = SyncRepsponse.from_dict(typed_response.data)
@@ -156,6 +159,10 @@ class Client(object):
             response = RoomKickResponse.from_dict(typed_response.data)
         elif typed_response.type == "room_invite":
             response = RoomInviteResponse.from_dict(typed_response.data)
+        elif typed_response.type == "join":
+            response = JoinResponse.from_dict(typed_response.data)
+        elif typed_response.type == "room_leave":
+            response = RoomLeaveResponse.from_dict(typed_response.data)
 
         if not response:
             raise NotImplementedError(
@@ -367,6 +374,32 @@ class HttpClient(object):
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo("room_invite", 0)
+        return uuid, data
+
+    def join(self, room_id):
+        if not self._client.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
+        request = self.api.join(self._client.access_token, room_id)
+
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = RequestInfo("join", 0)
+        return uuid, data
+
+    def room_leave(self, room_id):
+        if not self._client.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
+        request = self.api.room_leave(self._client.access_token, room_id)
+
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = RequestInfo("room_leave", 0)
         return uuid, data
 
     def sync(self, timeout=None, filter=None):

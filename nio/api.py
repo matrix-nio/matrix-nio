@@ -163,6 +163,22 @@ class Api(object):
 
         return Api._build_path(path, query_parameters), Api.to_json(body)
 
+    @staticmethod
+    def join(access_token, room_id):
+        query_parameters = {"access_token": access_token}
+        body = {}
+        path = "join/{room}".format(room=room_id)
+
+        return Api._build_path(path, query_parameters), Api.to_json(body)
+
+    @staticmethod
+    def room_leave(access_token, room_id):
+        query_parameters = {"access_token": access_token}
+        body = {}
+        path = "rooms/{room}/leave".format(room=room_id)
+
+        return Api._build_path(path, query_parameters), Api.to_json(body)
+
 
 class HttpApi(object):
     def __init__(self, host):
@@ -252,6 +268,20 @@ class HttpApi(object):
             access_token,
             room_id,
             user_id
+        )
+        return self._build_request("POST", path, data)
+
+    def join(self, access_token, room_id):
+        path, data = Api.join(
+            access_token,
+            room_id
+        )
+        return self._build_request("POST", path, data)
+
+    def room_leave(self, access_token, room_id):
+        path, data = Api.room_leave(
+            access_token,
+            room_id
         )
         return self._build_request("POST", path, data)
 
