@@ -18,6 +18,7 @@ from __future__ import unicode_literals
 
 from typing import *
 from typing import NamedTuple
+from builtins import super
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
@@ -31,14 +32,17 @@ from .events import (
     RoomNameEvent,
     RoomEncryptionEvent,
     PowerLevelsEvent,
-    RoomMemberEvent
+    RoomMemberEvent,
+    InviteNameEvent,
+    InviteAliasEvent,
+    InviteMemberEvent
 )
 
 logger = Logger('nio.rooms')
 logger_group.add_logger(logger)
 
 
-class MatrixRoom:
+class MatrixRoom(object):
     def __init__(self, room_id, own_user_id):
         # type: (str, str) -> None
         # yapf: disable
@@ -204,8 +208,37 @@ class MatrixRoom:
                     self.users[user_id].power_level = level
 
 
-class MatrixUser:
+class MatrixInvitedRoom(MatrixRoom):
+    def __init__(self, room_id, own_user_id):
+        # type: (str, str) -> None
+        self.inviter = None  # type: Optional[str]
+        super().__init__(room_id, own_user_id)
 
+    def _handle_membership(self, event):
+        # type: (Any) -> None
+        if (event.content["membership"] == "invite" and
+                event.state_key == self.own_user_id):
+            self.inviter = event.sender
+        else:
+            super()._handle_membership(event)
+
+    def handle_event(self, event):
+        # type: (Event) -> None
+        logger.info("Room {} handling event of type {}".format(
+            self.room_id,
+            type(event).__name__))
+
+        if isinstance(event, InviteMemberEvent):
+            self._handle_membership(event)
+
+        elif isinstance(event, InviteNameEvent):
+            self.name = event.name
+
+        elif isinstance(event, InviteAliasEvent):
+            self.canonical_alias = event.canonical_alias
+
+
+class MatrixUser(object):
     def __init__(self, user_id, display_name=None, power_level=0):
         # yapf: disable
         self.user_id = user_id            # type: str

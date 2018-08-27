@@ -7,6 +7,7 @@ import pdb
 
 from nio.events import (
     BadEvent,
+    UnknownBadEvent,
     RedactedEvent,
     RoomTopicEvent,
     RoomNameEvent,
@@ -92,3 +93,8 @@ class TestClass(object):
             "tests/data/events/redaction.json")
         event = RedactionEvent.from_dict(parsed_dict)
         assert isinstance(event, RedactionEvent)
+
+    def test_empty_event(self):
+        parsed_dict = {}
+        response = RedactedEvent.from_dict(parsed_dict)
+        assert isinstance(response, UnknownBadEvent)

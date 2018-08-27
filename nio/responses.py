@@ -27,13 +27,15 @@ from .log import logger_group
 from .schemas import validate_json, Schemas
 from .events import (
     Event,
+    UnknownBadEvent,
     RoomMessage,
     RedactedEvent,
     RoomAliasEvent,
     RoomNameEvent,
     RoomTopicEvent,
     RoomEncryptionEvent,
-    PowerLevelsEvent
+    PowerLevelsEvent,
+    InviteEvent
 )
 
 logger = Logger('nio.responses')
@@ -239,9 +241,9 @@ class SyncRepsponse(Response):
             try:
                 validate_json(event_dict, Schemas.room_event)
             except (SchemaError, ValidationError) as e:
-                # TODO how to handle this
-                print(e)
-                pass
+                logger.error("Error validating event: {}".format(str(e)))
+                events.append(UnknownBadEvent(event_dict))
+                continue
 
             event = Event.parse_event(event_dict, olm)
 
@@ -279,6 +281,19 @@ class SyncRepsponse(Response):
         return events
 
     @staticmethod
+    def _get_invite_state(parsed_dict):
+        validate_json(parsed_dict, Schemas.room_state)
+        events = []
+
+        for event_dict in parsed_dict["events"]:
+            event = InviteEvent.parse_event(event_dict)
+
+            if event:
+                events.append(event)
+
+        return events
+
+    @staticmethod
     def _get_room_info(parsed_dict, max_events=0, olm=None):
         # type: (Dict[Any, Any], int, Any) -> Rooms
         joined_rooms = {
@@ -286,6 +301,11 @@ class SyncRepsponse(Response):
         }  # type: Dict[str, Optional[RoomInfo]]
         invited_rooms = {}  # type: Dict[str, Any]
         left_rooms = {}  # type: Dict[str, Any]
+
+        for room_id, room_dict in parsed_dict["invite"].items():
+            state = SyncRepsponse._get_invite_state(room_dict["invite_state"])
+            info = RoomInfo([], state)
+            invited_rooms[room_id] = info
 
         for room_id, room_dict in parsed_dict["leave"].items():
             state = SyncRepsponse._get_state(room_dict["state"])

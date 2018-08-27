@@ -51,7 +51,7 @@ from .responses import (
     RoomLeaveResponse
 )
 
-from .rooms import MatrixRoom
+from .rooms import MatrixRoom, MatrixInvitedRoom
 
 try:
     from json.decoder import JSONDecodeError
@@ -86,6 +86,7 @@ class Client(object):
         self.next_batch = ""
 
         self.rooms = dict()  # type: Dict[str, MatrixRoom]
+        self.invited_rooms = dict()  # type: Dict[str, MatrixRoom]
 
     def _load_olm(self):
         # TODO load the olm account and sessions from the session dir
@@ -108,7 +109,23 @@ class Client(object):
 
             self.next_batch = response.next_batch
 
+            for room_id, info in response.rooms.invite.items():
+                if room_id not in self.invited_rooms:
+                    logger.info("New invited room {}".format(room_id))
+                    self.invited_rooms[room_id] = MatrixInvitedRoom(
+                        room_id,
+                        self.user_id
+                    )
+
+                room = self.invited_rooms[room_id]
+
+                for event in info.state:
+                    room.handle_event(event)
+
             for room_id, join_info in response.rooms.join.items():
+                if room_id in self.invited_rooms:
+                    del self.invited_rooms[room_id]
+
                 if room_id not in self.rooms:
                     logger.info("New joined room {}".format(room_id))
                     self.rooms[room_id] = MatrixRoom(room_id, self.user_id)
@@ -225,6 +242,10 @@ class HttpClient(object):
     @property
     def rooms(self):
         return self._client.rooms
+
+    @property
+    def invited_rooms(self):
+        return self._client.invited_rooms
 
     @property
     def lag(self):

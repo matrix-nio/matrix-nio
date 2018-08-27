@@ -36,9 +36,17 @@ def validate_or_badevent(parsed_dict, schema):
         validate_json(parsed_dict, schema)
     except (ValidationError, SchemaError) as e:
         logger.error("Error validating event: {}".format(str(e)))
-        return BadEvent.from_dict(parsed_dict)
+        try:
+            return BadEvent.from_dict(parsed_dict)
+        except KeyError:
+            return UnknownBadEvent(parsed_dict)
 
     return None
+
+
+class UnknownBadEvent(object):
+    def __init__(self, source):
+        self.source = Api.to_json(source)
 
 
 class Event(object):
@@ -98,6 +106,100 @@ class Event(object):
             return RedactionEvent.from_dict(event_dict)
 
         return None
+
+
+class InviteEvent(object):
+    def __init__(self, sender):
+        # type: (str, str, int) -> None
+        self.sender = sender
+
+    @classmethod
+    def parse_event(cls, event_dict):
+        # type: (Dict[Any, Any], Optional[Olm]) -> Optional[Event]
+        if "unsigned" in event_dict:
+            if "redacted_because" in event_dict["unsigned"]:
+                return None
+
+        if event_dict["type"] == "m.room.member":
+            return InviteMemberEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.room.canonical_alias":
+            return InviteAliasEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.room.name":
+            return InviteNameEvent.from_dict(event_dict)
+
+        return None
+
+
+class InviteMemberEvent(InviteEvent):
+    def __init__(
+        self,
+        sender,             # type: str
+        state_key,          # type: str
+        content,            # type: Dict[str, str]
+        prev_content=None   # type: Optional[Dict[str, str]]
+    ):
+        # type: (...) -> None
+        super().__init__(sender)
+        self.state_key = state_key
+        self.content = content
+        self.prev_content = prev_content
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomMemberEvent, BadEvent]
+        bad = validate_or_badevent(parsed_dict, Schemas.room_membership)
+
+        if bad:
+            return bad
+
+        content = parsed_dict.pop("content")
+        unsigned = parsed_dict.get("unsigned", {})
+        prev_content = unsigned.get("prev_content", None)
+
+        return cls(
+            parsed_dict["sender"],
+            parsed_dict["state_key"],
+            content,
+            prev_content
+        )
+
+
+class InviteAliasEvent(InviteEvent):
+    def __init__(self, sender, canonical_alias):
+        self.canonical_alias = canonical_alias
+        super().__init__(sender)
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomAliasEvent, BadEvent]
+        bad = validate_or_badevent(parsed_dict, Schemas.room_canonical_alias)
+
+        if bad:
+            return bad
+
+        sender = parsed_dict["sender"]
+        canonical_alias = parsed_dict["content"]["alias"]
+
+        return cls(sender, canonical_alias)
+
+
+class InviteNameEvent(InviteEvent):
+    def __init__(self, sender, name):
+        self.name = name
+        super().__init__(sender)
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomNameEvent, BadEvent]
+        bad = validate_or_badevent(parsed_dict, Schemas.room_name)
+
+        if bad:
+            return bad
+
+        sender = parsed_dict["sender"]
+        canonical_alias = parsed_dict["content"]["name"]
+
+        return cls(sender, canonical_alias)
 
 
 class BadEvent(Event):
@@ -544,8 +646,8 @@ class RoomMemberEvent(Event):
             return bad
 
         content = parsed_dict.pop("content")
-        prev_content = (parsed_dict["unsigned"].pop("prev_content") if
-                        "prev_content" in parsed_dict["unsigned"] else None)
+        unsigned = parsed_dict.get("unsigned", {})
+        prev_content = unsigned.get("prev_content", None)
 
         return cls(
             parsed_dict["event_id"],
