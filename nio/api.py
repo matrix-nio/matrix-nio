@@ -17,7 +17,7 @@
 from __future__ import unicode_literals
 
 import json
-from typing import Dict, Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest
@@ -26,7 +26,7 @@ try:
     from urllib.parse import quote, urlencode, urlparse
 except ImportError:
     from urllib import quote, urlencode  # type: ignore
-    from urlparse import urlparse        # type: ignore
+    from urlparse import urlparse  # type: ignore
 
 
 MATRIX_API_PATH = "/_matrix/client/r0"  # type: str
@@ -36,7 +36,7 @@ class Api(object):
     @staticmethod
     def to_json(content_dict):
         # type: (Dict[Any, Any]) -> str
-        return json.dumps(content_dict, separators=(',', ':'))
+        return json.dumps(content_dict, separators=(",", ":"))
 
     @staticmethod
     def mxc_to_http(mxc):
@@ -49,11 +49,10 @@ class Api(object):
         if not url.netloc or not url.path:
             return None
 
-        http_url = ("https://{host}/_matrix/media/r0/download/"
-                    "{server_name}{mediaId}").format(
-                        host=url.netloc,
-                        server_name=url.netloc,
-                        mediaId=url.path)
+        http_url = (
+            "https://{host}/_matrix/media/r0/download/"
+            "{server_name}{mediaId}"
+        ).format(host=url.netloc, server_name=url.netloc, mediaId=url.path)
 
         return http_url
 
@@ -75,7 +74,7 @@ class Api(object):
         content_dict = {
             "type": "m.login.password",
             "user": user,
-            "password": password
+            "password": password,
         }
 
         if device_id:
@@ -88,10 +87,10 @@ class Api(object):
 
     @staticmethod
     def sync(
-        access_token,     # type: str
+        access_token,  # type: str
         next_batch=None,  # type: Optional[str]
-        timeout=None,     # type: Optional[int]
-        filter=None       # type: Optional[Dict[Any, Any]]
+        timeout=None,  # type: Optional[int]
+        filter=None,  # type: Optional[Dict[Any, Any]]
     ):
         # type: (...) -> str
         query_parameters = {"access_token": access_token}
@@ -103,7 +102,7 @@ class Api(object):
             query_parameters["timeout"] = str(timeout)
 
         if filter:
-            filter_json = json.dumps(filter, separators=(',', ':'))
+            filter_json = json.dumps(filter, separators=(",", ":"))
             query_parameters["filter"] = filter_json
 
         return Api._build_path("sync", query_parameters)
@@ -113,7 +112,8 @@ class Api(object):
         query_parameters = {"access_token": access_token}
 
         path = "rooms/{room}/send/{msg_type}/{tx_id}".format(
-            room=room_id, msg_type=msg_type, tx_id=tx_id)
+            room=room_id, msg_type=msg_type, tx_id=tx_id
+        )
 
         return Api._build_path(path, query_parameters), Api.to_json(content)
 
@@ -122,7 +122,8 @@ class Api(object):
         query_parameters = {"access_token": access_token}
 
         path = "rooms/{room}/state/{event_type}".format(
-            room=room_id, event_type=event_type)
+            room=room_id, event_type=event_type
+        )
 
         return Api._build_path(path, query_parameters), Api.to_json(body)
 
@@ -136,7 +137,8 @@ class Api(object):
             body["reason"] = reason
 
         path = "rooms/{room}/redact/{event_id}/{tx_id}".format(
-            room=room_id, event_id=event_id, tx_id=tx_id)
+            room=room_id, event_id=event_id, tx_id=tx_id
+        )
 
         return Api._build_path(path, query_parameters), Api.to_json(body)
 
@@ -144,9 +146,7 @@ class Api(object):
     def room_kick(access_token, room_id, user_id, reason=None):
         query_parameters = {"access_token": access_token}
 
-        body = {
-            "user_id": user_id
-        }
+        body = {"user_id": user_id}
 
         if reason:
             body["reason"] = reason
@@ -205,20 +205,15 @@ class HttpApi(object):
 
     def login(self, user, password, device_name="", device_id=""):
         # type: (str, str, Optional[str], Optional[str]) -> TransportRequest
-        path, post_data = Api.login(
-            user,
-            password,
-            device_name,
-            device_id
-        )
+        path, post_data = Api.login(user, password, device_name, device_id)
         return self._build_request("POST", path, post_data)
 
     def sync(
         self,
-        access_token,     # type: str
+        access_token,  # type: str
         next_batch=None,  # type: Optional[str]
-        timeout=None,     # type: Optional[int]
-        filter=None       # type: Optional[Dict[Any, Any]]
+        timeout=None,  # type: Optional[int]
+        filter=None,  # type: Optional[Dict[Any, Any]]
     ):
         # type: (...) -> TransportRequest
         path = Api.sync(access_token, next_batch, timeout, filter)
@@ -227,62 +222,36 @@ class HttpApi(object):
     def room_send(self, access_token, room_id, msg_type, content):
         # type: (str, str, str, Dict[Any, Any]) -> TransportRequest
         path, data = Api.room_send(
-            access_token,
-            room_id,
-            msg_type,
-            content,
-            self.txn_id
+            access_token, room_id, msg_type, content, self.txn_id
         )
         return self._build_request("PUT", path, data)
 
     def room_put_state(self, access_token, room_id, event_type, body):
         path, data = Api.room_put_state(
-            access_token,
-            room_id,
-            event_type,
-            body
+            access_token, room_id, event_type, body
         )
         return self._build_request("PUT", path, data)
 
     def room_redact(self, access_token, room_id, event_id, reason=None):
         path, data = Api.room_redact(
-            access_token,
-            room_id,
-            event_id,
-            self.txn_id,
-            reason
+            access_token, room_id, event_id, self.txn_id, reason
         )
         return self._build_request("PUT", path, data)
 
     def room_kick(self, access_token, room_id, user_id, reason=None):
-        path, data = Api.room_kick(
-            access_token,
-            room_id,
-            user_id,
-            reason
-        )
+        path, data = Api.room_kick(access_token, room_id, user_id, reason)
         return self._build_request("POST", path, data)
 
     def room_invite(self, access_token, room_id, user_id):
-        path, data = Api.room_invite(
-            access_token,
-            room_id,
-            user_id
-        )
+        path, data = Api.room_invite(access_token, room_id, user_id)
         return self._build_request("POST", path, data)
 
     def join(self, access_token, room_id):
-        path, data = Api.join(
-            access_token,
-            room_id
-        )
+        path, data = Api.join(access_token, room_id)
         return self._build_request("POST", path, data)
 
     def room_leave(self, access_token, room_id):
-        path, data = Api.room_leave(
-            access_token,
-            room_id
-        )
+        path, data = Api.room_leave(access_token, room_id)
         return self._build_request("POST", path, data)
 
 

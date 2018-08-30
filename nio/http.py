@@ -17,24 +17,22 @@
 from __future__ import unicode_literals
 
 import json
+import pprint
 import time
-
 from builtins import bytes, super
-from collections import deque, OrderedDict
+from collections import OrderedDict, deque
 from enum import Enum, unique
-from typing import List, Optional, Union, Tuple, Deque, Any
-from uuid import uuid4, UUID
+from typing import Any, Deque, List, Optional, Tuple, Union
+from uuid import UUID, uuid4
 
 import h2.connection
 import h2.events
 import h11
-import pprint
-
 from logbook import Logger
 
 from .log import logger_group
 
-logger = Logger('nio.http')
+logger = Logger("nio.http")
 logger_group.add_logger(logger)
 
 USER_AGENT = "nio"
@@ -74,9 +72,7 @@ class HttpRequest(TransportRequest):
     @classmethod
     def get(cls, host, target):
         request = h11.Request(
-            method="GET",
-            target=target,
-            headers=HttpRequest._headers(host)
+            method="GET", target=target, headers=HttpRequest._headers(host)
         )
 
         return cls(request)
@@ -88,13 +84,11 @@ class HttpRequest(TransportRequest):
             ("User-Agent", "{agent}".format(agent=USER_AGENT)),
             ("Host", "{host}".format(host=host)),
             ("Connection", "keep-alive"),
-            ("Accept", "*/*")
+            ("Accept", "*/*"),
         ]
 
         if data:
-            headers.append(
-                ("Content-Type", "application/json")
-            )
+            headers.append(("Content-Type", "application/json"))
 
             headers.append(
                 ("Content-length", "{length}".format(length=len(data)))
@@ -104,15 +98,18 @@ class HttpRequest(TransportRequest):
 
     @classmethod
     def _post_or_put(cls, method, host, target, data):
-        request_data = (json.dumps(data, separators=(',', ':'))
-                        if isinstance(data, dict) else data)
+        request_data = (
+            json.dumps(data, separators=(",", ":"))
+            if isinstance(data, dict)
+            else data
+        )
 
         request_data = bytes(request_data, "utf-8")
 
         request = h11.Request(
             method=method,
             target=target,
-            headers=HttpRequest._headers(host, request_data)
+            headers=HttpRequest._headers(host, request_data),
         )
 
         d = h11.Data(data=request_data)
@@ -131,10 +128,7 @@ class HttpRequest(TransportRequest):
 class Http2Request(TransportRequest):
     @staticmethod
     def _request(method, target, headers):
-        h = [
-            (":method", method),
-            (":path", target)
-        ]
+        h = [(":method", method), (":path", target)]
 
         h = h + headers
 
@@ -149,14 +143,10 @@ class Http2Request(TransportRequest):
             ("user-agent", "{agent}".format(agent=USER_AGENT)),
         ]
 
-        headers.append(
-            ("accept", "application/json")
-        )
+        headers.append(("accept", "application/json"))
 
         if data:
-            headers.append(
-                ("content-type", "application/json")
-            )
+            headers.append(("content-type", "application/json"))
 
             headers.append(
                 ("content-length", "{length}".format(length=len(data)))
@@ -166,15 +156,18 @@ class Http2Request(TransportRequest):
 
     @classmethod
     def _post_or_put(cls, method, host, target, data):
-        request_data = (json.dumps(data, separators=(',', ':'))
-                        if isinstance(data, dict) else data)
+        request_data = (
+            json.dumps(data, separators=(",", ":"))
+            if isinstance(data, dict)
+            else data
+        )
 
         request_data = bytes(request_data, "utf-8")
 
         request = Http2Request._request(
             method=method,
             target=target,
-            headers=Http2Request._headers(host, request_data)
+            headers=Http2Request._headers(host, request_data),
         )
 
         return cls(request, request_data)
@@ -190,9 +183,7 @@ class Http2Request(TransportRequest):
     @classmethod
     def get(cls, host, target):
         request = Http2Request._request(
-            method="GET",
-            target=target,
-            headers=Http2Request._headers(host)
+            method="GET", target=target, headers=Http2Request._headers(host)
         )
 
         return cls(request)
@@ -210,13 +201,13 @@ class TransportResponse(object):
     def __init__(self):
         # type: () -> None
         self.headers = HeaderDict()  # type: HeaderDict
-        self.content = b""           # type: bytes
-        self.status_code = None      # type: Optional[int]
+        self.content = b""  # type: bytes
+        self.status_code = None  # type: Optional[int]
         self.uuid = uuid4()
         self.creation_time = time.time()
-        self.send_time = None           # type: Optional[int]
-        self.receive_time = None        # type: Optional[int]
-        self.request_info = None        # type: Optional[Any]
+        self.send_time = None  # type: Optional[int]
+        self.receive_time = None  # type: Optional[int]
+        self.request_info = None  # type: Optional[Any]
 
     def add_response(self, response):
         raise NotImplementedError
@@ -343,16 +334,16 @@ class HttpConnection(Connection):
         if not isinstance(request, HttpRequest):
             raise TypeError("Invalid request type for HttpConnection")
 
-        if (self._connection.our_state == h11.IDLE
-                and not self._current_response):
+        if (
+            self._connection.our_state == h11.IDLE
+            and not self._current_response
+        ):
             data = data + self._connection.send(request._request)
 
             if request._data:
                 data = data + self._connection.send(request._data)
 
-            data = data + self._connection.send(
-                request._end_of_message
-            )
+            data = data + self._connection.send(request._end_of_message)
 
             if request.response:
                 self._current_response = request.response
@@ -421,8 +412,11 @@ class Http2Connection(Connection):
         if not isinstance(request, Http2Request):
             raise TypeError("Invalid request type for HttpConnection")
 
-        logger.debug("Making Http2 request {} {}.".format(
-            pprint.pformat(request._request), pprint.pformat(request._data)))
+        logger.debug(
+            "Making Http2 request {} {}.".format(
+                pprint.pformat(request._request), pprint.pformat(request._data)
+            )
+        )
 
         stream_id = self._connection.get_next_available_stream_id()
         logger.debug("New stream id {}".format(stream_id))
@@ -466,16 +460,14 @@ class Http2Connection(Connection):
         data = event.data
 
         self._connection.acknowledge_received_data(
-            event.flow_controlled_length, event.stream_id)
+            event.flow_controlled_length, event.stream_id
+        )
 
         response = self._responses[stream_id]
         response.add_data(data)
 
-    def _handle_events(
-        self,
-        events  # type: (h2.events.Event)
-    ):
-        # type: (...) -> Optional[Http2Response]
+    def _handle_events(self, events):
+        # type: (h2.events.Event) -> Optional[Http2Response]
         for event in events:
             logger.info("Handling Http2 event: {}".format(repr(event)))
 

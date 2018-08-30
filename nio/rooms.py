@@ -16,28 +16,28 @@
 
 from __future__ import unicode_literals
 
-from typing import NamedTuple, Optional, Dict, Any
 from builtins import super
+from typing import Any, Dict, NamedTuple, Optional
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
-from .log import logger_group
 from .events import (
     Event,
-    PowerLevels,
-    RoomAliasEvent,
-    RoomTopicEvent,
-    RoomNameEvent,
-    RoomEncryptionEvent,
-    PowerLevelsEvent,
-    RoomMemberEvent,
-    InviteNameEvent,
     InviteAliasEvent,
-    InviteMemberEvent
+    InviteMemberEvent,
+    InviteNameEvent,
+    PowerLevels,
+    PowerLevelsEvent,
+    RoomAliasEvent,
+    RoomEncryptionEvent,
+    RoomMemberEvent,
+    RoomNameEvent,
+    RoomTopicEvent,
 )
+from .log import logger_group
 
-logger = Logger('nio.rooms')
+logger = Logger("nio.rooms")
 logger_group.add_logger(logger)
 
 
@@ -98,9 +98,11 @@ class MatrixRoom(object):
         # TODO: Hook the user display name disambiguation algorithm here.
         # Currently, we use the user display names as is, which may not be
         # unique.
-        users = [user.user_id for mxid, user
-                 in sorted(self.users.items(), key=lambda t: t[0])
-                 if mxid != self.own_user_id]
+        users = [
+            user.user_id
+            for mxid, user in sorted(self.users.items(), key=lambda t: t[0])
+            if mxid != self.own_user_id
+        ]
 
         num_users = len(users)
 
@@ -110,8 +112,8 @@ class MatrixRoom(object):
             return " and ".join(users)
         elif num_users >= 3:
             return "{first_user} and {num} others".format(
-                first_user=users[0],
-                num=num_users-1)
+                first_user=users[0], num=num_users - 1
+            )
         else:
             return "Empty room?"
 
@@ -146,11 +148,16 @@ class MatrixRoom(object):
     def _handle_membership(self, event):
         # type: (Any) -> None
         def join(event):
-            level = (self.power_levels.users[event.state_key] if
-                     event.state_key in self.power_levels.users else
-                     self.power_levels.defaults.users_default)
-            display_name = (event.content["display_name"]
-                            if "display_name" in event.content else None)
+            level = (
+                self.power_levels.users[event.state_key]
+                if event.state_key in self.power_levels.users
+                else self.power_levels.defaults.users_default
+            )
+            display_name = (
+                event.content["display_name"]
+                if "display_name" in event.content
+                else None
+            )
 
             user = MatrixUser(event.state_key, display_name, level)
             self.users[event.state_key] = user
@@ -175,9 +182,11 @@ class MatrixRoom(object):
 
     def handle_event(self, event):
         # type: (Event) -> None
-        logger.info("Room {} handling event of type {}".format(
-            self.room_id,
-            type(event).__name__))
+        logger.info(
+            "Room {} handling event of type {}".format(
+                self.room_id, type(event).__name__
+            )
+        )
 
         if isinstance(event, RoomMemberEvent):
             self._handle_membership(event)
@@ -200,10 +209,12 @@ class MatrixRoom(object):
             # Update the power levels of the joined users
             for user_id, level in self.power_levels.users.items():
                 if user_id in self.users:
-                    logger.info("Changing power level for user {} from {} to "
-                                "{}".format(user_id,
-                                            self.users[user_id].power_level,
-                                            level))
+                    logger.info(
+                        "Changing power level for user {} from {} to "
+                        "{}".format(
+                            user_id, self.users[user_id].power_level, level
+                        )
+                    )
                     self.users[user_id].power_level = level
 
 
@@ -215,17 +226,21 @@ class MatrixInvitedRoom(MatrixRoom):
 
     def _handle_membership(self, event):
         # type: (Any) -> None
-        if (event.content["membership"] == "invite" and
-                event.state_key == self.own_user_id):
+        if (
+            event.content["membership"] == "invite"
+            and event.state_key == self.own_user_id
+        ):
             self.inviter = event.sender
         else:
             super()._handle_membership(event)
 
     def handle_event(self, event):
         # type: (Event) -> None
-        logger.info("Room {} handling event of type {}".format(
-            self.room_id,
-            type(event).__name__))
+        logger.info(
+            "Room {} handling event of type {}".format(
+                self.room_id, type(event).__name__
+            )
+        )
 
         if isinstance(event, InviteMemberEvent):
             self._handle_membership(event)

@@ -16,8 +16,7 @@
 
 from __future__ import unicode_literals
 
-from jsonschema import FormatChecker, Draft4Validator, validators
-
+from jsonschema import Draft4Validator, FormatChecker, validators
 
 RoomRegex = "^![a-zA-Z0-9]+:.+$"
 UserIdRegex = "^@.*:.+$"
@@ -33,13 +32,11 @@ def extend_with_default(validator_class):
                 instance.setdefault(property, subschema["default"])
 
         for error in validate_properties(
-            validator, properties, instance, schema,
+            validator, properties, instance, schema
         ):
             yield error
 
-    return validators.extend(
-        validator_class, {"properties": set_defaults},
-    )
+    return validators.extend(validator_class, {"properties": set_defaults})
 
 
 Validator = extend_with_default(Draft4Validator)
@@ -69,12 +66,10 @@ class Schemas(object):
         "properties": {
             "content": {
                 "type": "object",
-                "properties": {
-                    "msgtype": {"type": "string"},
-                },
-                "required": ["msgtype"]
+                "properties": {"msgtype": {"type": "string"}},
+                "required": ["msgtype"],
             }
-        }
+        },
     }
 
     room_message_text = {
@@ -86,11 +81,11 @@ class Schemas(object):
                     "msgtype": {"type": "string", "const": "m.text"},
                     "body": {"type": "string"},
                     "formatted_body": {"type": "string"},
-                    "format": {"type": "string"}
+                    "format": {"type": "string"},
                 },
-                "required": ["msgtype", "body"]
+                "required": ["msgtype", "body"],
             }
-        }
+        },
     }
 
     room_message_emote = {
@@ -102,11 +97,11 @@ class Schemas(object):
                     "msgtype": {"type": "string", "const": "m.emote"},
                     "body": {"type": "string"},
                     "formatted_body": {"type": "string"},
-                    "format": {"type": "string"}
+                    "format": {"type": "string"},
                 },
-                "required": ["msgtype", "body"]
+                "required": ["msgtype", "body"],
             }
-        }
+        },
     }
 
     room_message_notice = {
@@ -118,9 +113,9 @@ class Schemas(object):
                     "msgtype": {"type": "string", "const": "m.notice"},
                     "body": {"type": "string"},
                 },
-                "required": ["msgtype", "body"]
+                "required": ["msgtype", "body"],
             }
-        }
+        },
     }
 
     room_message_media = {
@@ -133,12 +128,12 @@ class Schemas(object):
                     "url": {"type": "string"},
                     "msgtype": {
                         "type": "string",
-                        "enum": ["m.image", "m.audio", "m.video", "m.file"]
+                        "enum": ["m.image", "m.audio", "m.video", "m.file"],
                     },
                 },
-                "required": ["body", "url", "msgtype"]
+                "required": ["body", "url", "msgtype"],
             }
-        }
+        },
     }
 
     redacted_event = {
@@ -150,24 +145,19 @@ class Schemas(object):
                     "redacted_because": {
                         "type": "object",
                         "properties": {
-                            "sender": {
-                                "type": "string",
-                                "format": "user_id"
-                            },
+                            "sender": {"type": "string", "format": "user_id"},
                             "content": {
                                 "type": "object",
-                                "properties": {
-                                    "reason": {"type": "string"}
-                                }
-                            }
+                                "properties": {"reason": {"type": "string"}},
+                            },
                         },
-                        "required": ["sender", "content"]
-                    },
+                        "required": ["sender", "content"],
+                    }
                 },
-                "required": ["redacted_because"]
+                "required": ["redacted_because"],
             }
         },
-        "required": ["unsigned"]
+        "required": ["unsigned"],
     }
 
     login = {
@@ -175,18 +165,18 @@ class Schemas(object):
         "properties": {
             "user_id": {"type": "string", "format": "user_id"},
             "device_id": {"type": "string"},
-            "access_token": {"type": "string"}
+            "access_token": {"type": "string"},
         },
-        "required": ["user_id", "device_id", "access_token"]
+        "required": ["user_id", "device_id", "access_token"],
     }
 
     error = {
         "type": "object",
         "properties": {
             "error": {"type": "string"},
-            "errcode": {"type": "string"}
+            "errcode": {"type": "string"},
         },
-        "required": ["error", "errcode"]
+        "required": ["error", "errcode"],
     }
 
     sync = {
@@ -199,38 +189,32 @@ class Schemas(object):
                 "properties": {
                     "invite": {
                         "type": "object",
-                        "patternProperties": {
-                            RoomRegex: {"type": "object"}
-                        },
-                        "additionalProperties": False
+                        "patternProperties": {RoomRegex: {"type": "object"}},
+                        "additionalProperties": False,
                     },
                     "join": {
                         "type": "object",
-                        "patternProperties": {
-                            RoomRegex: {"type": "object"}
-                        },
-                        "additionalProperties": False
+                        "patternProperties": {RoomRegex: {"type": "object"}},
+                        "additionalProperties": False,
                     },
                     "leave": {
                         "type": "object",
-                        "patternProperties": {
-                            RoomRegex: {"type": "object"}
-                        },
-                        "additionalProperties": False
-                    }
-                }
+                        "patternProperties": {RoomRegex: {"type": "object"}},
+                        "additionalProperties": False,
+                    },
+                },
             },
             "to_device": {
                 "type": "object",
-                "properties": {"events": {"type": "array"}}
-            }
+                "properties": {"events": {"type": "array"}},
+            },
         },
         "required": [
             "next_batch",
             "device_one_time_keys_count",
             "rooms",
-            "to_device"
-        ]
+            "to_device",
+        ],
     }
 
     room_event = {
@@ -238,9 +222,9 @@ class Schemas(object):
         "properties": {
             "event_id": {"type": "string"},
             "sender": {"type": "string", "format": "user_id"},
-            "type": {"type": "string"}
+            "type": {"type": "string"},
         },
-        "required": ["event_id", "sender", "type"]
+        "required": ["event_id", "sender", "type"],
     }
 
     room_timeline = {
@@ -248,17 +232,15 @@ class Schemas(object):
         "properties": {
             "events": {"type": "array"},
             "limited": {"type": "boolean"},
-            "prev_batch": {"type": "string"}
+            "prev_batch": {"type": "string"},
         },
-        "required": ["events", "limited", "prev_batch"]
+        "required": ["events", "limited", "prev_batch"],
     }
 
     room_state = {
         "type": "object",
-        "properties": {
-            "events": {"type": "array"},
-        },
-        "required": ["events"]
+        "properties": {"events": {"type": "array"}},
+        "required": ["events"],
     }
 
     olm_event = {
@@ -268,19 +250,15 @@ class Schemas(object):
             "sender_device": {"type": "string"},
             "keys": {
                 "type": "object",
-                "properties": {
-                    "ed25519": {"type": "string"}
-                }
+                "properties": {"ed25519": {"type": "string"}},
             },
             "recipient": {"type": "string", "format": "user_id"},
             "recipient_keys": {
                 "type": "object",
-                "properties": {
-                    "ed25519": {"type": "string"}
-                }
+                "properties": {"ed25519": {"type": "string"}},
             },
             "type": {"type": "string"},
-            "content": {"type": "object"}
+            "content": {"type": "object"},
         },
         "required": [
             "type",
@@ -289,8 +267,8 @@ class Schemas(object):
             "keys",
             "recipient",
             "recipient_keys",
-            "content"
-        ]
+            "content",
+        ],
     }
 
     room_key_event = {
@@ -312,16 +290,11 @@ class Schemas(object):
                     "algorithm",
                     "room_id",
                     "session_id",
-                    "session_key"
-                ]
-            }
+                    "session_key",
+                ],
+            },
         },
-        "required": [
-            "type",
-            "sender",
-            "sender_device",
-            "content"
-        ]
+        "required": ["type", "sender", "sender_device", "content"],
     }
 
     room_canonical_alias = {
@@ -331,17 +304,11 @@ class Schemas(object):
             "type": {"type": "string"},
             "content": {
                 "type": "object",
-                "properties": {
-                    "alias": {"type": "string"},
-                },
-                "required": ["alias"]
-                }
+                "properties": {"alias": {"type": "string"}},
+                "required": ["alias"],
             },
-        "required": [
-            "type",
-            "sender",
-            "content"
-        ]
+        },
+        "required": ["type", "sender", "content"],
     }
 
     room_name = {
@@ -351,17 +318,11 @@ class Schemas(object):
             "type": {"type": "string"},
             "content": {
                 "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                },
-                "required": ["name"]
-                }
+                "properties": {"name": {"type": "string"}},
+                "required": ["name"],
             },
-        "required": [
-            "type",
-            "sender",
-            "content"
-        ]
+        },
+        "required": ["type", "sender", "content"],
     }
 
     room_topic = {
@@ -371,17 +332,11 @@ class Schemas(object):
             "type": {"type": "string"},
             "content": {
                 "type": "object",
-                "properties": {
-                    "topic": {"type": "string"},
-                },
-                "required": ["topic"]
-                }
+                "properties": {"topic": {"type": "string"}},
+                "required": ["topic"],
             },
-        "required": [
-            "type",
-            "sender",
-            "content"
-        ]
+        },
+        "required": ["type", "sender", "content"],
     }
 
     room_power_levels = {
@@ -405,7 +360,7 @@ class Schemas(object):
                         "patternProperties": {
                             EventTypeRegex: {"type": "integer"}
                         },
-                        "additionalProperties": False
+                        "additionalProperties": False,
                     },
                     "users": {
                         "type": "object",
@@ -413,16 +368,12 @@ class Schemas(object):
                         "patternProperties": {
                             UserIdRegex: {"type": "integer"}
                         },
-                        "additionalProperties": False
-                    }
+                        "additionalProperties": False,
+                    },
                 },
-            }
+            },
         },
-        "required": [
-            "type",
-            "sender",
-            "content"
-        ]
+        "required": ["type", "sender", "content"],
     }
 
     room_membership = {
@@ -436,34 +387,28 @@ class Schemas(object):
                 "properties": {
                     "membership": {
                         "type": "string",
-                        "enum": ["invite", "join", "knock", "leave", "ban"]
+                        "enum": ["invite", "join", "knock", "leave", "ban"],
                     },
                     "avatar_url": {"type": ["string", "null"]},
                     "displayname": {"type": ["string", "null"]},
                 },
-                "required": ["membership"]
+                "required": ["membership"],
             },
             "content": {
                 "type": "object",
                 "properties": {
                     "membership": {
                         "type": "string",
-                        "enum": ["invite", "join", "knock", "leave", "ban"]
+                        "enum": ["invite", "join", "knock", "leave", "ban"],
                     },
                     "reason": {"type": ["string", "null"]},
                     "avatar_url": {"type": ["string", "null"]},
                     "displayname": {"type": ["string", "null"]},
                 },
-                "required": ["membership"]
-            }
+                "required": ["membership"],
+            },
         },
-
-        "required": [
-            "type",
-            "sender",
-            "state_key",
-            "content"
-        ]
+        "required": ["type", "sender", "state_key", "content"],
     }
 
     room_redaction = {
@@ -473,37 +418,24 @@ class Schemas(object):
             "redacts": {"type": "string"},
             "content": {
                 "type": "object",
-                "properties": {
-                    "reason": {"type": "string"},
-                },
-            }
+                "properties": {"reason": {"type": "string"}},
+            },
         },
-        "required": [
-            "sender",
-            "redacts"
-        ]
+        "required": ["sender", "redacts"],
     }
 
     room_event_id = {
         "type": "object",
-        "properties": {
-            "event_id": {"type": "string"}
-        },
+        "properties": {"event_id": {"type": "string"}},
         "required": ["event_id"],
-        "additionalProperties": False
+        "additionalProperties": False,
     }
 
     room_id = {
         "type": "object",
-        "properties": {
-            "room_id": {"type": "string"}
-        },
+        "properties": {"room_id": {"type": "string"}},
         "required": ["room_id"],
-        "additionalProperties": False
+        "additionalProperties": False,
     }
 
-    empty = {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": False
-    }
+    empty = {"type": "object", "properties": {}, "additionalProperties": False}

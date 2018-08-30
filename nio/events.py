@@ -17,22 +17,23 @@
 from __future__ import unicode_literals
 
 from builtins import super
-from logbook import Logger
+from typing import Any, Dict, Optional, Union
+
 from jsonschema.exceptions import SchemaError, ValidationError
-from typing import Dict, Any, Optional, Union
+from logbook import Logger
 
 from .api import Api
-from .log import logger_group
-from .schemas import validate_json, Schemas
 from .encryption import Olm
+from .log import logger_group
+from .schemas import Schemas, validate_json
 
-logger = Logger('nio.events')
+logger = Logger("nio.events")
 logger_group.add_logger(logger)
 
 
 def validate_or_badevent(
-        parsed_dict,  # type: Dict[Any, Any]
-        schema  # type: Dict[Any, Any]
+    parsed_dict,  # type: Dict[Any, Any]
+    schema        # type: Dict[Any, Any]
 ):
     # type: (...) -> Optional[Union[BadEvent, UnknownBadEvent]]
     try:
@@ -70,15 +71,14 @@ class Event(object):
 
     def __str__(self):
         return "Got event of type {} from {}.".format(
-            type(self).__name__,
-            self.sender
+            type(self).__name__, self.sender
         )
 
     @classmethod
     def parse_event(
         cls,
         event_dict,  # type: Dict[Any, Any]
-        olm=None     # type: Optional[Olm]
+        olm=None,  # type: Optional[Olm]
     ):
         # type: (...) -> Optional[Union[Event, BadEventType]]
         if "unsigned" in event_dict:
@@ -140,10 +140,10 @@ class InviteEvent(object):
 class InviteMemberEvent(InviteEvent):
     def __init__(
         self,
-        sender,             # type: str
-        state_key,          # type: str
-        content,            # type: Dict[str, str]
-        prev_content=None   # type: Optional[Dict[str, str]]
+        sender,  # type: str
+        state_key,  # type: str
+        content,  # type: Dict[str, str]
+        prev_content=None,  # type: Optional[Dict[str, str]]
     ):
         # type: (...) -> None
         super().__init__(sender)
@@ -167,7 +167,7 @@ class InviteMemberEvent(InviteEvent):
             parsed_dict["sender"],
             parsed_dict["state_key"],
             content,
-            prev_content
+            prev_content,
         )
 
 
@@ -217,10 +217,7 @@ class BadEvent(Event):
         super().__init__(event_id, sender, server_ts)
 
     def __str__(self):
-        return "Bad event of type {}, from {}.".format(
-            self.sender,
-            self.type
-        )
+        return "Bad event of type {}, from {}.".format(self.sender, self.type)
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -230,7 +227,7 @@ class BadEvent(Event):
             parsed_dict["sender"],
             parsed_dict["origin_server_ts"],
             parsed_dict["type"],
-            Api.to_json(parsed_dict)
+            Api.to_json(parsed_dict),
         )
 
 
@@ -240,12 +237,12 @@ BadEventType = Union[BadEvent, UnknownBadEvent]
 class RedactedEvent(Event):
     def __init__(
         self,
-        event_id,    # type: str
-        sender,      # type: str
-        server_ts,   # type: int
+        event_id,  # type: str
+        sender,  # type: str
+        server_ts,  # type: int
         event_type,  # type: str
-        redacter,    # type: str
-        reason=None  # type: Optional[str]
+        redacter,  # type: str
+        reason=None,  # type: Optional[str]
     ):
         # type: (...) -> None
         self.event_type = event_type
@@ -256,9 +253,7 @@ class RedactedEvent(Event):
     def __str__(self):
         reason = ", reason: {}".format(self.reason) if self.reason else ""
         return "Redacted event of type {}, by {}{}.".format(
-            self.event_type,
-            self.redacter,
-            reason
+            self.event_type, self.redacter, reason
         )
 
     @classmethod
@@ -279,7 +274,7 @@ class RedactedEvent(Event):
             parsed_dict["origin_server_ts"],
             parsed_dict["type"],
             redacter,
-            reason
+            reason,
         )
 
 
@@ -400,7 +395,7 @@ class RoomMessageMedia(RoomMessage):
             parsed_dict["sender"],
             parsed_dict["origin_server_ts"],
             parsed_dict["content"]["url"],
-            parsed_dict["content"]["body"]
+            parsed_dict["content"]["body"],
         )
 
 
@@ -435,7 +430,7 @@ class RoomMessageUnknown(RoomMessage):
             parsed_dict["sender"],
             parsed_dict["origin_server_ts"],
             parsed_dict["type"],
-            parsed_dict.pop("content")
+            parsed_dict.pop("content"),
         )
 
 
@@ -456,19 +451,19 @@ class RoomMessageNotice(RoomMessage):
             parsed_dict["event_id"],
             parsed_dict["sender"],
             parsed_dict["origin_server_ts"],
-            parsed_dict["content"]["body"]
+            parsed_dict["content"]["body"],
         )
 
 
 class RoomMessageText(RoomMessage):
     def __init__(
         self,
-        event_id,        # type: str
-        sender,          # type: str
-        server_ts,       # type: int
-        body,            # type: str
+        event_id,  # type: str
+        sender,  # type: str
+        server_ts,  # type: int
+        body,  # type: str
         formatted_body,  # type: Optional[str]
-        body_format      # type: Optional[str]
+        body_format,  # type: Optional[str]
     ):
         # type: (...) -> None
         super().__init__(event_id, sender, server_ts)
@@ -494,10 +489,16 @@ class RoomMessageText(RoomMessage):
             return bad
 
         body = parsed_dict["content"]["body"]
-        formatted_body = (parsed_dict["content"]["formatted_body"] if
-                          "formatted_body" in parsed_dict["content"] else None)
-        body_format = (parsed_dict["content"]["format"] if
-                       "format" in parsed_dict["content"] else None)
+        formatted_body = (
+            parsed_dict["content"]["formatted_body"]
+            if "formatted_body" in parsed_dict["content"]
+            else None
+        )
+        body_format = (
+            parsed_dict["content"]["format"]
+            if "format" in parsed_dict["content"]
+            else None
+        )
 
         return cls(
             parsed_dict["event_id"],
@@ -505,7 +506,7 @@ class RoomMessageText(RoomMessage):
             parsed_dict["origin_server_ts"],
             body,
             formatted_body,
-            body_format
+            body_format,
         )
 
 
@@ -563,13 +564,7 @@ class PowerLevels(object):
 
 
 class PowerLevelsEvent(Event):
-    def __init__(
-        self,
-        event_id,
-        sender,
-        server_ts,
-        power_levels
-    ):
+    def __init__(self, event_id, sender, server_ts, power_levels):
         super().__init__(event_id, sender, server_ts)
         self.power_levels = power_levels
 
@@ -591,18 +586,18 @@ class PowerLevelsEvent(Event):
             parsed_dict["event_id"],
             parsed_dict["sender"],
             parsed_dict["origin_server_ts"],
-            levels
+            levels,
         )
 
 
 class RedactionEvent(Event):
     def __init__(
         self,
-        event_id,           # type: str
-        sender,             # type: str
-        server_ts,          # type: int
-        redacts,            # type: str
-        reason=None,        # type: Optional[str]
+        event_id,  # type: str
+        sender,  # type: str
+        server_ts,  # type: int
+        redacts,  # type: str
+        reason=None,  # type: Optional[str]
     ):
         # type: (...) -> None
         super().__init__(event_id, sender, server_ts)
@@ -617,29 +612,30 @@ class RedactionEvent(Event):
         if bad:
             return bad
 
-        content = (parsed_dict.pop("content") if
-                   "content" in parsed_dict else None)
+        content = (
+            parsed_dict.pop("content") if "content" in parsed_dict else None
+        )
 
-        reason = (content["reason"] if "reason" in content else None)
+        reason = content["reason"] if "reason" in content else None
 
         return cls(
             parsed_dict["event_id"],
             parsed_dict["sender"],
             parsed_dict["origin_server_ts"],
             parsed_dict["redacts"],
-            reason
+            reason,
         )
 
 
 class RoomMemberEvent(Event):
     def __init__(
         self,
-        event_id,           # type: str
-        sender,             # type: str
-        server_ts,          # type: int
-        state_key,          # type: str
-        content,            # type: Dict[str, str]
-        prev_content=None   # type: Optional[Dict[str, str]]
+        event_id,  # type: str
+        sender,  # type: str
+        server_ts,  # type: int
+        state_key,  # type: str
+        content,  # type: Dict[str, str]
+        prev_content=None,  # type: Optional[Dict[str, str]]
     ):
         # type: (...) -> None
         super().__init__(event_id, sender, server_ts)
@@ -665,5 +661,5 @@ class RoomMemberEvent(Event):
             parsed_dict["origin_server_ts"],
             parsed_dict["state_key"],
             content,
-            prev_content
+            prev_content,
         )

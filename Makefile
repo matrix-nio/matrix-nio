@@ -4,9 +4,8 @@ all:
 
 test:
 	python3 -m pytest
-	python3 -m pytest --flake8 nio
-	python3 -m pytest --isort nio
-	python3 -m pytest --cov nio
+	python3 -m pytest --flake8 nio --benchmark-disable
+	python3 -m pytest --cov nio --benchmark-disable
 
 clean:
 	-rm -r dist/ __pycache__/

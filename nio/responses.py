@@ -16,60 +16,42 @@
 
 from __future__ import unicode_literals
 
-from typing import Optional, Union, Dict, List, Any, NamedTuple
 from builtins import str, super
+from typing import Any, Dict, List, NamedTuple, Optional, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
-from .log import logger_group
-from .schemas import validate_json, Schemas
 from .events import (
     Event,
-    UnknownBadEvent,
-    RoomMessage,
+    InviteEvent,
+    PowerLevelsEvent,
     RedactedEvent,
     RoomAliasEvent,
+    RoomEncryptionEvent,
+    RoomMessage,
     RoomNameEvent,
     RoomTopicEvent,
-    RoomEncryptionEvent,
-    PowerLevelsEvent,
-    InviteEvent
+    UnknownBadEvent,
 )
+from .log import logger_group
+from .schemas import Schemas, validate_json
 
-logger = Logger('nio.responses')
+logger = Logger("nio.responses")
 logger_group.add_logger(logger)
 
 
-Rooms = NamedTuple("Rooms", [
-    ("invite", dict),
-    ("join", dict),
-    ("leave", dict)
-])
+Rooms = NamedTuple(
+    "Rooms", [("invite", dict), ("join", dict), ("leave", dict)]
+)
 
 Timeline = NamedTuple(
-    "Timeline",
-    [
-        ("events", list),
-        ("limited", bool),
-        ("prev_batch", str)
-    ]
+    "Timeline", [("events", list), ("limited", bool), ("prev_batch", str)]
 )
 
-InviteInfo = NamedTuple(
-    "InviteInfo",
-    [
-        ("invite_state", list),
-    ]
-)
+InviteInfo = NamedTuple("InviteInfo", [("invite_state", list)])
 
-RoomInfo = NamedTuple(
-    "RoomInfo",
-    [
-        ("timeline", Timeline),
-        ("state", list),
-    ]
-)
+RoomInfo = NamedTuple("RoomInfo", [("timeline", Timeline), ("state", list)])
 
 
 class Response(object):
@@ -118,8 +100,7 @@ class LoginResponse(Response):
     def __str__(self):
         # type: () -> str
         return "Logged in as {}, device id: {}.".format(
-            self.user_id,
-            self.device_id
+            self.user_id, self.device_id
         )
 
     @classmethod
@@ -130,9 +111,11 @@ class LoginResponse(Response):
         except (SchemaError, ValidationError):
             return ErrorResponse.from_dict(parsed_dict)
 
-        return cls(parsed_dict["user_id"],
-                   parsed_dict["device_id"],
-                   parsed_dict["access_token"])
+        return cls(
+            parsed_dict["user_id"],
+            parsed_dict["device_id"],
+            parsed_dict["access_token"],
+        )
 
 
 class RoomEventIdResponse(Response):
@@ -229,8 +212,7 @@ class SyncRepsponse(Response):
 
         body = "\n".join(room_messages)
         string = ("Sync response until batch: {}:\n{}").format(
-            self.next_batch,
-            body
+            self.next_batch, body
         )
         return string
 
@@ -264,24 +246,18 @@ class SyncRepsponse(Response):
         validate_json(parsed_dict, Schemas.room_timeline)
 
         events = SyncRepsponse._get_room_events(
-            parsed_dict["events"],
-            max_events,
-            olm
+            parsed_dict["events"], max_events, olm
         )
 
         return Timeline(
-            events,
-            parsed_dict["limited"],
-            parsed_dict["prev_batch"]
+            events, parsed_dict["limited"], parsed_dict["prev_batch"]
         )
 
     @staticmethod
     def _get_state(parsed_dict, max_events=0, olm=None):
         validate_json(parsed_dict, Schemas.room_state)
         events = SyncRepsponse._get_room_events(
-            parsed_dict["events"],
-            max_events,
-            olm
+            parsed_dict["events"], max_events, olm
         )
 
         return events
@@ -316,19 +292,13 @@ class SyncRepsponse(Response):
         for room_id, room_dict in parsed_dict["leave"].items():
             state = SyncRepsponse._get_state(room_dict["state"])
             timeline = SyncRepsponse._get_timeline(room_dict["timeline"])
-            leave_info = RoomInfo(
-                timeline,
-                state,
-            )
+            leave_info = RoomInfo(timeline, state)
             left_rooms[room_id] = leave_info
 
         for room_id, room_dict in parsed_dict["join"].items():
             state = SyncRepsponse._get_state(room_dict["state"])
             timeline = SyncRepsponse._get_timeline(room_dict["timeline"])
-            join_info = RoomInfo(
-                timeline,
-                state,
-            )
+            join_info = RoomInfo(timeline, state)
             joined_rooms[room_id] = join_info
 
         return Rooms(invited_rooms, joined_rooms, left_rooms)
@@ -336,9 +306,9 @@ class SyncRepsponse(Response):
     @classmethod
     def from_dict(
         cls,
-        parsed_dict,   # type: Dict[Any, Any]
+        parsed_dict,  # type: Dict[Any, Any]
         max_events=0,  # type: int
-        olm=None       # type: Any
+        olm=None,  # type: Any
     ):
         # type: (...) -> Union[SyncRepsponse, ErrorResponse]
         partial = False
@@ -347,13 +317,10 @@ class SyncRepsponse(Response):
             logger.info("Validating sync response schema")
             validate_json(parsed_dict, Schemas.sync)
             rooms = SyncRepsponse._get_room_info(
-                parsed_dict["rooms"],
-                max_events,
-                olm
+                parsed_dict["rooms"], max_events, olm
             )
         except (SchemaError, ValidationError) as e:
             logger.error("Error validating sync response: " + str(e.message))
             return ErrorResponse.from_dict(parsed_dict)
 
-        return cls(parsed_dict["next_batch"],
-                   rooms, partial)
+        return cls(parsed_dict["next_batch"], rooms, partial)

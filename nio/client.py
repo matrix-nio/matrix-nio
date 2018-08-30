@@ -18,40 +18,42 @@ from __future__ import unicode_literals
 
 import json
 import pprint
-from uuid import UUID
-from collections import deque, namedtuple
-from typing import Any, AnyStr, Deque, Dict, List, Optional, Union, Tuple
-
-import h11
-import h2
-
-from logbook import Logger
 from builtins import bytes, str
+from collections import deque, namedtuple
+from typing import Any, AnyStr, Deque, Dict, List, Optional, Tuple, Union
+from uuid import UUID
+
+import h2
+import h11
+from logbook import Logger
 
 from .api import Http2Api, HttpApi
 from .exceptions import (
     LocalProtocolError,
+    RemoteProtocolError,
     RemoteTransportError,
-    RemoteProtocolError
 )
-from .http import (Http2Connection, Http2Request, HttpConnection, HttpRequest,
-                   TransportResponse, TransportType, TransportRequest)
+from .http import (
+    Http2Connection,
+    HttpConnection,
+    TransportType,
+    TransportResponse,
+    TransportRequest
+)
 from .log import logger_group
-
 from .responses import (
+    JoinResponse,
     LoginResponse,
     Response,
-    SyncRepsponse,
-    RoomSendResponse,
+    RoomInviteResponse,
+    RoomKickResponse,
+    RoomLeaveResponse,
     RoomPutStateResponse,
     RoomRedactResponse,
-    RoomKickResponse,
-    RoomInviteResponse,
-    JoinResponse,
-    RoomLeaveResponse
+    RoomSendResponse,
+    SyncRepsponse,
 )
-
-from .rooms import MatrixRoom, MatrixInvitedRoom
+from .rooms import MatrixInvitedRoom, MatrixRoom
 
 try:
     from json.decoder import JSONDecodeError
@@ -59,7 +61,7 @@ except ImportError:
     JSONDecodeError = ValueError  # type: ignore
 
 
-logger = Logger('nio.client')
+logger = Logger("nio.client")
 logger_group.add_logger(logger)
 
 
@@ -70,10 +72,10 @@ RequestInfo = namedtuple("RequestInfo", ["type", "timeout"])
 
 class Client(object):
     def __init__(
-            self,
-            user=None,       # type: Optional[str]
-            device_id=None,  # type: Optional[str]
-            session_dir="",  # type: Optional[str]
+        self,
+        user=None,  # type: Optional[str]
+        device_id=None,  # type: Optional[str]
+        session_dir="",  # type: Optional[str]
     ):
         # type: (...) -> None
         self.user = user
@@ -113,8 +115,7 @@ class Client(object):
                 if room_id not in self.invited_rooms:
                     logger.info("New invited room {}".format(room_id))
                     self.invited_rooms[room_id] = MatrixInvitedRoom(
-                        room_id,
-                        self.user_id
+                        room_id, self.user_id
                     )
 
                 room = self.invited_rooms[room_id]
@@ -141,7 +142,7 @@ class Client(object):
     def receive(self, response_type, json_string, uuid=None, timing=None):
         # type: (str, str, Optional[UUID], Optional[TimingInfo]) -> bool
         try:
-            parsed_dict = json.loads(json_string, encoding="utf-8")  \
+            parsed_dict = json.loads(json_string, encoding="utf-8") \
                 # type: Dict[Any, Any]
         except JSONDecodeError as e:
             raise RemoteProtocolError("Error parsing json: {}".format(str(e)))
@@ -195,20 +196,20 @@ class Client(object):
 
 class HttpClient(object):
     def __init__(
-            self,
-            host,  # type: str
-            user="",  # type: str
-            device_id="",    # type: Optional[str]
-            session_dir="",  # type: Optional[str]
+        self,
+        host,  # type: str
+        user="",  # type: str
+        device_id="",  # type: Optional[str]
+        session_dir="",  # type: Optional[str]
     ):
         # type: (...) -> None
         self.host = host
-        self.requests_made = {}        # type: Dict[UUID, RequestInfo]
+        self.requests_made = {}  # type: Dict[UUID, RequestInfo]
         self.response_queue = deque()  # type: Deque[TransportResponse]
 
         self._client = Client(user, device_id, session_dir)
-        self.api = None         # type: Optional[Union[HttpApi, Http2Api]]
-        self.connection = None  \
+        self.api = None  # type: Optional[Union[HttpApi, Http2Api]]
+        self.connection = None \
             # type: Optional[Union[HttpConnection, Http2Connection]]
 
     def _send(self, request):
@@ -303,10 +304,7 @@ class HttpClient(object):
             raise LocalProtocolError("No user defined.")
 
         request = self.api.login(
-            self._client.user,
-            password,
-            device_name,
-            self._client.device_id
+            self._client.user, password, device_name, self._client.device_id
         )
 
         uuid, data = self._send(request)
@@ -321,10 +319,8 @@ class HttpClient(object):
             raise LocalProtocolError("Not connected.")
 
         request = self.api.room_send(
-            self._client.access_token,
-            room_id,
-            message_type,
-            content)
+            self._client.access_token, room_id, message_type, content
+        )
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo("room_send", 0)
@@ -338,10 +334,8 @@ class HttpClient(object):
             raise LocalProtocolError("Not connected.")
 
         request = self.api.room_put_state(
-            self._client.access_token,
-            room_id,
-            event_type,
-            body)
+            self._client.access_token, room_id, event_type, body
+        )
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo("room_put_state", 0)
@@ -355,10 +349,8 @@ class HttpClient(object):
             raise LocalProtocolError("Not connected.")
 
         request = self.api.room_redact(
-            self._client.access_token,
-            room_id,
-            event_id,
-            reason)
+            self._client.access_token, room_id, event_id, reason
+        )
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo("room_redact", 0)
@@ -372,10 +364,8 @@ class HttpClient(object):
             raise LocalProtocolError("Not connected.")
 
         request = self.api.room_kick(
-            self._client.access_token,
-            room_id,
-            user_id,
-            reason)
+            self._client.access_token, room_id, user_id, reason
+        )
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo("room_kick", 0)
@@ -389,9 +379,8 @@ class HttpClient(object):
             raise LocalProtocolError("Not connected.")
 
         request = self.api.room_invite(
-            self._client.access_token,
-            room_id,
-            user_id)
+            self._client.access_token, room_id, user_id
+        )
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo("room_invite", 0)
@@ -432,10 +421,7 @@ class HttpClient(object):
             raise LocalProtocolError("Not connected.")
 
         request = self.api.sync(
-            self._client.access_token,
-            self._client.next_batch,
-            timeout,
-            filter
+            self._client.access_token, self._client.next_batch, timeout, filter
         )
 
         uuid, data = self._send(request)
@@ -449,10 +435,7 @@ class HttpClient(object):
 
         try:
             response = self.connection.receive(data)
-        except (
-            h11.RemoteProtocolError,
-            h2.exceptions.ProtocolError
-        ) as e:
+        except (h11.RemoteProtocolError, h2.exceptions.ProtocolError) as e:
             raise RemoteTransportError(e)
 
         if response:
@@ -463,19 +446,20 @@ class HttpClient(object):
                 raise
 
             if response.is_ok:
-                logger.info("Received response of type: {}".format(
-                    request_info.type))
+                logger.info(
+                    "Received response of type: {}".format(request_info.type)
+                )
                 timing = TimingInfo(response.send_time, response.receive_time)
                 self._client.receive(
-                    request_info.type,
-                    response.text,
-                    response.uuid,
-                    timing
+                    request_info.type, response.text, response.uuid, timing
                 )
             else:
-                logger.info(("Error with response of type type: {}, "
-                             "error code {}").format(
-                            request_info.type, response.status_code))
+                logger.info(
+                    (
+                        "Error with response of type type: {}, "
+                        "error code {}"
+                    ).format(request_info.type, response.status_code)
+                )
 
                 response.request_info = request_info
                 self.response_queue.append(response)
