@@ -16,9 +16,8 @@
 
 from __future__ import unicode_literals
 
-from typing import *
-from typing import NamedTuple
-from  builtins import str, super
+from typing import Optional, Union, Dict, List, Any, NamedTuple
+from builtins import str, super
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
@@ -54,6 +53,13 @@ Timeline = NamedTuple(
         ("events", list),
         ("limited", bool),
         ("prev_batch", str)
+    ]
+)
+
+InviteInfo = NamedTuple(
+    "InviteInfo",
+    [
+        ("invite_state", list),
     ]
 )
 
@@ -299,31 +305,31 @@ class SyncRepsponse(Response):
         joined_rooms = {
             key: None for key in parsed_dict["join"].keys()
         }  # type: Dict[str, Optional[RoomInfo]]
-        invited_rooms = {}  # type: Dict[str, Any]
-        left_rooms = {}  # type: Dict[str, Any]
+        invited_rooms = {}  # type: Dict[str, InviteInfo]
+        left_rooms = {}  # type: Dict[str, RoomInfo]
 
         for room_id, room_dict in parsed_dict["invite"].items():
             state = SyncRepsponse._get_invite_state(room_dict["invite_state"])
-            info = RoomInfo([], state)
-            invited_rooms[room_id] = info
+            invite_info = InviteInfo(state)
+            invited_rooms[room_id] = invite_info
 
         for room_id, room_dict in parsed_dict["leave"].items():
             state = SyncRepsponse._get_state(room_dict["state"])
             timeline = SyncRepsponse._get_timeline(room_dict["timeline"])
-            info = RoomInfo(
+            leave_info = RoomInfo(
                 timeline,
                 state,
             )
-            left_rooms[room_id] = info
+            left_rooms[room_id] = leave_info
 
         for room_id, room_dict in parsed_dict["join"].items():
             state = SyncRepsponse._get_state(room_dict["state"])
             timeline = SyncRepsponse._get_timeline(room_dict["timeline"])
-            info = RoomInfo(
+            join_info = RoomInfo(
                 timeline,
                 state,
             )
-            joined_rooms[room_id] = info
+            joined_rooms[room_id] = join_info
 
         return Rooms(invited_rooms, joined_rooms, left_rooms)
 

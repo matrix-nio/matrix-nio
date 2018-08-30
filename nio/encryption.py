@@ -24,7 +24,18 @@ import pprint
 from builtins import str, bytes, super
 from collections import defaultdict, deque
 from functools import wraps
-from typing import *
+from typing import (
+    List,
+    Any,
+    Iterator,
+    Optional,
+    Deque,
+    Dict,
+    Union,
+    Tuple,
+    DefaultDict,
+    NamedTuple
+)
 
 from jsonschema import ValidationError, SchemaError
 from logbook import Logger

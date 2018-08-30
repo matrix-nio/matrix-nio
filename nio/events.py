@@ -19,7 +19,7 @@ from __future__ import unicode_literals
 from builtins import super
 from logbook import Logger
 from jsonschema.exceptions import SchemaError, ValidationError
-from typing import *
+from typing import Dict, Any, Optional, Union
 
 from .api import Api
 from .log import logger_group
@@ -30,8 +30,11 @@ logger = Logger('nio.events')
 logger_group.add_logger(logger)
 
 
-def validate_or_badevent(parsed_dict, schema):
-    # type: (Dict[Any, Any], Dict[Any, Any]) -> Optional[BadEvent]
+def validate_or_badevent(
+        parsed_dict,  # type: Dict[Any, Any]
+        schema  # type: Dict[Any, Any]
+):
+    # type: (...) -> Optional[Union[BadEvent, UnknownBadEvent]]
     try:
         validate_json(parsed_dict, schema)
     except (ValidationError, SchemaError) as e:
@@ -58,7 +61,7 @@ class Event(object):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Event
+        # type: (Dict[Any, Any]) -> Union[Event, BadEventType]
         return cls(
             parsed_dict["event_id"],
             parsed_dict["sender"],
@@ -72,8 +75,12 @@ class Event(object):
         )
 
     @classmethod
-    def parse_event(cls, event_dict, olm=None):
-        # type: (Dict[Any, Any], Optional[Olm]) -> Optional[Event]
+    def parse_event(
+        cls,
+        event_dict,  # type: Dict[Any, Any]
+        olm=None     # type: Optional[Olm]
+    ):
+        # type: (...) -> Optional[Union[Event, BadEventType]]
         if "unsigned" in event_dict:
             if "redacted_because" in event_dict["unsigned"]:
                 return RedactedEvent.from_dict(event_dict)
@@ -110,12 +117,12 @@ class Event(object):
 
 class InviteEvent(object):
     def __init__(self, sender):
-        # type: (str, str, int) -> None
+        # type: (str) -> None
         self.sender = sender
 
     @classmethod
     def parse_event(cls, event_dict):
-        # type: (Dict[Any, Any], Optional[Olm]) -> Optional[Event]
+        # type: (Dict[Any, Any]) -> Optional[Union[InviteEvent, BadEventType]]
         if "unsigned" in event_dict:
             if "redacted_because" in event_dict["unsigned"]:
                 return None
@@ -146,7 +153,7 @@ class InviteMemberEvent(InviteEvent):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomMemberEvent, BadEvent]
+        # type: (Dict[Any, Any]) -> Union[InviteMemberEvent, BadEventType]
         bad = validate_or_badevent(parsed_dict, Schemas.room_membership)
 
         if bad:
@@ -171,7 +178,7 @@ class InviteAliasEvent(InviteEvent):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomAliasEvent, BadEvent]
+        # type: (Dict[Any, Any]) -> Union[InviteAliasEvent, BadEventType]
         bad = validate_or_badevent(parsed_dict, Schemas.room_canonical_alias)
 
         if bad:
@@ -190,7 +197,7 @@ class InviteNameEvent(InviteEvent):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomNameEvent, BadEvent]
+        # type: (Dict[Any, Any]) -> Union[InviteNameEvent, BadEventType]
         bad = validate_or_badevent(parsed_dict, Schemas.room_name)
 
         if bad:
@@ -227,6 +234,9 @@ class BadEvent(Event):
         )
 
 
+BadEventType = Union[BadEvent, UnknownBadEvent]
+
+
 class RedactedEvent(Event):
     def __init__(
         self,
@@ -253,7 +263,7 @@ class RedactedEvent(Event):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RedactedEvent, BadEvent]
+        # type: (Dict[Any, Any]) -> Union[RedactedEvent, BadEventType]
         bad = validate_or_badevent(parsed_dict, Schemas.redacted_event)
 
         if bad:
@@ -284,7 +294,7 @@ class RoomAliasEvent(Event):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomAliasEvent, BadEvent]
+        # type: (Dict[Any, Any]) -> Union[RoomAliasEvent, BadEventType]
         bad = validate_or_badevent(parsed_dict, Schemas.room_canonical_alias)
 
         if bad:
@@ -306,7 +316,7 @@ class RoomNameEvent(Event):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomNameEvent, BadEvent]
+        # type: (Dict[Any, Any]) -> Union[RoomNameEvent, BadEventType]
         bad = validate_or_badevent(parsed_dict, Schemas.room_name)
 
         if bad:
@@ -328,7 +338,7 @@ class RoomTopicEvent(Event):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomTopicEvent, BadEvent]
+        # type: (Dict[Any, Any]) -> Union[RoomTopicEvent, BadEventType]
         bad = validate_or_badevent(parsed_dict, Schemas.room_topic)
 
         if bad:
@@ -346,7 +356,7 @@ class RoomTopicEvent(Event):
 class RoomMessage(Event):
     @staticmethod
     def parse_event(parsed_dict, olm=None):
-        # type: (Dict[Any, Any], Any) -> Union[RoomMessage, BadEvent]
+        # type: (Dict[Any, Any], Any) -> Union[RoomMessage, BadEventType]
         bad = validate_or_badevent(parsed_dict, Schemas.room_message)
 
         if bad:
@@ -472,12 +482,12 @@ class RoomMessageText(RoomMessage):
 
     @staticmethod
     def _validate(parsed_dict):
-        # type: (Dict[Any, Any]) -> Optional[BadEvent]
+        # type: (Dict[Any, Any]) -> Optional[BadEventType]
         return validate_or_badevent(parsed_dict, Schemas.room_message_text)
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomMessage, BadEvent]
+        # type: (Dict[Any, Any]) -> Union[RoomMessage, BadEventType]
         bad = cls._validate(parsed_dict)
 
         if bad:
@@ -502,7 +512,7 @@ class RoomMessageText(RoomMessage):
 class RoomMessageEmote(RoomMessageText):
     @staticmethod
     def _validate(parsed_dict):
-        # type: (Dict[Any, Any]) -> Optional[BadEvent]
+        # type: (Dict[Any, Any]) -> Optional[BadEventType]
         return validate_or_badevent(parsed_dict, Schemas.room_message_emote)
 
 
@@ -601,7 +611,7 @@ class RedactionEvent(Event):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RedactionEvent, BadEvent]
+        # type: (Dict[Any, Any]) -> Union[RedactionEvent, BadEventType]
         bad = validate_or_badevent(parsed_dict, Schemas.room_redaction)
 
         if bad:
@@ -639,7 +649,7 @@ class RoomMemberEvent(Event):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomMemberEvent, BadEvent]
+        # type: (Dict[Any, Any]) -> Union[RoomMemberEvent, BadEventType]
         bad = validate_or_badevent(parsed_dict, Schemas.room_membership)
 
         if bad:

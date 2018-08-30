@@ -16,8 +16,7 @@
 
 from __future__ import unicode_literals
 
-from typing import *
-from typing import NamedTuple
+from typing import NamedTuple, Optional, Dict, Any
 from builtins import super
 
 from jsonschema.exceptions import SchemaError, ValidationError

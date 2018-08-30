@@ -22,7 +22,7 @@ import time
 from builtins import bytes, super
 from collections import deque, OrderedDict
 from enum import Enum, unique
-from typing import *
+from typing import List, Optional, Union, Tuple, Deque, Any
 from uuid import uuid4, UUID
 
 import h2.connection

@@ -17,7 +17,7 @@
 from __future__ import unicode_literals
 
 import json
-from typing import *
+from typing import Dict, Any, Optional, Tuple
 
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest

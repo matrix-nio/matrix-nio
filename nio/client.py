@@ -20,7 +20,7 @@ import json
 import pprint
 from uuid import UUID
 from collections import deque, namedtuple
-from typing import *
+from typing import Any, AnyStr, Deque, Dict, List, Optional, Union, Tuple
 
 import h11
 import h2
@@ -119,7 +119,7 @@ class Client(object):
 
                 room = self.invited_rooms[room_id]
 
-                for event in info.state:
+                for event in info.invite_state:
                     room.handle_event(event)
 
             for room_id, join_info in response.rooms.join.items():
