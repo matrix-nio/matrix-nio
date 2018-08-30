@@ -247,7 +247,7 @@ class TransportResponse(object):
 
 class HttpResponse(TransportResponse):
     def add_response(self, response):
-        # type: (Union[h11.Response, h11.InformationalResponse]) -> None
+        # type: (h11.Response) -> None
         self.status_code = response.status_code
 
         for header in response.headers:

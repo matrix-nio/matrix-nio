@@ -19,6 +19,7 @@ from __future__ import unicode_literals
 import json
 import pprint
 from builtins import bytes, str
+from enum import Enum, unique
 from collections import deque, namedtuple
 from typing import Any, AnyStr, Deque, Dict, List, Optional, Tuple, Union
 from uuid import UUID
@@ -68,6 +69,19 @@ logger_group.add_logger(logger)
 TypedResponse = namedtuple("TypedResponse", ["type", "data", "uuid", "timing"])
 TimingInfo = namedtuple("TimingInfo", ["start", "end"])
 RequestInfo = namedtuple("RequestInfo", ["type", "timeout"])
+
+
+@unique
+class RequestType(Enum):
+    login = 0
+    sync = 1
+    room_send = 2
+    room_put_state = 3
+    room_redact = 4
+    room_kick = 5
+    room_invite = 6
+    join = 7
+    room_leave = 8
 
 
 class Client(object):
@@ -139,15 +153,28 @@ class Client(object):
                 for event in join_info.timeline.events:
                     room.handle_event(event)
 
-    def receive(self, response_type, json_string, uuid=None, timing=None):
-        # type: (str, str, Optional[UUID], Optional[TimingInfo]) -> bool
+    def receive(
+        self,
+        request_type,   # type: Union[str, RequestType]
+        json_string,    # type: str
+        uuid=None,      # type: Optional[UUID]
+        timing=None     # type: Optional[TimingInfo]
+    ):
+        # type: (...) -> bool
         try:
             parsed_dict = json.loads(json_string, encoding="utf-8") \
                 # type: Dict[Any, Any]
         except JSONDecodeError as e:
             raise RemoteProtocolError("Error parsing json: {}".format(str(e)))
 
-        response = TypedResponse(response_type, parsed_dict, uuid, timing)
+        if isinstance(request_type, str):
+            try:
+                request_type = RequestType[request_type]
+            except KeyError:
+                raise LocalProtocolError("Invalid request type {}".format(
+                    request_type))
+
+        response = TypedResponse(request_type, parsed_dict, uuid, timing)
         self.parse_queue.append(response)
 
         return True
@@ -161,25 +188,25 @@ class Client(object):
 
         response = None  # type: Optional[Response]
 
-        if typed_response.type == "login":
+        if typed_response.type is RequestType.login:
             response = LoginResponse.from_dict(typed_response.data)
             self._handle_response(response)
-        elif typed_response.type == "sync":
+        elif typed_response.type is RequestType.sync:
             response = SyncRepsponse.from_dict(typed_response.data)
             self._handle_response(response)
-        elif typed_response.type == "room_send":
+        elif typed_response.type is RequestType.room_send:
             response = RoomSendResponse.from_dict(typed_response.data)
-        elif typed_response.type == "room_put_state":
+        elif typed_response.type is RequestType.room_put_state:
             response = RoomPutStateResponse.from_dict(typed_response.data)
-        elif typed_response.type == "room_redact":
+        elif typed_response.type is RequestType.room_redact:
             response = RoomRedactResponse.from_dict(typed_response.data)
-        elif typed_response.type == "room_kick":
+        elif typed_response.type is RequestType.room_kick:
             response = RoomKickResponse.from_dict(typed_response.data)
-        elif typed_response.type == "room_invite":
+        elif typed_response.type is RequestType.room_invite:
             response = RoomInviteResponse.from_dict(typed_response.data)
-        elif typed_response.type == "join":
+        elif typed_response.type is RequestType.join:
             response = JoinResponse.from_dict(typed_response.data)
-        elif typed_response.type == "room_leave":
+        elif typed_response.type is RequestType.room_leave:
             response = RoomLeaveResponse.from_dict(typed_response.data)
 
         if not response:
@@ -308,7 +335,7 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo("login", 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.login, 0)
         return uuid, data
 
     def room_send(self, room_id, message_type, content):
@@ -323,7 +350,7 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo("room_send", 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.room_send, 0)
         return uuid, data
 
     def room_put_state(self, room_id, event_type, body):
@@ -338,7 +365,7 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo("room_put_state", 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.room_put_state, 0)
         return uuid, data
 
     def room_redact(self, room_id, event_id, reason=None):
@@ -353,7 +380,7 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo("room_redact", 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.room_redact, 0)
         return uuid, data
 
     def room_kick(self, room_id, user_id, reason=None):
@@ -368,7 +395,7 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo("room_kick", 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.room_kick, 0)
         return uuid, data
 
     def room_invite(self, room_id, user_id):
@@ -383,7 +410,7 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo("room_invite", 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.room_invite, 0)
         return uuid, data
 
     def join(self, room_id):
@@ -396,7 +423,7 @@ class HttpClient(object):
         request = self.api.join(self._client.access_token, room_id)
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo("join", 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.join, 0)
         return uuid, data
 
     def room_leave(self, room_id):
@@ -409,7 +436,7 @@ class HttpClient(object):
         request = self.api.room_leave(self._client.access_token, room_id)
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo("room_leave", 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.room_leave, 0)
         return uuid, data
 
     def sync(self, timeout=None, filter=None):
@@ -425,7 +452,7 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo("sync", timeout or 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.sync, timeout or 0)
         return uuid, data
 
     def receive(self, data):

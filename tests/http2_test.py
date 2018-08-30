@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 import h2
 
-from nio.client import HttpClient, TransportType, RequestInfo
+from nio.client import HttpClient, TransportType, RequestInfo, RequestType
 from nio.http import TransportResponse, Http2Response
 from nio.responses import LoginResponse, SyncRepsponse
 from nio.api import Http2Api
@@ -78,7 +78,7 @@ class TestClass(object):
         assert response.status_code == 200
         assert response.is_ok
 
-        client._client.receive("login", response.text)
+        client._client.receive(RequestType.login, response.text)
         response = client.next_response()
 
         assert isinstance(response, LoginResponse)
