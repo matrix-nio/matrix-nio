@@ -262,7 +262,7 @@ class Http2Response(TransportResponse):
     def __init__(self):
         super().__init__()
         self.was_reset = False
-        self.error = None  # type: Optional(h2.errors.ErrorCodes)
+        self.error_code = None  # type: Optional[h2.errors.ErrorCodes]
 
     def add_response(self, headers):
         # type: (h2.events.ResponseReceived) -> None
