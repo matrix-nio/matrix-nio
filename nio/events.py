@@ -92,7 +92,8 @@ class Event(object):
             # the server we don't care about our own messages in a
             # sync event. More info under:
             # https://github.com/matrix-org/matrix-doc/blob/master/api/client-server/definitions/event.yaml#L53
-            if "transaction_id" in event_dict["unsigned"]:
+            if ("unsigned" in event_dict and "transaction_id" in
+                    event_dict["unsigned"]):
                 return None
 
             return RoomMessage.parse_event(event_dict, olm)
