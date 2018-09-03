@@ -154,8 +154,8 @@ class MatrixRoom(object):
                 else self.power_levels.defaults.users_default
             )
             display_name = (
-                event.content["display_name"]
-                if "display_name" in event.content
+                event.content["displayname"]
+                if "displayname" in event.content
                 else None
             )
 
@@ -169,8 +169,8 @@ class MatrixRoom(object):
             else:
                 # Handle profile changes
                 user = self.users[event.sender]
-                if "display_name" in event.content:
-                    user.display_name = event.content["display_name"]
+                if "displayname" in event.content:
+                    user.display_name = event.content["displayname"]
 
         elif event.content["membership"] == "leave":
             if event.state_key in self.users:
