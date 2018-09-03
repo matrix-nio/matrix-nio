@@ -261,7 +261,8 @@ class HttpResponse(TransportResponse):
 class Http2Response(TransportResponse):
     def __init__(self):
         super().__init__()
-        self.is_reset = False
+        self.was_reset = False
+        self.error = None  # type: Optional(h2.errors.ErrorCodes)
 
     def add_response(self, headers):
         # type: (h2.events.ResponseReceived) -> None
@@ -276,7 +277,7 @@ class Http2Response(TransportResponse):
 
     @property
     def is_ok(self):
-        if self.is_reset:
+        if self.was_reset:
             return False
 
         if self.status_code == 200:
@@ -466,6 +467,13 @@ class Http2Connection(Connection):
         response = self._responses[stream_id]
         response.add_data(data)
 
+    def _handle_reset(self, event):
+        # type: (h2.events.StreamReset) -> Http2Response
+        response = self._responses.pop(event.stream_id)
+        response.was_reset = True
+        response.error_code = event.error_code
+        return response
+
     def _handle_events(self, events):
         # type: (h2.events.Event) -> Optional[Http2Response]
         for event in events:
@@ -484,8 +492,7 @@ class Http2Connection(Connection):
             elif isinstance(event, h2.events.WindowUpdated):
                 pass
             elif isinstance(event, h2.events.StreamReset):
-                # TODO signal an error
-                self._responses.pop(event.stream_id)
+                return self._handle_reset(event.stream_id)
             elif isinstance(events, h2.events.ConnectionTerminated):
                 # TODO reset the client
                 pass
