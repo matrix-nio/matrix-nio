@@ -49,10 +49,8 @@ class MatrixRoom(object):
         self.own_user_id = own_user_id
         self.canonical_alias = None   # type: Optional[str]
         self.name = None              # type: Optional[str]
-        self.prev_batch = ""          # type: str
         self.users = dict()           # type: Dict[str, MatrixUser]
         self.encrypted = False        # type: bool
-        self.backlog_pending = False  # type: bool
         self.power_levels = PowerLevels()  # type: PowerLevels
         # yapf: enable
 
