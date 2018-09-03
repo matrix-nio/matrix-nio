@@ -18,6 +18,7 @@ from __future__ import unicode_literals
 
 import json
 from typing import Any, Dict, Optional, Tuple
+from enum import Enum, unique
 
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest
@@ -30,6 +31,12 @@ except ImportError:
 
 
 MATRIX_API_PATH = "/_matrix/client/r0"  # type: str
+
+
+@unique
+class MessageDirection(Enum):
+    back = 0
+    front = 1
 
 
 class Api(object):
@@ -179,6 +186,41 @@ class Api(object):
 
         return Api._build_path(path, query_parameters), Api.to_json(body)
 
+    @staticmethod
+    def room_messages(
+        access_token,
+        room_id,
+        start,
+        end=None,
+        direction=MessageDirection.back,
+        limit=10,
+    ):
+        query_parameters = {
+            "access_token": access_token,
+            "from": start,
+            "limit": limit
+        }
+
+        if end:
+            query_parameters["to"] = end
+
+        if isinstance(direction, str):
+            if direction in ("b", "back"):
+                direction = MessageDirection.back
+            elif direction in ("f", "fron"):
+                direction = MessageDirection.front
+            else:
+                raise ValueError("Invalid direction")
+
+        if direction is MessageDirection.front:
+            query_parameters["dir"] = "f"
+        else:
+            query_parameters["dir"] = "b"
+
+        path = "rooms/{room}/messages".format(room=room_id)
+
+        return Api._build_path(path, query_parameters)
+
 
 class HttpApi(object):
     def __init__(self, host):
@@ -253,6 +295,25 @@ class HttpApi(object):
     def room_leave(self, access_token, room_id):
         path, data = Api.room_leave(access_token, room_id)
         return self._build_request("POST", path, data)
+
+    def room_messages(
+        self,
+        access_token,
+        room_id,
+        start,
+        end=None,
+        direction=MessageDirection.back,
+        limit=10
+    ):
+        path = Api.room_messages(
+            access_token,
+            room_id,
+            start,
+            end,
+            direction,
+            limit
+        )
+        return self._build_request("GET", path)
 
 
 class Http2Api(HttpApi):

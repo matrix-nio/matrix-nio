@@ -4,7 +4,12 @@ from __future__ import unicode_literals
 
 import json
 
-from nio.responses import ErrorResponse, LoginResponse, SyncRepsponse
+from nio.responses import (
+    ErrorResponse,
+    LoginResponse,
+    SyncRepsponse,
+    RoomMessagesResponse
+)
 
 
 class TestClass(object):
@@ -31,6 +36,12 @@ class TestClass(object):
             "tests/data/login_invalid_format.json")
         response = LoginResponse.from_dict(parsed_dict)
         assert isinstance(response, ErrorResponse)
+
+    def test_room_messages(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/room_messages.json")
+        response = RoomMessagesResponse.from_dict(parsed_dict)
+        assert isinstance(response, RoomMessagesResponse)
 
     def test_sync_parse(self, benchmark):
         benchmark.weave(SyncRepsponse.from_dict, lazy=True)

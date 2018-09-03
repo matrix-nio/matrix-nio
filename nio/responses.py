@@ -166,6 +166,31 @@ class RoomInviteResponse(EmptyResponse):
     pass
 
 
+class RoomMessagesResponse(Response):
+    def __init__(self, chunk, start, end):
+        # type: (List[Event], str, str) -> None
+        self.chunk = chunk  # type: List[Event]
+        self.start = start
+        self.end = end
+
+    @staticmethod
+    def _get_event(event):
+        pass
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomMessagesResponse, ErrorResponse]
+        chunk = []  # type: List[Event]
+        try:
+            validate_json(parsed_dict, Schemas.room_messages)
+            chunk = (SyncRepsponse._get_room_events(parsed_dict["chunk"]))
+        except (SchemaError, ValidationError) as e:
+            print(str(e))
+            return ErrorResponse.from_dict(parsed_dict)
+
+        return cls(chunk, parsed_dict["start"], parsed_dict["end"])
+
+
 class RoomIdResponse(Response):
     def __init__(self, room_id):
         super().__init__()
@@ -222,8 +247,8 @@ class SyncRepsponse(Response):
 
     @staticmethod
     def _get_room_events(parsed_dict, max_events=0, olm=None):
-        # type: (Dict[Any, Any], int, Any) -> List[Any]
-        events = []  # type: List[Any]
+        # type: (Dict[Any, Any], int, Any) -> List[Event]
+        events = []  # type: List[Event]
 
         for event_dict in parsed_dict:
             try:

@@ -438,4 +438,15 @@ class Schemas(object):
         "additionalProperties": False,
     }
 
+    room_messages = {
+        "type": "object",
+        "properties": {
+            "chunk": {"type": "array"},
+            "start": {"type": "string"},
+            "end": {"type": "string"},
+        },
+        "required": ["chunk", "start", "end"],
+        "additionalProperties": False,
+    }
+
     empty = {"type": "object", "properties": {}, "additionalProperties": False}

@@ -28,7 +28,7 @@ import h2
 import h11
 from logbook import Logger
 
-from .api import Http2Api, HttpApi
+from .api import Http2Api, HttpApi, MessageDirection
 from .exceptions import (
     LocalProtocolError,
     RemoteProtocolError,
@@ -53,6 +53,7 @@ from .responses import (
     RoomRedactResponse,
     RoomSendResponse,
     SyncRepsponse,
+    RoomMessagesResponse,
 )
 from .rooms import MatrixInvitedRoom, MatrixRoom
 
@@ -82,6 +83,7 @@ class RequestType(Enum):
     room_invite = 6
     join = 7
     room_leave = 8
+    room_messages = 9
 
 
 class Client(object):
@@ -208,6 +210,8 @@ class Client(object):
             response = JoinResponse.from_dict(typed_response.data)
         elif typed_response.type is RequestType.room_leave:
             response = RoomLeaveResponse.from_dict(typed_response.data)
+        elif typed_response.type is RequestType.room_messages:
+            response = RoomMessagesResponse.from_dict(typed_response.data)
 
         if not response:
             raise NotImplementedError(
@@ -437,6 +441,33 @@ class HttpClient(object):
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(RequestType.room_leave, 0)
+        return uuid, data
+
+    def room_messages(
+        self,
+        room_id,
+        start,
+        end=None,
+        direction=MessageDirection.back,
+        limit=10
+    ):
+        if not self._client.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
+        request = self.api.room_messages(
+            self._client.access_token,
+            room_id,
+            start,
+            end,
+            direction,
+            limit
+        )
+
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = RequestInfo(RequestType.room_messages, 0)
         return uuid, data
 
     def sync(self, timeout=None, filter=None):
