@@ -5,6 +5,11 @@ all:
 test:
 	python3 -m pytest
 	python3 -m pytest --flake8 nio --benchmark-disable
+
+typecheck:
+	mypy -p nio --ignore-missing-imports --warn-redundant-casts
+
+coverage:
 	python3 -m pytest --cov nio --benchmark-disable
 
 clean:
@@ -21,4 +26,4 @@ archpkg:
 	cd packages && makepkg -ci
 
 
-.PHONY: all clean test
+.PHONY: all clean test typecheck coverage
