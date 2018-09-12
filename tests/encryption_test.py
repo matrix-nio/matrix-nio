@@ -3,11 +3,19 @@
 import os
 import pytest
 
-from olm import Account, OutboundSession, OutboundGroupSession
+from olm import (
+    Account,
+    OutboundSession,
+    OutboundGroupSession,
+    OlmPreKeyMessage,
+    OlmMessage
+)
 
-from nio.encryption import (KeyStore, Olm, OlmDevice, OlmSession, OneTimeKey,
+from nio.encryption import (KeyStore, Olm,
                             SessionStore, Ed25519Key, DeviceStore, Key,
                             OlmTrustError)
+from nio.cryptostore import OlmDevice
+from nio.api import Api
 
 
 AliceId = "@alice:example.org"
@@ -34,9 +42,9 @@ class TestClass(object):
         olm = self._load("example", "DEVICEID")
         assert isinstance(olm.account, Account)
         assert (olm.account.identity_keys["curve25519"]
-                == "RKSnNbkK6hjhbrMLPgeVrSeRAblXkqni9TrQ1EWqcRE")
+                == "5u23ybxzU3A27hW4hsnJYPtL5J2MniwFbuYh6NiSLTc")
         assert (olm.account.identity_keys["ed25519"]
-                == "7ghkECn0yUiDEDpd7C03ErLItloNU1hNvwqpmkxl6qU")
+                == "VM4ZfrDtE4eMWiQvTw59qVMu/AzOxiE0Vs5X1hwh0Es")
 
     def test_fingerprint_store(self, monkeypatch):
         def mocksave(self):
@@ -48,7 +56,12 @@ class TestClass(object):
             "ephermal_devices"
         ))
         account = Account()
-        device = OlmDevice("example", "DEVICEID", account.identity_keys)
+        device = OlmDevice(
+            "example",
+            "DEVICEID",
+            account.identity_keys["ed25519"],
+            account.identity_keys["curve25519"],
+        )
         key = Key.from_olmdevice(device)
 
         assert key not in store
@@ -91,160 +104,80 @@ class TestClass(object):
 
         assert alice != bob
 
-    def test_str_device(self):
-        device = OlmDevice(
-            "example",
-            "DEVICEID",
-            {"ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
-        )
-        device_str = ("example DEVICEID " "{'ed25519': "
-                      "'2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA'}")
-        assert str(device) == device_str
-
-    def test_invalid_device_equality(self):
-        device = OlmDevice(
-            "example",
-            "DEVICEID",
-            {"ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
-        )
-        assert device != 1
-
-    def test_uknown_key_equality(self):
-        alice = OlmDevice(
-            "example",
-            "DEVICEID",
-            {"ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
-        )
-        bob = OlmDevice(
-            "example",
-            "DEVICEID",
-            {"rsa": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
-        )
-        assert alice != bob
-
-    def test_one_time_key_creation(self):
-        key = OneTimeKey(
-            "example",
-            "DEVICEID",
-            "ubIIABa6OJqXKBgjTBweu9byDQ6bRcv+1Ha5zZ8Sv3M",
-            "curve25519"
-        )
-        assert isinstance(key, OneTimeKey)
-
     def _create_session(self):
         alice = Account()
         bob = Account()
         bob.generate_one_time_keys(1)
         one_time = list(bob.one_time_keys["curve25519"].values())[0]
-        OneTimeKey(BobId, Bob_device, one_time, "curve25519")
         id_key = bob.identity_keys["curve25519"]
         s = OutboundSession(alice, id_key, one_time)
         return alice, bob, s
 
     def test_session_store(self):
         alice, bob, s = self._create_session()
-        session = OlmSession(
-            BobId,
-            Bob_device,
-            bob.identity_keys["curve25519"],
-            s
-        )
         store = SessionStore()
-        store.add(session)
-        assert store.check(session)
-        assert session in store
+        store.add(bob.identity_keys["curve25519"], s)
+        assert s in store
 
     def test_session_store_sort(self):
         alice, bob, s = self._create_session()
         bob.generate_one_time_keys(1)
         one_time = list(bob.one_time_keys["curve25519"].values())[0]
-        id_key = bob.identity_keys["curve25519"]
-        s2 = OutboundSession(alice, id_key, one_time)
+        curve_key = bob.identity_keys["curve25519"]
+        s2 = OutboundSession(alice, curve_key, one_time)
 
-        session = OlmSession(BobId, Bob_device, id_key, s)
-        session2 = OlmSession(BobId, Bob_device, id_key, s2)
         store = SessionStore()
-        store.add(session)
-        store.add(session2)
+        store.add(curve_key, s)
+        store.add(curve_key, s2)
 
-        if session.session.id < session2.session.id:
-            assert session == store.get(id_key)
+        if s.id < s2.id:
+            assert s == store.get(curve_key)
         else:
-            assert session2 == store.get(id_key)
+            assert s2 == store.get(curve_key)
 
     def test_device_store(self):
         alice = OlmDevice(
             "example",
             "DEVICEID",
-            {"ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
+            "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA",
+            "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
         )
 
-        store = DeviceStore(os.path.join(
-            self._test_dir,
-            "ephermal_devices"
-        ))
+        store = DeviceStore()
 
         assert store.add(alice)
         assert store.add(alice) is False
         assert alice in store
-        os.remove(os.path.join(self._test_dir, "ephermal_devices"))
 
-    def test_device_load(self, monkeypatch):
-        def mocksave(self):
-            return
-
-        monkeypatch.setattr(KeyStore, '_save', mocksave)
-
-        alice = OlmDevice(
-            "example",
-            "DEVICEID",
-            {"ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
-        )
-        store = DeviceStore(os.path.join(self._test_dir, "known_devices"))
-        assert (Key.from_olmdevice(alice) in store._fingerprint_store)
-        assert store.add(alice)
-        assert alice in store
-
-    def test_device_invalid(self, monkeypatch):
-        def mocksave(self):
-            return
-
-        monkeypatch.setattr(KeyStore, '_save', mocksave)
-        eve = OlmDevice(
-            "example",
-            "DEVICEID",
-            {"ed25519": "3MX2WOCAmE0eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpB"}
-        )
-        store = DeviceStore(os.path.join(self._test_dir, "known_devices"))
-        with pytest.raises(OlmTrustError):
-            store.add(eve)
-
-    def test_olm_outbound_session_create(self, monkeypatch):
-        def mocksave(self):
-            return
-
-        monkeypatch.setattr(KeyStore, '_save', mocksave)
-
+    def test_olm_outbound_session_create(self):
         bob = Account()
         bob.generate_one_time_keys(1)
         one_time = list(bob.one_time_keys["curve25519"].values())[0]
 
-        bob_device = OlmDevice(BobId, Bob_device, bob.identity_keys)
+        bob_device = OlmDevice(
+            BobId,
+            Bob_device,
+            bob.identity_keys["ed25519"],
+            bob.identity_keys["curve25519"]
+        )
 
         olm = Olm("ephermal", "DEVICEID", self._test_dir)
-        olm.devices.add(bob_device)
+        olm.device_store[bob_device.user_id][bob_device.id] = bob_device
         olm.create_session(BobId, Bob_device, one_time)
-        assert olm.session_store.get(bob.identity_keys["curve25519"])
+        assert isinstance(
+            olm.session_store.get(bob.identity_keys["curve25519"]),
+            OutboundSession
+        )
         os.remove(os.path.join(self._test_dir, "ephermal_DEVICEID.db"))
 
     def test_olm_session_load(self):
         olm = self._load("example", "DEVICEID")
         bob_session = olm.session_store.get(
-            "W4pNkTQs6iwJLquwTSWrPDIp54RzjN3SsnDMK9+uOG4"
+            "GPqQwGEX46R6JHM4C56G5nYLtQy53ZZHjXlvY+u+r3w"
         )
         assert bob_session
-        assert (bob_session.session.id
-                == "QFRswzEBDl8rSG2drxPQ8rx5gWkr/GF3+E3dwDnOeBo")
+        assert (bob_session.id
+                == "yFjaOidFksYdD4JxK05RwJJx/5JqUVzzEo1vg/OZCKg")
 
     def test_olm_group_session_store(self):
         try:
@@ -264,6 +197,7 @@ class TestClass(object):
 
             bob_session = olm.inbound_group_store.get(
                 "!test_room",
+                bob_account.identity_keys["curve25519"],
                 outbound_session.id
             )
 
@@ -288,13 +222,19 @@ class TestClass(object):
         alice_device = OlmDevice(
             AliceId,
             Alice_device,
-            alice.account.identity_keys
+            alice.account.identity_keys["ed25519"],
+            alice.account.identity_keys["curve25519"],
         )
-        bob_device = OlmDevice(BobId, Bob_device, bob.account.identity_keys)
+        bob_device = OlmDevice(
+            BobId,
+            Bob_device,
+            bob.account.identity_keys["ed25519"],
+            bob.account.identity_keys["curve25519"],
+        )
 
         # add the devices to the device list
-        alice.devices.add(bob_device)
-        bob.devices.add(alice_device)
+        alice.device_store.add(bob_device)
+        bob.device_store.add(alice_device)
 
         # bob creates one time keys
         bob.account.generate_one_time_keys(1)
@@ -305,44 +245,35 @@ class TestClass(object):
         # alice creates an outbound olm session with bob
         alice.create_session(BobId, Bob_device, one_time)
 
-        session = alice.session_store.get(bob_device.keys["curve25519"])
+        # alice creates an group session
+        alice.create_outbound_group_session("!test:example.org")
+        group_session = alice.outbound_group_sessions["!test:example.org"]
 
-        group_session = OutboundGroupSession()
+        # alice shares the group session with bob
+        with pytest.raises(OlmTrustError):
+            to_device = alice.share_group_session("!test:example.org", [BobId])
 
-        payload_dict = {
-            "type": "m.room_key",
-            "content": {
-                "algorithm": "m.megolm.v1.aes-sha2",
-                "room_id": "!test:example.org",
-                "session_id": group_session.id,
-                "session_key": group_session.session_key,
-                "chain_index": group_session.message_index
-            },
-            "sender": AliceId,
-            "sender_device": Alice_device,
-            "keys": {
-                "ed25519": alice_device.keys["ed25519"]
-            },
-            "recipient": BobId,
-            "recipient_keys": {
-                "ed25519": bob_device.keys["ed25519"]
-            }
-        }
+        alice.verify_device(bob_device)
+        to_device = alice.share_group_session("!test:example.org", [BobId])
+        ciphertext = to_device["messages"][BobId][bob_device.id]["ciphertext"]
+        bob_ciphertext = ciphertext[bob_device.curve25519]
 
-        # alice encrypts the payload for bob
-        message = session.encrypt(Olm._to_json(payload_dict))
+        message = (OlmPreKeyMessage(bob_ciphertext["body"])
+                   if bob_ciphertext["type"] == 0
+                   else OlmMessage(bob_ciphertext["body"]))
 
         # bob decrypts the message and creates a new inbound session with alice
         try:
             # pdb.set_trace()
-            bob.decrypt(AliceId, alice_device.keys["curve25519"], message)
+            bob.decrypt(AliceId, alice_device.curve25519, message)
 
             # we check that the session is there
-            assert bob.session_store.get(alice_device.keys["curve25519"])
+            assert bob.session_store.get(alice_device.curve25519)
             # we check that the group session is there
             assert bob.inbound_group_store.get(
                 "!test:example.org",
-                group_session.id
+                alice_device.curve25519,
+                group_session.id,
             )
 
         finally:

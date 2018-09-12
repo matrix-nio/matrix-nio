@@ -40,9 +40,9 @@ from typing import (
 
 from jsonschema import SchemaError, ValidationError
 from logbook import Logger
+import olm
 from olm import (
     Account,
-    InboundGroupSession,
     InboundSession,
     OlmAccountError,
     OlmGroupSessionError,
@@ -56,6 +56,8 @@ from olm import (
 
 from .log import logger_group
 from .schemas import Schemas, validate_json
+from .cryptostore import CryptoStore, InboundGroupSession, OlmDevice
+from .api import Api
 
 logger = Logger("nio.encryption")
 logger_group.add_logger(logger)
@@ -72,6 +74,12 @@ except NameError:  # pragma: no cover
     FileNotFoundError = IOError
 
 
+GroupStoreType = DefaultDict[
+    str,
+    DefaultDict[str, Dict[str, InboundGroupSession]]
+]
+
+
 class OlmTrustError(Exception):
     pass
 
@@ -82,12 +90,6 @@ class EncryptionError(Exception):
 
 class VerificationError(Exception):
     pass
-
-
-OlmEvent = NamedTuple(
-    "OlmEvent",
-    [("sender", str), ("sender_key", str), ("payload_dict", Dict[Any, Any])],
-)
 
 
 class Key(object):
@@ -130,15 +132,10 @@ class Key(object):
 
     @classmethod
     def from_olmdevice(cls, device):
-        # type: (OlmDevice) -> Optional[Ed25519Key]
+        # type: (OlmDevice) -> Ed25519Key
         user_id = device.user_id
         device_id = device.id
-
-        for key_type, key in device.keys.items():
-            if key_type == "ed25519":
-                return Ed25519Key(user_id, device_id, key)
-
-        return None
+        return Ed25519Key(user_id, device_id, device.ed25519)
 
 
 class Ed25519Key(Key):
@@ -158,58 +155,28 @@ class Ed25519Key(Key):
 
 
 class DeviceStore(object):
-    def __init__(self, filename):
-        # type: (str) -> None
-        self._entries = []  # type: List[OlmDevice]
-        self._fingerprint_store = KeyStore(filename)  # type: KeyStore
+    def __init__(self):
+        # type: () -> None
+        self._entries = defaultdict(dict)  \
+            # type: DefaultDict[str, Dict[str, OlmDevice]]
 
     def __iter__(self):
         # type: () -> Iterator[OlmDevice]
-        for entry in self._entries:
-            yield entry
+        for user_devices in self._entries.values():
+            for device in user_devices.values():
+                yield device
+
+    def __getitem__(self, user_id):
+        # type: (str) -> Dict[str, OlmDevice]
+        return self._entries[user_id]
 
     def add(self, device):
         # type: (OlmDevice) -> bool
-        if device in self._entries:
+        if device in self:
             return False
 
-        self._fingerprint_store.add(Key.from_olmdevice(device))
-
-        self._entries.append(device)
+        self._entries[device.user_id][device.id] = device
         return True
-
-    def user_devices(self, user_id):
-        # type: (str) -> List[OlmDevice]
-        devices = []
-
-        for entry in self._entries:
-            if user_id == entry.user_id:
-                devices.append(entry)
-
-        return devices
-
-    @staticmethod
-    def _verify_key(device, key):
-        # type: (OlmDevice, Key) -> bool
-        if isinstance(key, Ed25519Key):
-            return device.keys["ed25519"] == key.key
-        else:
-            raise NotImplementedError(
-                "Key verification for key type {} not "
-                "implemented".format(type(key))
-            )
-
-    def verify_key(self, key):
-        # type: (Key) -> bool
-        for entry in self._entries:
-            if key.user_id == entry.user_id and key.device_id == entry.id:
-                return self._verify_key(entry, key)
-
-        raise KeyError(
-            "No key found for user {} and device {}".format(
-                key.user_id, key.device_id
-            )
-        )
 
 
 class KeyStore(object):
@@ -313,48 +280,6 @@ class KeyStore(object):
         return key in self._entries
 
 
-class OlmDevice(object):
-    def __init__(self, user_id, device_id, key_dict):
-        # type: (str, str, Dict[str, str]) -> None
-        self.user_id = user_id
-        self.id = device_id
-        self.keys = key_dict
-
-    def __str__(self):
-        # type: () -> str
-        line = "{} {} {}".format(
-            self.user_id, self.id, pprint.pformat(self.keys)
-        )
-        return line
-
-    def __eq__(self, value):
-        # type: (object) -> bool
-        if not isinstance(value, OlmDevice):
-            return NotImplemented
-
-        try:
-            # We only care for the fingerprint key.
-            if (
-                self.user_id == value.user_id
-                and self.id == value.id
-                and self.keys["ed25519"] == value.keys["ed25519"]
-            ):
-                return True
-        except KeyError:
-            pass
-
-        return False
-
-
-class OneTimeKey(object):
-    def __init__(self, user_id, device_id, key, key_type):
-        # type: (str, str, str, str) -> None
-        self.user_id = user_id
-        self.device_id = device_id
-        self.key = key
-        self.key_type = key_type
-
-
 class OlmSession(object):
     def __init__(self, user_id, device_id, identity_key, session):
         # type: (str, str, str, Session) -> None
@@ -400,15 +325,15 @@ class SessionStore(object):
     def __init__(self):
         # type: () -> None
         self._entries = defaultdict(list) \
-            # type: DefaultDict[str, List[Session]]
+            # type: DefaultDict[str, List[OlmSession]]
 
-    def add(self, session):
-        # type: (OlmSession) -> bool
-        if session in self._entries[session.identity_key]:
+    def add(self, curve_key, session):
+        # type: (str, OlmSession) -> bool
+        if session in self._entries[curve_key]:
             return False
 
-        self._entries[session.identity_key].append(session)
-        self._entries[session.identity_key].sort(key=lambda x: x.session.id)
+        self._entries[curve_key].append(session)
+        self._entries[curve_key].sort(key=lambda x: x.id)
         return True
 
     def __iter__(self):
@@ -417,102 +342,48 @@ class SessionStore(object):
             for session in session_list:
                 yield session
 
-    def check(self, session):
-        # type: (OlmSession) -> bool
-        if session in self._entries[session.identity_key]:
-            return True
-        return False
-
-    def remove(self, session):
-        # type: (OlmSession) -> bool
-        if session in self._entries[session.identity_key]:
-            self._entries[session.identity_key].remove(session)
-            return True
-
-        return False
-
-    def get(self, identity_key):
+    def get(self, curve_key):
         # type: (str) -> Optional[OlmSession]
-        if self._entries[identity_key]:
-            return self._entries[identity_key][0]
+        if self._entries[curve_key]:
+            return self._entries[curve_key][0]
 
         return None
 
-    def __getitem__(self, identity_key):
+    def __getitem__(self, curve_key):
         # type: (str) -> List[OlmSession]
-        return self._entries[identity_key]
-
-
-class InGroupSession(object):
-    def __init__(
-        self,
-        room_id,  # type: str
-        session,  # type: InboundGroupSession
-        sender_key,  # type: str
-        sender_fp_key,  # type: str
-    ):
-        # type: (...) -> None
-        self._session = session
-        self.sender_key = sender_key
-        self.sender_fp_key = sender_fp_key
-        self.room_id = room_id
-
-    def __eq__(self, value):
-        if not isinstance(value, InGroupSession):
-            return NotImplemented
-
-        # A group session is uniquely idenfitied by room_id, together with the
-        # sender_key of the room_key event before it was decrypted, and the
-        # session_id. If those properties match the sessions are considered to
-        # be equal.
-        if (
-            self.room_id == value.room_id
-            and self.sender_key == value.sender_key
-            and self._session.id == value._session.id
-        ):
-            return True
-
-        return False
-
-    @property
-    def id(self):
-        # type: () -> str
-        return self._session.id
-
-    def decrypt(self, ciphertext):
-        # type: (str) -> Tuple[str, int]
-        return self._session.decrypt(ciphertext)
-
-    def pickle(self, passphrase=""):
-        # type: (Optional[str]) -> bytes
-        return self._session.pickle(passphrase)
+        return self._entries[curve_key]
 
 
 class GroupSessionStore(object):
     def __init__(self):
-        self._entries = defaultdict(dict) \
-            # type: DefaultDict[str, Dict[str, InGroupSession]]
+        self._entries = defaultdict(lambda: defaultdict(dict))  \
+                # type: GroupStoreType
 
     def __iter__(self):
-        # type: () -> Iterator[InGroupSession]
+        # type: () -> Iterator[InboundGroupSession]
         for room_sessions in self._entries.values():
-            for session in room_sessions.values():
-                yield session
+            for sender_sessions in room_sessions.values():
+                for session in sender_sessions.values():
+                    yield session
 
-    def add(self, session):
-        # type: (InGroupSession) -> bool
-        if session in self._entries[session.room_id].values():
+    def add(self, session, room_id, sender_key):
+        # type: (InboundGroupSession, str, str) -> bool
+        if session in self._entries[room_id][sender_key].values():
             return False
 
-        self._entries[session.room_id][session.id] = session
+        self._entries[room_id][sender_key][session.id] = session
         return True
 
-    def get(self, room_id, session_id):
-        # type: (str, str) -> Optional[InGroupSession]
-        if session_id in self._entries[room_id]:
-            return self._entries[room_id][session_id]
+    def get(self, room_id, sender_key, session_id):
+        # type: (str, str, str) -> Optional[InboundGroupSession]
+        if session_id in self._entries[room_id][sender_key]:
+            return self._entries[room_id][sender_key][session_id]
 
         return None
+
+    def __getitem__(self, room_id):
+        # type: (str) -> DefaultDict[str, Dict[str, InboundGroupSession]]
+        return self._entries[room_id]
 
 
 class Olm(object):
@@ -527,35 +398,32 @@ class Olm(object):
         self.device_id = device_id
         self.session_path = session_path
 
-        self.olm_queue = deque()  # type: Deque[OlmEvent]
-
         # List of group session ids that we shared with people
         self.shared_sessions = []  # type: List[str]
 
         # TODO the folowing dicts should probably be turned into classes with
         # nice interfaces for their operations
 
-        # Store containing devices of users that are members of encrypted rooms
-        # the fingerprint keys get stored in a file so that we catch fingeprint
-        # key swaps.
-        device_store_file = "{}_{}.known_devices".format(user_id, device_id)
-        self.devices = DeviceStore(
-            os.path.join(session_path, device_store_file)
-        )  # type: DeviceStore
-
-        self.session_store = SessionStore()  # type: SessionStore
-        self.inbound_group_store = GroupSessionStore() \
-            # type: GroupSessionStore
+        # Dict[user_id, Dict[device_id, OlmDevice]]
+        self.device_store = DeviceStore()
+        # Dict[curve25519_key, List[OlmSession]]
+        self.session_store = SessionStore()
+        # Dict[RoomId, Dict[curve25519_key, Dict[session id, Session]]]
+        self.inbound_group_store = GroupSessionStore()
 
         # Dict of outbound Megolm sessions Dict[room_id]
         self.outbound_group_sessions = {} \
             # type: Dict[str, OutboundGroupSession]
 
-        loaded = self.load()
+        self.store = CryptoStore(user_id, device_id, session_path)
 
-        if not loaded:
+        self.account = self.store.get_olm_account()
+
+        if not self.account:
             self.account = Account()
-            self.save_account(True)
+            self.save_account()
+        else:
+            self.load()
 
         # TODO we need a db for untrusted device as well as for seen devices.
         trust_file_path = "{}_{}.trusted_devices".format(user_id, device_id)
@@ -580,8 +448,9 @@ class Olm(object):
 
         return session
 
-    def verify_device(self, key):
-        # type: (Key) -> bool
+    def verify_device(self, device):
+        # type: (OlmDevice) -> bool
+        key = Key.from_olmdevice(device)
         if key in self.trust_db:
             return False
 
@@ -591,20 +460,18 @@ class Olm(object):
     def device_trusted(self, device):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
-        if key:
-            return key in self.trust_db
+        return key in self.trust_db
 
-        return False
-
-    def unverify_device(self, key):
-        # type: (Key) -> None
+    def unverify_device(self, device):
+        # type: (OlmDevice) -> None
+        key = Key.from_olmdevice(device)
         self.trust_db.remove(key)
 
     def create_session(self, user_id, device_id, one_time_key):
         # type: (str, str, str) -> None
         # TODO the one time key needs to be verified before calling this
 
-        id_key = None
+        curve_key = None
 
         # Let's create a new outbound session
         logger.info(
@@ -612,15 +479,10 @@ class Olm(object):
         )
 
         # We need to find the device key for the wanted user and his device.
-        for device in self.devices:
-            if device.user_id != user_id or device.id != device_id:
-                continue
-
-            # Found a device let's get the curve25519 key
-            id_key = device.keys["curve25519"]
-            break
-
-        if not id_key:
+        try:
+            device = self.device_store[user_id][device_id]
+            curve_key = device.curve25519
+        except KeyError:
             message = "Identity key for device {} not found".format(device_id)
             logger.error(message)
             raise EncryptionError(message)
@@ -628,14 +490,13 @@ class Olm(object):
         logger.info("Found identity key for device {}".format(device_id))
         # Create the session
         # TODO this can fail
-        s = OutboundSession(self.account, id_key, one_time_key)
+        session = OutboundSession(self.account, curve_key, one_time_key)
         # Save the account, add the session to the store and save it to the
         # database.
         self.save_account()
-        session = OlmSession(user_id, device_id, id_key, s)
 
-        self.session_store.add(session)
-        self.save_session(session, new=True)
+        self.session_store.add(curve_key, session)
+        self.save_session(curve_key, session)
         logger.info("Created OutboundSession for device {}".format(device_id))
 
     def create_group_session(
@@ -649,20 +510,19 @@ class Olm(object):
         )
 
         try:
-            s = InboundGroupSession(session_key)
-            if s.id != session_id:
+            session = InboundGroupSession(session_key, sender_fp_key)
+            if session.id != session_id:
                 raise OlmSessionError(
                     "Mismatched session id while creating "
                     "inbound group session"
                 )
 
-            session = InGroupSession(room_id, s, sender_key, sender_fp_key)
         except OlmSessionError as e:
             logger.warn(e)
             return
 
-        self.inbound_group_store.add(session)
-        self.save_inbound_group_session(session)
+        self.inbound_group_store.add(session, room_id, sender_key)
+        self.save_inbound_group_session(room_id, sender_key, session)
 
     def create_outbound_group_session(self, room_id):
         # type: (str) -> None
@@ -685,12 +545,12 @@ class Olm(object):
         for user_id in users:
             devices = []
 
-            for device in self.devices.user_devices(user_id):
+            for device in self.device_store[user_id].values():
                 # we don't need a session for our own device, skip it
                 if device.id == self.device_id:
                     continue
 
-                if not self.session_store.get(device.keys["curve25519"]):
+                if not self.session_store.get(device.curve25519):
                     logger.warn(
                         "Missing session for device {}".format(device.id)
                     )
@@ -783,27 +643,6 @@ class Olm(object):
         ):
             raise VerificationError(
                 "Missmatched recipient key in " "Olm payload"
-            )
-
-        sender_device = payload["sender_device"]
-        sender_fp_key = Ed25519Key(
-            sender, sender_device, payload["keys"]["ed25519"]
-        )
-
-        # Check that the ed25519 sender key matches to the one we previously
-        # downloaded using a key query, if we didn't query the keys yet raise a
-        # trust error so we can put the payload in a queue and process it later
-        # on
-        try:
-            if not self.devices.verify_key(sender_fp_key):
-                raise VerificationError(
-                    "Missmatched sender key in Olm payload"
-                    " for {} and device {}".format(sender, sender_device)
-                )
-        except KeyError:
-            raise OlmTrustError(
-                "Fingerprint key for {} on device {} "
-                "not found".format(sender, sender_device)
             )
 
         return True
@@ -925,8 +764,6 @@ class Olm(object):
             )
             return
 
-        sender_device = parsed_payload["sender_device"]
-
         # Verify that the payload properties contain correct values:
         # sender/recipient/keys/recipient_keys and check if the sender device
         # is alread verified by us
@@ -939,13 +776,6 @@ class Olm(object):
             logger.error(e)
             return
 
-        except OlmTrustError as e:
-            # We couldn't verify the sender fingerprint key, put the event into
-            # the queue for later processing
-            logger.warn(e)
-            olm_event = OlmEvent(sender, sender_key, parsed_payload)
-            self.olm_queue.append(olm_event)
-
         else:
             # Verification succeded, handle the event
             self._handle_olm_event(sender, sender_key, parsed_payload)
@@ -954,35 +784,22 @@ class Olm(object):
             if s:
                 # We created a new session, find out the device id for it and
                 # store it in the session store as well as in the database.
-                session = OlmSession(sender, sender_device, sender_key, s)
-                self.session_store.add(session)
-                self.save_session(session, new=True)
+                self.session_store.add(sender_key, s)
+                self.save_session(sender_key, s)
 
     def group_encrypt(
         self,
         room_id,  # type: str
         plaintext_dict,  # type: Dict[str, str]
-        users,  # type: List[str]
     ):
-        # type: (...) -> Tuple[Dict[str, str], Optional[Dict[Any, Any]]]
-        plaintext_dict["room_id"] = room_id
-        to_device_dict = None  # type: Optional[Dict[str, Any]]
-
+        # type: (...) -> Dict[str, str]
         if room_id not in self.outbound_group_sessions:
-            self.create_outbound_group_session(room_id)
-
-        if (
-            self.outbound_group_sessions[room_id].id
-            not in self.shared_sessions
-        ):
-            to_device_dict = self.share_group_session(room_id, users)
-            self.shared_sessions.append(
-                self.outbound_group_sessions[room_id].id
-            )
+            raise EncryptionError("Missing outbound session for room")
 
         session = self.outbound_group_sessions[room_id]
 
-        ciphertext = session.encrypt(Olm._to_json(plaintext_dict))
+        plaintext_dict["room_id"] = room_id
+        ciphertext = session.encrypt(Api.to_json(plaintext_dict))
 
         payload_dict = {
             "algorithm": "m.megolm.v1.aes-sha2",
@@ -992,11 +809,11 @@ class Olm(object):
             "device_id": self.device_id,
         }
 
-        return payload_dict, to_device_dict
+        return payload_dict
 
-    def group_decrypt(self, room_id, session_id, ciphertext):
-        # type: (str, str, str) -> Optional[str]
-        session = self.inbound_group_store.get(room_id, session_id)
+    def group_decrypt(self, room_id, sender_key, session_id, ciphertext):
+        # type: (str, str, str, str) -> Optional[str]
+        session = self.inbound_group_store.get(room_id, sender_key, session_id)
 
         if not session:
             logger.warn(
@@ -1036,34 +853,35 @@ class Olm(object):
         to_device_dict = {"messages": {}}  # type: Dict[str, Any]
 
         for user_id in users:
-            for device in self.devices.user_devices(user_id):
+            for device in self.device_store[user_id].values():
                 # No need to share the session with our own device
                 if device.id == self.device_id:
                     continue
 
-                session = self.session_store.get(device.keys["curve25519"])
+                session = self.session_store.get(device.curve25519)
 
                 if not session:
                     continue
 
-                if self.device_trusted(device):
-                    raise OlmTrustError
+                if not self.device_trusted(device):
+                    raise OlmTrustError("Trying to share group session with "
+                                        "untrusted device")
 
                 device_payload_dict = payload_dict.copy()
                 device_payload_dict["recipient"] = user_id
                 device_payload_dict["recipient_keys"] = {
-                    "ed25519": device.keys["ed25519"]
+                    "ed25519": device.ed25519
                 }
 
                 olm_message = session.encrypt(
-                    Olm._to_json(device_payload_dict)
+                    Api.to_json(device_payload_dict)
                 )
 
                 olm_dict = {
                     "algorithm": "m.olm.v1.curve25519-aes-sha2",
                     "sender_key": self.account.identity_keys["curve25519"],
                     "ciphertext": {
-                        device.keys["curve25519"]: {
+                        device.curve25519: {
                             "type": (
                                 0
                                 if isinstance(olm_message, OlmPreKeyMessage)
@@ -1082,216 +900,34 @@ class Olm(object):
         return to_device_dict
 
     def load(self):
-        # type: () -> bool
-
-        db_file = "{}_{}.db".format(self.user_id, self.device_id)
-        db_path = os.path.join(self.session_path, db_file)
-
-        self.database = sqlite3.connect(db_path)
-        new = Olm._check_db_tables(self.database)
-
-        if new:
-            return False
-
-        cursor = self.database.cursor()
-
-        cursor.execute(
-            "select pickle from olmaccount where user = ?", (self.user_id,)
-        )
-        row = cursor.fetchone()
-        account_pickle = row[0]
-
-        cursor.execute(
-            "select user, device_id, identity_key, pickle " "from olmsessions"
-        )
-        db_sessions = cursor.fetchall()
-
-        cursor.execute(
-            "select room_id, sender_key, sender_fp_key, "
-            "pickle from inbound_group_sessions"
-        )
-        db_inbound_group_sessions = cursor.fetchall()
-
-        cursor.close()
-
-        try:
-            try:
-                account_pickle = bytes(account_pickle, "utf-8")
-            except TypeError:
-                pass
-
-            self.account = Account.from_pickle(account_pickle)
-
-            for db_session in db_sessions:
-                session_pickle = db_session[3]
-                try:
-                    session_pickle = bytes(session_pickle, "utf-8")
-                except TypeError:
-                    pass
-
-                s = Session.from_pickle(session_pickle)
-                session = OlmSession(
-                    db_session[0], db_session[1], db_session[2], s
-                )
-                self.session_store.add(session)
-
-            for db_session in db_inbound_group_sessions:
-                session_pickle = db_session[3]
-                try:
-                    session_pickle = bytes(session_pickle, "utf-8")
-                except TypeError:
-                    pass
-
-                s = InboundGroupSession.from_pickle(session_pickle)
-
-                room_id = db_session[0]
-                sender_key = db_session[1]
-                sender_fp_key = db_session[2]
-
-                group_session = InGroupSession(
-                    room_id, s, sender_key, sender_fp_key
-                )
-
-                self.inbound_group_store.add(group_session)
-
-        except (OlmAccountError, OlmSessionError) as error:
-            raise EncryptionError(error)
-
-        return True
+        # type: () -> None
+        self.store.load_olm_sessions(self.session_store)
+        self.store.load_inbound_sessions(self.inbound_group_store)
+        self.store.load_device_keys(self.device_store)
 
     def save(self):
         # type: () -> None
         self.save_account()
 
-        for session in self.session_store:
-            self.save_session(session)
+        # for session in self.session_store:
+        #     self.save_session(session)
 
-    def save_session(self, session, new=False):
-        # type: (OlmSession, bool) -> None
-        cursor = self.database.cursor()
-        if new:
-            cursor.execute(
-                "insert into olmsessions values(?,?,?,?,?)",
-                (
-                    session.user_id,
-                    session.device_id,
-                    session.identity_key,
-                    session.session.id,
-                    session.session.pickle(),
-                ),
-            )
-        else:
-            cursor.execute(
-                "update olmsessions set pickle=? where user = ? "
-                "and device_id = ? and identity_key = ? "
-                "and session_id = ?",
-                (
-                    session.session.pickle(),
-                    session.user_id,
-                    session.device_id,
-                    session.identity_key,
-                    session.session.id,
-                ),
-            )
+    def save_session(self, curve_key, session):
+        # type: (str, OlmSession) -> None
+        self.store.save_olm_session(curve_key, session)
 
-        self.database.commit()
+    def save_inbound_group_session(self, room_id, sender_key, session):
+        # type: (str, str, InboundGroupSession) -> None
+        self.store.save_inbound_session(room_id, sender_key, session)
 
-        cursor.close()
-
-    def save_inbound_group_session(self, session):
-        # type: (InGroupSession) -> None
-        cursor = self.database.cursor()
-
-        cursor.execute(
-            "insert into inbound_group_sessions values(?,?,?,?,?)",
-            (
-                session.room_id,
-                session.id,
-                session.sender_key,
-                session.sender_fp_key,
-                session.pickle(),
-            ),
-        )
-
-        self.database.commit()
-
-        cursor.close()
-
-    def save_account(self, new=False):
-        # type: (bool) -> None
-        cursor = self.database.cursor()
-
-        if new:
-            cursor.execute(
-                "insert into olmaccount values (?,?)",
-                (self.user_id, self.account.pickle()),
-            )
-        else:
-            cursor.execute(
-                "update olmaccount set pickle=? where user = ?",
-                (self.account.pickle(), self.user_id),
-            )
-
-        self.database.commit()
-        cursor.close()
-
-    @staticmethod
-    def _check_db_tables(database):
-        # type: (sqlite3.Connection) -> bool
-        new = False
-        cursor = database.cursor()
-        cursor.execute(
-            """select name from sqlite_master where type='table'
-                          and name='olmaccount'"""
-        )
-        if not cursor.fetchone():
-            cursor.execute("create table olmaccount (user text, pickle text)")
-            database.commit()
-            new = True
-
-        cursor.execute(
-            """select name from sqlite_master where type='table'
-                          and name='olmsessions'"""
-        )
-        if not cursor.fetchone():
-            cursor.execute(
-                """create table olmsessions (user text,
-                              device_id text, identity_key text,
-                              session_id text, pickle text)"""
-            )
-            database.commit()
-            new = True
-
-        cursor.execute(
-            """select name from sqlite_master where type='table'
-                          and name='inbound_group_sessions'"""
-        )
-        if not cursor.fetchone():
-            cursor.execute(
-                """create table inbound_group_sessions
-                              (room_id text, session_id text, sender_key text,
-                               sender_fp_key text, pickle text)"""
-            )
-            database.commit()
-            new = True
-
-        cursor.close()
-        return new
+    def save_account(self):
+        # type: () -> None
+        self.store.save_olm_account(self.account)
 
     def sign_json(self, json_dict):
         # type: (Dict[Any, Any]) -> str
-        signature = self.account.sign(self._to_json(json_dict))
+        signature = self.account.sign(Api.to_json(json_dict))
         return signature
-
-    @staticmethod
-    def _to_json(json_dict):
-        # type: (Dict[Any, Any]) -> str
-        return json.dumps(
-            json_dict,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        )
 
     def mark_keys_as_published(self):
         # type: () -> None
