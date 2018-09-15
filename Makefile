@@ -3,7 +3,7 @@ PYTHON   ?= python
 all:
 
 test:
-	python3 -m pytest
+	python3 -m pytest --benchmark-disable
 	python3 -m pytest --flake8 nio --benchmark-disable
 
 typecheck:
