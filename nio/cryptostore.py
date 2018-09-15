@@ -392,14 +392,16 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
             curve_key (str): The curve25519 key of the device.
             session_id (str): The id of the session.
             sessions (dict): Optional. A map from session id to
-                ``InboundGroupSession`` object, to which the session will be added.
+                ``InboundGroupSession`` object, to which the session will be
+                added.
         Returns:
-            ``InboundGroupSession`` object, or ``None`` if the session was not found.
+            ``InboundGroupSession`` object, or ``None`` if the session was not
+            found.
         """
         c = self._conn.cursor()
         c.execute(
-            "SELECT session, ed_key FROM megolm_inbound_sessions WHERE device_id=? AND "
-            "room_id=? AND curve_key=? AND session_id=?",
+            "SELECT session, ed_key FROM megolm_inbound_sessions WHERE "
+            "device_id=? AND room_id=? AND curve_key=? AND session_id=?",
             (self.device_id, room_id, curve_key, session_id),
         )
         try:
@@ -430,8 +432,8 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
     def save_device_keys(self, device_keys):
         """Saves device keys.
         Args:
-            device_keys (defaultdict(dict)): The format is ``{<user_id>: {<device_id>:
-                Device``.
+            device_keys (defaultdict(dict)): The format is
+                ``{<user_id>: {<device_id>: Device}}``.
         """
         c = self._conn.cursor()
         rows = []
@@ -458,8 +460,9 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
     def load_device_keys(self, device_keys):
         """Loads all saved device keys.
         Args:
-            device_keys (defaultdict(dict)): An object which will get populated with
-                the keys. The format is ``{<user_id>: {<device_id>: Device}}``.
+            device_keys (defaultdict(dict)): An object which will get populated
+                with the keys. The format is
+                ``{<user_id>: {<device_id>: Device}}``.
         """
         c = self._conn.cursor()
         rows = c.execute(
@@ -480,23 +483,24 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
                 the retrieved keys. The format is ``{<user_id>: {<device_id>:
                 Device}}``.
         Returns:
-            A ``defaultdict(dict)`` containing the keys, the format is the same as the
-            ``device_keys`` argument.
+            A ``defaultdict(dict)`` containing the keys, the format is the same
+            as the ``device_keys`` argument.
         """
         c = self._conn.cursor()
         rows = []
         for user_id in user_devices:
             if not user_devices[user_id]:
                 c.execute(
-                    "SELECT * FROM device_keys WHERE device_id=? AND user_id=?",
+                    "SELECT * FROM device_keys WHERE device_id=? "
+                    "AND user_id=?",
                     (self.device_id, user_id),
                 )
                 rows.extend(c.fetchall())
             else:
                 for device_id in user_devices[user_id]:
                     c.execute(
-                        "SELECT * FROM device_keys WHERE device_id=? AND user_id=? AND "
-                        "user_device_id=?",
+                        "SELECT * FROM device_keys WHERE device_id=? "
+                        "AND user_id=? AND user_device_id=?",
                         (self.device_id, user_id, device_id),
                     )
                     rows.extend(c.fetchall())
@@ -575,7 +579,8 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
         """
         c = self._conn.cursor()
         c.execute(
-            "DELETE FROM outgoing_key_requests WHERE device_id=? and session_id=?",
+            "DELETE FROM outgoing_key_requests WHERE device_id=? and "
+            "session_id=?",
             (self.device_id, session_id),
         )
         c.close()
