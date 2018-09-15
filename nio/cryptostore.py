@@ -39,7 +39,7 @@ class InboundGroupSession(olm.InboundGroupSession):
     def __init__(self, session_key, signing_key):
         # type: (str, str) -> None
         self.ed25519 = signing_key
-        self.forwarding_chain = []
+        self.forwarding_chain = []  # type: List[str]
         super().__init__(session_key)
 
     def __new__(cls, *args):
@@ -60,18 +60,41 @@ class InboundGroupSession(olm.InboundGroupSession):
         return session
 
 
+class OlmAccount(olm.Account):
+    def __init__(self):
+        # type: () -> None
+        self.shared = False
+        super().__init__()
+
+    def __new__(cls, *args):
+        return super().__new__(cls)
+
+    @classmethod
+    def from_pickle(
+        cls,
+        pickle,                 # type: bytes
+        passphrase='',          # type: str
+        shared=False            # type: bool
+    ):
+        # type: (...) -> InboundGroupSession
+        account = super().from_pickle(pickle, passphrase)
+        account.shared = shared
+        return account
+
+
 class CryptoStore(object):
     """Manages persistent storage for an OlmDevice.
     Args:
         user_id (str): The user ID of the OlmDevice.
-        device_id (str): Optional. The device ID of the OlmDevice. Will be retrieved using
-            ``user_id`` if not present.
-        db_name (str): Optional. The name of the database file to use. Will be created
-            if necessary.
-        db_path (str): Optional. The path where to store the database file. Defaults to
-            the system default application data directory.
-        app_name (str): Optional. The application name, which will be used to determine
-            where the database is located. Ignored if db_path is supplied.
+        device_id (str): Optional. The device ID of the OlmDevice. Will be
+            retrieved using ``user_id`` if not present.
+        db_name (str): Optional. The name of the database file to use. Will
+            be created if necessary.
+        db_path (str): Optional. The path where to store the database file.
+            Defaults to the system default application data directory.
+        app_name (str): Optional. The application name, which will be used
+            to determine where the database is located. Ignored if db_path
+            is supplied.
         pickle_key (str): Optional. A key to encrypt the database contents.
     """
 
@@ -108,7 +131,7 @@ PRAGMA secure_delete = ON;
 PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS accounts(
     device_id TEXT NOT NULL UNIQUE,
-    account BLOB, user_id TEXT PRIMARY KEY NOT NULL
+    account BLOB, user_id TEXT, shared INTEGER PRIMARY KEY NOT NULL
 );
 CREATE TABLE IF NOT EXISTS olm_sessions(
     device_id TEXT, session_id TEXT PRIMARY KEY, curve_key TEXT, session BLOB,
@@ -163,18 +186,18 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
     def save_olm_account(self, account):
         """Saves an Olm account.
         Args:
-            account (olm.Account): The account object to save.
+            account (OlmAccount): The account object to save.
         """
         account_data = account.pickle(self.pickle_key)
         c = self._conn.cursor()
         c.execute(
             "INSERT OR IGNORE INTO accounts "
-            "(device_id, account, user_id) VALUES (?,?,?)",
-            (self.device_id, account_data, self.user_id),
+            "(device_id, account, user_id, shared) VALUES (?,?,?,?)",
+            (self.device_id, account_data, self.user_id, int(account.shared)),
         )
         c.execute(
-            "UPDATE accounts SET account=? WHERE device_id=?",
-            (account_data, self.device_id),
+            "UPDATE accounts SET account=?, shared=? WHERE device_id=?",
+            (account_data, int(account.shared), self.device_id),
         )
         c.close()
         self._conn.commit()
@@ -185,13 +208,14 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
         this saves the new account and discards all data associated with the
         previous one.
         Args:
-            account (olm.Account): The account object to save.
+            account (OlmAccount): The account object to save.
         """
         account_data = account.pickle(self.pickle_key)
         c = self._conn.cursor()
         c.execute(
-            "REPLACE INTO accounts (device_id, account, user_id) VALUES (?,?,?)",
-            (self.device_id, account_data, self.user_id),
+            "REPLACE INTO accounts (device_id, account, user_id, shared) "
+            "VALUES (?,?,?,?)",
+            (self.device_id, account_data, self.user_id, int(account.shared)),
         )
         c.close()
         self._conn.commit()
@@ -199,20 +223,23 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
     def get_olm_account(self):
         """Gets the Olm account.
         Returns:
-            ``olm.Account`` object, or ``None`` if it wasn't found for the current
-            device_id.
+            ``OlmAccount`` object, or ``None`` if it wasn't found for the
+            current device_id.
         Raises:
-            ``ValueError`` if ``device_id`` was ``None`` and couldn't be retrieved.
+            ``ValueError`` if ``device_id`` was ``None`` and couldn't be
+            retrieved.
         """
         c = self._conn.cursor()
         if self.device_id:
             c.execute(
-                "SELECT account, device_id FROM accounts WHERE user_id=? AND device_id=?",
+                "SELECT account, device_id, shared FROM accounts WHERE "
+                "user_id=? AND device_id=?",
                 (self.user_id, self.device_id),
             )
         else:
             c.execute(
-                "SELECT account, device_id FROM accounts WHERE user_id=?",
+                "SELECT account, device_id, shared FROM accounts "
+                "WHERE user_id=?",
                 (self.user_id,),
             )
         row = c.fetchone()
@@ -221,18 +248,19 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
         try:
             self.device_id = row["device_id"]
             account_data = row["account"]
+            shared = bool(row["shared"])
             # sqlite gives us unicode in Python2, we want bytes
             account_data = bytes(account_data)
         except TypeError:
             return None
         finally:
             c.close()
-        return olm.Account.from_pickle(account_data, self.pickle_key)
+        return OlmAccount.from_pickle(account_data, self.pickle_key, shared)
 
     def remove_olm_account(self):
         """Removes the Olm account.
-        NOTE: Doing so will remove any saved information associated with the account
-        (keys, sessions...)
+        NOTE: Doing so will remove any saved information associated with the
+        account (keys, sessions...)
         """
         c = self._conn.cursor()
         c.execute("DELETE FROM accounts WHERE user_id=?", (self.user_id,))
@@ -244,8 +272,8 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
     def save_olm_sessions(self, sessions):
         """Saves Olm sessions.
         Args:
-            sessions (defaultdict(list)): A map from curve25519 keys to a list of
-                ``olm.Session`` objects.
+            sessions (defaultdict(list)): A map from curve25519 keys to a
+                list of ``olm.Session`` objects.
         """
         c = self._conn.cursor()
         rows = [
@@ -260,8 +288,8 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
     def load_olm_sessions(self, sessions):
         """Loads all saved Olm sessions.
         Args:
-            sessions (defaultdict(list)): A map from curve25519 keys to a list of
-                ``olm.Session`` objects, which will be populated.
+            sessions (defaultdict(list)): A map from curve25519 keys to a
+                list of ``olm.Session`` objects, which will be populated.
         """
         c = self._conn.cursor()
         rows = c.execute(
@@ -279,17 +307,20 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
         """Get the Olm sessions corresponding to a device.
         Args:
             curve_key (str): The curve25519 key of the device.
-            sessions_dict (defaultdict(list)): Optional. A map from curve25519 keys to a
-                list of ``olm.Session`` objects, to which the session list will be added.
+            sessions_dict (defaultdict(list)): Optional. A map from curve25519
+                keys to a list of ``olm.Session`` objects, to which the session
+                list will be added.
         Returns:
             A list of ``olm.Session`` objects, or ``None`` if none were found.
         NOTE:
-            When overriding this, be careful to append the retrieved sessions to the
-            list of sessions already present and not to overwrite its reference.
+            When overriding this, be careful to append the retrieved sessions
+            to the list of sessions already present and not to overwrite its
+            reference.
         """
         c = self._conn.cursor()
         rows = c.execute(
-            "SELECT session FROM olm_sessions WHERE device_id=? AND curve_key=?",
+            "SELECT session FROM olm_sessions WHERE device_id=? "
+            "AND curve_key=?",
             (self.device_id, curve_key),
         )
         sessions = [
@@ -564,4 +595,5 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
         c.close()
 
     def close(self):
+        self._conn.close()
         self._conn.close()

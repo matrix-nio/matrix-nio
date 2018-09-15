@@ -182,7 +182,13 @@ class Schemas(object):
     sync = {
         "type": "object",
         "properties": {
-            "device_one_time_keys_count": {"type": "object"},
+            "device_one_time_keys_count": {
+                "type": "object",
+                "properties": {
+                    "curve25519": {"type": "integer", "default": 0},
+                    "signed_curve25519": {"type": "integer", "default": 0},
+                }
+            },
             "next_batch": {"type": "string"},
             "rooms": {
                 "type": "object",
@@ -447,6 +453,20 @@ class Schemas(object):
         },
         "required": ["chunk", "start", "end"],
         "additionalProperties": False,
+    }
+
+    keys_upload = {
+        "type": "object",
+        "properties": {
+            "one_time_key_counts": {
+                "type": "object",
+                "properties": {
+                    "curve25519": {"type": "integer", "default": 0},
+                    "signed_curve25519": {"type": "integer", "default": 0},
+                },
+            },
+        },
+        "required": ["one_time_key_counts"],
     }
 
     empty = {"type": "object", "properties": {}, "additionalProperties": False}

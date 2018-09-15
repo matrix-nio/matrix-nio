@@ -42,9 +42,9 @@ class TestClass(object):
         olm = self._load("example", "DEVICEID")
         assert isinstance(olm.account, Account)
         assert (olm.account.identity_keys["curve25519"]
-                == "5u23ybxzU3A27hW4hsnJYPtL5J2MniwFbuYh6NiSLTc")
+                == "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM")
         assert (olm.account.identity_keys["ed25519"]
-                == "VM4ZfrDtE4eMWiQvTw59qVMu/AzOxiE0Vs5X1hwh0Es")
+                == "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4")
 
     def test_fingerprint_store(self, monkeypatch):
         def mocksave(self):
@@ -172,12 +172,13 @@ class TestClass(object):
 
     def test_olm_session_load(self):
         olm = self._load("example", "DEVICEID")
+
         bob_session = olm.session_store.get(
-            "GPqQwGEX46R6JHM4C56G5nYLtQy53ZZHjXlvY+u+r3w"
+            "+Qs131S/odNdWG6VJ8hiy9YZW0us24wnsDjYQbaxLk4"
         )
         assert bob_session
         assert (bob_session.id
-                == "yFjaOidFksYdD4JxK05RwJJx/5JqUVzzEo1vg/OZCKg")
+                == "EeEiqT9LjCtECaN7WTqcBQ7D5Dwm4+/L9Uxr1IyPAts")
 
     def test_olm_group_session_store(self):
         try:

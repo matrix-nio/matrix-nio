@@ -221,6 +221,14 @@ class Api(object):
 
         return Api._build_path(path, query_parameters)
 
+    @staticmethod
+    def keys_upload(access_token, key_dict):
+        query_parameters = {"access_token": access_token}
+        body = key_dict
+        path = "keys/upload"
+
+        return Api._build_path(path, query_parameters), Api.to_json(body)
+
 
 class HttpApi(object):
     def __init__(self, host):
@@ -314,6 +322,10 @@ class HttpApi(object):
             limit
         )
         return self._build_request("GET", path)
+
+    def keys_upload(self, access_token, keys_dict):
+        path, data = Api.keys_upload(access_token, keys_dict)
+        return self._build_request("POST", path, data)
 
 
 class Http2Api(HttpApi):

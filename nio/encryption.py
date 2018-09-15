@@ -42,7 +42,6 @@ from jsonschema import SchemaError, ValidationError
 from logbook import Logger
 import olm
 from olm import (
-    Account,
     InboundSession,
     OlmAccountError,
     OlmGroupSessionError,
@@ -56,7 +55,13 @@ from olm import (
 
 from .log import logger_group
 from .schemas import Schemas, validate_json
-from .cryptostore import CryptoStore, InboundGroupSession, OlmDevice
+from .cryptostore import (
+    CryptoStore,
+    InboundGroupSession,
+    OlmDevice,
+    OlmAccount
+)
+from .responses import KeysUploadResponse
 from .api import Api
 
 logger = Logger("nio.encryption")
@@ -342,6 +347,12 @@ class SessionStore(object):
             for session in session_list:
                 yield session
 
+    def values(self):
+        return self._entries.values()
+
+    def items(self):
+        return self._entries.items()
+
     def get(self, curve_key):
         # type: (str) -> Optional[OlmSession]
         if self._entries[curve_key]:
@@ -357,7 +368,7 @@ class SessionStore(object):
 class GroupSessionStore(object):
     def __init__(self):
         self._entries = defaultdict(lambda: defaultdict(dict))  \
-                # type: GroupStoreType
+            # type: GroupStoreType
 
     def __iter__(self):
         # type: () -> Iterator[InboundGroupSession]
@@ -397,12 +408,10 @@ class Olm(object):
         self.user_id = user_id
         self.device_id = device_id
         self.session_path = session_path
+        self.uploaded_key_count = None
 
         # List of group session ids that we shared with people
         self.shared_sessions = []  # type: List[str]
-
-        # TODO the folowing dicts should probably be turned into classes with
-        # nice interfaces for their operations
 
         # Dict[user_id, Dict[device_id, OlmDevice]]
         self.device_store = DeviceStore()
@@ -420,7 +429,9 @@ class Olm(object):
         self.account = self.store.get_olm_account()
 
         if not self.account:
-            self.account = Account()
+            logger.info("Creating new Olm account for {} on device {}".format(
+                        self.user_id, self.device_id))
+            self.account = OlmAccount()
             self.save_account()
         else:
             self.load()
@@ -428,6 +439,97 @@ class Olm(object):
         # TODO we need a db for untrusted device as well as for seen devices.
         trust_file_path = "{}_{}.trusted_devices".format(user_id, device_id)
         self.trust_db = KeyStore(os.path.join(session_path, trust_file_path))
+
+    @property
+    def should_upload_keys(self):
+        max_keys = self.account.max_one_time_keys
+        key_count = (max_keys / 2) - self.uploaded_key_count
+        return key_count > 0
+
+    def share_keys(self):
+        # type: () -> Dict[Any, Any]
+        def generate_one_time_keys(current_key_count):
+            max_keys = self.account.max_one_time_keys
+
+            key_count = (max_keys / 2) - current_key_count
+
+            if key_count <= 0:
+                raise ValueError("Can't share any keys, too many keys already "
+                                 "shared")
+
+            self.account.generate_one_time_keys(key_count)
+
+        def device_keys():
+            device_keys = {
+                "algorithms": [
+                    "m.olm.v1.curve25519-aes-sha2",
+                    "m.megolm.v1.aes-sha2"
+                ],
+                "device_id": self.device_id,
+                "user_id": self.user_id,
+                "keys": {
+                    "curve25519:" + self.device_id:
+                        self.account.identity_keys["curve25519"],
+                    "ed25519:" + self.device_id:
+                        self.account.identity_keys["ed25519"]
+                }
+            }
+
+            signature = self.sign_json(device_keys)
+
+            device_keys["signatures"] = {
+                self.user_id: {
+                    "ed25519:" + self.device_id: signature
+                }
+            }
+            return device_keys
+
+        def one_time_keys():
+            one_time_key_dict = {}
+
+            keys = self.account.one_time_keys["curve25519"]
+
+            for key_id, key in keys.items():
+                key_dict = {"key": key}
+                signature = self.sign_json(key_dict)
+
+                one_time_key_dict["signed_curve25519:" + key_id] = {
+                    "key": key_dict.pop("key"),
+                    "signatures": {
+                        self.user_id: {
+                            "ed25519:" + self.device_id: signature
+                        }
+                    }
+                }
+
+            return one_time_key_dict
+
+        content = {}  # type: Dict[Any, Any]
+
+        # We're sharing our account for the first time, upload the identity
+        # keys and one-time keys as well.
+        if not self.account.shared:
+            content["device_keys"] = device_keys()
+            generate_one_time_keys(0)
+            content["one_time_keys"] = one_time_keys()
+
+        # Just upload one-time keys.
+        else:
+            if self.uploaded_key_count is None:
+                raise EncryptionError("The uploaded key count is not known")
+
+            generate_one_time_keys(self.uploaded_key_count)
+            content["one_time_keys"] = one_time_keys()
+
+        return content
+
+    def handle_response(self, response):
+        if isinstance(response, KeysUploadResponse):
+            if not self.account.shared:
+                self.account.shared = True
+                self.uploaded_key_count = response.signed_curve25519_count
+                self.mark_keys_as_published()
+                self.save_account()
 
     def _create_inbound_session(
         self,
@@ -909,8 +1011,9 @@ class Olm(object):
         # type: () -> None
         self.save_account()
 
-        # for session in self.session_store:
-        #     self.save_session(session)
+        for curve_key, session_list in self.session_store.items():
+            for session in session_list:
+                self.save_session(curve_key, session)
 
     def save_session(self, curve_key, session):
         # type: (str, OlmSession) -> None
@@ -922,6 +1025,7 @@ class Olm(object):
 
     def save_account(self):
         # type: () -> None
+        logger.debug("Saving account")
         self.store.save_olm_account(self.account)
 
     def sign_json(self, json_dict):
@@ -932,3 +1036,4 @@ class Olm(object):
     def mark_keys_as_published(self):
         # type: () -> None
         self.account.mark_keys_as_published()
+        self.save_account()

@@ -34,6 +34,7 @@ from .exceptions import (
     RemoteProtocolError,
     RemoteTransportError,
 )
+from .encryption import Olm
 from .http import (
     Http2Connection,
     HttpConnection,
@@ -54,6 +55,7 @@ from .responses import (
     RoomSendResponse,
     SyncRepsponse,
     RoomMessagesResponse,
+    KeysUploadResponse,
 )
 from .rooms import MatrixInvitedRoom, MatrixRoom
 
@@ -84,6 +86,7 @@ class RequestType(Enum):
     join = 7
     room_leave = 8
     room_messages = 9
+    keys_upload = 10
 
 
 class Client(object):
@@ -98,6 +101,7 @@ class Client(object):
         self.device_id = device_id
         self.session_dir = session_dir
         self.parse_queue = deque()  # type: Deque[TypedResponse]
+        self.olm = None  # type: Optional[Olm]
 
         self.user_id = ""
         self.access_token = ""
@@ -115,17 +119,38 @@ class Client(object):
         # type: () -> bool
         return True if self.access_token else False
 
+    @property
+    def olm_account_shared(self):
+        if not self.olm:
+            raise LocalProtocolError("Olm account isn't loaded")
+
+        return self.olm.account.shared
+
+    @property
+    def should_upload_keys(self):
+        if not self.olm:
+            raise LocalProtocolError("Olm account isn't loaded")
+
+        return self.olm.should_upload_keys
+
     def _handle_response(self, response):
         # type: (Response) -> None
         if isinstance(response, LoginResponse):
             self.access_token = response.access_token
             self.user_id = response.user_id
             self.device_id = response.device_id
+
+            if self.session_dir:
+                self.olm = Olm(self.user_id, self.device_id, self.session_dir)
+
         elif isinstance(response, SyncRepsponse):
             if self.next_batch == response.next_batch:
                 return
 
             self.next_batch = response.next_batch
+            if self.olm:
+                self.uploaded_key_count = (
+                    response.device_key_count.signed_curve25519)
 
             for room_id, info in response.rooms.invite.items():
                 if room_id not in self.invited_rooms:
@@ -154,6 +179,12 @@ class Client(object):
 
                 for event in join_info.timeline.events:
                     room.handle_event(event)
+
+    def _handle_olm_response(self, response):
+        if not self.olm:
+            raise LocalProtocolError("Olm account isn't loaded")
+
+        self.olm.handle_response(response)
 
     def receive(
         self,
@@ -212,6 +243,9 @@ class Client(object):
             response = RoomLeaveResponse.from_dict(typed_response.data)
         elif typed_response.type is RequestType.room_messages:
             response = RoomMessagesResponse.from_dict(typed_response.data)
+        elif typed_response.type is RequestType.keys_upload:
+            response = KeysUploadResponse.from_dict(typed_response.data)
+            self._handle_olm_response(response)
 
         if not response:
             raise NotImplementedError(
@@ -258,6 +292,14 @@ class HttpClient(object):
     @user.setter
     def user(self, user):
         self._client.user = user
+
+    @property
+    def olm_account_shared(self):
+        return self._client.olm_account_shared
+
+    @property
+    def should_upload_keys(self):
+        return self._client.should_upload_keys
 
     @property
     def logged_in(self):
@@ -470,6 +512,23 @@ class HttpClient(object):
         self.requests_made[uuid] = RequestInfo(RequestType.room_messages, 0)
         return uuid, data
 
+    def keys_upload(self):
+        if not self._client.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
+        keys_dict = self._client.olm.share_keys()
+
+        logger.debug(pprint.pformat(keys_dict))
+
+        request = self.api.keys_upload(self._client.access_token, keys_dict)
+
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = RequestInfo(RequestType.keys_upload, 0)
+        return uuid, data
+
     def sync(self, timeout=None, filter=None):
         # type: (Optional[int], Optional[Dict[Any, Any]]) -> Tuple[UUID, bytes]
         if not self._client.logged_in:
@@ -528,4 +587,5 @@ class HttpClient(object):
         if self.response_queue:
             return self.response_queue.popleft()
 
+        return self._client.next_response(max_events)
         return self._client.next_response(max_events)

@@ -45,6 +45,10 @@ Rooms = NamedTuple(
     "Rooms", [("invite", dict), ("join", dict), ("leave", dict)]
 )
 
+DeviceOneTimeKeyCount = NamedTuple(
+    "DeviceOneTimeKeyCount", [("curve25519", int), ("signed_curve25519", int)]
+)
+
 Timeline = NamedTuple(
     "Timeline", [("events", list), ("limited", bool), ("prev_batch", str)]
 )
@@ -215,13 +219,33 @@ class RoomLeaveResponse(EmptyResponse):
     pass
 
 
+class KeysUploadResponse(Response):
+    def __init__(self, curve25519_count, signed_curve25519_count):
+        # type: (int, int) -> None
+        self.curve25519_count = curve25519_count
+        self.signed_curve25519_count = signed_curve25519_count
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[KeysUploadResponse, ErrorResponse]
+        try:
+            validate_json(parsed_dict, Schemas.keys_upload)
+        except (SchemaError, ValidationError):
+            return ErrorResponse.from_dict(parsed_dict)
+
+        counts = parsed_dict["one_time_key_counts"]
+
+        return cls(counts["curve25519"], counts["signed_curve25519"])
+
+
 class SyncRepsponse(Response):
-    def __init__(self, next_batch, rooms, partial):
-        # type: (str, Rooms, bool) -> None
+    def __init__(self, next_batch, rooms, device_key_count, partial):
+        # type: (str, Rooms, DeviceOneTimeKeyCount, bool) -> None
         super().__init__()
         self.next_batch = next_batch
         self.rooms = rooms
         self.partial = partial
+        self.device_key_count = device_key_count
 
     def __str__(self):
         # type: () -> str
@@ -347,5 +371,10 @@ class SyncRepsponse(Response):
         except (SchemaError, ValidationError) as e:
             logger.error("Error validating sync response: " + str(e.message))
             return ErrorResponse.from_dict(parsed_dict)
+        key_count_dict = parsed_dict["device_one_time_keys_count"]
+        key_count = DeviceOneTimeKeyCount(
+            key_count_dict["curve25519"],
+            key_count_dict["signed_curve25519"]
+        )
 
-        return cls(parsed_dict["next_batch"], rooms, partial)
+        return cls(parsed_dict["next_batch"], rooms, key_count, partial)

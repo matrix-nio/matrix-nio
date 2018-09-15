@@ -23,9 +23,11 @@ from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
 from .api import Api
-from .encryption import Olm
 from .log import logger_group
 from .schemas import Schemas, validate_json
+
+if False:
+    from .encryption import Olm
 
 logger = Logger("nio.events")
 logger_group.add_logger(logger)
