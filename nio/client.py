@@ -131,7 +131,7 @@ class Client(object):
     @property
     def should_upload_keys(self):
         if not self.olm:
-            raise LocalProtocolError("Olm account isn't loaded")
+            return False
 
         return self.olm.should_upload_keys
 
