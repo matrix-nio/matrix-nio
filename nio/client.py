@@ -135,58 +135,58 @@ class Client(object):
 
         return self.olm.should_upload_keys
 
-    def _handle_response(self, response):
-        # type: (Response) -> None
-        if isinstance(response, LoginResponse):
-            self.access_token = response.access_token
-            self.user_id = response.user_id
-            self.device_id = response.device_id
+    def _handle_login(self, response):
+        # type: (LoginResponse) -> None
+        self.access_token = response.access_token
+        self.user_id = response.user_id
+        self.device_id = response.device_id
 
-            if self.session_dir:
-                self.olm = Olm(self.user_id, self.device_id, self.session_dir)
+        if self.session_dir:
+            self.olm = Olm(self.user_id, self.device_id, self.session_dir)
 
-        elif isinstance(response, SyncRepsponse):
-            if self.next_batch == response.next_batch:
-                return
+    def _handle_sync(self, response):
+        # type: (SyncRepsponse) -> None
+        if self.next_batch == response.next_batch:
+            return
 
-            self.next_batch = response.next_batch
-            if self.olm:
-                self.olm.uploaded_key_count = (
-                    response.device_key_count.signed_curve25519)
+        self.next_batch = response.next_batch
+        if self.olm:
+            self.olm.uploaded_key_count = (
+                response.device_key_count.signed_curve25519)
 
-            for event in response.to_device_events:
-                if isinstance(event, RoomEncryptedEvent):
-                    if not self.olm:
-                        continue
-                    self.olm.decrypt_event(event)
+        for event in response.to_device_events:
+            if isinstance(event, RoomEncryptedEvent):
+                if not self.olm:
+                    continue
+                self.olm.decrypt_event(event)
 
-            for room_id, info in response.rooms.invite.items():
-                if room_id not in self.invited_rooms:
-                    logger.info("New invited room {}".format(room_id))
-                    self.invited_rooms[room_id] = MatrixInvitedRoom(
-                        room_id, self.user_id
-                    )
+        for room_id, info in response.rooms.invite.items():
+            if room_id not in self.invited_rooms:
+                logger.info("New invited room {}".format(room_id))
+                self.invited_rooms[room_id] = MatrixInvitedRoom(
+                    room_id, self.user_id
+                )
 
-                room = self.invited_rooms[room_id]
+            room = self.invited_rooms[room_id]
 
-                for event in info.invite_state:
-                    room.handle_event(event)
+            for event in info.invite_state:
+                room.handle_event(event)
 
-            for room_id, join_info in response.rooms.join.items():
-                if room_id in self.invited_rooms:
-                    del self.invited_rooms[room_id]
+        for room_id, join_info in response.rooms.join.items():
+            if room_id in self.invited_rooms:
+                del self.invited_rooms[room_id]
 
-                if room_id not in self.rooms:
-                    logger.info("New joined room {}".format(room_id))
-                    self.rooms[room_id] = MatrixRoom(room_id, self.user_id)
+            if room_id not in self.rooms:
+                logger.info("New joined room {}".format(room_id))
+                self.rooms[room_id] = MatrixRoom(room_id, self.user_id)
 
-                room = self.rooms[room_id]
+            room = self.rooms[room_id]
 
-                for event in join_info.state:
-                    room.handle_event(event)
+            for event in join_info.state:
+                room.handle_event(event)
 
-                for event in join_info.timeline.events:
-                    room.handle_event(event)
+            for event in join_info.timeline.events:
+                room.handle_event(event)
 
     def _handle_olm_response(self, response):
         if not self.olm:
@@ -231,10 +231,10 @@ class Client(object):
 
         if typed_response.type is RequestType.login:
             response = LoginResponse.from_dict(typed_response.data)
-            self._handle_response(response)
+            self._handle_login(response)
         elif typed_response.type is RequestType.sync:
             response = SyncRepsponse.from_dict(typed_response.data)
-            self._handle_response(response)
+            self._handle_sync(response)
         elif typed_response.type is RequestType.room_send:
             response = RoomSendResponse.from_dict(typed_response.data)
         elif typed_response.type is RequestType.room_put_state:
