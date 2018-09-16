@@ -151,7 +151,7 @@ class Client(object):
 
             self.next_batch = response.next_batch
             if self.olm:
-                self.uploaded_key_count = (
+                self.olm.uploaded_key_count = (
                     response.device_key_count.signed_curve25519)
 
             for event in response.to_device_events:
