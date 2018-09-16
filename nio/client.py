@@ -57,6 +57,8 @@ from .responses import (
     RoomMessagesResponse,
     KeysUploadResponse,
 )
+
+from .events import RoomEncryptedEvent
 from .rooms import MatrixInvitedRoom, MatrixRoom
 
 try:
@@ -151,6 +153,12 @@ class Client(object):
             if self.olm:
                 self.uploaded_key_count = (
                     response.device_key_count.signed_curve25519)
+
+            for event in response.to_device_events:
+                if isinstance(event, RoomEncryptedEvent):
+                    if not self.olm:
+                        continue
+                    self.olm.decrypt_event(event)
 
             for room_id, info in response.rooms.invite.items():
                 if room_id not in self.invited_rooms:

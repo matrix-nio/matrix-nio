@@ -21,6 +21,7 @@ from jsonschema import Draft4Validator, FormatChecker, validators
 RoomRegex = "^![a-zA-Z0-9]+:.+$"
 UserIdRegex = "^@.*:.+$"
 EventTypeRegex = r"^.+\..+"
+Base64Regex = r"[^-A-Za-z0-9+/=]|=[^=]|={3,}$"
 
 
 def extend_with_default(validator_class):
@@ -247,6 +248,66 @@ class Schemas(object):
         "type": "object",
         "properties": {"events": {"type": "array"}},
         "required": ["events"],
+    }
+
+    to_device = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "type": {"type": "string"},
+            "content": {"type": "object"},
+        },
+        "required": ["sender", "type", "content"],
+    }
+
+    room_encrypted = {
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "object",
+                "properties": {
+                    "sender_key": {"type": "string"},
+                    "algorithm": {"type": "string"}
+                },
+                "required": ["sender_key", "algorithm"],
+            }
+        },
+        "required": ["content"],
+    }
+
+    room_olm_encrypted = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string", "enum": ["m.room.encrypted"]},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "sender_key": {"type": "string"},
+                    "algorithm": {
+                        "type": "string",
+                        "enum": ["m.olm.v1.curve25519-aes-sha2"]
+                    },
+                    "ciphertext": {
+                        "type": "object",
+                        "patternProperties": {
+                            Base64Regex: {
+                                "type": "object",
+                                "properties": {
+                                    "body": {"type": "string"},
+                                    "type": {"type": "integer"},
+                                },
+                                "required": ["type", "body"]
+                            }
+                        },
+                    }
+                },
+                "required": ["sender_key", "algorithm", "ciphertext"]
+            },
+        },
+        "required": [
+            "type",
+            "content",
+        ],
     }
 
     olm_event = {

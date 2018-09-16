@@ -118,6 +118,68 @@ class Event(object):
         return None
 
 
+class ToDeviceEvent(object):
+    def __init__(self, sender):
+        # type: (str) -> None
+        self.sender = sender
+
+    @classmethod
+    def parse_event(
+        cls,
+        event_dict  # type: Dict[Any, Any]
+    ):
+        # type: (...) -> Optional[Union[ToDeviceEvent, BadEventType]]
+        bad = validate_or_badevent(event_dict, Schemas.to_device)
+
+        if bad:
+            return bad
+
+        # A redacted event will have an empty content.
+        if not event_dict["content"]:
+            return None
+
+        if event_dict["type"] == "m.room.encrypted":
+            return RoomEncryptedEvent.parse_event(event_dict)
+
+        return None
+
+
+class RoomEncryptedEvent(ToDeviceEvent):
+    @classmethod
+    def parse_event(cls, event_dict):
+        bad = validate_or_badevent(event_dict, Schemas.room_encrypted)
+
+        if bad:
+            return bad
+
+        content = event_dict["content"]
+
+        if content["algorithm"] == "m.olm.v1.curve25519-aes-sha2":
+            return OlmEvent.from_dict(event_dict)
+
+
+class OlmEvent(RoomEncryptedEvent):
+    def __init__(self, sender, sender_key, ciphertext):
+        self.sender_key = sender_key
+        self.ciphertext = ciphertext
+        super().__init__(sender)
+        pass
+
+    @classmethod
+    def from_dict(cls, event_dict):
+        bad = validate_or_badevent(event_dict, Schemas.room_olm_encrypted)
+
+        if bad:
+            return bad
+
+        content = event_dict["content"]
+
+        ciphertext = content["ciphertext"]
+        sender_key = content["sender_key"]
+
+        return cls(event_dict["sender"], sender_key, ciphertext)
+
+
 class InviteEvent(object):
     def __init__(self, sender):
         # type: (str) -> None

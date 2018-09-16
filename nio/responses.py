@@ -33,6 +33,7 @@ from .events import (
     RoomNameEvent,
     RoomTopicEvent,
     UnknownBadEvent,
+    ToDeviceEvent,
 )
 from .log import logger_group
 from .schemas import Schemas, validate_json
@@ -172,8 +173,8 @@ class RoomInviteResponse(EmptyResponse):
 
 class RoomMessagesResponse(Response):
     def __init__(self, chunk, start, end):
-        # type: (List[Event], str, str) -> None
-        self.chunk = chunk  # type: List[Event]
+        # type: (List[Union[Event, UnknownBadEvent]], str, str) -> None
+        self.chunk = chunk
         self.start = start
         self.end = end
 
@@ -184,7 +185,7 @@ class RoomMessagesResponse(Response):
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomMessagesResponse, ErrorResponse]
-        chunk = []  # type: List[Event]
+        chunk = []  # type: List[Union[Event, UnknownBadEvent]]
         try:
             validate_json(parsed_dict, Schemas.room_messages)
             chunk = (SyncRepsponse._get_room_events(parsed_dict["chunk"]))
@@ -239,13 +240,21 @@ class KeysUploadResponse(Response):
 
 
 class SyncRepsponse(Response):
-    def __init__(self, next_batch, rooms, device_key_count, partial):
-        # type: (str, Rooms, DeviceOneTimeKeyCount, bool) -> None
+    def __init__(
+        self,
+        next_batch,        # type: str
+        rooms,             # type: Rooms
+        device_key_count,  # type: DeviceOneTimeKeyCount
+        to_device_events,  # type: List[ToDeviceEvent]
+        partial            # type: bool
+    ):
+        # type: (...) -> None
         super().__init__()
         self.next_batch = next_batch
         self.rooms = rooms
-        self.partial = partial
         self.device_key_count = device_key_count
+        self.to_device_events = to_device_events
+        self.partial = partial
 
     def __str__(self):
         # type: () -> str
@@ -270,9 +279,9 @@ class SyncRepsponse(Response):
         pass
 
     @staticmethod
-    def _get_room_events(parsed_dict, max_events=0, olm=None):
-        # type: (Dict[Any, Any], int, Any) -> List[Event]
-        events = []  # type: List[Event]
+    def _get_room_events(parsed_dict, max_events=0):
+        # type: (Dict[Any, Any], int) -> List[Union[Event, UnknownBadEvent]]
+        events = []  # type: List[Union[Event, UnknownBadEvent]]
 
         for event_dict in parsed_dict:
             try:
@@ -282,7 +291,7 @@ class SyncRepsponse(Response):
                 events.append(UnknownBadEvent(event_dict))
                 continue
 
-            event = Event.parse_event(event_dict, olm)
+            event = Event.parse_event(event_dict)
 
             if event:
                 events.append(event)
@@ -290,12 +299,25 @@ class SyncRepsponse(Response):
         return events
 
     @staticmethod
-    def _get_timeline(parsed_dict, max_events=0, olm=None):
-        # type: (Dict[Any, Any], int, Any) -> Timeline
+    def _get_to_device(parsed_dict):
+        # type: (Dict[Any, Any]) -> List[ToDeviceEvent]
+        events = []  # type: List[ToDeviceEvent]
+        for event_dict in parsed_dict["events"]:
+            event = ToDeviceEvent.parse_event(event_dict)
+
+            if isinstance(event, ToDeviceEvent):
+                events.append(event)
+
+        return events
+
+    @staticmethod
+    def _get_timeline(parsed_dict, max_events=0):
+        # type: (Dict[Any, Any], int) -> Timeline
         validate_json(parsed_dict, Schemas.room_timeline)
 
         events = SyncRepsponse._get_room_events(
-            parsed_dict["events"], max_events, olm
+            parsed_dict["events"],
+            max_events
         )
 
         return Timeline(
@@ -303,10 +325,11 @@ class SyncRepsponse(Response):
         )
 
     @staticmethod
-    def _get_state(parsed_dict, max_events=0, olm=None):
+    def _get_state(parsed_dict, max_events=0):
         validate_json(parsed_dict, Schemas.room_state)
         events = SyncRepsponse._get_room_events(
-            parsed_dict["events"], max_events, olm
+            parsed_dict["events"],
+            max_events
         )
 
         return events
@@ -365,16 +388,26 @@ class SyncRepsponse(Response):
         try:
             logger.info("Validating sync response schema")
             validate_json(parsed_dict, Schemas.sync)
-            rooms = SyncRepsponse._get_room_info(
-                parsed_dict["rooms"], max_events, olm
-            )
         except (SchemaError, ValidationError) as e:
             logger.error("Error validating sync response: " + str(e.message))
             return ErrorResponse.from_dict(parsed_dict)
+
+        to_device = cls._get_to_device(parsed_dict["to_device"])
+
         key_count_dict = parsed_dict["device_one_time_keys_count"]
         key_count = DeviceOneTimeKeyCount(
             key_count_dict["curve25519"],
             key_count_dict["signed_curve25519"]
         )
 
-        return cls(parsed_dict["next_batch"], rooms, key_count, partial)
+        rooms = SyncRepsponse._get_room_info(
+            parsed_dict["rooms"], max_events, olm
+        )
+
+        return cls(
+            parsed_dict["next_batch"],
+            rooms,
+            key_count,
+            to_device,
+            partial
+        )

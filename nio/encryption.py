@@ -62,6 +62,7 @@ from .cryptostore import (
     OlmAccount
 )
 from .responses import KeysUploadResponse
+from .events import Event, OlmEvent, RoomEncryptedEvent
 from .api import Api
 
 logger = Logger("nio.encryption")
@@ -408,7 +409,7 @@ class Olm(object):
         self.user_id = user_id
         self.device_id = device_id
         self.session_path = session_path
-        self.uploaded_key_count = None
+        self.uploaded_key_count = None  # type: Optional[int]
 
         # List of group session ids that we shared with people
         self.shared_sessions = []  # type: List[str]
@@ -442,6 +443,9 @@ class Olm(object):
 
     @property
     def should_upload_keys(self):
+        if self.uploaded_key_count is None:
+            return False
+
         max_keys = self.account.max_one_time_keys
         key_count = (max_keys / 2) - self.uploaded_key_count
         return key_count > 0
@@ -796,6 +800,31 @@ class Olm(object):
         )
 
         return
+
+    def decrypt_event(self, event):
+        # type: (RoomEncryptedEvent) -> Optional[Event]
+        if isinstance(event, OlmEvent):
+            try:
+                own_key = self.account.identity_keys["curve25519"]
+                own_ciphertext = event.ciphertext[own_key]
+            except KeyError:
+                logger.warn("Olm event doesn't contain ciphertext for our key")
+                return None
+
+            if own_ciphertext["type"] == 0:
+                message = OlmPreKeyMessage(own_ciphertext["body"])
+            elif own_ciphertext["type"] == 1:
+                message = OlmMessage(own_ciphertext["body"])
+            else:
+                logger.warn("Unsuported olm message type: {}".format(
+                    own_ciphertext["type"]))
+                return None
+
+            self.decrypt(event.sender, event.sender_key, message)
+            return None
+
+        else:
+            return None
 
     def decrypt(
         self,

@@ -46,6 +46,16 @@ class Api(object):
         return json.dumps(content_dict, separators=(",", ":"))
 
     @staticmethod
+    def to_canonical_json(content_dict):
+        # type: (Dict[Any, Any]) -> str
+        return json.dumps(
+            content_dict,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+
+    @staticmethod
     def mxc_to_http(mxc):
         # type: (str) -> Optional[str]
         url = urlparse(mxc)
