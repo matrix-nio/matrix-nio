@@ -1059,10 +1059,9 @@ class Olm(object):
 
     def sign_json(self, json_dict):
         # type: (Dict[Any, Any]) -> str
-        signature = self.account.sign(Api.to_json(json_dict))
+        signature = self.account.sign(Api.to_canonical_json(json_dict))
         return signature
 
     def mark_keys_as_published(self):
         # type: () -> None
         self.account.mark_keys_as_published()
-        self.save_account()
