@@ -692,8 +692,8 @@ class Olm(object):
 
                 logger.info(
                     "Trying to decrypt olm message using existing "
-                    "session for {} and device {}".format(
-                        sender, session.device_id
+                    "session for {} and sender_key {}".format(
+                        sender, sender_key
                     )
                 )
 
@@ -724,8 +724,8 @@ class Olm(object):
                 # iteration.
                 logger.info(
                     "Error decrypting olm message from {} "
-                    "and device {}: {}".format(
-                        sender, session.device_id, str(e)
+                    "and sender key {}: {}".format(
+                        sender, sender_key, str(e)
                     )
                 )
                 pass
