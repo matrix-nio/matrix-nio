@@ -163,7 +163,6 @@ class OlmEvent(RoomEncryptedEvent):
         self.sender_key = sender_key
         self.ciphertext = ciphertext
         super().__init__(sender)
-        pass
 
     @classmethod
     def from_dict(cls, event_dict):
