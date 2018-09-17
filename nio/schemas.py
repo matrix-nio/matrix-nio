@@ -310,6 +310,50 @@ class Schemas(object):
         ],
     }
 
+    room_megolm_decrypted = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string"},
+            "content": {"type": "object"}
+        },
+        "required": [
+            "type",
+            "content",
+        ],
+    }
+
+    room_megolm_encrypted = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string", "enum": ["m.room.encrypted"]},
+            "room_id": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "sender_key": {"type": "string"},
+                    "algorithm": {
+                        "type": "string",
+                        "enum": ["m.megolm.v1.aes-sha2"]
+                    },
+                    "ciphertext": {"type": "string"},
+                    "session_id": {"type": "string"},
+                    "device_id": {"type": "string"},
+                },
+                "required": [
+                    "sender_key",
+                    "algorithm",
+                    "ciphertext",
+                    "session_id",
+                    "device_id",
+                ]
+            },
+        },
+        "required": [
+            "type",
+            "content",
+        ],
+    }
+
     olm_event = {
         "type": "object",
         "properties": {

@@ -58,7 +58,7 @@ from .responses import (
     KeysUploadResponse,
 )
 
-from .events import RoomEncryptedEvent
+from .events import RoomEncryptedEvent, MegolmEvent
 from .rooms import MatrixInvitedRoom, MatrixRoom
 
 try:
@@ -185,8 +185,34 @@ class Client(object):
             for event in join_info.state:
                 room.handle_event(event)
 
-            for event in join_info.timeline.events:
+            decrypted_events = []
+
+            for index, event in enumerate(join_info.timeline.events):
+                if isinstance(event, MegolmEvent) and self.olm:
+                    event.room_id = room_id
+                    new_event = self.olm.decrypt_event(event)
+                    if new_event:
+                        event = new_event
+                        decrypted_events.append((index, new_event))
                 room.handle_event(event)
+
+            # Replace the Megolm events with decrypted ones
+            for decrypted_event in decrypted_events:
+                index, event = decrypted_event
+                join_info.timeline.events[index] = event
+
+    def _handle_messages_response(self, response):
+        decrypted_events = []
+
+        for index, event in enumerate(response.chunk):
+            if isinstance(event, MegolmEvent) and self.olm:
+                new_event = self.olm.decrypt_event(event)
+                if new_event:
+                    decrypted_events.append((index, new_event))
+
+        for decrypted_event in decrypted_events:
+            index, event = decrypted_event
+            response.chunk[index] = event
 
     def _handle_olm_response(self, response):
         if not self.olm:
@@ -251,6 +277,7 @@ class Client(object):
             response = RoomLeaveResponse.from_dict(typed_response.data)
         elif typed_response.type is RequestType.room_messages:
             response = RoomMessagesResponse.from_dict(typed_response.data)
+            self._handle_messages_response(response)
         elif typed_response.type is RequestType.keys_upload:
             response = KeysUploadResponse.from_dict(typed_response.data)
             self._handle_olm_response(response)

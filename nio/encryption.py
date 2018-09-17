@@ -62,7 +62,13 @@ from .cryptostore import (
     OlmAccount
 )
 from .responses import KeysUploadResponse
-from .events import Event, OlmEvent, RoomEncryptedEvent
+from .events import (
+    Event,
+    MegolmEvent,
+    OlmEvent,
+    RoomEncryptedEvent,
+    validate_or_badevent
+)
 from .api import Api
 
 logger = Logger("nio.encryption")
@@ -803,6 +809,9 @@ class Olm(object):
 
     def decrypt_event(self, event):
         # type: (RoomEncryptedEvent) -> Optional[Event]
+        logger.debug("Decrypting event of type {}".format(
+            type(event).__name__
+        ))
         if isinstance(event, OlmEvent):
             try:
                 own_key = self.account.identity_keys["curve25519"]
@@ -821,10 +830,43 @@ class Olm(object):
                 return None
 
             self.decrypt(event.sender, event.sender_key, message)
-            return None
 
-        else:
-            return None
+        elif isinstance(event, MegolmEvent):
+            plaintext = self.group_decrypt(
+                event.room_id,
+                event.sender_key,
+                event.session_id,
+                event.ciphertext
+            )
+            if not plaintext:
+                return None
+
+            try:
+                parsed_dict = json.loads(plaintext, encoding="utf-8") \
+                    # type: Dict[Any, Any]
+            except JSONDecodeError:
+                return None
+
+            bad = validate_or_badevent(
+                parsed_dict,
+                Schemas.room_megolm_decrypted
+            )
+
+            if bad:
+                return bad
+
+            parsed_dict["event_id"] = event.event_id
+            parsed_dict["sender"] = event.sender
+            parsed_dict["origin_server_ts"] = event.server_timestamp
+
+            new_event = Event.parse_event(parsed_dict)
+            new_event.decrypted = True
+            new_event.verified = False
+            new_event.sender_key = event.sender_key
+
+            return new_event
+
+        return None
 
     def decrypt(
         self,
@@ -948,8 +990,8 @@ class Olm(object):
 
         if not session:
             logger.warn(
-                "No session found with session id {} for "
-                "room {}".format(session_id, room_id)
+                "Error decrypting megolm event, no session found "
+                "with session id {} for room {}".format(session_id, room_id)
             )
             return None
 
@@ -958,7 +1000,8 @@ class Olm(object):
             # TODO check that this isn't a replay attack.
             # TODO return the verification status of the message
             return plaintext
-        except OlmGroupSessionError:
+        except OlmGroupSessionError as e:
+            logger.error("Error decrypting megolm event: {}".format(str(e)))
             return None
 
     def share_group_session(self, room_id, users):

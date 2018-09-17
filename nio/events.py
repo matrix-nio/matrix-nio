@@ -61,6 +61,9 @@ class Event(object):
         self.event_id = event_id
         self.sender = sender
         self.server_timestamp = server_ts
+        self.decrypted = False
+        self.verified = False
+        self.sender_key = None  # type: Optional[str]
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -114,6 +117,8 @@ class Event(object):
             return RoomEncryptionEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.redaction":
             return RedactionEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.room.encrypted":
+            return RoomEncryptedEvent.parse_event(event_dict)
 
         return None
 
@@ -144,7 +149,7 @@ class ToDeviceEvent(object):
         return None
 
 
-class RoomEncryptedEvent(ToDeviceEvent):
+class RoomEncryptedEvent(object):
     @classmethod
     def parse_event(cls, event_dict):
         bad = validate_or_badevent(event_dict, Schemas.room_encrypted)
@@ -156,9 +161,13 @@ class RoomEncryptedEvent(ToDeviceEvent):
 
         if content["algorithm"] == "m.olm.v1.curve25519-aes-sha2":
             return OlmEvent.from_dict(event_dict)
+        elif content["algorithm"] == "m.megolm.v1.aes-sha2":
+            return MegolmEvent.from_dict(event_dict)
+
+        return None
 
 
-class OlmEvent(RoomEncryptedEvent):
+class OlmEvent(ToDeviceEvent, RoomEncryptedEvent):
     def __init__(self, sender, sender_key, ciphertext):
         self.sender_key = sender_key
         self.ciphertext = ciphertext
@@ -177,6 +186,54 @@ class OlmEvent(RoomEncryptedEvent):
         sender_key = content["sender_key"]
 
         return cls(event_dict["sender"], sender_key, ciphertext)
+
+
+class MegolmEvent(Event, RoomEncryptedEvent):
+    def __init__(
+        self,
+        event_id,     # type: str
+        sender,       # type: str
+        server_ts,    # type: int
+        sender_key,   # type: str
+        device_id,    # type: str
+        session_id,   # type: str
+        ciphertext,   # type: str
+        room_id=None  # type: Optional[str]
+    ):
+        super().__init__(event_id, sender, server_ts)
+        self.room_id = room_id or ""
+
+        self.sender_key = sender_key
+        self.session_id = session_id
+        self.device_id = device_id
+        self.ciphertext = ciphertext
+
+    @classmethod
+    def from_dict(cls, event_dict):
+        bad = validate_or_badevent(event_dict, Schemas.room_megolm_encrypted)
+
+        if bad:
+            return bad
+
+        content = event_dict["content"]
+
+        ciphertext = content["ciphertext"]
+        sender_key = content["sender_key"]
+        session_id = content["session_id"]
+        device_id = content["device_id"]
+
+        room_id = event_dict.get("room_id", None)
+
+        return cls(
+            event_dict["event_id"],
+            event_dict["sender"],
+            event_dict["origin_server_ts"],
+            sender_key,
+            device_id,
+            session_id,
+            ciphertext,
+            room_id
+        )
 
 
 class InviteEvent(object):
