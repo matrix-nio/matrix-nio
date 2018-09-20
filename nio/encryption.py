@@ -67,6 +67,8 @@ from .events import (
     MegolmEvent,
     OlmEvent,
     RoomEncryptedEvent,
+    BadEventType,
+    UnknownBadEvent,
     validate_or_badevent
 )
 from .api import Api
@@ -808,7 +810,7 @@ class Olm(object):
         return
 
     def decrypt_event(self, event):
-        # type: (RoomEncryptedEvent) -> Optional[Event]
+        # type: (RoomEncryptedEvent) -> Optional[Union[Event, BadEventType]]
         logger.debug("Decrypting event of type {}".format(
             type(event).__name__
         ))
@@ -832,6 +834,9 @@ class Olm(object):
             self.decrypt(event.sender, event.sender_key, message)
 
         elif isinstance(event, MegolmEvent):
+            if not event.room_id:
+                return None
+
             plaintext = self.group_decrypt(
                 event.room_id,
                 event.sender_key,
@@ -860,6 +865,13 @@ class Olm(object):
             parsed_dict["origin_server_ts"] = event.server_timestamp
 
             new_event = Event.parse_event(parsed_dict)
+
+            if not new_event:
+                return None
+
+            if isinstance(new_event, UnknownBadEvent):
+                return new_event
+
             new_event.decrypted = True
             new_event.verified = False
             new_event.sender_key = event.sender_key

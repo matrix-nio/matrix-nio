@@ -56,9 +56,10 @@ from .responses import (
     SyncRepsponse,
     RoomMessagesResponse,
     KeysUploadResponse,
+    ErrorResponse
 )
 
-from .events import RoomEncryptedEvent, MegolmEvent
+from .events import Event, BadEventType, RoomEncryptedEvent, MegolmEvent
 from .rooms import MatrixInvitedRoom, MatrixRoom
 
 try:
@@ -136,7 +137,10 @@ class Client(object):
         return self.olm.should_upload_keys
 
     def _handle_login(self, response):
-        # type: (LoginResponse) -> None
+        # type: (Union[LoginResponse, ErrorResponse]) -> None
+        if isinstance(response, ErrorResponse):
+            return
+
         self.access_token = response.access_token
         self.user_id = response.user_id
         self.device_id = response.device_id
@@ -145,7 +149,10 @@ class Client(object):
             self.olm = Olm(self.user_id, self.device_id, self.session_dir)
 
     def _handle_sync(self, response):
-        # type: (SyncRepsponse) -> None
+        # type: (Union[SyncRepsponse, ErrorResponse]) -> None
+        if isinstance(response, ErrorResponse):
+            return
+
         if self.next_batch == response.next_batch:
             return
 
@@ -154,11 +161,11 @@ class Client(object):
             self.olm.uploaded_key_count = (
                 response.device_key_count.signed_curve25519)
 
-        for event in response.to_device_events:
-            if isinstance(event, RoomEncryptedEvent):
+        for to_device_event in response.to_device_events:
+            if isinstance(to_device_event, RoomEncryptedEvent):
                 if not self.olm:
                     continue
-                self.olm.decrypt_event(event)
+                self.olm.decrypt_event(to_device_event)
 
         for room_id, info in response.rooms.invite.items():
             if room_id not in self.invited_rooms:
@@ -185,7 +192,8 @@ class Client(object):
             for event in join_info.state:
                 room.handle_event(event)
 
-            decrypted_events = []
+            decrypted_events = []  \
+                # type: List[Tuple[int, Union[Event, BadEventType]]]
 
             for index, event in enumerate(join_info.timeline.events):
                 if isinstance(event, MegolmEvent) and self.olm:

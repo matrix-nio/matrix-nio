@@ -351,6 +351,9 @@ class HttpConnection(Connection):
             else:
                 self._current_response = HttpResponse()
 
+            # Make mypy happy
+            assert self._current_response
+
             self._current_response.mark_as_sent()
             return self._current_response.uuid, data
         else:

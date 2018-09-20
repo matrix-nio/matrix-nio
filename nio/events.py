@@ -200,10 +200,11 @@ class MegolmEvent(Event, RoomEncryptedEvent):
         ciphertext,   # type: str
         room_id=None  # type: Optional[str]
     ):
+        # type: (...) -> None
         super().__init__(event_id, sender, server_ts)
         self.room_id = room_id or ""
 
-        self.sender_key = sender_key
+        self.sender_key = sender_key  # type: str
         self.session_id = session_id
         self.device_id = device_id
         self.ciphertext = ciphertext
