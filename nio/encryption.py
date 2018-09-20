@@ -479,15 +479,16 @@ class Olm(object):
             return False
 
         max_keys = self.account.max_one_time_keys
-        key_count = (max_keys / 2) - self.uploaded_key_count
+        key_count = (max_keys // 2) - self.uploaded_key_count
         return key_count > 0
 
     def share_keys(self):
         # type: () -> Dict[Any, Any]
         def generate_one_time_keys(current_key_count):
+            # type: (int) -> None
             max_keys = self.account.max_one_time_keys
 
-            key_count = (max_keys / 2) - current_key_count
+            key_count = (max_keys // 2) - current_key_count
 
             if key_count <= 0:
                 raise ValueError("Can't share any keys, too many keys already "
