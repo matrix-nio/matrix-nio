@@ -684,4 +684,3 @@ class HttpClient(object):
             return self.response_queue.popleft()
 
         return self._client.next_response(max_events)
-        return self._client.next_response(max_events)
