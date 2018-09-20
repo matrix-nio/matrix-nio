@@ -9,7 +9,8 @@ from nio.responses import (
     LoginResponse,
     SyncRepsponse,
     RoomMessagesResponse,
-    KeysUploadResponse
+    KeysUploadResponse,
+    KeysQueryResponse
 )
 
 
@@ -49,6 +50,12 @@ class TestClass(object):
             "tests/data/keys_upload.json")
         response = KeysUploadResponse.from_dict(parsed_dict)
         assert isinstance(response, KeysUploadResponse)
+
+    def test_keys_query(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/keys_query.json")
+        response = KeysQueryResponse.from_dict(parsed_dict)
+        assert isinstance(response, KeysQueryResponse)
 
     def test_sync_parse(self, benchmark):
         benchmark.weave(SyncRepsponse.from_dict, lazy=True)

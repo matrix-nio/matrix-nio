@@ -16,7 +16,7 @@ import os
 from builtins import super
 from logbook import Logger
 from collections import defaultdict
-from typing import List
+from typing import List, Optional
 
 import olm
 
@@ -27,12 +27,20 @@ logger_group.add_logger(logger)
 
 
 class OlmDevice(object):
-    def __init__(self, user_id, device_id, ed25519_key, curve25519_key):
-        # type: (str, str, str, str) -> None
+    def __init__(
+        self,
+        user_id,         # type: str
+        device_id,       # type: str
+        ed25519_key,     # type: str
+        curve25519_key,  # type: str
+        deleted=False    # type: bool
+    ):
+        # type: (...) -> None
         self.user_id = user_id
         self.id = device_id
         self.ed25519 = ed25519_key
         self.curve25519 = curve25519_key
+        self.deleted = deleted
 
 
 class InboundGroupSession(olm.InboundGroupSession):
@@ -161,7 +169,7 @@ CREATE TABLE IF NOT EXISTS megolm_outbound_devices(
 );
 CREATE TABLE IF NOT EXISTS device_keys(
     device_id TEXT, user_id TEXT, user_device_id TEXT, ed_key TEXT,
-    curve_key TEXT,
+    curve_key TEXT, deleted INTEGER,
     PRIMARY KEY(device_id, user_id, user_device_id),
     FOREIGN KEY(device_id) REFERENCES accounts(device_id) ON DELETE CASCADE
 );
@@ -446,13 +454,11 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
                         device_id,
                         device.ed25519,
                         device.curve25519,
-                        device.verified,
-                        device.blacklisted,
-                        device.ignored,
+                        device.deleted
                     )
                 )
         c.executemany(
-            "REPLACE INTO device_keys VALUES (?,?,?,?,?,?,?,?)", rows
+            "REPLACE INTO device_keys VALUES (?,?,?,?,?,?)", rows
         )
         c.close()
         self._conn.commit()
@@ -521,6 +527,7 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
             row["user_device_id"],
             ed25519_key=row["ed_key"],
             curve25519_key=row["curve_key"],
+            deleted=bool(row["deleted"])
         )
 
     def save_tracked_users(self, user_ids):

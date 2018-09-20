@@ -36,6 +36,7 @@ from typing import (
     Optional,
     Tuple,
     Union,
+    Set,
 )
 
 from jsonschema import SchemaError, ValidationError
@@ -61,7 +62,7 @@ from .cryptostore import (
     OlmDevice,
     OlmAccount
 )
-from .responses import KeysUploadResponse
+from .responses import KeysUploadResponse, KeysQueryResponse, SyncRepsponse
 from .events import (
     Event,
     MegolmEvent,
@@ -183,6 +184,13 @@ class DeviceStore(object):
     def __getitem__(self, user_id):
         # type: (str) -> Dict[str, OlmDevice]
         return self._entries[user_id]
+
+    @property
+    def users(self):
+        return self._entries.keys()
+
+    def devices(self, user_id):
+        return self._entries[user_id].keys()
 
     def add(self, device):
         # type: (OlmDevice) -> bool
@@ -418,6 +426,7 @@ class Olm(object):
         self.device_id = device_id
         self.session_path = session_path
         self.uploaded_key_count = None  # type: Optional[int]
+        self.users_for_key_query = set()   # type: Set[str]
 
         # List of group session ids that we shared with people
         self.shared_sessions = []  # type: List[str]
@@ -448,6 +457,21 @@ class Olm(object):
         # TODO we need a db for untrusted device as well as for seen devices.
         trust_file_path = "{}_{}.trusted_devices".format(user_id, device_id)
         self.trust_db = KeyStore(os.path.join(session_path, trust_file_path))
+
+    def update_tracked_users(self, room):
+        already_tracked = set(self.device_store.users)
+        room_users = set(room.users.keys())
+
+        missing = room_users - already_tracked
+
+        if missing:
+            self.users_for_key_query.update(missing)
+
+    @property
+    def should_query_keys(self):
+        if self.users_for_key_query:
+            return True
+        return False
 
     @property
     def should_upload_keys(self):
@@ -535,6 +559,101 @@ class Olm(object):
 
         return content
 
+    # This function is copyrighted under the Apache 2.0 license Zil0
+    def _handle_key_query(self, response):
+        # type: (KeysQueryResponse) -> None
+        changed = defaultdict(dict)  \
+            # type: DefaultDict[str, Dict[str, OlmDevice]]
+
+        for user_id, device_dict in response.device_keys.items():
+            try:
+                self.users_for_key_query.remove(user_id)
+            except KeyError:
+                pass
+
+            for device_id, payload in device_dict.items():
+                if device_id == self.device_id:
+                    continue
+
+                if (payload['user_id'] != user_id
+                        or payload['device_id'] != device_id):
+                    logger.warn(
+                        "Mismatch in keys payload of device %s "
+                        "(%s) of user %s (%s).",
+                        payload['device_id'],
+                        device_id,
+                        payload['user_id'],
+                        user_id
+                    )
+                    continue
+
+                try:
+                    key_dict = payload["keys"]
+                    signing_key = key_dict["ed25519:{}".format(device_id)]
+                    curve_key = key_dict["curve25519:{}".format(device_id)]
+                except KeyError as e:
+                    logger.warning(
+                        "Invalid identity keys payload from device %s of"
+                        " user %s: %s.",
+                        device_id,
+                        user_id,
+                        e
+                    )
+                    continue
+
+                verified = self.verify_json(
+                    payload,
+                    signing_key,
+                    user_id,
+                    device_id
+                )
+
+                if not verified:
+                    logger.warning(
+                        "Signature verification failed for device %s of "
+                        "user %s.",
+                        device_id,
+                        user_id
+                    )
+                    continue
+
+                user_devices = self.device_store[user_id]
+                try:
+                    device = user_devices[device_id]
+                except KeyError:
+                    logger.info("Adding new device to the device store for "
+                                "user {} with device id {}".format(
+                                    user_id,
+                                    device_id
+                                ))
+                    self.device_store.add(OlmDevice(
+                        user_id,
+                        device_id,
+                        ed25519_key=signing_key,
+                        curve25519_key=curve_key,
+                    ))
+                else:
+                    if device.ed25519 != signing_key:
+                        logger.warning("Ed25519 key has changed for device %s "
+                                       "of user %s.", device_id, user_id)
+                        continue
+                    if device.curve25519 == curve_key:
+                        continue
+                    device.curve25519 = curve_key
+                    logger.info("Updating curve key in the device store for "
+                                "user {} with device id {}".format(
+                                    user_id,
+                                    device_id
+                                ))
+
+                changed[user_id][device_id] = user_devices[device_id]
+
+            # TODO if we have a device in the store and it's missing from the
+            # response, the device has been deleted and should be flagged as
+            # deleted
+
+        self.store.save_device_keys(changed)
+
     def handle_response(self, response):
         if isinstance(response, KeysUploadResponse):
             if not self.account.shared:
@@ -542,6 +661,9 @@ class Olm(object):
                 self.uploaded_key_count = response.signed_curve25519_count
                 self.mark_keys_as_published()
                 self.save_account()
+
+        elif isinstance(response, KeysQueryResponse):
+            self._handle_key_query(response)
 
     def _create_inbound_session(
         self,
@@ -1116,6 +1238,50 @@ class Olm(object):
         # type: (Dict[Any, Any]) -> str
         signature = self.account.sign(Api.to_canonical_json(json_dict))
         return signature
+
+    # This function is copyrighted under the Apache 2.0 license Zil0
+    def verify_json(self, json, user_key, user_id, device_id):
+        """Verifies a signed key object's signature.
+        The object must have a 'signatures' key associated with an object of
+        the form `user_id: {key_id: signature}`.
+        Args:
+            json (dict): The JSON object to verify.
+            user_key (str): The public ed25519 key which was used to sign
+                the object.
+            user_id (str): The user who owns the device.
+            device_id (str): The device who owns the key.
+        Returns:
+            True if the verification was successful, False if not.
+        """
+        try:
+            signatures = json.pop('signatures')
+        except KeyError:
+            return False
+
+        key_id = 'ed25519:{}'.format(device_id)
+        try:
+            signature_base64 = signatures[user_id][key_id]
+        except KeyError:
+            json['signatures'] = signatures
+            return False
+
+        unsigned = json.pop('unsigned', None)
+
+        try:
+            olm.ed25519_verify(
+                user_key,
+                Api.to_canonical_json(json),
+                signature_base64
+            )
+            success = True
+        except olm.utility.OlmVerifyError:
+            success = False
+
+        json['signatures'] = signatures
+        if unsigned:
+            json['unsigned'] = unsigned
+
+        return success
 
     def mark_keys_as_published(self):
         # type: () -> None

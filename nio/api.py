@@ -17,7 +17,7 @@
 from __future__ import unicode_literals
 
 import json
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, List, Set
 from enum import Enum, unique
 
 from .exceptions import LocalProtocolError
@@ -239,6 +239,18 @@ class Api(object):
 
         return Api._build_path(path, query_parameters), Api.to_json(body)
 
+    @staticmethod
+    def keys_query(access_token, user_set):
+        # type: (str, Set[str]) -> Tuple[str, str]
+        query_parameters = {"access_token": access_token}
+        path = "keys/query"
+
+        content = {
+            "device_keys": {user: [] for user in user_set}
+        }  # type: Dict[str, Dict[str, List]]
+
+        return Api._build_path(path, query_parameters), Api.to_json(content)
+
 
 class HttpApi(object):
     def __init__(self, host):
@@ -335,6 +347,11 @@ class HttpApi(object):
 
     def keys_upload(self, access_token, keys_dict):
         path, data = Api.keys_upload(access_token, keys_dict)
+        return self._build_request("POST", path, data)
+
+    def keys_query(self, access_token, user_set):
+        # type: (str, Set[str]) -> TransportRequest
+        path, data = Api.keys_query(access_token, user_set)
         return self._build_request("POST", path, data)
 
 

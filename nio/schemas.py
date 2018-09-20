@@ -22,6 +22,7 @@ RoomRegex = "^![a-zA-Z0-9]+:.+$"
 UserIdRegex = "^@.*:.+$"
 EventTypeRegex = r"^.+\..+"
 Base64Regex = r"[^-A-Za-z0-9+/=]|=[^=]|={3,}$"
+KeyRegex = r"(ed25519|curve25519):.+"
 
 
 def extend_with_default(validator_class):
@@ -190,6 +191,13 @@ class Schemas(object):
                     "signed_curve25519": {"type": "integer", "default": 0},
                 }
             },
+            "device_lists": {
+                "type": "object",
+                "properties": {
+                    "changed": {"type": "array", "items": {"type": "string"}},
+                    "left": {"type": "array", "items": {"type": "string"}}
+                }
+            },
             "next_batch": {"type": "string"},
             "rooms": {
                 "type": "object",
@@ -219,6 +227,7 @@ class Schemas(object):
         "required": [
             "next_batch",
             "device_one_time_keys_count",
+            "device_lists",
             "rooms",
             "to_device",
         ],
@@ -572,6 +581,56 @@ class Schemas(object):
             },
         },
         "required": ["one_time_key_counts"],
+    }
+
+    keys_query = {
+        "type": "object",
+        "properties": {
+            "device_keys": {
+                "type": "object",
+                "patternProperties": {UserIdRegex: {
+                    "type": "object",
+                    "patternProperties": {r".+": {
+                        "type": "object",
+                        "properties": {
+                            "algorithms": {
+                                "type": "array",
+                                "items": {"type": "string"}
+                            },
+                            "device_id": {"type": "string"},
+                            "user_id": {"type": "string"},
+                            "keys": {
+                                "type": "object",
+                                "patternProperties": {
+                                    KeyRegex: {"type": "string"}
+                                },
+                            },
+                            "signatures": {
+                                "type": "object",
+                                "patternProperties": {
+                                    UserIdRegex: {
+                                        "type": "object",
+                                        "patternProperties": {
+                                            KeyRegex: {"type": "string"}
+                                        }
+                                    }
+                                },
+                            },
+                        },
+                        "required": [
+                            "algorithms",
+                            "device_id",
+                            "keys",
+                            "signatures"
+                        ]
+                    }}
+                }},
+            },
+            "failures": {
+                "type": "object"
+            }
+        },
+        "required": ["device_keys", "failures"],
     }
 
     empty = {"type": "object", "properties": {}, "additionalProperties": False}

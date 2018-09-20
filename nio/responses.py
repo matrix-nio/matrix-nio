@@ -50,6 +50,10 @@ DeviceOneTimeKeyCount = NamedTuple(
     "DeviceOneTimeKeyCount", [("curve25519", int), ("signed_curve25519", int)]
 )
 
+DeviceList = NamedTuple(
+    "DeviceList", [("changed", list), ("left", list)]
+)
+
 Timeline = NamedTuple(
     "Timeline", [("events", list), ("limited", bool), ("prev_batch", str)]
 )
@@ -239,12 +243,33 @@ class KeysUploadResponse(Response):
         return cls(counts["curve25519"], counts["signed_curve25519"])
 
 
+class KeysQueryResponse(Response):
+    def __init__(self, device_keys, failures):
+        # type: (Dict[Any, Any], Dict[Any, Any]) -> None
+        self.device_keys = device_keys
+        self.failures = failures
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[KeysQueryResponse, ErrorResponse]
+        try:
+            validate_json(parsed_dict, Schemas.keys_query)
+        except (SchemaError, ValidationError):
+            return ErrorResponse.from_dict(parsed_dict)
+
+        device_keys = parsed_dict["device_keys"]
+        failures = parsed_dict["failures"]
+
+        return cls(device_keys, failures)
+
+
 class SyncRepsponse(Response):
     def __init__(
         self,
         next_batch,        # type: str
         rooms,             # type: Rooms
         device_key_count,  # type: DeviceOneTimeKeyCount
+        device_list,       # type: DeviceList
         to_device_events,  # type: List[ToDeviceEvent]
         partial            # type: bool
     ):
@@ -253,6 +278,7 @@ class SyncRepsponse(Response):
         self.next_batch = next_batch
         self.rooms = rooms
         self.device_key_count = device_key_count
+        self.device_list = device_list
         self.to_device_events = to_device_events
         self.partial = partial
 
@@ -400,6 +426,11 @@ class SyncRepsponse(Response):
             key_count_dict["signed_curve25519"]
         )
 
+        devices = DeviceList(
+            parsed_dict["device_lists"]["changed"],
+            parsed_dict["device_lists"]["left"],
+        )
+
         rooms = SyncRepsponse._get_room_info(
             parsed_dict["rooms"], max_events, olm
         )
@@ -408,6 +439,7 @@ class SyncRepsponse(Response):
             parsed_dict["next_batch"],
             rooms,
             key_count,
+            devices,
             to_device,
             partial
         )

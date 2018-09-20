@@ -56,6 +56,7 @@ from .responses import (
     SyncRepsponse,
     RoomMessagesResponse,
     KeysUploadResponse,
+    KeysQueryResponse,
     ErrorResponse
 )
 
@@ -90,6 +91,7 @@ class RequestType(Enum):
     room_leave = 8
     room_messages = 9
     keys_upload = 10
+    keys_query = 11
 
 
 class Client(object):
@@ -136,6 +138,13 @@ class Client(object):
 
         return self.olm.should_upload_keys
 
+    @property
+    def should_query_keys(self):
+        if not self.olm:
+            return False
+
+        return self.olm.should_query_keys
+
     def _handle_login(self, response):
         # type: (Union[LoginResponse, ErrorResponse]) -> None
         if isinstance(response, ErrorResponse):
@@ -157,9 +166,6 @@ class Client(object):
             return
 
         self.next_batch = response.next_batch
-        if self.olm:
-            self.olm.uploaded_key_count = (
-                response.device_key_count.signed_curve25519)
 
         for to_device_event in response.to_device_events:
             if isinstance(to_device_event, RoomEncryptedEvent):
@@ -208,6 +214,32 @@ class Client(object):
             for decrypted_event in decrypted_events:
                 index, event = decrypted_event
                 join_info.timeline.events[index] = event
+
+            if room.encrypted and self.olm is not None:
+                self.olm.update_tracked_users(room)
+
+        if self.olm:
+            changed_users = set()
+            self.olm.uploaded_key_count = (
+                response.device_key_count.signed_curve25519)
+
+            for user in response.device_list.changed:
+                for room in self.rooms.values():
+                    if not room.encrypted:
+                        continue
+
+                    if user in room.users:
+                        changed_users.add(user)
+
+            for user in response.device_list.left:
+                for room in self.rooms.values():
+                    if not room.encrypted:
+                        continue
+
+                    if user in room.users:
+                        changed_users.add(user)
+
+            self.olm.users_for_key_query.update(changed_users)
 
     def _handle_messages_response(self, response):
         decrypted_events = []
@@ -289,6 +321,9 @@ class Client(object):
         elif typed_response.type is RequestType.keys_upload:
             response = KeysUploadResponse.from_dict(typed_response.data)
             self._handle_olm_response(response)
+        elif typed_response.type is RequestType.keys_query:
+            response = KeysQueryResponse.from_dict(typed_response.data)
+            self._handle_olm_response(response)
 
         if not response:
             raise NotImplementedError(
@@ -343,6 +378,10 @@ class HttpClient(object):
     @property
     def should_upload_keys(self):
         return self._client.should_upload_keys
+
+    @property
+    def should_query_keys(self):
+        return self._client.should_query_keys
 
     @property
     def logged_in(self):
@@ -570,6 +609,20 @@ class HttpClient(object):
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(RequestType.keys_upload, 0)
+        return uuid, data
+
+    def keys_query(self):
+        if not self._client.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
+        user_list = self._client.olm.users_for_key_query
+        request = self.api.keys_query(self._client.access_token, user_list)
+
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = RequestInfo(RequestType.keys_query, 0)
         return uuid, data
 
     def sync(self, timeout=None, filter=None):

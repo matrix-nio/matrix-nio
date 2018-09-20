@@ -2,6 +2,7 @@
 
 import os
 import pytest
+import json
 
 from olm import (
     Account,
@@ -15,7 +16,7 @@ from nio.encryption import (KeyStore, Olm,
                             SessionStore, Ed25519Key, DeviceStore, Key,
                             OlmTrustError)
 from nio.cryptostore import OlmDevice
-from nio.api import Api
+from nio.responses import KeysQueryResponse
 
 
 AliceId = "@alice:example.org"
@@ -26,6 +27,12 @@ Bob_device = "BOBDEVICE"
 
 
 class TestClass(object):
+    @staticmethod
+    def _load_response(filename):
+        # type: (str) -> Dict[Any, Any]
+        with open(filename) as f:
+            return json.loads(f.read(), encoding="utf-8")
+
     @property
     def _test_dir(self):
         return os.path.join(os.curdir, "tests/data/encryption")
@@ -208,6 +215,32 @@ class TestClass(object):
 
         finally:
             os.remove(os.path.join(self._test_dir, "ephermal_DEVICEID.db"))
+
+    def test_keys_query(self):
+        try:
+            olm = Olm("ephermal", "DEVICEID", self._test_dir)
+            parsed_dict = TestClass._load_response(
+                "tests/data/keys_query.json")
+            response = KeysQueryResponse.from_dict(parsed_dict)
+
+            assert isinstance(response, KeysQueryResponse)
+
+            olm.handle_response(response)
+            device = olm.device_store["@alice:example.org"]["JLAFKJWSCS"]
+            assert (
+                device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
+            )
+
+            del olm
+
+            olm = Olm("ephermal", "DEVICEID", self._test_dir)
+            device = olm.device_store["@alice:example.org"]["JLAFKJWSCS"]
+            assert (
+                device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
+            )
+        finally:
+            os.remove(os.path.join(
+                self._test_dir, "ephermal_DEVICEID.db"))
 
     def test_olm_inbound_session(self, monkeypatch):
         def mocksave(self):
