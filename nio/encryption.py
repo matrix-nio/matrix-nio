@@ -694,7 +694,7 @@ class Olm(object):
         self.trust_db.add(key)
         return True
 
-    def device_trusted(self, device):
+    def is_device_verified(self, device):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
         return key in self.trust_db
@@ -960,14 +960,54 @@ class Olm(object):
             if not event.room_id:
                 return None
 
-            plaintext = self.group_decrypt(
+            verified = False
+
+            session = self.inbound_group_store.get(
                 event.room_id,
                 event.sender_key,
-                event.session_id,
+                event.session_id
+            )
+
+            if not session:
+                logger.warn(
+                    "Error decrypting megolm event, no session found "
+                    "with session id {} for room {}".format(
+                        event.session_id,
+                        event.room_id
+                    )
+                )
+                return None
+
+            plaintext = self._group_decrypt(
+                session,
                 event.ciphertext
             )
             if not plaintext:
                 return None
+
+            # TODO check the message index for replay attacks
+
+            try:
+                device = self.device_store[event.sender][event.device_id]
+            except KeyError:
+                # We don't have the device keys for this device, add them to
+                # our quey set so we fetch in the next key query.
+                self.users_for_key_query.add(event.sender)
+                pass
+            else:
+                # Do not mark events decrypted using a forwarded key as
+                # verified
+                if (self.is_device_verified(device) and
+                        not session.forwarding_chain):
+                    if (device.ed25519 != session.ed25519 or
+                            device.curve25519 != event.sender_key):
+                        logger.warn("Device keys mismatch in event sent "
+                                    "by device {}.".format(device.id))
+                        return None
+
+                    logger.info("Event {} succesfully verified".format(
+                        event.event_id))
+                    verified = True
 
             try:
                 parsed_dict = json.loads(plaintext, encoding="utf-8") \
@@ -996,7 +1036,7 @@ class Olm(object):
                 return new_event
 
             new_event.decrypted = True
-            new_event.verified = False
+            new_event.verified = verified
             new_event.sender_key = event.sender_key
 
             return new_event
@@ -1119,16 +1159,8 @@ class Olm(object):
 
         return payload_dict
 
-    def group_decrypt(self, room_id, sender_key, session_id, ciphertext):
-        # type: (str, str, str, str) -> Optional[str]
-        session = self.inbound_group_store.get(room_id, sender_key, session_id)
-
-        if not session:
-            logger.warn(
-                "Error decrypting megolm event, no session found "
-                "with session id {} for room {}".format(session_id, room_id)
-            )
-            return None
+    def _group_decrypt(self, session, ciphertext):
+        # type: (InboundGroupSession, str) -> Optional[str]
 
         try:
             plaintext, message_index = session.decrypt(ciphertext)
@@ -1172,7 +1204,7 @@ class Olm(object):
                 if not session:
                     continue
 
-                if not self.device_trusted(device):
+                if not self.is_device_verified(device):
                     raise OlmTrustError("Trying to share group session with "
                                         "untrusted device")
 
