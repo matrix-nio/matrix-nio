@@ -187,9 +187,11 @@ class DeviceStore(object):
 
     @property
     def users(self):
+        # type () -> str
         return self._entries.keys()
 
     def devices(self, user_id):
+        # type (str) -> str
         return self._entries[user_id].keys()
 
     def add(self, device):
@@ -481,6 +483,15 @@ class Olm(object):
         max_keys = self.account.max_one_time_keys
         key_count = (max_keys // 2) - self.uploaded_key_count
         return key_count > 0
+
+    def user_fully_verified(self, user_id):
+        # type: (str) -> bool
+        devices = self.device_store[user_id].values()
+        for device in devices:
+            if not self.is_device_verified(device):
+                return False
+
+        return True
 
     def share_keys(self):
         # type: () -> Dict[Any, Any]
@@ -997,10 +1008,10 @@ class Olm(object):
             else:
                 # Do not mark events decrypted using a forwarded key as
                 # verified
-                if (self.is_device_verified(device) and
-                        not session.forwarding_chain):
-                    if (device.ed25519 != session.ed25519 or
-                            device.curve25519 != event.sender_key):
+                if (self.is_device_verified(device)
+                        and not session.forwarding_chain):
+                    if (device.ed25519 != session.ed25519
+                            or device.curve25519 != event.sender_key):
                         logger.warn("Device keys mismatch in event sent "
                                     "by device {}.".format(device.id))
                         return None

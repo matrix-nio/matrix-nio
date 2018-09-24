@@ -145,6 +145,22 @@ class Client(object):
 
         return self.olm.should_query_keys
 
+    def room_contains_unverified(self, room_id):
+        # type: (str) -> bool
+        room = self.rooms[room_id]
+
+        if not room.encrypted:
+            return False
+
+        if not self.olm:
+            return False
+
+        for user in room.users:
+            if not self.olm.user_fully_verified(user):
+                return True
+
+        return False
+
     def _handle_login(self, response):
         # type: (Union[LoginResponse, ErrorResponse]) -> None
         if isinstance(response, ErrorResponse):
@@ -419,6 +435,10 @@ class HttpClient(object):
         lag = max(0, elapsed - (request_info.timeout / 1000))
 
         return lag
+
+    def room_contains_unverified(self, room_id):
+        # type: (str) -> bool
+        return self._client.room_contains_unverified(room_id)
 
     def connect(self, transport_type=TransportType.HTTP):
         # type: (Optional[TransportType]) -> bytes
