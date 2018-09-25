@@ -197,10 +197,6 @@ class RoomMessagesResponse(Response):
         self.start = start
         self.end = end
 
-    @staticmethod
-    def _get_event(event):
-        pass
-
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomMessagesResponse, ErrorResponse]
