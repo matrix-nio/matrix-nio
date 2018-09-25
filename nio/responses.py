@@ -192,7 +192,7 @@ class RoomMessagesResponse(Response):
         chunk = []  # type: List[Union[Event, UnknownBadEvent]]
         try:
             validate_json(parsed_dict, Schemas.room_messages)
-            chunk = (SyncRepsponse._get_room_events(parsed_dict["chunk"]))
+            chunk = (SyncResponse._get_room_events(parsed_dict["chunk"]))
         except (SchemaError, ValidationError) as e:
             print(str(e))
             return ErrorResponse.from_dict(parsed_dict)
@@ -263,7 +263,7 @@ class KeysQueryResponse(Response):
         return cls(device_keys, failures)
 
 
-class SyncRepsponse(Response):
+class SyncResponse(Response):
     def __init__(
         self,
         next_batch,        # type: str
@@ -341,7 +341,7 @@ class SyncRepsponse(Response):
         # type: (Dict[Any, Any], int) -> Timeline
         validate_json(parsed_dict, Schemas.room_timeline)
 
-        events = SyncRepsponse._get_room_events(
+        events = SyncResponse._get_room_events(
             parsed_dict["events"],
             max_events
         )
@@ -353,7 +353,7 @@ class SyncRepsponse(Response):
     @staticmethod
     def _get_state(parsed_dict, max_events=0):
         validate_json(parsed_dict, Schemas.room_state)
-        events = SyncRepsponse._get_room_events(
+        events = SyncResponse._get_room_events(
             parsed_dict["events"],
             max_events
         )
@@ -383,19 +383,19 @@ class SyncRepsponse(Response):
         left_rooms = {}  # type: Dict[str, RoomInfo]
 
         for room_id, room_dict in parsed_dict["invite"].items():
-            state = SyncRepsponse._get_invite_state(room_dict["invite_state"])
+            state = SyncResponse._get_invite_state(room_dict["invite_state"])
             invite_info = InviteInfo(state)
             invited_rooms[room_id] = invite_info
 
         for room_id, room_dict in parsed_dict["leave"].items():
-            state = SyncRepsponse._get_state(room_dict["state"])
-            timeline = SyncRepsponse._get_timeline(room_dict["timeline"])
+            state = SyncResponse._get_state(room_dict["state"])
+            timeline = SyncResponse._get_timeline(room_dict["timeline"])
             leave_info = RoomInfo(timeline, state)
             left_rooms[room_id] = leave_info
 
         for room_id, room_dict in parsed_dict["join"].items():
-            state = SyncRepsponse._get_state(room_dict["state"])
-            timeline = SyncRepsponse._get_timeline(room_dict["timeline"])
+            state = SyncResponse._get_state(room_dict["state"])
+            timeline = SyncResponse._get_timeline(room_dict["timeline"])
             join_info = RoomInfo(timeline, state)
             joined_rooms[room_id] = join_info
 
@@ -408,7 +408,7 @@ class SyncRepsponse(Response):
         max_events=0,  # type: int
         olm=None,  # type: Any
     ):
-        # type: (...) -> Union[SyncRepsponse, ErrorResponse]
+        # type: (...) -> Union[SyncResponse, ErrorResponse]
         partial = False
 
         try:
@@ -431,7 +431,7 @@ class SyncRepsponse(Response):
             parsed_dict["device_lists"]["left"],
         )
 
-        rooms = SyncRepsponse._get_room_info(
+        rooms = SyncResponse._get_room_info(
             parsed_dict["rooms"], max_events, olm
         )
 

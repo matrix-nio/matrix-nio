@@ -62,7 +62,7 @@ from .cryptostore import (
     OlmDevice,
     OlmAccount
 )
-from .responses import KeysUploadResponse, KeysQueryResponse, SyncRepsponse
+from .responses import KeysUploadResponse, KeysQueryResponse, SyncResponse
 from .events import (
     Event,
     MegolmEvent,

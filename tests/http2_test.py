@@ -6,7 +6,7 @@ import h2
 
 from nio.client import HttpClient, TransportType, RequestInfo, RequestType
 from nio.http import TransportResponse, Http2Response
-from nio.responses import LoginResponse, SyncRepsponse
+from nio.responses import LoginResponse, SyncResponse
 from nio.api import Http2Api
 from h2.events import (
     ResponseReceived,
@@ -106,7 +106,7 @@ class TestClass(object):
         client._client.receive("sync", response.text)
         response = client.next_response()
 
-        assert isinstance(response, SyncRepsponse)
+        assert isinstance(response, SyncResponse)
 
         content = {
             "body": "test",
@@ -186,7 +186,7 @@ class TestClass(object):
         client.receive(self.sync_response(3, frame_factory))
         response = client.next_response()
 
-        assert isinstance(response, SyncRepsponse)
+        assert isinstance(response, SyncResponse)
         assert response.uuid == uuid
 
         sync_uuid, request = client.sync()

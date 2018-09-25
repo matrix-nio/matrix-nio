@@ -53,7 +53,7 @@ from .responses import (
     RoomPutStateResponse,
     RoomRedactResponse,
     RoomSendResponse,
-    SyncRepsponse,
+    SyncResponse,
     RoomMessagesResponse,
     KeysUploadResponse,
     KeysQueryResponse,
@@ -174,7 +174,7 @@ class Client(object):
             self.olm = Olm(self.user_id, self.device_id, self.session_dir)
 
     def _handle_sync(self, response):
-        # type: (Union[SyncRepsponse, ErrorResponse]) -> None
+        # type: (Union[SyncResponse, ErrorResponse]) -> None
         if isinstance(response, ErrorResponse):
             return
 
@@ -315,7 +315,7 @@ class Client(object):
             response = LoginResponse.from_dict(typed_response.data)
             self._handle_login(response)
         elif typed_response.type is RequestType.sync:
-            response = SyncRepsponse.from_dict(typed_response.data)
+            response = SyncResponse.from_dict(typed_response.data)
             self._handle_sync(response)
         elif typed_response.type is RequestType.room_send:
             response = RoomSendResponse.from_dict(typed_response.data)
