@@ -841,7 +841,7 @@ class Olm(object):
                 )
 
                 plaintext = session.decrypt(message)
-                # TODO do we need to save the session in the database here?
+                self.save_session(sender_key, session)
 
                 logger.info(
                     "Succesfully decrypted olm message "
@@ -1063,7 +1063,6 @@ class Olm(object):
     ):
         # type: (...) -> None
 
-        s = None
         try:
             # First try to decrypt using an existing session.
             plaintext = self._try_decrypt(sender, sender_key, message)
@@ -1086,6 +1085,9 @@ class Olm(object):
                 s = self._create_inbound_session(sender, sender_key, message)
                 # Now let's decrypt the message using the new session.
                 plaintext = s.decrypt(message)
+                # Store the new session
+                self.session_store.add(sender_key, s)
+                self.save_session(sender_key, s)
             except OlmSessionError as e:
                 logger.error(
                     "Failed to create new session from prekey"
@@ -1140,12 +1142,6 @@ class Olm(object):
             # Verification succeded, handle the event
             self._handle_olm_event(sender, sender_key, parsed_payload)
 
-        finally:
-            if s:
-                # We created a new session, find out the device id for it and
-                # store it in the session store as well as in the database.
-                self.session_store.add(sender_key, s)
-                self.save_session(sender_key, s)
     def rotate_outbound_group_session(self, room_id):
         logger.info("Rotating outbound group session for room {}".format(
             room_id))
