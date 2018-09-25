@@ -49,20 +49,26 @@ from olm import (
     OlmMessage,
     OlmPreKeyMessage,
     OlmSessionError,
-    OutboundGroupSession,
     OutboundSession,
     Session,
 )
 
 from .log import logger_group
 from .schemas import Schemas, validate_json
+from .exceptions import EncryptionError, OlmTrustError, VerificationError
 from .cryptostore import (
     CryptoStore,
+    OutboundGroupSession,
     InboundGroupSession,
     OlmDevice,
     OlmAccount
 )
-from .responses import KeysUploadResponse, KeysQueryResponse, SyncResponse
+from .responses import (
+    KeysUploadResponse,
+    KeysQueryResponse,
+    SyncResponse,
+    ShareGroupSessionResponse
+)
 from .events import (
     Event,
     MegolmEvent,
@@ -93,18 +99,6 @@ GroupStoreType = DefaultDict[
     str,
     DefaultDict[str, Dict[str, InboundGroupSession]]
 ]
-
-
-class OlmTrustError(Exception):
-    pass
-
-
-class EncryptionError(Exception):
-    pass
-
-
-class VerificationError(Exception):
-    pass
 
 
 class Key(object):
@@ -677,6 +671,13 @@ class Olm(object):
         elif isinstance(response, KeysQueryResponse):
             self._handle_key_query(response)
 
+        elif isinstance(response, ShareGroupSessionResponse):
+            room_id = response.room_id
+            session = self.outbound_group_sessions[room_id]
+            logger.info("Setting outbound group sessio for room {} "
+                        "as shared".format(room_id))
+            session.shared = True
+
     def _create_inbound_session(
         self,
         sender,  # type: str
@@ -1145,6 +1146,10 @@ class Olm(object):
                 # store it in the session store as well as in the database.
                 self.session_store.add(sender_key, s)
                 self.save_session(sender_key, s)
+    def rotate_outbound_group_session(self, room_id):
+        logger.info("Rotating outbound group session for room {}".format(
+            room_id))
+        self.create_outbound_group_session(room_id)
 
     def group_encrypt(
         self,
@@ -1153,9 +1158,17 @@ class Olm(object):
     ):
         # type: (...) -> Dict[str, str]
         if room_id not in self.outbound_group_sessions:
-            raise EncryptionError("Missing outbound session for room")
+            self.create_outbound_group_session(room_id)
 
         session = self.outbound_group_sessions[room_id]
+
+        if session.expired:
+            self.rotate_outbound_group_session(room_id)
+            session = self.outbound_group_sessions[room_id]
+
+        if not session.shared:
+            raise EncryptionError("Group session for room {} not "
+                                  "shared.".format(room_id))
 
         plaintext_dict["room_id"] = room_id
         ciphertext = session.encrypt(Api.to_json(plaintext_dict))
@@ -1184,6 +1197,7 @@ class Olm(object):
 
     def share_group_session(self, room_id, users):
         # type: (str, List[str]) -> Dict[str, Any]
+        logger.info("Sharing gorup session for room {}".format(room_id))
         group_session = self.outbound_group_sessions[room_id]
 
         key_content = {
@@ -1216,8 +1230,11 @@ class Olm(object):
                     continue
 
                 if not self.is_device_verified(device):
-                    raise OlmTrustError("Trying to share group session with "
-                                        "untrusted device")
+                    raise OlmTrustError("Device {} for user {} is not "
+                                        "verified".format(
+                                            device.id,
+                                            device.user_id
+                                        ))
 
                 device_payload_dict = payload_dict.copy()
                 device_payload_dict["recipient"] = user_id
@@ -1228,17 +1245,14 @@ class Olm(object):
                 olm_message = session.encrypt(
                     Api.to_json(device_payload_dict)
                 )
+                self.store.save_olm_session(device.curve25519, session)
 
                 olm_dict = {
                     "algorithm": "m.olm.v1.curve25519-aes-sha2",
                     "sender_key": self.account.identity_keys["curve25519"],
                     "ciphertext": {
                         device.curve25519: {
-                            "type": (
-                                0
-                                if isinstance(olm_message, OlmPreKeyMessage)
-                                else 1
-                            ),
+                            "type": olm_message.message_type,
                             "body": olm_message.ciphertext,
                         }
                     },

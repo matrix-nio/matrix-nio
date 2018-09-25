@@ -251,6 +251,17 @@ class Api(object):
 
         return Api._build_path(path, query_parameters), Api.to_json(content)
 
+    @staticmethod
+    def to_device(access_token, event_type, content, tx_id):
+        # type: (str, str, Dict[Any, Any], int) -> Tuple[str, str]
+        query_parameters = {"access_token": access_token}
+        path = "sendToDevice/{event_type}/{tx_id}".format(
+            event_type=event_type,
+            tx_id=tx_id
+        )
+
+        return Api._build_path(path, query_parameters), Api.to_json(content)
+
 
 class HttpApi(object):
     def __init__(self, host):
@@ -353,6 +364,15 @@ class HttpApi(object):
         # type: (str, Set[str]) -> TransportRequest
         path, data = Api.keys_query(access_token, user_set)
         return self._build_request("POST", path, data)
+
+    def to_device(self, access_token, event_type, content):
+        path, data = Api.to_device(
+            access_token,
+            event_type,
+            content,
+            self.txn_id
+        )
+        return self._build_request("PUT", path, data)
 
 
 class Http2Api(HttpApi):

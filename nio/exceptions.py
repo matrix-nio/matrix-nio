@@ -33,3 +33,15 @@ class LocalTransportError(ProtocolError):
 
 class RemoteTransportError(ProtocolError):
     pass
+
+
+class OlmTrustError(Exception):
+    pass
+
+
+class VerificationError(Exception):
+    pass
+
+
+class EncryptionError(Exception):
+    pass

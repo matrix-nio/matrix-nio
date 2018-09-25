@@ -17,7 +17,7 @@
 from __future__ import unicode_literals
 
 from builtins import str, super
-from typing import Any, Dict, List, NamedTuple, Optional, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Union, Type, TypeVar
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
@@ -158,7 +158,7 @@ class RoomRedactResponse(RoomEventIdResponse):
 class EmptyResponse(Response):
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[EmptyResponse, ErrorResponse]
+        # type: (Dict[Any, Any]) -> Union[Any, ErrorResponse]
         try:
             validate_json(parsed_dict, Schemas.empty)
         except (SchemaError, ValidationError):
@@ -173,6 +173,21 @@ class RoomKickResponse(EmptyResponse):
 
 class RoomInviteResponse(EmptyResponse):
     pass
+
+
+class ShareGroupSessionResponse(EmptyResponse):
+    def __init__(self):
+        self.room_id = None  # type: Optional[str]
+        super().__init__()
+
+    @classmethod
+    def from_dict(
+        cls,
+        parsed_dict  # type: Dict[Any, Any]
+    ):
+        # type: (...) -> Union[ShareGroupSessionResponse, ErrorResponse]
+        object = super().from_dict(parsed_dict)
+        return object
 
 
 class RoomMessagesResponse(Response):

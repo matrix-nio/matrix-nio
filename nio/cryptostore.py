@@ -17,10 +17,12 @@ from builtins import super
 from logbook import Logger
 from collections import defaultdict
 from typing import List, Optional
+from datetime import timedelta, datetime
 
 import olm
 
 from .log import logger_group
+from .exceptions import EncryptionError
 
 logger = Logger("nio.cryptostore")
 logger_group.add_logger(logger)
@@ -66,6 +68,55 @@ class InboundGroupSession(olm.InboundGroupSession):
         session.ed25519 = signing_key
         session.forwarding_chain = forwarding_chain or []
         return session
+
+
+class OutboundGroupSession(olm.OutboundGroupSession):
+
+    """Outbound group session aware of the users it is shared with.
+    Also remembers the time it was created and the number of messages it has
+    encrypted, in order to know if it needs to be rotated.
+    Attributes:
+        creation_time (datetime.datetime): Creation time of the session.
+        message_count (int): Number of messages encrypted using the session.
+    """
+
+    def __init__(self):
+        self.max_age = timedelta(days=7)
+        self.max_messages = 100
+        self.creation_time = datetime.now()
+        self.message_count = 0
+        self.shared = False
+        super().__init__()
+
+    def __new__(cls, **kwargs):
+        return super().__new__(cls)
+
+    def mark_as_shared(self):
+        self.shared = True
+
+    @property
+    def expired(self):
+        return self.should_rotate()
+
+    def should_rotate(self):
+        """Wether the session should be rotated.
+        Returns:
+            True if it should, False if not.
+        """
+        if (self.message_count >= self.max_messages
+                or datetime.now() - self.creation_time >= self.max_age):
+            return True
+        return False
+
+    def encrypt(self, plaintext):
+        if not self.shared:
+            raise EncryptionError("Error, session is not shared")
+
+        if self.expired:
+            raise EncryptionError("Error, session is has expired")
+
+        self.message_count += 1
+        return super().encrypt(plaintext)
 
 
 class OlmAccount(olm.Account):

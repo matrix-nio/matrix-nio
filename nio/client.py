@@ -18,10 +18,20 @@ from __future__ import unicode_literals
 
 import json
 import pprint
-from builtins import bytes, str
+from builtins import bytes, str, super
 from enum import Enum, unique
 from collections import deque, namedtuple
-from typing import Any, AnyStr, Deque, Dict, List, Optional, Tuple, Union
+from typing import (
+    Any,
+    AnyStr,
+    Deque,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    NamedTuple
+)
 from uuid import UUID
 
 import h2
@@ -57,7 +67,8 @@ from .responses import (
     RoomMessagesResponse,
     KeysUploadResponse,
     KeysQueryResponse,
-    ErrorResponse
+    ErrorResponse,
+    ShareGroupSessionResponse
 )
 
 from .events import Event, BadEventType, RoomEncryptedEvent, MegolmEvent
@@ -73,9 +84,13 @@ logger = Logger("nio.client")
 logger_group.add_logger(logger)
 
 
-TypedResponse = namedtuple("TypedResponse", ["type", "data", "uuid", "timing"])
-TimingInfo = namedtuple("TimingInfo", ["start", "end"])
-RequestInfo = namedtuple("RequestInfo", ["type", "timeout"])
+TimingInfo = NamedTuple(
+    "TimingInfo",
+    [
+        ("start", int),
+        ("end", int)
+    ]
+)
 
 
 @unique
@@ -92,6 +107,45 @@ class RequestType(Enum):
     room_messages = 9
     keys_upload = 10
     keys_query = 11
+    share_group_session = 12
+
+
+_TypedResponse = NamedTuple("TypedResponse", [
+    ("type", RequestType),
+    ("data", Dict[Any, Any]),
+    ("uuid", Optional[UUID]),
+    ("timing", Optional[TimingInfo]),
+    ("extra_data", Optional[str]),
+])
+
+
+class TypedResponse(_TypedResponse):
+    def __new__(
+        cls,
+        type,            # type: RequestType
+        data,            # type: Dict[Any, Any]
+        uuid=None,       # type: Optional[UUID]
+        timing=None,     # type: Optional[TimingInfo]
+        extra_data=None  # type: Optional[str]
+    ):
+        # type: (...) -> RequestInfo
+        return super().__new__(cls, type, data, uuid, timing, extra_data)
+
+
+_RequestInfo = NamedTuple(
+    "RequestInfo",
+    [
+        ("type", RequestType),
+        ("timeout", Optional[int]),
+        ("extra_data", Optional[str])
+    ]
+)
+
+
+class RequestInfo(_RequestInfo):
+    def __new__(cls, type, timeout=None, extra_data=None):
+        # type: (RequestType, Optional[int], Optional[str]) -> RequestInfo
+        return super().__new__(cls, type, timeout, extra_data)
 
 
 class Client(object):
@@ -278,10 +332,11 @@ class Client(object):
 
     def receive(
         self,
-        request_type,   # type: Union[str, RequestType]
-        json_string,    # type: str
-        uuid=None,      # type: Optional[UUID]
-        timing=None     # type: Optional[TimingInfo]
+        request_type,    # type: Union[str, RequestType]
+        json_string,     # type: str
+        uuid=None,       # type: Optional[UUID]
+        timing=None,     # type: Optional[TimingInfo]
+        extra_data=None  # type: Optional[str]
     ):
         # type: (...) -> bool
         try:
@@ -297,7 +352,13 @@ class Client(object):
                 raise LocalProtocolError("Invalid request type {}".format(
                     request_type))
 
-        response = TypedResponse(request_type, parsed_dict, uuid, timing)
+        response = TypedResponse(
+            request_type,
+            parsed_dict,
+            uuid,
+            timing,
+            extra_data
+        )
         self.parse_queue.append(response)
 
         return True
@@ -340,6 +401,11 @@ class Client(object):
         elif typed_response.type is RequestType.keys_query:
             response = KeysQueryResponse.from_dict(typed_response.data)
             self._handle_olm_response(response)
+        elif typed_response.type is RequestType.share_group_session:
+            response = ShareGroupSessionResponse.from_dict(typed_response.data)
+            if not isinstance(response, ErrorResponse):
+                response.room_id = typed_response.extra_data
+                self._handle_olm_response(response)
 
         if not response:
             raise NotImplementedError(
@@ -432,7 +498,8 @@ class HttpClient(object):
 
         request_info = self.requests_made[uuid]
         # The timestamp are in seconds and the timeout is in ms
-        lag = max(0, elapsed - (request_info.timeout / 1000))
+        timeout = 0 if request_info.timeout is None else request_info.timeout
+        lag = max(0, elapsed - (timeout / 1000))
 
         return lag
 
@@ -483,7 +550,7 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.login, 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.login, 0, None)
         return uuid, data
 
     def room_send(self, room_id, message_type, content):
@@ -492,6 +559,20 @@ class HttpClient(object):
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
+
+        # TODO this can fail if we're not synced
+        if self._client.olm:
+            room = self._client.rooms[room_id]
+
+            if room.encrypted:
+                content = self._client.olm.group_encrypt(
+                    room_id,
+                    {
+                        "content": content,
+                        "type": message_type
+                    },
+                )
+                message_type = "m.room.encrypted"
 
         request = self.api.room_send(
             self._client.access_token, room_id, message_type, content
@@ -645,6 +726,45 @@ class HttpClient(object):
         self.requests_made[uuid] = RequestInfo(RequestType.keys_query, 0)
         return uuid, data
 
+    def share_group_session(self, room_id):
+        # type: (str) -> Tuple[UUID, bytes]
+        if not self._client.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
+        if not self._client.olm:
+            raise LocalProtocolError("Olm session is not loaded")
+
+        try:
+            room = self._client.rooms[room_id]
+        except KeyError:
+            raise LocalProtocolError("No such room with id {}".format(room_id))
+
+        if not room.encrypted:
+            raise LocalProtocolError("Room with id {} is not encrypted".format(
+                room_id))
+
+        to_device_dict = self._client.olm.share_group_session(
+            room_id,
+            list(room.users.keys())
+        )
+
+        request = self.api.to_device(
+            self._client.access_token,
+            "m.room.encrypted",
+            to_device_dict,
+        )
+
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = RequestInfo(
+            RequestType.share_group_session,
+            0,
+            room_id
+        )
+        return uuid, data
+
     def sync(self, timeout=None, filter=None):
         # type: (Optional[int], Optional[Dict[Any, Any]]) -> Tuple[UUID, bytes]
         if not self._client.logged_in:
@@ -658,7 +778,11 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.sync, timeout or 0)
+        self.requests_made[uuid] = RequestInfo(
+            RequestType.sync,
+            timeout or 0,
+            None
+        )
         return uuid, data
 
     def receive(self, data):
@@ -682,9 +806,16 @@ class HttpClient(object):
                 logger.info(
                     "Received response of type: {}".format(request_info.type)
                 )
-                timing = TimingInfo(response.send_time, response.receive_time)
+                if not response.send_time or not response.receive_time:
+                    timing = None
+                else:
+                    timing = TimingInfo(
+                        response.send_time,
+                        response.receive_time
+                    )
                 self._client.receive(
-                    request_info.type, response.text, response.uuid, timing
+                    request_info.type, response.text, response.uuid, timing,
+                    request_info.extra_data
                 )
             else:
                 logger.info(
