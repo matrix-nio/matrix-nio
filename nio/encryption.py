@@ -857,7 +857,7 @@ class Olm(object):
                     logger.error(
                         "Found matching session yet decryption "
                         "failed for sender {} and "
-                        "device {}".format(sender, session.device_id)
+                        "sender key {}".format(sender, sender_key)
                     )
                     raise EncryptionError(
                         "Decryption failed for matching " "session"
