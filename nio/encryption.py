@@ -999,27 +999,37 @@ class Olm(object):
 
             # TODO check the message index for replay attacks
 
-            try:
-                device = self.device_store[event.sender][event.device_id]
-            except KeyError:
-                # We don't have the device keys for this device, add them to
-                # our quey set so we fetch in the next key query.
-                self.users_for_key_query.add(event.sender)
-                pass
+            # If the message is from our own session mark it as verified
+            if (event.sender == self.user_id
+                    and event.device_id == self.device_id
+                    and session.ed25519
+                    == self.account.identity_keys["ed25519"]
+                    and event.sender_key
+                    == self.account.identity_keys["curve25519"]):
+                verified = True
+            # Else check that the message is from a verified device
             else:
-                # Do not mark events decrypted using a forwarded key as
-                # verified
-                if (self.is_device_verified(device)
-                        and not session.forwarding_chain):
-                    if (device.ed25519 != session.ed25519
-                            or device.curve25519 != event.sender_key):
-                        logger.warn("Device keys mismatch in event sent "
-                                    "by device {}.".format(device.id))
-                        return None
+                try:
+                    device = self.device_store[event.sender][event.device_id]
+                except KeyError:
+                    # We don't have the device keys for this device, add them
+                    # to our quey set so we fetch in the next key query.
+                    self.users_for_key_query.add(event.sender)
+                    pass
+                else:
+                    # Do not mark events decrypted using a forwarded key as
+                    # verified
+                    if (self.is_device_verified(device)
+                            and not session.forwarding_chain):
+                        if (device.ed25519 != session.ed25519
+                                or device.curve25519 != event.sender_key):
+                            logger.warn("Device keys mismatch in event sent "
+                                        "by device {}.".format(device.id))
+                            return None
 
-                    logger.info("Event {} succesfully verified".format(
-                        event.event_id))
-                    verified = True
+                        logger.info("Event {} succesfully verified".format(
+                            event.event_id))
+                        verified = True
 
             try:
                 parsed_dict = json.loads(plaintext, encoding="utf-8") \
