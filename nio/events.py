@@ -90,19 +90,22 @@ class Event(object):
             if "redacted_because" in event_dict["unsigned"]:
                 return RedactedEvent.from_dict(event_dict)
 
+        # The transaction id will only be present for events that
+        # are send out from this client, since we print out our own
+        # messages as soon as we get a receive confirmation from
+        # the server we don't care about our own messages in a
+        # sync event. More info under:
+        # https://github.com/matrix-org/matrix-doc/blob/master/api/client-server/definitions/event.yaml#L53
+        if ("unsigned" in event_dict
+                and "transaction_id" in event_dict["unsigned"]
+                and event_dict["type"] in (
+                    "m.room.message",
+                    "m.room.encrypted"
+                )):
+            return None
+
         if event_dict["type"] == "m.room.message":
-            # The transaction id will only be present for events that
-            # are send out from this client, since we print out our own
-            # messages as soon as we get a receive confirmation from
-            # the server we don't care about our own messages in a
-            # sync event. More info under:
-            # https://github.com/matrix-org/matrix-doc/blob/master/api/client-server/definitions/event.yaml#L53
-            if ("unsigned" in event_dict and "transaction_id" in
-                    event_dict["unsigned"]):
-                return None
-
             return RoomMessage.parse_event(event_dict, olm)
-
         elif event_dict["type"] == "m.room.member":
             return RoomMemberEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.canonical_alias":
