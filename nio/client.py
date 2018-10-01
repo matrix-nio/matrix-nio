@@ -68,7 +68,8 @@ from .responses import (
     KeysUploadResponse,
     KeysQueryResponse,
     ErrorResponse,
-    ShareGroupSessionResponse
+    ShareGroupSessionResponse,
+    KeysClaimResponse
 )
 
 from .events import Event, BadEventType, RoomEncryptedEvent, MegolmEvent
@@ -107,7 +108,8 @@ class RequestType(Enum):
     room_messages = 9
     keys_upload = 10
     keys_query = 11
-    share_group_session = 12
+    keys_claim = 12
+    share_group_session = 13
 
 
 _TypedResponse = NamedTuple("TypedResponse", [
@@ -401,6 +403,11 @@ class Client(object):
         elif typed_response.type is RequestType.keys_query:
             response = KeysQueryResponse.from_dict(typed_response.data)
             self._handle_olm_response(response)
+        elif typed_response.type is RequestType.keys_claim:
+            response = KeysClaimResponse.from_dict(typed_response.data)
+            if not isinstance(response, ErrorResponse):
+                response.room_id = typed_response.extra_data
+                self._handle_olm_response(response)
         elif typed_response.type is RequestType.share_group_session:
             response = ShareGroupSessionResponse.from_dict(typed_response.data)
             if not isinstance(response, ErrorResponse):
@@ -726,8 +733,40 @@ class HttpClient(object):
         self.requests_made[uuid] = RequestInfo(RequestType.keys_query, 0)
         return uuid, data
 
-    def share_group_session(self, room_id):
-        # type: (str) -> Tuple[UUID, bytes]
+    def keys_claim(self, room_id):
+        if not self._client.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
+        if not self._client.olm:
+            raise LocalProtocolError("Olm session is not loaded")
+
+        try:
+            room = self._client.rooms[room_id]
+        except KeyError:
+            raise LocalProtocolError("No such room with id {}".format(room_id))
+
+        if not room.encrypted:
+            raise LocalProtocolError("Room with id {} is not encrypted".format(
+                                     room_id))
+
+        user_list = self._client.olm.get_missing_sessions(
+            list(room.users.keys())
+        )
+        request = self.api.keys_claim(self._client.access_token, user_list)
+
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = RequestInfo(
+            RequestType.keys_claim,
+            0,
+            room_id
+        )
+        return uuid, data
+
+    def share_group_session(self, room_id, ignore_missing_sessions=False):
+        # type: (str, bool) -> Tuple[UUID, bytes]
         if not self._client.logged_in:
             raise LocalProtocolError("Not logged in.")
 
@@ -748,13 +787,14 @@ class HttpClient(object):
 
         to_device_dict = self._client.olm.share_group_session(
             room_id,
-            list(room.users.keys())
+            list(room.users.keys()),
+            ignore_missing_sessions
         )
 
         request = self.api.to_device(
             self._client.access_token,
             "m.room.encrypted",
-            to_device_dict,
+            to_device_dict
         )
 
         uuid, data = self._send(request)

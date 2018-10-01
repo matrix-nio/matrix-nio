@@ -23,6 +23,7 @@ UserIdRegex = "^@.*:.+$"
 EventTypeRegex = r"^.+\..+"
 Base64Regex = r"[^-A-Za-z0-9+/=]|=[^=]|={3,}$"
 KeyRegex = r"(ed25519|curve25519):.+"
+SignedCurveRegex = r"(signed_curve25519|curve25519):.+"
 
 
 def extend_with_default(validator_class):
@@ -631,6 +632,46 @@ class Schemas(object):
             }
         },
         "required": ["device_keys", "failures"],
+    }
+
+    keys_claim = {
+        "type": "object",
+        "properties": {
+            "one_time_keys": {
+                "type": "object",
+                "patternProperties": {UserIdRegex: {
+                    "type": "object",
+                    "patternProperties": {r".+": {
+                        "type": "object",
+                        "properties": {
+                            "patternProperties": {SignedCurveRegex: {
+                                "type": "object",
+                                "properties": {
+                                    "key": {"type": "str"},
+                                    "signatures": {
+                                        "type": "object",
+                                        "patternProperties": {UserIdRegex: {
+                                            "type": "object",
+                                            "patternProperties": {KeyRegex: {
+                                                "type": "string"
+                                            }}
+                                        }},
+                                    },
+                                },
+                                "required": [
+                                    "key",
+                                    "signatures"
+                                ]
+                            }},
+                        }
+                    }}
+                }}
+            },
+            "failures": {
+                "type": "object"
+            }
+        },
+        "required": ["one_time_keys", "failures"],
     }
 
     empty = {"type": "object", "properties": {}, "additionalProperties": False}

@@ -17,8 +17,9 @@
 from __future__ import unicode_literals
 
 import json
-from typing import Any, Dict, Optional, Tuple, List, Set
+from typing import Any, Dict, Optional, Tuple, List, Set, DefaultDict
 from enum import Enum, unique
+from collections import defaultdict
 
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest
@@ -252,6 +253,24 @@ class Api(object):
         return Api._build_path(path, query_parameters), Api.to_json(content)
 
     @staticmethod
+    def keys_claim(access_token, user_set):
+        # type: (str, Dict[str, List[str]]) -> Tuple[str, str]
+        query_parameters = {"access_token": access_token}
+        path = "keys/claim"
+
+        payload = defaultdict(dict)  # type: DefaultDict[str, Dict[str, str]]
+
+        for user_id, device_list in user_set.items():
+            for device_id in device_list:
+                payload[user_id][device_id] = "signed_curve25519"
+
+        content = {
+            "one_time_keys": payload
+        }
+
+        return Api._build_path(path, query_parameters), Api.to_json(content)
+
+    @staticmethod
     def to_device(access_token, event_type, content, tx_id):
         # type: (str, str, Dict[Any, Any], int) -> Tuple[str, str]
         query_parameters = {"access_token": access_token}
@@ -363,6 +382,11 @@ class HttpApi(object):
     def keys_query(self, access_token, user_set):
         # type: (str, Set[str]) -> TransportRequest
         path, data = Api.keys_query(access_token, user_set)
+        return self._build_request("POST", path, data)
+
+    def keys_claim(self, access_token, user_set):
+        # type: (str, Dict[str, List[str]]) -> TransportRequest
+        path, data = Api.keys_claim(access_token, user_set)
         return self._build_request("POST", path, data)
 
     def to_device(self, access_token, event_type, content):

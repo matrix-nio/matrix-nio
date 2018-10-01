@@ -274,6 +274,27 @@ class KeysQueryResponse(Response):
         return cls(device_keys, failures)
 
 
+class KeysClaimResponse(Response):
+    def __init__(self, one_time_keys, failures):
+        # type: (Dict[Any, Any], Dict[Any, Any]) -> None
+        self.one_time_keys = one_time_keys
+        self.failures = failures
+        self.room_id = None  # type: Optional[str]
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[KeysClaimResponse, ErrorResponse]
+        try:
+            validate_json(parsed_dict, Schemas.keys_claim)
+        except (SchemaError, ValidationError):
+            return ErrorResponse.from_dict(parsed_dict)
+
+        one_time_keys = parsed_dict["one_time_keys"]
+        failures = parsed_dict["failures"]
+
+        return cls(one_time_keys, failures)
+
+
 class SyncResponse(Response):
     def __init__(
         self,

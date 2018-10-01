@@ -55,7 +55,12 @@ from olm import (
 
 from .log import logger_group
 from .schemas import Schemas, validate_json
-from .exceptions import EncryptionError, OlmTrustError, VerificationError
+from .exceptions import (
+    EncryptionError,
+    GroupEncryptionError,
+    OlmTrustError,
+    VerificationError
+)
 from .cryptostore import (
     CryptoStore,
     OutboundGroupSession,
@@ -66,6 +71,7 @@ from .cryptostore import (
 from .responses import (
     KeysUploadResponse,
     KeysQueryResponse,
+    KeysClaimResponse,
     SyncResponse,
     ShareGroupSessionResponse
 )
@@ -565,6 +571,44 @@ class Olm(object):
 
         return content
 
+    def _handle_key_claiming(self, response):
+        keys = response.one_time_keys
+
+        for user_id, user_devices in keys.items():
+            for device_id, one_time_key in user_devices.items():
+                # We need to find the device curve key for the wanted
+                # user and his device.
+                try:
+                    device = self.device_store[user_id][device_id]
+                except KeyError:
+                    logger.warn("Curve key for user {} and device {} not "
+                                "found, failed to start Olm session".format(
+                                    user_id,
+                                    device_id))
+                    continue
+
+                logger.info("Found curve key for user {} and device {}".format(
+                    user_id,
+                    device_id))
+
+                key_object = next(iter(one_time_key.values()))
+
+                verified = self.verify_json(key_object,
+                                            device.ed25519,
+                                            user_id,
+                                            device_id)
+                if verified:
+                    logger.info("Succesfully verified signature for one-time "
+                                "key of device {} of user {}.".format(
+                                    device_id, user_id))
+                    logger.info("Creating Outbound Session for device {} of "
+                                "user {}".format(device_id, user_id))
+                    self.create_session(key_object["key"], device.curve25519)
+                else:
+                    logger.warn("Signature verification for one-time key of "
+                                "device {} of user {} failed, could not start "
+                                "Olm session.".format(device_id, user_id))
+
     # This function is copyrighted under the Apache 2.0 license Zil0
     def _handle_key_query(self, response):
         # type: (KeysQueryResponse) -> None
@@ -671,6 +715,9 @@ class Olm(object):
         elif isinstance(response, KeysQueryResponse):
             self._handle_key_query(response)
 
+        elif isinstance(response, KeysClaimResponse):
+            self._handle_key_claiming(response)
+
         elif isinstance(response, ShareGroupSessionResponse):
             room_id = response.room_id
             session = self.outbound_group_sessions[room_id]
@@ -716,37 +763,15 @@ class Olm(object):
         key = Key.from_olmdevice(device)
         self.trust_db.remove(key)
 
-    def create_session(self, user_id, device_id, one_time_key):
-        # type: (str, str, str) -> None
-        # TODO the one time key needs to be verified before calling this
-
-        curve_key = None
-
-        # Let's create a new outbound session
-        logger.info(
-            "Creating Outbound for {} and device {}".format(user_id, device_id)
-        )
-
-        # We need to find the device key for the wanted user and his device.
-        try:
-            device = self.device_store[user_id][device_id]
-            curve_key = device.curve25519
-        except KeyError:
-            message = "Identity key for device {} not found".format(device_id)
-            logger.error(message)
-            raise EncryptionError(message)
-
-        logger.info("Found identity key for device {}".format(device_id))
-        # Create the session
+    def create_session(self, one_time_key, curve_key):
+        # type: (str, str) -> None
         # TODO this can fail
         session = OutboundSession(self.account, curve_key, one_time_key)
         # Save the account, add the session to the store and save it to the
         # database.
         self.save_account()
-
         self.session_store.add(curve_key, session)
         self.save_session(curve_key, session)
-        logger.info("Created OutboundSession for device {}".format(device_id))
 
     def create_group_session(
         self, sender_key, sender_fp_key, room_id, session_id, session_key
@@ -788,12 +813,10 @@ class Olm(object):
         logger.info("Created outbound group session for {}".format(room_id))
 
     def get_missing_sessions(self, users):
-        # type: (List[str]) -> Dict[str, Dict[str, str]]
-        missing = {}
+        # type: (List[str]) -> Dict[str, List[str]]
+        missing = defaultdict(list)  # type: DefaultDict[str, List[str]]
 
         for user_id in users:
-            devices = []
-
             for device in self.device_store[user_id].values():
                 # we don't need a session for our own device, skip it
                 if device.id == self.device_id:
@@ -803,12 +826,7 @@ class Olm(object):
                     logger.warn(
                         "Missing session for device {}".format(device.id)
                     )
-                    devices.append(device.id)
-
-            if devices:
-                missing[user_id] = {
-                    device: "signed_curve25519" for device in devices
-                }
+                    missing[user_id].append(device.id)
 
         return missing
 
@@ -1173,8 +1191,8 @@ class Olm(object):
             session = self.outbound_group_sessions[room_id]
 
         if not session.shared:
-            raise EncryptionError("Group session for room {} not "
-                                  "shared.".format(room_id))
+            raise GroupEncryptionError("Group session for room {} not "
+                                       "shared.".format(room_id))
 
         plaintext_dict["room_id"] = room_id
         ciphertext = session.encrypt(Api.to_json(plaintext_dict))
@@ -1201,8 +1219,13 @@ class Olm(object):
             logger.error("Error decrypting megolm event: {}".format(str(e)))
             return None
 
-    def share_group_session(self, room_id, users):
-        # type: (str, List[str]) -> Dict[str, Any]
+    def share_group_session(
+        self,
+        room_id,  # type: str
+        users,    # type: List[str]
+        ignore_missing_sessions=False  # type: bool
+    ):
+        # type: (...) -> Dict[str, Any]
         logger.info("Sharing gorup session for room {}".format(room_id))
         group_session = self.outbound_group_sessions[room_id]
 
@@ -1233,7 +1256,13 @@ class Olm(object):
                 session = self.session_store.get(device.curve25519)
 
                 if not session:
-                    continue
+                    if ignore_missing_sessions:
+                        continue
+                    else:
+                        raise EncryptionError("Missing Olm session for user {}"
+                                              " and device {}".format(
+                                                  user_id,
+                                                  device.id))
 
                 if not self.is_device_verified(device):
                     raise OlmTrustError("Device {} for user {} is not "

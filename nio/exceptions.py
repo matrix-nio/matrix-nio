@@ -45,3 +45,7 @@ class VerificationError(Exception):
 
 class EncryptionError(Exception):
     pass
+
+
+class GroupEncryptionError(Exception):
+    pass
