@@ -170,7 +170,7 @@ class TestClass(object):
 
         olm = Olm("ephermal", "DEVICEID", self._test_dir)
         olm.device_store[bob_device.user_id][bob_device.id] = bob_device
-        olm.create_session(BobId, Bob_device, one_time)
+        olm.create_session(one_time, bob_device.curve25519)
         assert isinstance(
             olm.session_store.get(bob.identity_keys["curve25519"]),
             OutboundSession
@@ -277,7 +277,7 @@ class TestClass(object):
         bob.account.mark_keys_as_published()
 
         # alice creates an outbound olm session with bob
-        alice.create_session(BobId, Bob_device, one_time)
+        alice.create_session(one_time, bob_device.curve25519)
 
         # alice creates an group session
         alice.create_outbound_group_session("!test:example.org")
