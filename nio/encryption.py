@@ -304,55 +304,14 @@ class KeyStore(object):
         return key in self._entries
 
 
-class OlmSession(object):
-    def __init__(self, user_id, device_id, identity_key, session):
-        # type: (str, str, str, Session) -> None
-        self.user_id = user_id
-        self.device_id = device_id
-        self.identity_key = identity_key
-        self.session = session
-
-    @property
-    def id(self):
-        # type: () -> str
-        return "{}:{}:{}".format(self.user_id, self.device_id, self.session.id)
-
-    def __eq__(self, value):
-        # type: (object) -> bool
-        if not isinstance(value, OlmSession):
-            return NotImplemented
-
-        if (
-            self.user_id == value.user_id
-            and self.device_id == value.device_id
-            and self.identity_key == value.identity_key
-            and self.session.id == value.session.id
-        ):
-            return True
-
-        return False
-
-    def encrypt(self, plaintext):
-        # type: (str) -> Union[OlmPreKeyMessage, OlmMessage]
-        return self.session.encrypt(plaintext)
-
-    def decrypt(self, message):
-        # type: (Union[OlmMessage, OlmPreKeyMessage]) -> str
-        return self.session.decrypt(message)
-
-    def matches(self, message):
-        # type: (Union[OlmMessage, OlmPreKeyMessage]) -> bool
-        return self.session.matches(message)
-
-
 class SessionStore(object):
     def __init__(self):
         # type: () -> None
         self._entries = defaultdict(list) \
-            # type: DefaultDict[str, List[OlmSession]]
+            # type: DefaultDict[str, List[Session]]
 
     def add(self, curve_key, session):
-        # type: (str, OlmSession) -> bool
+        # type: (str, Session) -> bool
         if session in self._entries[curve_key]:
             return False
 
@@ -361,7 +320,7 @@ class SessionStore(object):
         return True
 
     def __iter__(self):
-        # type: () -> Iterator[OlmSession]
+        # type: () -> Iterator[Session]
         for session_list in self._entries.values():
             for session in session_list:
                 yield session
@@ -373,14 +332,14 @@ class SessionStore(object):
         return self._entries.items()
 
     def get(self, curve_key):
-        # type: (str) -> Optional[OlmSession]
+        # type: (str) -> Optional[Session]
         if self._entries[curve_key]:
             return self._entries[curve_key][0]
 
         return None
 
     def __getitem__(self, curve_key):
-        # type: (str) -> List[OlmSession]
+        # type: (str) -> List[Session]
         return self._entries[curve_key]
 
 
@@ -435,7 +394,7 @@ class Olm(object):
 
         # Dict[user_id, Dict[device_id, OlmDevice]]
         self.device_store = DeviceStore()
-        # Dict[curve25519_key, List[OlmSession]]
+        # Dict[curve25519_key, List[Session]]
         self.session_store = SessionStore()
         # Dict[RoomId, Dict[curve25519_key, Dict[session id, Session]]]
         self.inbound_group_store = GroupSessionStore()
@@ -1315,7 +1274,7 @@ class Olm(object):
                 self.save_session(curve_key, session)
 
     def save_session(self, curve_key, session):
-        # type: (str, OlmSession) -> None
+        # type: (str, Session) -> None
         self.store.save_olm_session(curve_key, session)
 
     def save_inbound_group_session(self, room_id, sender_key, session):
