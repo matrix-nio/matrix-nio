@@ -659,4 +659,3 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
 
     def close(self):
         self._conn.close()
-        self._conn.close()
