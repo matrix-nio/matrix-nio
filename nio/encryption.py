@@ -415,9 +415,17 @@ class Olm(object):
         else:
             self.load()
 
-        # TODO we need a db for untrusted device as well as for seen devices.
         trust_file_path = "{}_{}.trusted_devices".format(user_id, device_id)
         self.trust_db = KeyStore(os.path.join(session_path, trust_file_path))
+
+        blacklist_file_path = "{}_{}.blacklisted_devices".format(
+            user_id,
+            device_id
+        )
+        self.blacklist_db = KeyStore(os.path.join(
+            session_path,
+            blacklist_file_path
+        ))
 
     def update_tracked_users(self, room):
         already_tracked = set(self.device_store.users)
@@ -447,7 +455,8 @@ class Olm(object):
         # type: (str) -> bool
         devices = self.device_store[user_id].values()
         for device in devices:
-            if not self.is_device_verified(device):
+            if (not self.is_device_verified(device)
+                    and not self.is_device_blacklisted(device)):
                 return False
 
         return True
@@ -703,19 +712,32 @@ class Olm(object):
 
         return session
 
+    def blacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        key = Key.from_olmdevice(device)
+        self.trust_db.remove(key)
+        return self.blacklist_db.add(key)
+
+    def unblacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        key = Key.from_olmdevice(device)
+        return self.blacklist_db.remove(key)
+
     def verify_device(self, device):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
-        if key in self.trust_db:
-            return False
-
-        self.trust_db.add(key)
-        return True
+        self.blacklist_db.remove(key)
+        return self.trust_db.add(key)
 
     def is_device_verified(self, device):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
         return key in self.trust_db
+
+    def is_device_blacklisted(self, device):
+        # type: (OlmDevice) -> bool
+        key = Key.from_olmdevice(device)
+        return key in self.blacklist_db
 
     def unverify_device(self, device):
         # type: (OlmDevice) -> None
@@ -1212,6 +1234,9 @@ class Olm(object):
                 if device.id == self.device_id:
                     continue
 
+                if self.is_device_blacklisted(device):
+                    continue
+
                 session = self.session_store.get(device.curve25519)
 
                 if not session:
@@ -1225,7 +1250,7 @@ class Olm(object):
 
                 if not self.is_device_verified(device):
                     raise OlmTrustError("Device {} for user {} is not "
-                                        "verified".format(
+                                        "verified or blacklisted.".format(
                                             device.id,
                                             device.user_id
                                         ))

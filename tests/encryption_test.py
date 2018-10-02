@@ -25,6 +25,8 @@ Alice_device = "ALDEVICE"
 BobId = "@bob:example.org"
 Bob_device = "BOBDEVICE"
 
+MaloryId = "@malory:example.org"
+Malory_device = "MALORYDEVICE"
 
 class TestClass(object):
     @staticmethod
@@ -248,9 +250,10 @@ class TestClass(object):
 
         monkeypatch.setattr(KeyStore, '_save', mocksave)
 
-        # create two new accounts
+        # create three new accounts
         alice = self._load(AliceId, Alice_device)
         bob = self._load(BobId, Bob_device)
+        malory = self._load(BobId, Bob_device)
 
         # create olm devices for each others known devices list
         alice_device = OlmDevice(
@@ -266,8 +269,16 @@ class TestClass(object):
             bob.account.identity_keys["curve25519"],
         )
 
+        malory_device = OlmDevice(
+            MaloryId,
+            Malory_device,
+            malory.account.identity_keys["ed25519"],
+            malory.account.identity_keys["curve25519"],
+        )
+
         # add the devices to the device list
         alice.device_store.add(bob_device)
+        alice.device_store.add(malory_device)
         bob.device_store.add(alice_device)
 
         # bob creates one time keys
@@ -283,12 +294,30 @@ class TestClass(object):
         alice.create_outbound_group_session("!test:example.org")
         group_session = alice.outbound_group_sessions["!test:example.org"]
 
-        # alice shares the group session with bob
+        # alice shares the group session with bob, but bob isn't verified
         with pytest.raises(OlmTrustError):
             to_device = alice.share_group_session("!test:example.org", [BobId])
 
         alice.verify_device(bob_device)
-        to_device = alice.share_group_session("!test:example.org", [BobId])
+
+        # alice shares the group session with bob and malory, but malory isn't
+        # blocked
+        with pytest.raises(OlmTrustError):
+            to_device = alice.share_group_session(
+                "!test:example.org",
+                [BobId, MaloryId]
+            )
+
+        alice.blacklist_device(malory_device)
+        to_device = alice.share_group_session(
+            "!test:example.org",
+            [BobId, MaloryId]
+        )
+
+        # check that we aren't sharing the group session with malory
+        with pytest.raises(KeyError):
+            to_device["messages"][MaloryId][malory_device.id]["ciphertext"]
+
         ciphertext = to_device["messages"][BobId][bob_device.id]["ciphertext"]
         bob_ciphertext = ciphertext[bob_device.curve25519]
 
