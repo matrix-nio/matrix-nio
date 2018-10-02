@@ -740,7 +740,7 @@ class Olm(object):
         return key in self.blacklist_db
 
     def unverify_device(self, device):
-        # type: (OlmDevice) -> None
+        # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
         return self.trust_db.remove(key)
 

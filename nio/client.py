@@ -45,6 +45,7 @@ from .exceptions import (
     RemoteTransportError,
 )
 from .encryption import Olm
+from .cryptostore import OlmDevice
 from .http import (
     Http2Connection,
     HttpConnection,
@@ -216,6 +217,60 @@ class Client(object):
                 return True
 
         return False
+
+    def _invalidate_outbound_sessions(self, device):
+        # type: (OlmDevice) -> None
+        assert self.olm
+
+        for room in self.rooms.values():
+            if device.user_id in room.users:
+                session = self.olm.outbound_group_sessions.pop(
+                    room.room_id,
+                    None
+                )
+
+                # There is no need to invalidate the session if it was never
+                # shared, put it back where it was.
+                if session and not session.shared:
+                    self.olm.outbound_group_sessions[room.room_id] = session
+
+    def verify_device(self, device):
+        # type: (OlmDevice) -> bool
+        if not self.olm:
+            raise LocalProtocolError("Olm account isn't loaded")
+
+        changed = self.olm.verify_device(device)
+        if changed:
+            self._invalidate_outbound_sessions(device)
+
+        return changed
+
+    def unverify_device(self, device):
+        # type: (OlmDevice) -> bool
+        if not self.olm:
+            raise LocalProtocolError("Olm account isn't loaded")
+
+        changed = self.olm.unverify_device(device)
+        if changed:
+            self._invalidate_outbound_sessions(device)
+
+        return changed
+
+    def blacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        if not self.olm:
+            raise LocalProtocolError("Olm account isn't loaded")
+        changed = self.olm.blacklist_device(device)
+        if changed:
+            self._invalidate_outbound_sessions(device)
+
+        return changed
+
+    def unblacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        if not self.olm:
+            raise LocalProtocolError("Olm account isn't loaded")
+        return self.olm.unblacklist_device(device)
 
     def _handle_login(self, response):
         # type: (Union[LoginResponse, ErrorResponse]) -> None
@@ -514,6 +569,22 @@ class HttpClient(object):
         lag = max(0, elapsed - (timeout / 1000))
 
         return lag
+
+    def verify_device(self, device):
+        # type: (OlmDevice) -> bool
+        return self._client.verify_device(device)
+
+    def unverify_device(self, device):
+        # type: (OlmDevice) -> bool
+        return self._client.unverify_device(device)
+
+    def blacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        return self._client.blacklist_device(device)
+
+    def unblacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        return self._client.unblacklist_device(device)
 
     def room_contains_unverified(self, room_id):
         # type: (str) -> bool
