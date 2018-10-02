@@ -493,6 +493,11 @@ class HttpClient(object):
         return self._client.invited_rooms
 
     @property
+    def olm(self):
+        # type: () -> Optional[Olm]
+        return self._client.olm
+
+    @property
     def lag(self):
         # type: () -> float
         if not self.connection:
