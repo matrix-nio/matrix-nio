@@ -720,7 +720,7 @@ class Olm(object):
     def unverify_device(self, device):
         # type: (OlmDevice) -> None
         key = Key.from_olmdevice(device)
-        self.trust_db.remove(key)
+        return self.trust_db.remove(key)
 
     def create_session(self, one_time_key, curve_key):
         # type: (str, str) -> None
