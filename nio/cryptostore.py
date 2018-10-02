@@ -45,6 +45,44 @@ class OlmDevice(object):
         self.deleted = deleted
 
 
+class Session(olm.Session):
+    def __init__(self):
+        super().__init__()
+        self.creation_time = datetime.now()
+
+    def __new__(cls, *args):
+        return super().__new__(cls, *args)
+
+    @classmethod
+    def from_pickle(cls, pickle, creation_time, passphrase=""):
+        # type: (str, datetime, str) -> Session
+        session = super().from_pickle(pickle, passphrase)
+        session.creation_time = creation_time
+        return session
+
+    @property
+    def expired(self):
+        return False
+
+
+class InboundSession(olm.InboundSession, Session):
+    def __new__(cls, *args):
+        return super().__new__(cls, *args)
+
+    def __init__(self, account, message, identity_key=None):
+        super().__init__(account, message, identity_key)
+        self.creation_time = datetime.now()
+
+
+class OutboundSession(olm.OutboundSession, Session):
+    def __new__(cls, *args):
+        return super().__new__(cls, *args)
+
+    def __init__(self, account, identity_key, one_time_key):
+        super().__init__(account, identity_key, one_time_key)
+        self.creation_time = datetime.now()
+
+
 class InboundGroupSession(olm.InboundGroupSession):
     def __init__(self, session_key, signing_key):
         # type: (str, str) -> None
@@ -194,6 +232,7 @@ CREATE TABLE IF NOT EXISTS accounts(
 );
 CREATE TABLE IF NOT EXISTS olm_sessions(
     device_id TEXT, session_id TEXT PRIMARY KEY, curve_key TEXT, session BLOB,
+    creation_time TIMESTAMP,
     FOREIGN KEY(device_id) REFERENCES accounts(device_id) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS megolm_inbound_sessions(
@@ -336,11 +375,12 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
         """
         c = self._conn.cursor()
         rows = [
-            (self.device_id, s.id, key, s.pickle(self.pickle_key))
+            (self.device_id, s.id, key, s.pickle(self.pickle_key),
+                s.creation_time)
             for key in sessions
             for s in sessions[key]
         ]
-        c.executemany("REPLACE INTO olm_sessions VALUES (?,?,?,?)", rows)
+        c.executemany("REPLACE INTO olm_sessions VALUES (?,?,?,?,?)", rows)
         c.close()
         self._conn.commit()
 
@@ -352,12 +392,13 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
         """
         c = self._conn.cursor()
         rows = c.execute(
-            "SELECT curve_key, session FROM olm_sessions WHERE device_id=?",
+            ("SELECT curve_key, session , creation_time FROM olm_sessions "
+                "WHERE device_id=?"),
             (self.device_id,),
         )
         for row in rows:
-            session = olm.Session.from_pickle(
-                bytes(row["session"]), self.pickle_key
+            session = Session.from_pickle(
+                bytes(row["session"]), row["creation_time"], self.pickle_key
             )
             sessions[row["curve_key"]].append(session)
         c.close()
@@ -378,12 +419,16 @@ CREATE TABLE IF NOT EXISTS outgoing_key_requests(
         """
         c = self._conn.cursor()
         rows = c.execute(
-            "SELECT session FROM olm_sessions WHERE device_id=? "
-            "AND curve_key=?",
+            "SELECT session, creation_time FROM olm_sessions "
+            "WHERE device_id=? AND curve_key=?",
             (self.device_id, curve_key),
         )
         sessions = [
-            olm.Session.from_pickle(bytes(row["session"]), self.pickle_key)
+            olm.Session.from_pickle(
+                bytes(row["session"]),
+                row["creation_time"],
+                self.pickle_key
+            )
             for row in rows
         ]
         if sessions_dict is not None:

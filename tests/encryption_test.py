@@ -6,7 +6,6 @@ import json
 
 from olm import (
     Account,
-    OutboundSession,
     OutboundGroupSession,
     OlmPreKeyMessage,
     OlmMessage
@@ -15,7 +14,7 @@ from olm import (
 from nio.encryption import (KeyStore, Olm,
                             SessionStore, Ed25519Key, DeviceStore, Key,
                             OlmTrustError)
-from nio.cryptostore import OlmDevice
+from nio.cryptostore import OlmDevice, OutboundSession
 from nio.responses import KeysQueryResponse
 
 

@@ -43,14 +43,11 @@ from jsonschema import SchemaError, ValidationError
 from logbook import Logger
 import olm
 from olm import (
-    InboundSession,
     OlmAccountError,
     OlmGroupSessionError,
     OlmMessage,
     OlmPreKeyMessage,
     OlmSessionError,
-    OutboundSession,
-    Session,
 )
 
 from .log import logger_group
@@ -66,7 +63,10 @@ from .cryptostore import (
     OutboundGroupSession,
     InboundGroupSession,
     OlmDevice,
-    OlmAccount
+    OlmAccount,
+    Session,
+    OutboundSession,
+    InboundSession
 )
 from .responses import (
     KeysUploadResponse,
