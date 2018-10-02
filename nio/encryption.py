@@ -689,7 +689,7 @@ class Olm(object):
         elif isinstance(response, ShareGroupSessionResponse):
             room_id = response.room_id
             session = self.outbound_group_sessions[room_id]
-            logger.info("Setting outbound group sessio for room {} "
+            logger.info("Marking outbound group session for room {} "
                         "as shared".format(room_id))
             session.shared = True
 
@@ -1207,7 +1207,7 @@ class Olm(object):
         ignore_missing_sessions=False  # type: bool
     ):
         # type: (...) -> Dict[str, Any]
-        logger.info("Sharing gorup session for room {}".format(room_id))
+        logger.info("Sharing group session for room {}".format(room_id))
         group_session = self.outbound_group_sessions[room_id]
 
         key_content = {
