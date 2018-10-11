@@ -70,7 +70,8 @@ from .responses import (
     KeysQueryResponse,
     ErrorResponse,
     ShareGroupSessionResponse,
-    KeysClaimResponse
+    KeysClaimResponse,
+    DevicesResponse
 )
 
 from .events import Event, BadEventType, RoomEncryptedEvent, MegolmEvent
@@ -111,6 +112,7 @@ class RequestType(Enum):
     keys_query = 11
     keys_claim = 12
     share_group_session = 13
+    devices = 14
 
 
 _TypedResponse = NamedTuple("TypedResponse", [
@@ -468,6 +470,8 @@ class Client(object):
             if not isinstance(response, ErrorResponse):
                 response.room_id = typed_response.extra_data
                 self._handle_olm_response(response)
+        elif typed_response.type is RequestType.devices:
+            response = DevicesResponse.from_dict(typed_response.data)
 
         if not response:
             raise NotImplementedError(
@@ -878,6 +882,24 @@ class HttpClient(object):
             RequestType.share_group_session,
             0,
             room_id
+        )
+        return uuid, data
+
+    def devices(self):
+        # type: () -> Tuple[UUID, bytes]
+        if not self._client.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
+        request = self.api.devices(self._client.access_token)
+
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = RequestInfo(
+            RequestType.devices,
+            0,
+            None
         )
         return uuid, data
 

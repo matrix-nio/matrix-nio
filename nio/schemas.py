@@ -674,4 +674,29 @@ class Schemas(object):
         "required": ["one_time_keys", "failures"],
     }
 
+    devices = {
+        "type": "object",
+        "properties": {
+            "devices": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "device_id": {"type": "string"},
+                        "display_name": {"type": "string"},
+                        "last_seen_ip": {"type": "string"},
+                        "last_seen_ts": {"type": "integer"},
+                    },
+                    "required": [
+                        "device_id",
+                        "display_name",
+                        "last_seen_ip",
+                        "last_seen_ts"
+                    ]
+                }
+            },
+            "required": ["devices"]
+        },
+    }
+
     empty = {"type": "object", "properties": {}, "additionalProperties": False}

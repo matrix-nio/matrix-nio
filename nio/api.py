@@ -281,6 +281,13 @@ class Api(object):
 
         return Api._build_path(path, query_parameters), Api.to_json(content)
 
+    @staticmethod
+    def devices(access_token):
+        # type: (str) -> str
+        query_parameters = {"access_token": access_token}
+        path = "devices"
+        return Api._build_path(path, query_parameters)
+
 
 class HttpApi(object):
     def __init__(self, host):
@@ -397,6 +404,10 @@ class HttpApi(object):
             self.txn_id
         )
         return self._build_request("PUT", path, data)
+
+    def devices(self, access_token):
+        path = Api.devices(access_token)
+        return self._build_request("GET", path)
 
 
 class Http2Api(HttpApi):

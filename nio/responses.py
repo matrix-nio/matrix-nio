@@ -19,6 +19,7 @@ from __future__ import unicode_literals
 from builtins import str, super
 from typing import Any, Dict, List, NamedTuple, Optional, Union, Type, TypeVar
 
+from datetime import datetime
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
@@ -61,6 +62,25 @@ Timeline = NamedTuple(
 InviteInfo = NamedTuple("InviteInfo", [("invite_state", list)])
 
 RoomInfo = NamedTuple("RoomInfo", [("timeline", Timeline), ("state", list)])
+
+
+class Device(object):
+    def __init__(self, id, display_name, last_seen_ip, last_seen_date):
+        # type(str, str, str, datetime) -> None
+        self.id = id
+        self.display_name = display_name
+        self.last_seen_ip = last_seen_ip
+        self.last_seen_date = last_seen_date
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        date = datetime.fromtimestamp(parsed_dict["last_seen_ts"] / 1000)
+        return cls(
+            parsed_dict["device_id"],
+            parsed_dict["display_name"],
+            parsed_dict["last_seen_ip"],
+            date
+        )
 
 
 class Response(object):
@@ -293,6 +313,30 @@ class KeysClaimResponse(Response):
         failures = parsed_dict["failures"]
 
         return cls(one_time_keys, failures)
+
+
+class DevicesResponse(Response):
+    def __init__(self, devices):
+        # type: (List[Device]) -> None
+        self.devices = devices
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[DevicesResponse, ErrorResponse]
+        try:
+            validate_json(parsed_dict, Schemas.devices)
+        except (SchemaError, ValidationError):
+            return ErrorResponse.from_dict(parsed_dict)
+
+        devices = []
+        for device_dict in parsed_dict["devices"]:
+            try:
+                device = Device.from_dict(device_dict)
+            except ValueError:
+                continue
+            devices.append(device)
+
+        return cls(devices)
 
 
 class SyncResponse(Response):
