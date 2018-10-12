@@ -398,6 +398,10 @@ class Client(object):
 
         self.olm.handle_response(response)
 
+    def clear_parse_queue(self):
+        self.parse_queue.clear()
+        self.partial_sync = None
+
     def receive(
         self,
         request_type,    # type: Union[str, RequestType]
@@ -627,6 +631,7 @@ class HttpClient(object):
             raise LocalProtocolError("Not connected.")
 
         data = self.connection.disconnect()
+        self._client.clear_parse_queue()
         self.connection = None
         self.api = None
         return data
