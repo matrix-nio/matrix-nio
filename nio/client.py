@@ -65,6 +65,8 @@ from .responses import (
     RoomRedactResponse,
     RoomSendResponse,
     SyncResponse,
+    SyncType,
+    PartialSyncResponse,
     RoomMessagesResponse,
     KeysUploadResponse,
     KeysQueryResponse,
@@ -165,6 +167,7 @@ class Client(object):
         self.device_id = device_id
         self.session_dir = session_dir
         self.parse_queue = deque()  # type: Deque[TypedResponse]
+        self.partial_sync = None  # type: Optional[PartialSyncResponse]
         self.olm = None  # type: Optional[Olm]
 
         self.user_id = ""
@@ -287,14 +290,15 @@ class Client(object):
             self.olm = Olm(self.user_id, self.device_id, self.session_dir)
 
     def _handle_sync(self, response):
-        # type: (Union[SyncResponse, ErrorResponse]) -> None
+        # type: (Union[SyncType, ErrorResponse]) -> None
         if isinstance(response, ErrorResponse):
             return
 
         if self.next_batch == response.next_batch:
             return
 
-        self.next_batch = response.next_batch
+        if isinstance(response, SyncResponse):
+            self.next_batch = response.next_batch
 
         for to_device_event in response.to_device_events:
             if isinstance(to_device_event, RoomEncryptedEvent):
@@ -370,6 +374,11 @@ class Client(object):
 
             self.olm.users_for_key_query.update(changed_users)
 
+        if isinstance(response, PartialSyncResponse):
+            self.partial_sync = response
+        else:
+            self.partial_sync = None
+
     def _handle_messages_response(self, response):
         decrypted_events = []
 
@@ -424,8 +433,13 @@ class Client(object):
 
     def next_response(self, max_events=0):
         # type: (int) -> Optional[Response]
-        if not self.parse_queue:
+        if not self.parse_queue and not self.partial_sync:
             return None
+
+        if self.partial_sync:
+            sync_response = self.partial_sync.next_part(max_events)
+            self._handle_sync(sync_response)
+            return sync_response
 
         typed_response = self.parse_queue.popleft()
 
@@ -435,7 +449,7 @@ class Client(object):
             response = LoginResponse.from_dict(typed_response.data)
             self._handle_login(response)
         elif typed_response.type is RequestType.sync:
-            response = SyncResponse.from_dict(typed_response.data)
+            response = SyncResponse.from_dict(typed_response.data, max_events)
             self._handle_sync(response)
         elif typed_response.type is RequestType.room_send:
             response = RoomSendResponse.from_dict(typed_response.data)
