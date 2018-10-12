@@ -36,13 +36,6 @@ from logbook import Logger
 from .events import (
     Event,
     InviteEvent,
-    PowerLevelsEvent,
-    RedactedEvent,
-    RoomAliasEvent,
-    RoomEncryptionEvent,
-    RoomMessage,
-    RoomNameEvent,
-    RoomTopicEvent,
     UnknownBadEvent,
     ToDeviceEvent,
 )
