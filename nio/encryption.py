@@ -185,6 +185,12 @@ class DeviceStore(object):
         # type: (str) -> Dict[str, OlmDevice]
         return self._entries[user_id]
 
+    def active_user_devices(self, user_id):
+        # type: () -> Iterator[OlmDevice]
+        for device in self._entries[user_id].values():
+            if not device.deleted:
+                yield device
+
     @property
     def users(self):
         # type () -> str
@@ -666,9 +672,18 @@ class Olm(object):
 
                 changed[user_id][device_id] = user_devices[device_id]
 
-            # TODO if we have a device in the store and it's missing from the
-            # response, the device has been deleted and should be flagged as
-            # deleted
+            current_devices = set(device_dict.keys())
+            stored_devices = set(self.device_store[user_id].keys())
+            deleted_devices = stored_devices - current_devices
+
+            for device_id in deleted_devices:
+                device = self.device_store[user_id][device_id]
+                device.deleted = True
+                logger.info("Marking device {} of user {} as deleted".format(
+                                user_id,
+                                device_id
+                            ))
+                changed[user_id][device_id] = device
 
         self.store.save_device_keys(changed)
 
@@ -798,7 +813,7 @@ class Olm(object):
         missing = defaultdict(list)  # type: DefaultDict[str, List[str]]
 
         for user_id in users:
-            for device in self.device_store[user_id].values():
+            for device in self.device_store.active_user_devices(user_id):
                 # we don't need a session for our own device, skip it
                 if device.id == self.device_id:
                     continue
@@ -1229,7 +1244,7 @@ class Olm(object):
         to_device_dict = {"messages": {}}  # type: Dict[str, Any]
 
         for user_id in users:
-            for device in self.device_store[user_id].values():
+            for device in self.device_store.active_user_devices(user_id):
                 # No need to share the session with our own device
                 if device.id == self.device_id:
                     continue
