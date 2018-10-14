@@ -699,4 +699,32 @@ class Schemas(object):
         },
     }
 
+    delete_devices = {
+        "type": "object",
+        "properties": {
+            "session": {"type": "string"},
+            "flows": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "stages": {
+                            "type": "array",
+                            "items": {"type": "string"}
+                        },
+                        "required": ["stages"]
+                    },
+                }
+            },
+            "params": {
+                "type": "object",
+                "patternProperties": {r".+": {
+                    "type": "object",
+                    "patternProperties": {r".+": {"type": "string"}}
+                }},
+            },
+            "required": ["session", "flows", "params"]
+        },
+    }
+
     empty = {"type": "object", "properties": {}, "additionalProperties": False}

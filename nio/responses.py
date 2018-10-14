@@ -299,14 +299,34 @@ class ShareGroupSessionResponse(EmptyResponse):
         return ShareGroupSessionError.from_dict(parsed_dict)
 
 
+class DeleteDevicesAuthResponse(Response):
+    def __init__(self, session, flows, params):
+        self.session = session
+        self.flows = flows
+        self.params = params
+
     @classmethod
     def from_dict(
         cls,
         parsed_dict  # type: Dict[Any, Any]
     ):
-        # type: (...) -> Union[ShareGroupSessionResponse, ErrorResponse]
-        object = super().from_dict(parsed_dict)
-        return object
+        # type: (...) -> Union[DeleteDevicesAuthResponse, ErrorResponse]
+        try:
+            validate_json(parsed_dict, Schemas.delete_devices)
+        except (SchemaError, ValidationError):
+            return DeleteDevicesError.from_dict(parsed_dict)
+
+        return cls(
+            parsed_dict["session"],
+            parsed_dict["flows"],
+            parsed_dict["params"]
+        )
+
+
+class DeleteDevicesResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict):
+        return DeleteDevicesError.from_dict(parsed_dict)
 
 
 class RoomMessagesResponse(Response):

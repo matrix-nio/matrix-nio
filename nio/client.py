@@ -89,6 +89,9 @@ from .responses import (
     KeysClaimError,
     ShareGroupSessionError,
     DevicesError,
+    DeleteDevicesAuthResponse,
+    DeleteDevicesResponse,
+    DeleteDevicesError
 )
 
 from .events import Event, BadEventType, RoomEncryptedEvent, MegolmEvent
@@ -130,6 +133,7 @@ class RequestType(Enum):
     keys_claim = 12
     share_group_session = 13
     devices = 14
+    delete_devices = 15
 
 
 _TypedResponse = NamedTuple("TypedResponse", [
@@ -505,6 +509,9 @@ class Client(object):
                 self._handle_olm_response(response)
         elif typed_response.type is RequestType.devices:
             response = DevicesResponse.from_dict(typed_response.data)
+
+        elif typed_response.type is RequestType.delete_devices:
+            response = DeleteDevicesResponse.from_dict(typed_response.data)
 
         if not response:
             raise NotImplementedError(
@@ -937,6 +944,28 @@ class HttpClient(object):
         )
         return uuid, data
 
+    def delete_devices(self, devices, auth=None):
+        # type: (List[str], Optional[Dict[str, str]]) -> Tuple[UUID, bytes]
+        if not self._client.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
+        request = self.api.delete_devices(
+            self._client.access_token,
+            devices,
+            auth
+        )
+
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = RequestInfo(
+            RequestType.delete_devices,
+            0,
+            None
+        )
+        return uuid, data
+
     def sync(self, timeout=None, filter=None):
         # type: (Optional[int], Optional[Dict[Any, Any]]) -> Tuple[UUID, bytes]
         if not self._client.logged_in:
@@ -994,6 +1023,11 @@ class HttpClient(object):
             response = ShareGroupSessionError.from_dict(parsed_dict)
         elif request_type is RequestType.devices:
             response = DevicesError.from_dict(parsed_dict)
+        elif request_type is RequestType.delete_devices:
+            if transport_response.status_code == 401:
+                response = DeleteDevicesAuthResponse.from_dict(parsed_dict)
+            else:
+                response = DeleteDevicesError.from_dict(parsed_dict)
 
         response.start_time = transport_response.send_time
         response.end_time = transport_response.receive_time
