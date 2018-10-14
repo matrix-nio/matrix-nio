@@ -673,16 +673,17 @@ class Olm(object):
                 changed[user_id][device_id] = user_devices[device_id]
 
             current_devices = set(device_dict.keys())
-            stored_devices = set(self.device_store[user_id].keys())
+            stored_devices = set(
+                device.id for device in
+                self.device_store.active_user_devices(user_id)
+            )
             deleted_devices = stored_devices - current_devices
 
             for device_id in deleted_devices:
                 device = self.device_store[user_id][device_id]
                 device.deleted = True
                 logger.info("Marking device {} of user {} as deleted".format(
-                                user_id,
-                                device_id
-                            ))
+                    user_id, device_id))
                 changed[user_id][device_id] = device
 
         self.store.save_device_keys(changed)
