@@ -1005,7 +1005,7 @@ class Olm(object):
                 )
                 return None
 
-            plaintext = self._group_decrypt(
+            plaintext, message_index = self._group_decrypt(
                 session,
                 event.ciphertext
             )
@@ -1204,17 +1204,19 @@ class Olm(object):
 
         return payload_dict
 
-    def _group_decrypt(self, session, ciphertext):
-        # type: (InboundGroupSession, str) -> Optional[str]
+    def _group_decrypt(
+        self,
+        session,    # type: InboundGroupSession
+        ciphertext  # type: str
+    ):
+        # type: (...) -> Tuple[Optional[str], Optional[int]]
 
         try:
             plaintext, message_index = session.decrypt(ciphertext)
-            # TODO check that this isn't a replay attack.
-            # TODO return the verification status of the message
-            return plaintext
+            return plaintext, message_index
         except OlmGroupSessionError as e:
             logger.error("Error decrypting megolm event: {}".format(str(e)))
-            return None
+            return None, None
 
     def share_group_session(
         self,
