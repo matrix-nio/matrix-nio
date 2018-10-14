@@ -846,14 +846,21 @@ class HttpClient(object):
         self.requests_made[uuid] = RequestInfo(RequestType.keys_upload, 0)
         return uuid, data
 
-    def keys_query(self):
+    def keys_query(self, full=False):
         if not self._client.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
-        user_list = self._client.olm.users_for_key_query
+        if not full:
+            user_list = self._client.olm.users_for_key_query
+        else:
+            user_list = [
+                user_id for room in self._client.rooms.values()
+                if room.encrypted for user_id in room.users
+            ]
+
         request = self.api.keys_query(self._client.access_token, user_list)
 
         uuid, data = self._send(request)
