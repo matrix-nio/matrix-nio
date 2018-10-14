@@ -566,6 +566,10 @@ class HttpClient(object):
         self._client.user = user
 
     @property
+    def user_id(self):
+        return self._client.user_id
+
+    @property
     def olm_account_shared(self):
         return self._client.olm_account_shared
 
