@@ -73,7 +73,22 @@ from .responses import (
     ErrorResponse,
     ShareGroupSessionResponse,
     KeysClaimResponse,
-    DevicesResponse
+    DevicesResponse,
+    LoginError,
+    SyncError,
+    RoomSendError,
+    RoomPutStateError,
+    RoomRedactError,
+    RoomKickError,
+    RoomInviteError,
+    JoinError,
+    RoomLeaveError,
+    RoomMessagesError,
+    KeysUploadError,
+    KeysQueryError,
+    KeysClaimError,
+    ShareGroupSessionError,
+    DevicesError,
 )
 
 from .events import Event, BadEventType, RoomEncryptedEvent, MegolmEvent
@@ -942,6 +957,51 @@ class HttpClient(object):
         )
         return uuid, data
 
+    @staticmethod
+    def _create_error_resopnse(request_type, transport_response):
+        try:
+            parsed_dict = json.loads(transport_response.text, encoding="utf-8")
+        except JSONDecodeError:
+            parsed_dict = {}
+
+        if request_type is RequestType.login:
+            response = LoginError.from_dict(parsed_dict)
+        elif request_type is RequestType.sync:
+            response = SyncError.from_dict(parsed_dict)
+        elif request_type is RequestType.room_send:
+            response = RoomSendError.from_dict(parsed_dict)
+        elif request_type is RequestType.room_put_state:
+            response = RoomPutStateError.from_dict(parsed_dict)
+        elif request_type is RequestType.room_redact:
+            response = RoomRedactError.from_dict(parsed_dict)
+        elif request_type is RequestType.room_kick:
+            response = RoomKickError.from_dict(parsed_dict)
+        elif request_type is RequestType.room_invite:
+            response = RoomInviteError.from_dict(parsed_dict)
+        elif request_type is RequestType.join:
+            response = JoinError.from_dict(parsed_dict)
+        elif request_type is RequestType.room_leave:
+            response = RoomLeaveError.from_dict(parsed_dict)
+        elif request_type is RequestType.room_messages:
+            response = RoomMessagesError.from_dict(parsed_dict)
+        elif request_type is RequestType.keys_upload:
+            response = KeysUploadError.from_dict(parsed_dict)
+        elif request_type is RequestType.keys_query:
+            response = KeysQueryError.from_dict(parsed_dict)
+        elif request_type is RequestType.keys_claim:
+            response = KeysClaimError.from_dict(parsed_dict)
+        elif request_type is RequestType.share_group_session:
+            response = ShareGroupSessionError.from_dict(parsed_dict)
+        elif request_type is RequestType.devices:
+            response = DevicesError.from_dict(parsed_dict)
+
+        response.start_time = transport_response.send_time
+        response.end_time = transport_response.receive_time
+        response.status_code = transport_response.status_code
+        response.uuid = transport_response.uuid
+
+        return response
+
     def receive(self, data):
         # type: (bytes) -> None
         if not self.connection:
@@ -982,8 +1042,13 @@ class HttpClient(object):
                     ).format(request_info.type, response.status_code)
                 )
 
-                response.request_info = request_info
-                self.response_queue.append(response)
+                error_response = self._create_error_resopnse(
+                    request_info.type,
+                    response
+                )
+
+                # response.request_info = request_info
+                self.response_queue.append(error_response)
         return
 
     def next_response(self, max_events=0):

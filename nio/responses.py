@@ -100,15 +100,24 @@ class Response(object):
 
 
 class ErrorResponse(Response):
-    def __init__(self, message, code=""):
-        # type: (str, Optional[str]) -> None
+    def __init__(self, message, code=None):
+        # type: (str, Optional[int]) -> None
         super().__init__()
         self.message = message
         self.code = code
 
     def __str__(self):
         # type: () -> str
-        return "Error: {}".format(self.message)
+        if self.code and self.message:
+            e = "{} {}".format(self.code, self.message)
+        elif self.message:
+            e = self.message
+        elif self.code:
+            e = "{} unknown error".format(self.code)
+        else:
+            e = "unknown error"
+
+        return "{}: {}".format(self.__class__.__name__, e)
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -116,9 +125,73 @@ class ErrorResponse(Response):
         try:
             validate_json(parsed_dict, Schemas.error)
         except (SchemaError, ValidationError):
-            return cls("Unknown error")
+            return cls("unknown error")
 
         return cls(parsed_dict["error"], parsed_dict["errcode"])
+
+
+class LoginError(ErrorResponse):
+    pass
+
+
+class SyncError(ErrorResponse):
+    pass
+
+
+class RoomSendError(ErrorResponse):
+    pass
+
+
+class RoomPutStateError(ErrorResponse):
+    pass
+
+
+class RoomRedactError(ErrorResponse):
+    pass
+
+
+class RoomKickError(ErrorResponse):
+    pass
+
+
+class RoomInviteError(ErrorResponse):
+    pass
+
+
+class JoinError(ErrorResponse):
+    pass
+
+
+class RoomLeaveError(ErrorResponse):
+    pass
+
+
+class RoomMessagesError(ErrorResponse):
+    pass
+
+
+class KeysUploadError(ErrorResponse):
+    pass
+
+
+class KeysQueryError(ErrorResponse):
+    pass
+
+
+class KeysClaimError(ErrorResponse):
+    pass
+
+
+class ShareGroupSessionError(ErrorResponse):
+    pass
+
+
+class DevicesError(ErrorResponse):
+    pass
+
+
+class DeleteDevicesError(ErrorResponse):
+    pass
 
 
 class LoginResponse(Response):
@@ -141,7 +214,7 @@ class LoginResponse(Response):
         try:
             validate_json(parsed_dict, Schemas.login)
         except (SchemaError, ValidationError):
-            return ErrorResponse.from_dict(parsed_dict)
+            return LoginError.from_dict(parsed_dict)
 
         return cls(
             parsed_dict["user_id"],
@@ -155,53 +228,76 @@ class RoomEventIdResponse(Response):
         super().__init__()
         self.event_id = event_id
 
+    @staticmethod
+    def create_error(parsed_dict):
+        return ErrorResponse.from_dict(parsed_dict)
+
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomEventIdResponse, ErrorResponse]
         try:
             validate_json(parsed_dict, Schemas.room_event_id)
         except (SchemaError, ValidationError):
-            return ErrorResponse.from_dict(parsed_dict)
+            return cls.create_error(parsed_dict)
 
         return cls(parsed_dict["event_id"])
 
 
 class RoomSendResponse(RoomEventIdResponse):
-    pass
+    @staticmethod
+    def create_error(parsed_dict):
+        return RoomSendError.from_dict(parsed_dict)
 
 
 class RoomPutStateResponse(RoomEventIdResponse):
-    pass
+    @staticmethod
+    def create_error(parsed_dict):
+        return RoomPutStateError.from_dict(parsed_dict)
 
 
 class RoomRedactResponse(RoomEventIdResponse):
-    pass
+    @staticmethod
+    def create_error(parsed_dict):
+        return RoomRedactError.from_dict(parsed_dict)
 
 
 class EmptyResponse(Response):
+    @staticmethod
+    def create_error(parsed_dict):
+        return ErrorResponse.from_dict(parsed_dict)
+
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[Any, ErrorResponse]
         try:
             validate_json(parsed_dict, Schemas.empty)
         except (SchemaError, ValidationError):
-            return ErrorResponse.from_dict(parsed_dict)
+            return cls.create_error(parsed_dict)
 
         return cls()
 
 
 class RoomKickResponse(EmptyResponse):
-    pass
+    @staticmethod
+    def create_error(parsed_dict):
+        return RoomKickError.from_dict(parsed_dict)
 
 
 class RoomInviteResponse(EmptyResponse):
-    pass
+    @staticmethod
+    def create_error(parsed_dict):
+        return RoomInviteResponse.from_dict(parsed_dict)
 
 
 class ShareGroupSessionResponse(EmptyResponse):
     def __init__(self):
         self.room_id = None  # type: Optional[str]
         super().__init__()
+
+    @staticmethod
+    def create_error(parsed_dict):
+        return ShareGroupSessionError.from_dict(parsed_dict)
+
 
     @classmethod
     def from_dict(
@@ -229,7 +325,7 @@ class RoomMessagesResponse(Response):
             _, chunk = SyncResponse._get_room_events(parsed_dict["chunk"])
         except (SchemaError, ValidationError) as e:
             print(str(e))
-            return ErrorResponse.from_dict(parsed_dict)
+            return RoomMessagesError.from_dict(parsed_dict)
 
         return cls(chunk, parsed_dict["start"], parsed_dict["end"])
 
@@ -239,23 +335,31 @@ class RoomIdResponse(Response):
         super().__init__()
         self.room_id = room_id
 
+    @staticmethod
+    def create_error(parsed_dict):
+        return ErrorResponse.from_dict(parsed_dict)
+
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomIdResponse, ErrorResponse]
         try:
             validate_json(parsed_dict, Schemas.room_id)
         except (SchemaError, ValidationError):
-            return ErrorResponse.from_dict(parsed_dict)
+            return cls.create_error(parsed_dict)
 
         return cls(parsed_dict["room_id"])
 
 
 class JoinResponse(RoomIdResponse):
-    pass
+    @staticmethod
+    def create_error(parsed_dict):
+        return JoinError.from_dict(parsed_dict)
 
 
 class RoomLeaveResponse(EmptyResponse):
-    pass
+    @staticmethod
+    def create_error(parsed_dict):
+        return RoomLeaveError.from_dict(parsed_dict)
 
 
 class KeysUploadResponse(Response):
@@ -270,7 +374,7 @@ class KeysUploadResponse(Response):
         try:
             validate_json(parsed_dict, Schemas.keys_upload)
         except (SchemaError, ValidationError):
-            return ErrorResponse.from_dict(parsed_dict)
+            return KeysUploadError.from_dict(parsed_dict)
 
         counts = parsed_dict["one_time_key_counts"]
 
@@ -289,7 +393,7 @@ class KeysQueryResponse(Response):
         try:
             validate_json(parsed_dict, Schemas.keys_query)
         except (SchemaError, ValidationError):
-            return ErrorResponse.from_dict(parsed_dict)
+            return KeysQueryError.from_dict(parsed_dict)
 
         device_keys = parsed_dict["device_keys"]
         failures = parsed_dict["failures"]
@@ -310,7 +414,7 @@ class KeysClaimResponse(Response):
         try:
             validate_json(parsed_dict, Schemas.keys_claim)
         except (SchemaError, ValidationError):
-            return ErrorResponse.from_dict(parsed_dict)
+            return KeysClaimError.from_dict(parsed_dict)
 
         one_time_keys = parsed_dict["one_time_keys"]
         failures = parsed_dict["failures"]
@@ -329,7 +433,7 @@ class DevicesResponse(Response):
         try:
             validate_json(parsed_dict, Schemas.devices)
         except (SchemaError, ValidationError):
-            return ErrorResponse.from_dict(parsed_dict)
+            return DevicesError.from_dict(parsed_dict)
 
         devices = []
         for device_dict in parsed_dict["devices"]:
@@ -551,7 +655,7 @@ class _SyncResponse(Response):
             validate_json(parsed_dict, Schemas.sync)
         except (SchemaError, ValidationError) as e:
             logger.error("Error validating sync response: " + str(e.message))
-            return ErrorResponse.from_dict(parsed_dict)
+            return SyncError.from_dict(parsed_dict)
 
         to_device = cls._get_to_device(parsed_dict["to_device"])
 
