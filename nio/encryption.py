@@ -459,7 +459,7 @@ class Olm(object):
 
     def user_fully_verified(self, user_id):
         # type: (str) -> bool
-        devices = self.device_store[user_id].values()
+        devices = self.device_store.active_user_devices(user_id)
         for device in devices:
             if (not self.is_device_verified(device)
                     and not self.is_device_blacklisted(device)):
