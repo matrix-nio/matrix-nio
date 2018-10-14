@@ -290,7 +290,7 @@ class RoomKickResponse(EmptyResponse):
 class RoomInviteResponse(EmptyResponse):
     @staticmethod
     def create_error(parsed_dict):
-        return RoomInviteResponse.from_dict(parsed_dict)
+        return RoomInviteError.from_dict(parsed_dict)
 
 
 class ShareGroupSessionResponse(EmptyResponse):
