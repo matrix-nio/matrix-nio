@@ -25,12 +25,14 @@ build() {
 }
 
 package_python-nio() {
+  depends=('python' 'python-olm')
   cd "$srcdir"/$pkgbase-$pkgver
 
   make DESTDIR="$pkgdir" install
 }
 
 package_python2-nio() {
+  depends=('python2' 'python2-olm')
   cd "$srcdir"/$pkgbase-$pkgver-py2
 
   make PYTHON=python2 DESTDIR="$pkgdir" install
