@@ -186,7 +186,7 @@ class DeviceStore(object):
         return self._entries[user_id]
 
     def active_user_devices(self, user_id):
-        # type: () -> Iterator[OlmDevice]
+        # type: (str) -> Iterator[OlmDevice]
         for device in self._entries[user_id].values():
             if not device.deleted:
                 yield device
