@@ -194,6 +194,10 @@ class DeleteDevicesError(ErrorResponse):
     pass
 
 
+class UpdateDeviceError(ErrorResponse):
+    pass
+
+
 class LoginResponse(Response):
     def __init__(self, user_id, device_id, access_token):
         # type: (str, str, str) -> None
@@ -464,6 +468,12 @@ class DevicesResponse(Response):
             devices.append(device)
 
         return cls(devices)
+
+
+class UpdateDeviceResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict):
+        return UpdateDeviceError.from_dict(parsed_dict)
 
 
 class _SyncResponse(Response):

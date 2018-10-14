@@ -289,6 +289,14 @@ class Api(object):
         return Api._build_path(path, query_parameters)
 
     @staticmethod
+    def update_device(access_token, device_id, content):
+        # type: (str, Dict[str, str]) -> Tuple[str, str]
+        query_parameters = {"access_token": access_token}
+        path = "devices/{}".format(device_id)
+
+        return Api._build_path(path, query_parameters), Api.to_json(content)
+
+    @staticmethod
     def delete_devices(access_token, devices, auth_dict=None):
         # type: (str, List[str], Optional[Dict[str, str]]) -> Tuple[str, str]
         query_parameters = {"access_token": access_token}
@@ -423,6 +431,11 @@ class HttpApi(object):
     def devices(self, access_token):
         path = Api.devices(access_token)
         return self._build_request("GET", path)
+
+    def update_device(self, access_token, device_id, content):
+        # type: (str, str, Dict[str, str]) -> TransportRequest
+        path, data = Api.update_device(access_token, device_id, content)
+        return self._build_request("PUT", path, data)
 
     def delete_devices(self, access_token, devices, auth_dict=None):
         # type: (str, List[str], Optional[Dict[str, str]]) -> TransportRequest
