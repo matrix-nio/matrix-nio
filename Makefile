@@ -21,7 +21,7 @@ install:
 	$(PYTHON) setup.py install --skip-build -O1 --root=$(DESTDIR)
 
 archpkg:
-	$(PYTHON) setup.py sdist --dist-dir packages
+	umask 0022 && $(PYTHON) setup.py sdist --dist-dir packages
 	cp contrib/archlinux/pkgbuild/PKGBUILD packages
 	cd packages && makepkg -ci
 
