@@ -1072,7 +1072,7 @@ class HttpClient(object):
 
         response.start_time = transport_response.send_time
         response.end_time = transport_response.receive_time
-        response.status_code = transport_response.status_code
+        response.code = transport_response.status_code
         response.uuid = transport_response.uuid
 
         return response
