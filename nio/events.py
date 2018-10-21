@@ -26,9 +26,6 @@ from .api import Api
 from .log import logger_group
 from .schemas import Schemas, validate_json
 
-if False:
-    from .encryption import Olm
-
 logger = Logger("nio.events")
 logger_group.add_logger(logger)
 
@@ -83,7 +80,7 @@ class Event(object):
     def parse_event(
         cls,
         event_dict,  # type: Dict[Any, Any]
-        olm=None,  # type: Optional[Olm]
+        encrytped=False,
     ):
         # type: (...) -> Optional[Union[Event, BadEventType]]
         if "unsigned" in event_dict:
@@ -105,7 +102,9 @@ class Event(object):
             return None
 
         if event_dict["type"] == "m.room.message":
-            return RoomMessage.parse_event(event_dict, olm)
+            if encrytped:
+                return RoomEncryptedMessage.parse_event(event_dict)
+            return RoomMessage.parse_event(event_dict)
         elif event_dict["type"] == "m.room.member":
             return RoomMemberEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.canonical_alias":
@@ -191,7 +190,7 @@ class OlmEvent(ToDeviceEvent, RoomEncryptedEvent):
         return cls(event_dict["sender"], sender_key, ciphertext)
 
 
-class MegolmEvent(Event, RoomEncryptedEvent):
+class MegolmEvent(RoomEncryptedEvent):
     def __init__(
         self,
         event_id,     # type: str
@@ -204,9 +203,12 @@ class MegolmEvent(Event, RoomEncryptedEvent):
         room_id=None  # type: Optional[str]
     ):
         # type: (...) -> None
-        super().__init__(event_id, sender, server_ts)
+        self.event_id = event_id
+        self.sender = sender
+        self.server_timestamp = server_ts
         self.room_id = room_id or ""
-
+        self.decrypted = False
+        self.verified = False
         self.sender_key = sender_key  # type: str
         self.session_id = session_id
         self.device_id = device_id
@@ -475,8 +477,8 @@ class RoomTopicEvent(Event):
 
 class RoomMessage(Event):
     @staticmethod
-    def parse_event(parsed_dict, olm=None):
-        # type: (Dict[Any, Any], Any) -> Union[RoomMessage, BadEventType]
+    def parse_event(parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomMessage, BadEventType]
         bad = validate_or_badevent(parsed_dict, Schemas.room_message)
 
         if bad:
@@ -502,6 +504,29 @@ class RoomMessage(Event):
         return RoomMessageUnknown.from_dict(parsed_dict)
 
 
+class RoomEncryptedMessage(RoomMessage):
+    @staticmethod
+    def parse_event(parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomMessage, BadEventType]
+        bad = validate_or_badevent(parsed_dict, Schemas.room_message)
+
+        if bad:
+            return bad
+
+        msgtype = parsed_dict["content"]["msgtype"]
+
+        if msgtype == "m.image":
+            return RoomEncryptedImage.from_dict(parsed_dict)
+        elif msgtype == "m.audio":
+            return RoomEncryptedAudio.from_dict(parsed_dict)
+        elif msgtype == "m.video":
+            return RoomEncryptedVideo.from_dict(parsed_dict)
+        elif msgtype == "m.file":
+            return RoomEncryptedFile.from_dict(parsed_dict)
+        else:
+            return RoomMessage.parse_event(parsed_dict)
+
+
 class RoomMessageMedia(RoomMessage):
     def __init__(self, event_id, sender, server_ts, url, body):
         self.url = url
@@ -522,6 +547,60 @@ class RoomMessageMedia(RoomMessage):
             parsed_dict["content"]["url"],
             parsed_dict["content"]["body"],
         )
+
+
+class RoomEncryptedMedia(RoomMessage):
+    def __init__(
+        self,
+        event_id,
+        sender,
+        server_ts,
+        url,
+        body,
+        key,
+        hashes,
+        iv
+    ):
+        self.key = key
+        self.hashes = hashes
+        self.iv = iv
+        self.url = url
+        self.body = body
+        super().__init__(event_id, sender, server_ts)
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        bad = validate_or_badevent(parsed_dict, Schemas.room_encrypted_media)
+
+        if bad:
+            return bad
+
+        return cls(
+            parsed_dict["event_id"],
+            parsed_dict["sender"],
+            parsed_dict["origin_server_ts"],
+            parsed_dict["content"]["file"]["url"],
+            parsed_dict["content"]["body"],
+            parsed_dict["content"]["file"]["key"],
+            parsed_dict["content"]["file"]["hashes"],
+            parsed_dict["content"]["file"]["iv"],
+        )
+
+
+class RoomEncryptedImage(RoomEncryptedMedia):
+    pass
+
+
+class RoomEncryptedAudio(RoomEncryptedMedia):
+    pass
+
+
+class RoomEncryptedVideo(RoomEncryptedMedia):
+    pass
+
+
+class RoomEncryptedFile(RoomEncryptedMedia):
+    pass
 
 
 class RoomMessageImage(RoomMessageMedia):

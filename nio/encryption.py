@@ -80,6 +80,7 @@ from .events import (
     MegolmEvent,
     OlmEvent,
     RoomEncryptedEvent,
+    RoomEncryptedMessage,
     BadEventType,
     UnknownBadEvent,
     validate_or_badevent
@@ -1064,7 +1065,7 @@ class Olm(object):
             parsed_dict["sender"] = event.sender
             parsed_dict["origin_server_ts"] = event.server_timestamp
 
-            new_event = Event.parse_event(parsed_dict)
+            new_event = Event.parse_event(parsed_dict, True)
 
             if not new_event:
                 return None

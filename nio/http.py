@@ -495,8 +495,10 @@ class Http2Connection(Connection):
             elif isinstance(event, h2.events.WindowUpdated):
                 pass
             elif isinstance(event, h2.events.StreamReset):
+                logger.error("Http2 stream reset")
                 return self._handle_reset(event.stream_id)
             elif isinstance(events, h2.events.ConnectionTerminated):
+                logger.error("Http2 connection terminated")
                 # TODO reset the client
                 pass
 

@@ -104,16 +104,16 @@ class ErrorResponse(Response):
         # type: (str, Optional[int]) -> None
         super().__init__()
         self.message = message
-        self.code = code
+        self.status_code = code
 
     def __str__(self):
         # type: () -> str
-        if self.code and self.message:
-            e = "{} {}".format(self.code, self.message)
+        if self.status_code and self.message:
+            e = "{} {}".format(self.status_code, self.message)
         elif self.message:
             e = self.message
-        elif self.code:
-            e = "{} unknown error".format(self.code)
+        elif self.status_code:
+            e = "{} unknown error".format(self.status_code)
         else:
             e = "unknown error"
 

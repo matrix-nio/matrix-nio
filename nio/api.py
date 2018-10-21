@@ -75,6 +75,32 @@ class Api(object):
         return http_url
 
     @staticmethod
+    def encrypted_mxc_to_plumb(mxc, key, hash, iv):
+        # type: (str) -> Optional[str]
+        url = urlparse(mxc)
+
+        if url.scheme != "mxc":
+            return None
+
+        if not url.netloc or not url.path:
+            return None
+
+        plumb_url = (
+            "emxc://{host}/_matrix/media/r0/download/"
+            "{server_name}{mediaId}"
+        ).format(host=url.netloc, server_name=url.netloc, mediaId=url.path)
+
+        query_parameters = {
+            "key": key,
+            "hash": hash,
+            "iv": iv,
+        }
+
+        plumb_url += "?{}".format(urlencode(query_parameters))
+
+        return plumb_url
+
+    @staticmethod
     def _build_path(path, query_parameters=None):
         # type: (str, dict) -> str
         path = ("{api}/{path}").format(api=MATRIX_API_PATH, path=path)

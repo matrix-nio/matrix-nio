@@ -14,8 +14,6 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import unicode_literals
-
 import json
 import pprint
 from builtins import bytes, str, super
@@ -383,6 +381,7 @@ class Client(object):
                     if not room.encrypted:
                         continue
 
+                    # TODO expire the group session here
                     if user in room.users:
                         changed_users.add(user)
 
@@ -1072,7 +1071,7 @@ class HttpClient(object):
 
         response.start_time = transport_response.send_time
         response.end_time = transport_response.receive_time
-        response.code = transport_response.status_code
+        response.status_code = transport_response.status_code
         response.uuid = transport_response.uuid
 
         return response

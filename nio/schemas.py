@@ -139,6 +139,46 @@ class Schemas(object):
         },
     }
 
+    room_encrypted_media = {
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "object",
+                "properties": {
+                    "body": {"type": "string"},
+                    "msgtype": {
+                        "type": "string",
+                        "enum": ["m.image", "m.audio", "m.video", "m.file"],
+                    },
+                    "file": {
+                        "type": "object",
+                        "properties": {
+                            "url": {"type": "string"},
+                            "hashes": {
+                                "type": "object",
+                                "properties": {
+                                    "sha256": {"type": "string"}
+                                }
+                            },
+                            "iv": {"type": "string"},
+                            "key": {
+                                "type": "object",
+                                "properties": {
+                                    "alg": {"type": "string"},
+                                    "k": {"type": "string"},
+                                },
+                                "required": ["alg", "k"],
+                            },
+                        },
+                    },
+                    "required": ["url", "hashes", "iv", "key"],
+                },
+                "required": ["body", "file", "msgtype"],
+            }
+        },
+        "required": ["content"],
+    }
+
     redacted_event = {
         "type": "object",
         "properties": {
