@@ -688,6 +688,7 @@ class Olm(object):
                 changed[user_id][device_id] = device
 
         self.store.save_device_keys(changed)
+        response.changed = changed
 
     def handle_response(self, response):
         if isinstance(response, KeysUploadResponse):

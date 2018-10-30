@@ -463,6 +463,7 @@ class KeysQueryResponse(Response):
         # type: (Dict[Any, Any], Dict[Any, Any]) -> None
         self.device_keys = device_keys
         self.failures = failures
+        self.changed = {}
 
     @classmethod
     def from_dict(cls, parsed_dict):

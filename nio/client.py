@@ -246,21 +246,24 @@ class Client(object):
 
         return False
 
+    def invalidate_outbound_session(self, room_id):
+        session = self.olm.outbound_group_sessions.pop(
+            room_id,
+            None
+        )
+
+        # There is no need to invalidate the session if it was never
+        # shared, put it back where it was.
+        if session and not session.shared:
+            self.olm.outbound_group_sessions[room_id] = session
+
     def _invalidate_outbound_sessions(self, device):
         # type: (OlmDevice) -> None
         assert self.olm
 
         for room in self.rooms.values():
             if device.user_id in room.users:
-                session = self.olm.outbound_group_sessions.pop(
-                    room.room_id,
-                    None
-                )
-
-                # There is no need to invalidate the session if it was never
-                # shared, put it back where it was.
-                if session and not session.shared:
-                    self.olm.outbound_group_sessions[room.room_id] = session
+                self.invalidate_outbound_session(room.room_id)
 
     def verify_device(self, device):
         # type: (OlmDevice) -> bool
@@ -384,7 +387,6 @@ class Client(object):
                     if not room.encrypted:
                         continue
 
-                    # TODO expire the group session here
                     if user in room.users:
                         changed_users.add(user)
 
@@ -421,6 +423,12 @@ class Client(object):
             raise LocalProtocolError("Olm account isn't loaded")
 
         self.olm.handle_response(response)
+
+        if isinstance(response, KeysQueryResponse):
+            for user_id in response.changed:
+                for room in self.rooms.values():
+                    if room.encrypted and user_id in room.users:
+                        self.invalidate_outbound_session(room.room_id)
 
     def _handle_joined_members(self, response):
         room = self.rooms[response.room_id]
@@ -1166,7 +1174,6 @@ class HttpClient(object):
                     response
                 )
 
-                # response.request_info = request_info
                 self.response_queue.append(error_response)
         return
 
