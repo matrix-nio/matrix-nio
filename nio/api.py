@@ -76,7 +76,7 @@ class Api(object):
 
     @staticmethod
     def encrypted_mxc_to_plumb(mxc, key, hash, iv):
-        # type: (str) -> Optional[str]
+        # type: (str, str, str, str) -> Optional[str]
         url = urlparse(mxc)
 
         if url.scheme != "mxc":
