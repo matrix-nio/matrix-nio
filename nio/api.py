@@ -337,6 +337,14 @@ class Api(object):
 
         return Api._build_path(path, query_parameters), Api.to_json(content)
 
+    @staticmethod
+    def joined_members(access_token, room_id):
+        # type: (str, str) -> str
+        query_parameters = {"access_token": access_token}
+        path = "rooms/{}/joined_members".format(room_id)
+
+        return Api._build_path(path, query_parameters)
+
 
 class HttpApi(object):
     def __init__(self, host):
@@ -467,6 +475,11 @@ class HttpApi(object):
         # type: (str, List[str], Optional[Dict[str, str]]) -> TransportRequest
         path, data = Api.delete_devices(access_token, devices, auth_dict)
         return self._build_request("POST", path, data)
+
+    def joined_members(self, access_token, room_id):
+        # type: (str, str) -> TransportRequest
+        path = Api.joined_members(access_token, room_id)
+        return self._build_request("GET", path)
 
 
 class Http2Api(HttpApi):

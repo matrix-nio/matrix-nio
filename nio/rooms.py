@@ -143,22 +143,23 @@ class MatrixRoom(object):
         """
         return not self.is_named()
 
+    def add_member(self, user_id, display_name):
+        if user_id in self.users:
+            return
+
+        level = self.power_levels.users.get(
+            user_id,
+            self.power_levels.defaults.users_default
+        )
+
+        user = MatrixUser(user_id, display_name, level)
+        self.users[user_id] = user
+
     def _handle_membership(self, event):
         # type: (Any) -> None
         def join(event):
-            level = (
-                self.power_levels.users[event.state_key]
-                if event.state_key in self.power_levels.users
-                else self.power_levels.defaults.users_default
-            )
-            display_name = (
-                event.content["displayname"]
-                if "displayname" in event.content
-                else None
-            )
-
-            user = MatrixUser(event.state_key, display_name, level)
-            self.users[event.state_key] = user
+            display_name = event.content.get("displayname", None)
+            self.add_member(event.state_key, display_name)
             return
 
         if event.content["membership"] == "join":

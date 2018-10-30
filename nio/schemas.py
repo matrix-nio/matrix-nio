@@ -767,4 +767,22 @@ class Schemas(object):
         },
     }
 
+    joined_members = {
+        "type": "object",
+        "properties": {
+            "joined": {
+                "type": "object",
+                "patternProperties": {UserIdRegex: {
+                    "type": "object",
+                    "properties": {
+                        "avatar_url": {"type": ["string", "null"]},
+                        "display_name": {"type": ["string", "null"]},
+                    },
+                    "required": ["display_name"]
+                }}
+            },
+            "required": ["joined"]
+        }
+    }
+
     empty = {"type": "object", "properties": {}, "additionalProperties": False}

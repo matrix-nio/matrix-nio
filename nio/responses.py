@@ -66,6 +66,11 @@ InviteInfo = NamedTuple("InviteInfo", [("invite_state", list)])
 
 RoomInfo = NamedTuple("RoomInfo", [("timeline", Timeline), ("state", list)])
 
+RoomMember = NamedTuple(
+    "RoomMember",
+    [("user_id", str), ("display_name", str), ("avatar_url", str)]
+)
+
 
 class Device(object):
     def __init__(self, id, display_name, last_seen_ip, last_seen_date):
@@ -198,6 +203,22 @@ class UpdateDeviceError(ErrorResponse):
     pass
 
 
+class JoinedMembersError(ErrorResponse):
+    def __init__(self, message, code=None, room_id=""):
+        # type: (str, Optional[int], Optional[str]) -> None
+        super().__init__(message, code)
+        self.room_id = room_id
+
+    @classmethod
+    def from_dict(cls, parsed_dict, room_id):
+        try:
+            validate_json(parsed_dict, Schemas.error)
+        except (SchemaError, ValidationError):
+            return cls("unknown error")
+
+        return cls(parsed_dict["error"], parsed_dict["errcode"], room_id)
+
+
 class LoginResponse(Response):
     def __init__(self, user_id, device_id, access_token):
         # type: (str, str, str) -> None
@@ -225,6 +246,38 @@ class LoginResponse(Response):
             parsed_dict["device_id"],
             parsed_dict["access_token"],
         )
+
+
+class JoinedMembersResponse(Response):
+    def __init__(self, members, room_id):
+        # type: (List[RoomMember], str) -> None
+        super().__init__()
+        self.room_id = room_id
+        self.members = members
+
+    @classmethod
+    def from_dict(
+        cls,
+        parsed_dict,  # type: Dict[Any, Any]
+        room_id       # type: str
+    ):
+        # type: (...) -> Union[JoinedMembersResponse, ErrorResponse]
+        try:
+            validate_json(parsed_dict, Schemas.joined_members)
+        except (SchemaError, ValidationError):
+            return JoinedMembersError.from_dict(parsed_dict, room_id)
+
+        members = []
+
+        for user_id, user_info in parsed_dict["joined"].items():
+            user = RoomMember(
+                user_id,
+                user_info.get("display_name", None),
+                user_info.get("avatar_url", None)
+            )
+            members.append(user)
+
+        return cls(members, room_id)
 
 
 class RoomEventIdResponse(Response):

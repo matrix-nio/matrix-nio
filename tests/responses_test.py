@@ -14,7 +14,8 @@ from nio.responses import (
     KeysQueryResponse,
     KeysClaimResponse,
     DevicesResponse,
-    DeleteDevicesAuthResponse
+    DeleteDevicesAuthResponse,
+    JoinedMembersResponse,
 )
 
 
@@ -80,6 +81,12 @@ class TestClass(object):
         response = DeleteDevicesAuthResponse.from_dict(parsed_dict)
         assert isinstance(response, DeleteDevicesAuthResponse)
         assert response.session == "xxxxxxyz"
+
+    def test_joined_parse(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/joined_members_response.json")
+        response = JoinedMembersResponse.from_dict(parsed_dict, "!testroom")
+        assert isinstance(response, JoinedMembersResponse)
 
     def test_sync_parse(self):
         parsed_dict = TestClass._load_response(

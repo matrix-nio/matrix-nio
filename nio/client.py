@@ -91,7 +91,9 @@ from .responses import (
     DevicesError,
     DeleteDevicesAuthResponse,
     DeleteDevicesResponse,
-    DeleteDevicesError
+    DeleteDevicesError,
+    JoinedMembersResponse,
+    JoinedMembersError
 )
 
 from .events import Event, BadEventType, RoomEncryptedEvent, MegolmEvent
@@ -135,6 +137,7 @@ class RequestType(Enum):
     devices = 14
     delete_devices = 15
     update_device = 16
+    joined_members = 17
 
 
 _TypedResponse = NamedTuple("TypedResponse", [
@@ -419,6 +422,12 @@ class Client(object):
 
         self.olm.handle_response(response)
 
+    def _handle_joined_members(self, response):
+        room = self.rooms[response.room_id]
+
+        for member in response.members:
+            room.add_member(member.user_id, member.display_name)
+
     def clear_parse_queue(self):
         self.parse_queue.clear()
         self.partial_sync = None
@@ -517,6 +526,15 @@ class Client(object):
 
         elif typed_response.type is RequestType.update_device:
             response = UpdateDeviceResponse.from_dict(typed_response.data)
+
+        elif typed_response.type is RequestType.joined_members:
+            assert typed_response.extra_data
+            response = JoinedMembersResponse.from_dict(
+                typed_response.data,
+                typed_response.extra_data
+            )
+            if not isinstance(response, ErrorResponse):
+                self._handle_joined_members(response)
 
         if not response:
             raise NotImplementedError(
@@ -1004,6 +1022,27 @@ class HttpClient(object):
         )
         return uuid, data
 
+    def joined_members(self, room_id):
+        # type: (str) -> Tuple[UUID, bytes]
+        if not self._client.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+        if not self.api:
+            raise LocalProtocolError("Not connected.")
+
+        request = self.api.joined_members(
+            self._client.access_token,
+            room_id
+        )
+
+        uuid, data = self._send(request)
+        self.requests_made[uuid] = RequestInfo(
+            RequestType.joined_members,
+            0,
+            room_id
+        )
+        return uuid, data
+
     def sync(self, timeout=None, filter=None):
         # type: (Optional[int], Optional[Dict[Any, Any]]) -> Tuple[UUID, bytes]
         if not self._client.logged_in:
@@ -1025,7 +1064,8 @@ class HttpClient(object):
         return uuid, data
 
     @staticmethod
-    def _create_error_resopnse(request_type, transport_response):
+    def _create_error_resopnse(request_info, transport_response):
+        request_type = request_info.type
         try:
             parsed_dict = json.loads(transport_response.text, encoding="utf-8")
         except JSONDecodeError:
@@ -1063,6 +1103,11 @@ class HttpClient(object):
             response = DevicesError.from_dict(parsed_dict)
         elif request_type is RequestType.update_device:
             response = UpdateDeviceError.from_dict(parsed_dict)
+        elif request_type is RequestType.joined_members:
+            response = JoinedMembersError.from_dict(
+                parsed_dict,
+                request_info.extra_data
+            )
         elif request_type is RequestType.delete_devices:
             if transport_response.status_code == 401:
                 response = DeleteDevicesAuthResponse.from_dict(parsed_dict)
@@ -1117,7 +1162,7 @@ class HttpClient(object):
                 )
 
                 error_response = self._create_error_resopnse(
-                    request_info.type,
+                    request_info,
                     response
                 )
 
