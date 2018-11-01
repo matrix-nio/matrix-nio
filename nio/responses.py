@@ -64,7 +64,13 @@ Timeline = NamedTuple(
 
 InviteInfo = NamedTuple("InviteInfo", [("invite_state", list)])
 
-RoomInfo = NamedTuple("RoomInfo", [("timeline", Timeline), ("state", list)])
+TypingNoticeEvent = NamedTuple("TypingNoticeEvent", [("users", list)])
+
+RoomInfo = NamedTuple("RoomInfo", [
+    ("timeline", Timeline),
+    ("state", list),
+    ("ephemeral", list),
+])
 
 RoomMember = NamedTuple(
     "RoomMember",
@@ -642,11 +648,33 @@ class _SyncResponse(Response):
         return events
 
     @staticmethod
+    def _get_ephemeral_events(parsed_dict):
+        events = []
+        for event in parsed_dict:
+            try:
+                validate_json(event, Schemas.ephemeral_event)
+            except (SchemaError, ValidationError):
+                continue
+
+            if event["type"] == "m.typing":
+                try:
+                    validate_json(event, Schemas.m_typing)
+                except (SchemaError, ValidationError) as e:
+                    logger.error(
+                        "Error validating typing notice event: "
+                        + str(e.message)
+                    )
+                    continue
+                events.append(TypingNoticeEvent(event["content"]["user_ids"]))
+        return events
+
+    @staticmethod
     def _get_join_info(
         state_events,     # type: List[Any]
         timeline_events,  # type: List[Any]
         prev_batch,       # type: str
-        limited=False,    # type: bool
+        limited,          # type: bool
+        ephemeral_events,  # type: List[Any]
         max_events=0      # type: int
     ):
         # type: (...) -> Tuple[RoomInfo, Optional[RoomInfo]]
@@ -678,12 +706,16 @@ class _SyncResponse(Response):
             prev_batch
         )
 
+        ephemeral_event_list = _SyncResponse._get_ephemeral_events(
+            ephemeral_events
+        )
+
         unhandled_info = None
 
         if unhandled_timeline.events or unhandled_state:
-            unhandled_info = RoomInfo(unhandled_timeline, unhandled_state)
+            unhandled_info = RoomInfo(unhandled_timeline, unhandled_state, [])
 
-        join_info = RoomInfo(timeline, state)
+        join_info = RoomInfo(timeline, state, ephemeral_event_list)
 
         return join_info, unhandled_info
 
@@ -705,17 +737,16 @@ class _SyncResponse(Response):
         for room_id, room_dict in parsed_dict["leave"].items():
             _, state = _SyncResponse._get_state(room_dict["state"])
             _, timeline = _SyncResponse._get_timeline(room_dict["timeline"])
-            leave_info = RoomInfo(timeline, state)
+            leave_info = RoomInfo(timeline, state, [])
             left_rooms[room_id] = leave_info
 
         for room_id, room_dict in parsed_dict["join"].items():
-            # validate_json(room_dict["timeline"], Schemas.room_timeline)
-            # validate_json(room_dict["state"], Schemas.room_state)
             join_info, unhandled_info = _SyncResponse._get_join_info(
                 room_dict["state"]["events"],
                 room_dict["timeline"]["events"],
                 room_dict["timeline"]["prev_batch"],
                 room_dict["timeline"]["limited"],
+                room_dict["ephemeral"]["events"],
                 max_events
             )
 
@@ -810,6 +841,7 @@ class PartialSyncResponse(_SyncResponse):
                 room_info.timeline.events,
                 room_info.timeline.prev_batch,
                 room_info.timeline.limited,
+                [],
                 max_events
             )
 

@@ -245,24 +245,106 @@ class Schemas(object):
                 "properties": {
                     "invite": {
                         "type": "object",
-                        "patternProperties": {RoomRegex: {"type": "object"}},
+                        "patternProperties": {
+                            RoomRegex: {
+                                "type": "object",
+                                "properties": {
+                                    "invite_state": {
+                                        "type": "object",
+                                        "properties": {
+                                            "events": {"type": "array"}
+                                        },
+                                        "required": ["events"]
+                                    }
+                                },
+                                "required": ["invite_state"]
+                            }
+                        },
                         "additionalProperties": False,
                     },
                     "join": {
                         "type": "object",
-                        "patternProperties": {RoomRegex: {"type": "object"}},
+                        "patternProperties": {
+                            RoomRegex: {
+                                "type": "object",
+                                "properties": {
+                                    "timeline": {
+                                        "type": "object",
+                                        "properties": {
+                                            "events": {"type": "array"}
+                                        },
+                                        "required": ["events"]
+                                    },
+                                    "state": {
+                                        "type": "object",
+                                        "properties": {
+                                            "events": {"type": "array"}
+                                        },
+                                        "required": ["events"]
+                                    },
+                                    "ephemeral": {
+                                        "type": "object",
+                                        "properties": {
+                                            "events": {"type": "array"}
+                                        },
+                                        "required": ["events"]
+                                    },
+                                    "summary": {
+                                        "type": "object",
+                                        "properties": {
+                                            "m.invited_member_count": {
+                                                "type": "integer"
+                                            },
+                                            "m.joined_member_count": {
+                                                "type": "integer"
+                                            },
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "timeline",
+                                    "state",
+                                    "ephemeral",
+                                    "summary",
+                                ]
+                            }
+                        },
                         "additionalProperties": False,
                     },
                     "leave": {
                         "type": "object",
-                        "patternProperties": {RoomRegex: {"type": "object"}},
+                        "patternProperties": {
+                            RoomRegex: {
+                                "type": "object",
+                                "properties": {
+                                    "timeline": {
+                                        "type": "object",
+                                        "properties": {
+                                            "events": {"type": "array"}
+                                        },
+                                        "required": ["events"]
+                                    },
+                                    "state": {
+                                        "type": "object",
+                                        "properties": {
+                                            "events": {"type": "array"}
+                                        },
+                                        "required": ["events"]
+                                    }
+                                },
+                                "required": ["timeline", "state"]
+                            }
+                        },
                         "additionalProperties": False,
                     },
                 },
             },
             "to_device": {
                 "type": "object",
-                "properties": {"events": {"type": "array"}},
+                "properties": {
+                    "events": {"type": "array"}
+                },
+                "required": ["events"]
             },
         },
         "required": [
@@ -607,6 +689,34 @@ class Schemas(object):
             "end": {"type": "string"},
         },
         "required": ["chunk", "start", "end"],
+        "additionalProperties": False,
+    }
+
+    ephemeral_event = {
+        "type": "object",
+        "properties": {
+            "content": {"type": "object"},
+            "type": {"type": "string"}
+        },
+        "required": ["content", "type"],
+    }
+
+    m_typing = {
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "object",
+                "properties": {
+                    "user_ids": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    }
+                },
+                "required": ["user_ids"]
+            },
+            "type": {"type": "string"}
+        },
+        "required": ["content", "type"],
         "additionalProperties": False,
     }
 

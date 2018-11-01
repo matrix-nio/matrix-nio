@@ -374,6 +374,9 @@ class Client(object):
                 index, event = decrypted_event
                 join_info.timeline.events[index] = event
 
+            for event in join_info.ephemeral:
+                room.handle_ephemeral_event(event)
+
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)
 

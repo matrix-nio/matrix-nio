@@ -35,6 +35,8 @@ from .events import (
     RoomNameEvent,
     RoomTopicEvent,
 )
+
+from .responses import TypingNoticeEvent
 from .log import logger_group
 
 logger = Logger("nio.rooms")
@@ -52,6 +54,7 @@ class MatrixRoom(object):
         self.users = dict()           # type: Dict[str, MatrixUser]
         self.encrypted = False        # type: bool
         self.power_levels = PowerLevels()  # type: PowerLevels
+        self.typing_users = []
         # yapf: enable
 
     def display_name(self):
@@ -178,6 +181,10 @@ class MatrixRoom(object):
 
         elif event.content["membership"] == "invite":
             pass
+
+    def handle_ephemeral_event(self, event):
+        if isinstance(event, TypingNoticeEvent):
+            self.typing_users = event.users
 
     def handle_event(self, event):
         # type: (Event) -> None
