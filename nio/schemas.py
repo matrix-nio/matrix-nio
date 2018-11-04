@@ -305,7 +305,6 @@ class Schemas(object):
                                     "timeline",
                                     "state",
                                     "ephemeral",
-                                    "summary",
                                 ]
                             }
                         },
