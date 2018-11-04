@@ -1132,6 +1132,11 @@ class HttpClient(object):
 
         return response
 
+    def handle_key_upload_error(self, response):
+        if response.status_code == 400:
+            self.mark_keys_as_published()
+            self.save_account()
+
     def receive(self, data):
         # type: (bytes) -> None
         if not self.connection:
@@ -1176,6 +1181,9 @@ class HttpClient(object):
                     request_info,
                     response
                 )
+
+                if isinstance(response, KeysUploadError):
+                    self.handle_key_upload_error(response)
 
                 self.response_queue.append(error_response)
         return
