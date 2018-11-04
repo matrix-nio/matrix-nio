@@ -1134,8 +1134,8 @@ class HttpClient(object):
 
     def handle_key_upload_error(self, response):
         if response.status_code == 400:
-            self.mark_keys_as_published()
-            self.save_account()
+            self.olm.mark_keys_as_published()
+            self.olm.save_account()
 
     def receive(self, data):
         # type: (bytes) -> None
@@ -1182,8 +1182,8 @@ class HttpClient(object):
                     response
                 )
 
-                if isinstance(response, KeysUploadError):
-                    self.handle_key_upload_error(response)
+                if isinstance(error_response, KeysUploadError):
+                    self.handle_key_upload_error(error_response)
 
                 self.response_queue.append(error_response)
         return
