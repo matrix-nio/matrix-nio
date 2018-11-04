@@ -694,9 +694,10 @@ class Olm(object):
         if isinstance(response, KeysUploadResponse):
             if not self.account.shared:
                 self.account.shared = True
-                self.uploaded_key_count = response.signed_curve25519_count
-                self.mark_keys_as_published()
-                self.save_account()
+
+            self.uploaded_key_count = response.signed_curve25519_count
+            self.mark_keys_as_published()
+            self.save_account()
 
         elif isinstance(response, KeysQueryResponse):
             self._handle_key_query(response)
