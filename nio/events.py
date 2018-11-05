@@ -61,6 +61,7 @@ class Event(object):
         self.decrypted = False
         self.verified = False
         self.sender_key = None  # type: Optional[str]
+        self.transaction_id = None  # type: Optional[str]
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -86,20 +87,6 @@ class Event(object):
         if "unsigned" in event_dict:
             if "redacted_because" in event_dict["unsigned"]:
                 return RedactedEvent.from_dict(event_dict)
-
-        # The transaction id will only be present for events that
-        # are send out from this client, since we print out our own
-        # messages as soon as we get a receive confirmation from
-        # the server we don't care about our own messages in a
-        # sync event. More info under:
-        # https://github.com/matrix-org/matrix-doc/blob/master/api/client-server/definitions/event.yaml#L53
-        if ("unsigned" in event_dict
-                and "transaction_id" in event_dict["unsigned"]
-                and event_dict["type"] in (
-                    "m.room.message",
-                    "m.room.encrypted"
-                )):
-            return None
 
         if event_dict["type"] == "m.room.message":
             if encrytped:
@@ -193,14 +180,15 @@ class OlmEvent(ToDeviceEvent, RoomEncryptedEvent):
 class MegolmEvent(RoomEncryptedEvent):
     def __init__(
         self,
-        event_id,     # type: str
-        sender,       # type: str
-        server_ts,    # type: int
-        sender_key,   # type: str
-        device_id,    # type: str
-        session_id,   # type: str
-        ciphertext,   # type: str
-        room_id=None  # type: Optional[str]
+        event_id,            # type: str
+        sender,              # type: str
+        server_ts,           # type: int
+        sender_key,          # type: str
+        device_id,           # type: str
+        session_id,          # type: str
+        ciphertext,          # type: str
+        room_id=None,        # type: Optional[str]
+        transaction_id=None  # type: Optional[str]
     ):
         # type: (...) -> None
         self.event_id = event_id
@@ -213,6 +201,7 @@ class MegolmEvent(RoomEncryptedEvent):
         self.session_id = session_id
         self.device_id = device_id
         self.ciphertext = ciphertext
+        self.transaction_id = transaction_id
 
     @classmethod
     def from_dict(cls, event_dict):
@@ -229,6 +218,8 @@ class MegolmEvent(RoomEncryptedEvent):
         device_id = content["device_id"]
 
         room_id = event_dict.get("room_id", None)
+        tx_id = (event_dict["unsigned"].get("transaction_id", None)
+                 if "unsigned" in event_dict else None)
 
         return cls(
             event_dict["event_id"],
@@ -238,7 +229,8 @@ class MegolmEvent(RoomEncryptedEvent):
             device_id,
             session_id,
             ciphertext,
-            room_id
+            room_id,
+            tx_id
         )
 
 
@@ -487,21 +479,27 @@ class RoomMessage(Event):
         content_dict = parsed_dict["content"]
 
         if content_dict["msgtype"] == "m.text":
-            return RoomMessageText.from_dict(parsed_dict)
+            event = RoomMessageText.from_dict(parsed_dict)
         elif content_dict["msgtype"] == "m.emote":
-            return RoomMessageEmote.from_dict(parsed_dict)
+            event = RoomMessageEmote.from_dict(parsed_dict)
         elif content_dict["msgtype"] == "m.notice":
-            return RoomMessageNotice.from_dict(parsed_dict)
+            event = RoomMessageNotice.from_dict(parsed_dict)
         elif content_dict["msgtype"] == "m.image":
-            return RoomMessageImage.from_dict(parsed_dict)
+            event = RoomMessageImage.from_dict(parsed_dict)
         elif content_dict["msgtype"] == "m.audio":
-            return RoomMessageAudio.from_dict(parsed_dict)
+            event = RoomMessageAudio.from_dict(parsed_dict)
         elif content_dict["msgtype"] == "m.video":
-            return RoomMessageVideo.from_dict(parsed_dict)
+            event = RoomMessageVideo.from_dict(parsed_dict)
         elif content_dict["msgtype"] == "m.file":
-            return RoomMessageFile.from_dict(parsed_dict)
+            event = RoomMessageFile.from_dict(parsed_dict)
+        else:
+            event = RoomMessageUnknown.from_dict(parsed_dict)
 
-        return RoomMessageUnknown.from_dict(parsed_dict)
+        if "unsigned" in parsed_dict:
+            txn_id = parsed_dict["unsigned"].get("transaction_id", None)
+            event.transaction_id = txn_id
+
+        return event
 
 
 class RoomEncryptedMessage(RoomMessage):
@@ -516,15 +514,21 @@ class RoomEncryptedMessage(RoomMessage):
         msgtype = parsed_dict["content"]["msgtype"]
 
         if msgtype == "m.image":
-            return RoomEncryptedImage.from_dict(parsed_dict)
+            event = RoomEncryptedImage.from_dict(parsed_dict)
         elif msgtype == "m.audio":
-            return RoomEncryptedAudio.from_dict(parsed_dict)
+            event = RoomEncryptedAudio.from_dict(parsed_dict)
         elif msgtype == "m.video":
-            return RoomEncryptedVideo.from_dict(parsed_dict)
+            event = RoomEncryptedVideo.from_dict(parsed_dict)
         elif msgtype == "m.file":
-            return RoomEncryptedFile.from_dict(parsed_dict)
+            event = RoomEncryptedFile.from_dict(parsed_dict)
         else:
-            return RoomMessage.parse_event(parsed_dict)
+            event = RoomMessage.parse_event(parsed_dict)
+
+        if "unsigned" in parsed_dict:
+            txn_id = parsed_dict["unsigned"].get("transaction_id", None)
+            event.transaction_id = txn_id
+
+        return event
 
 
 class RoomMessageMedia(RoomMessage):

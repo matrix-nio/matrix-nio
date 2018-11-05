@@ -198,12 +198,12 @@ class HeaderDict(dict):
 
 
 class TransportResponse(object):
-    def __init__(self):
+    def __init__(self, uuid=None):
         # type: () -> None
         self.headers = HeaderDict()  # type: HeaderDict
         self.content = b""  # type: bytes
         self.status_code = None  # type: Optional[int]
-        self.uuid = uuid4()
+        self.uuid = uuid or uuid4()
         self.creation_time = time.time()
         self.send_time = None  # type: Optional[int]
         self.receive_time = None  # type: Optional[int]
@@ -259,8 +259,8 @@ class HttpResponse(TransportResponse):
 
 
 class Http2Response(TransportResponse):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, uuid=None):
+        super().__init__(uuid)
         self.was_reset = False
         self.error_code = None  # type: Optional[h2.errors.ErrorCodes]
 
@@ -328,7 +328,7 @@ class HttpConnection(Connection):
 
         return response.uuid, response.elapsed
 
-    def send(self, request):
+    def send(self, request, uuid=None):
         # type: (TransportRequest) -> Tuple[UUID, bytes]
         data = b""
 
@@ -349,7 +349,7 @@ class HttpConnection(Connection):
             if request.response:
                 self._current_response = request.response
             else:
-                self._current_response = HttpResponse()
+                self._current_response = HttpResponse(uuid)
 
             # Make mypy happy
             assert self._current_response
@@ -357,7 +357,7 @@ class HttpConnection(Connection):
             self._current_response.mark_as_sent()
             return self._current_response.uuid, data
         else:
-            request.response = HttpResponse()
+            request.response = HttpResponse(uuid)
             self._message_queue.append(request)
             return request.response.uuid, b""
 
@@ -411,7 +411,7 @@ class Http2Connection(Connection):
 
         return response.uuid, response.elapsed
 
-    def send(self, request):
+    def send(self, request, uuid=None):
         # type: (TransportRequest) -> Tuple[UUID, bytes]
         if not isinstance(request, Http2Request):
             raise TypeError("Invalid request type for HttpConnection")
@@ -430,7 +430,7 @@ class Http2Connection(Connection):
         self._connection.send_data(stream_id, request._data)
         self._connection.end_stream(stream_id)
         ret = self._connection.data_to_send()
-        response = Http2Response()
+        response = Http2Response(uuid)
         response.mark_as_sent()
         self._responses[stream_id] = response
 

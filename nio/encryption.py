@@ -1067,6 +1067,11 @@ class Olm(object):
             parsed_dict["sender"] = event.sender
             parsed_dict["origin_server_ts"] = event.server_timestamp
 
+            if event.transaction_id:
+                parsed_dict["unsigned"] = {
+                        "transaction_id": event.transaction_id
+                }
+
             new_event = Event.parse_event(parsed_dict, True)
 
             if not new_event:

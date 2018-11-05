@@ -141,6 +141,22 @@ class ErrorResponse(Response):
         return cls(parsed_dict["error"], parsed_dict["errcode"])
 
 
+class _ErrorWithRoomId(ErrorResponse):
+    def __init__(self, message, code=None, room_id=""):
+        # type: (str, Optional[int], Optional[str]) -> None
+        super().__init__(message, code)
+        self.room_id = room_id
+
+    @classmethod
+    def from_dict(cls, parsed_dict, room_id):
+        try:
+            validate_json(parsed_dict, Schemas.error)
+        except (SchemaError, ValidationError):
+            return cls("unknown error")
+
+        return cls(parsed_dict["error"], parsed_dict["errcode"], room_id)
+
+
 class LoginError(ErrorResponse):
     pass
 
@@ -149,15 +165,15 @@ class SyncError(ErrorResponse):
     pass
 
 
-class RoomSendError(ErrorResponse):
+class RoomSendError(_ErrorWithRoomId):
     pass
 
 
-class RoomPutStateError(ErrorResponse):
+class RoomPutStateError(_ErrorWithRoomId):
     pass
 
 
-class RoomRedactError(ErrorResponse):
+class RoomRedactError(_ErrorWithRoomId):
     pass
 
 
@@ -287,41 +303,42 @@ class JoinedMembersResponse(Response):
 
 
 class RoomEventIdResponse(Response):
-    def __init__(self, event_id):
+    def __init__(self, event_id, room_id):
         super().__init__()
         self.event_id = event_id
+        self.room_id = room_id
 
     @staticmethod
-    def create_error(parsed_dict):
+    def create_error(parsed_dict, _room_id):
         return ErrorResponse.from_dict(parsed_dict)
 
     @classmethod
-    def from_dict(cls, parsed_dict):
+    def from_dict(cls, parsed_dict,  room_id):
         # type: (Dict[Any, Any]) -> Union[RoomEventIdResponse, ErrorResponse]
         try:
             validate_json(parsed_dict, Schemas.room_event_id)
         except (SchemaError, ValidationError):
-            return cls.create_error(parsed_dict)
+            return cls.create_error(parsed_dict, room_id)
 
-        return cls(parsed_dict["event_id"])
+        return cls(parsed_dict["event_id"], room_id)
 
 
 class RoomSendResponse(RoomEventIdResponse):
     @staticmethod
-    def create_error(parsed_dict):
-        return RoomSendError.from_dict(parsed_dict)
+    def create_error(parsed_dict, room_id):
+        return RoomSendError.from_dict(parsed_dict, room_id)
 
 
 class RoomPutStateResponse(RoomEventIdResponse):
     @staticmethod
-    def create_error(parsed_dict):
-        return RoomPutStateError.from_dict(parsed_dict)
+    def create_error(parsed_dict, room_id):
+        return RoomPutStateError.from_dict(parsed_dict, room_id)
 
 
 class RoomRedactResponse(RoomEventIdResponse):
     @staticmethod
-    def create_error(parsed_dict):
-        return RoomRedactError.from_dict(parsed_dict)
+    def create_error(parsed_dict, room_id):
+        return RoomRedactError.from_dict(parsed_dict, room_id)
 
 
 class EmptyResponse(Response):

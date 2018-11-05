@@ -361,6 +361,12 @@ class Schemas(object):
             "event_id": {"type": "string"},
             "sender": {"type": "string", "format": "user_id"},
             "type": {"type": "string"},
+            "unsigned": {
+                "type": "object",
+                "properties": {
+                    "transaction_id": {"type": "string"},
+                }
+            },
         },
         "required": ["event_id", "sender", "type"],
     }

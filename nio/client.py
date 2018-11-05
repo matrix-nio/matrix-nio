@@ -30,7 +30,7 @@ from typing import (
     Union,
     NamedTuple
 )
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import h2
 import h11
@@ -497,11 +497,20 @@ class Client(object):
             response = SyncResponse.from_dict(typed_response.data, max_events)
             self._handle_sync(response)
         elif typed_response.type is RequestType.room_send:
-            response = RoomSendResponse.from_dict(typed_response.data)
+            response = RoomSendResponse.from_dict(
+                typed_response.data,
+                typed_response.extra_data
+            )
         elif typed_response.type is RequestType.room_put_state:
-            response = RoomPutStateResponse.from_dict(typed_response.data)
+            response = RoomPutStateResponse.from_dict(
+                typed_response.data,
+                typed_response.extra_data
+            )
         elif typed_response.type is RequestType.room_redact:
-            response = RoomRedactResponse.from_dict(typed_response.data)
+            response = RoomRedactResponse.from_dict(
+                typed_response.data,
+                typed_response.extra_data
+            )
         elif typed_response.type is RequestType.room_kick:
             response = RoomKickResponse.from_dict(typed_response.data)
         elif typed_response.type is RequestType.room_invite:
@@ -577,13 +586,13 @@ class HttpClient(object):
         self.connection = None \
             # type: Optional[Union[HttpConnection, Http2Connection]]
 
-    def _send(self, request):
+    def _send(self, request, uuid=None):
         # type: (TransportRequest) -> Tuple[UUID, bytes]
         if not self.connection:
             raise LocalProtocolError("Not connected.")
 
-        uuid, data = self.connection.send(request)
-        return uuid, data
+        ret_uuid, data = self.connection.send(request, uuid)
+        return ret_uuid, data
 
     @property
     def user(self):
@@ -740,13 +749,19 @@ class HttpClient(object):
                 )
                 message_type = "m.room.encrypted"
 
+        uuid = uuid4()
+
         request = self.api.room_send(
-            self._client.access_token, room_id, message_type, content
+            self._client.access_token, room_id, message_type, content, uuid
         )
 
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.room_send, 0)
-        return uuid, data
+        ret_uuid, data = self._send(request, uuid)
+        self.requests_made[ret_uuid] = RequestInfo(
+            RequestType.room_send,
+            0,
+            room_id
+        )
+        return ret_uuid, data
 
     def room_put_state(self, room_id, event_type, body):
         if not self._client.logged_in:
@@ -760,7 +775,11 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.room_put_state, 0)
+        self.requests_made[uuid] = RequestInfo(
+            RequestType.room_put_state,
+            0,
+            room_id
+        )
         return uuid, data
 
     def room_redact(self, room_id, event_id, reason=None):
@@ -775,7 +794,11 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.room_redact, 0)
+        self.requests_made[uuid] = RequestInfo(
+            RequestType.room_redact,
+            0,
+            room_id
+        )
         return uuid, data
 
     def room_kick(self, room_id, user_id, reason=None):
@@ -1087,11 +1110,20 @@ class HttpClient(object):
         elif request_type is RequestType.sync:
             response = SyncError.from_dict(parsed_dict)
         elif request_type is RequestType.room_send:
-            response = RoomSendError.from_dict(parsed_dict)
+            response = RoomSendError.from_dict(
+                parsed_dict,
+                request_info.extra_data
+            )
         elif request_type is RequestType.room_put_state:
-            response = RoomPutStateError.from_dict(parsed_dict)
+            response = RoomPutStateError.from_dict(
+                parsed_dict,
+                request_info.extra_data
+            )
         elif request_type is RequestType.room_redact:
-            response = RoomRedactError.from_dict(parsed_dict)
+            response = RoomRedactError.from_dict(
+                parsed_dict,
+                request_info.extra_data
+            )
         elif request_type is RequestType.room_kick:
             response = RoomKickError.from_dict(parsed_dict)
         elif request_type is RequestType.room_invite:

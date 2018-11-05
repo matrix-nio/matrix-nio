@@ -385,10 +385,11 @@ class HttpApi(object):
         path = Api.sync(access_token, next_batch, timeout, filter)
         return self._build_request("GET", path)
 
-    def room_send(self, access_token, room_id, msg_type, content):
+    def room_send(self, access_token, room_id, msg_type, content, txn_id=None):
         # type: (str, str, str, Dict[Any, Any]) -> TransportRequest
+        txn_id = txn_id or self.txn_id
         path, data = Api.room_send(
-            access_token, room_id, msg_type, content, self.txn_id
+            access_token, room_id, msg_type, content, txn_id
         )
         return self._build_request("PUT", path, data)
 
