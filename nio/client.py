@@ -441,7 +441,6 @@ class Client(object):
 
     def clear_parse_queue(self):
         self.parse_queue.clear()
-        self.partial_sync = None
 
     def receive(
         self,
