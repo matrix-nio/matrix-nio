@@ -313,8 +313,12 @@ class RoomEventIdResponse(Response):
         return ErrorResponse.from_dict(parsed_dict)
 
     @classmethod
-    def from_dict(cls, parsed_dict,  room_id):
-        # type: (Dict[Any, Any]) -> Union[RoomEventIdResponse, ErrorResponse]
+    def from_dict(
+        cls,
+        parsed_dict,  # type: Dict[Any, Any]
+        room_id       # type: str
+    ):
+        # type: (...) -> Union[RoomEventIdResponse, ErrorResponse]
         try:
             validate_json(parsed_dict, Schemas.room_event_id)
         except (SchemaError, ValidationError):
@@ -381,6 +385,7 @@ class ShareGroupSessionResponse(EmptyResponse):
 
 class DeleteDevicesAuthResponse(Response):
     def __init__(self, session, flows, params):
+        super().__init__()
         self.session = session
         self.flows = flows
         self.params = params
@@ -412,6 +417,7 @@ class DeleteDevicesResponse(EmptyResponse):
 class RoomMessagesResponse(Response):
     def __init__(self, chunk, start, end):
         # type: (List[Union[Event, UnknownBadEvent]], str, str) -> None
+        super().__init__()
         self.chunk = chunk
         self.start = start
         self.end = end
@@ -465,6 +471,7 @@ class RoomLeaveResponse(EmptyResponse):
 class KeysUploadResponse(Response):
     def __init__(self, curve25519_count, signed_curve25519_count):
         # type: (int, int) -> None
+        super().__init__()
         self.curve25519_count = curve25519_count
         self.signed_curve25519_count = signed_curve25519_count
 
@@ -484,9 +491,10 @@ class KeysUploadResponse(Response):
 class KeysQueryResponse(Response):
     def __init__(self, device_keys, failures):
         # type: (Dict[Any, Any], Dict[Any, Any]) -> None
+        super().__init__()
         self.device_keys = device_keys
         self.failures = failures
-        self.changed = {}
+        self.changed = {}  # type: Dict[str, Any]
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -505,6 +513,7 @@ class KeysQueryResponse(Response):
 class KeysClaimResponse(Response):
     def __init__(self, one_time_keys, failures):
         # type: (Dict[Any, Any], Dict[Any, Any]) -> None
+        super().__init__()
         self.one_time_keys = one_time_keys
         self.failures = failures
         self.room_id = None  # type: Optional[str]
@@ -526,6 +535,7 @@ class KeysClaimResponse(Response):
 class DevicesResponse(Response):
     def __init__(self, devices):
         # type: (List[Device]) -> None
+        super().__init__()
         self.devices = devices
 
     @classmethod
