@@ -228,7 +228,7 @@ PRAGMA secure_delete = ON;
 PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS accounts(
     device_id TEXT NOT NULL UNIQUE,
-    account BLOB, user_id TEXT, shared INTEGER PRIMARY KEY NOT NULL
+    account BLOB, user_id TEXT PRIMARY KEY NOT NULL, shared INTEGER
 );
 CREATE TABLE IF NOT EXISTS olm_sessions(
     device_id TEXT, session_id TEXT PRIMARY KEY, curve_key TEXT, session BLOB,
