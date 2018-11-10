@@ -1164,7 +1164,7 @@ class HttpClient(object):
         return response
 
     def handle_key_upload_error(self, response):
-        if response.status_code == 400:
+        if response.status_code in [400, 500]:
             self.olm.mark_keys_as_published()
             self.olm.save_account()
 
