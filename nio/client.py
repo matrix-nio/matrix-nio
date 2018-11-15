@@ -118,16 +118,15 @@ _RequestInfo = NamedTuple(
     "RequestInfo",
     [
         ("type", RequestType),
-        ("timeout", Optional[int]),
         ("extra_data", Optional[str])
     ]
 )
 
 
 class RequestInfo(_RequestInfo):
-    def __new__(cls, type, timeout=None, extra_data=None):
-        # type: (RequestType, Optional[int], Optional[str]) -> RequestInfo
-        return super().__new__(cls, type, timeout, extra_data)
+    def __new__(cls, type, extra_data=None):
+        # type: (RequestType, Optional[str]) -> RequestInfo
+        return super().__new__(cls, type, extra_data)
 
 
 class Client(object):
@@ -563,7 +562,7 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.login, 0, None)
+        self.requests_made[uuid] = RequestInfo(RequestType.login, None)
         return uuid, data
 
     def room_send(self, room_id, message_type, content):
@@ -596,7 +595,6 @@ class HttpClient(object):
         ret_uuid, data = self._send(request, uuid)
         self.requests_made[ret_uuid] = RequestInfo(
             RequestType.room_send,
-            0,
             room_id
         )
         return ret_uuid, data
@@ -615,7 +613,6 @@ class HttpClient(object):
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(
             RequestType.room_put_state,
-            0,
             room_id
         )
         return uuid, data
@@ -634,7 +631,6 @@ class HttpClient(object):
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(
             RequestType.room_redact,
-            0,
             room_id
         )
         return uuid, data
@@ -651,7 +647,7 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.room_kick, 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.room_kick)
         return uuid, data
 
     def room_invite(self, room_id, user_id):
@@ -666,7 +662,7 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.room_invite, 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.room_invite)
         return uuid, data
 
     def join(self, room_id):
@@ -679,7 +675,7 @@ class HttpClient(object):
         request = self.api.join(self._client.access_token, room_id)
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.join, 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.join)
         return uuid, data
 
     def room_leave(self, room_id):
@@ -692,7 +688,7 @@ class HttpClient(object):
         request = self.api.room_leave(self._client.access_token, room_id)
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.room_leave, 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.room_leave)
         return uuid, data
 
     def room_messages(
@@ -719,7 +715,7 @@ class HttpClient(object):
         )
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.room_messages, 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.room_messages)
         return uuid, data
 
     def keys_upload(self):
@@ -736,7 +732,7 @@ class HttpClient(object):
         request = self.api.keys_upload(self._client.access_token, keys_dict)
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.keys_upload, 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.keys_upload)
         return uuid, data
 
     def keys_query(self, full=False):
@@ -757,7 +753,7 @@ class HttpClient(object):
         request = self.api.keys_query(self._client.access_token, user_list)
 
         uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.keys_query, 0)
+        self.requests_made[uuid] = RequestInfo(RequestType.keys_query)
         return uuid, data
 
     def keys_claim(self, room_id):
@@ -787,7 +783,6 @@ class HttpClient(object):
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(
             RequestType.keys_claim,
-            0,
             room_id
         )
         return uuid, data
@@ -827,7 +822,6 @@ class HttpClient(object):
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(
             RequestType.share_group_session,
-            0,
             room_id
         )
         return uuid, data
@@ -845,7 +839,6 @@ class HttpClient(object):
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(
             RequestType.devices,
-            0,
             None
         )
         return uuid, data
@@ -867,7 +860,6 @@ class HttpClient(object):
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(
             RequestType.update_device,
-            0,
             None
         )
         return uuid, data
@@ -889,7 +881,6 @@ class HttpClient(object):
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(
             RequestType.delete_devices,
-            0,
             None
         )
         return uuid, data
@@ -910,7 +901,6 @@ class HttpClient(object):
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(
             RequestType.joined_members,
-            0,
             room_id
         )
         return uuid, data
@@ -930,8 +920,6 @@ class HttpClient(object):
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(
             RequestType.sync,
-            timeout or 0,
-            None
         )
         return uuid, data
 
