@@ -821,11 +821,8 @@ class RedactionEvent(Event):
         if bad:
             return bad
 
-        content = (
-            parsed_dict.pop("content") if "content" in parsed_dict else None
-        )
-
-        reason = content["reason"] if "reason" in content else None
+        content = parsed_dict.get("content", {})
+        reason = content.get("reason", None)
 
         return cls(
             parsed_dict["event_id"],

@@ -1067,7 +1067,7 @@ class Olm(object):
 
             if event.transaction_id:
                 parsed_dict["unsigned"] = {
-                        "transaction_id": event.transaction_id
+                    "transaction_id": event.transaction_id
                 }
 
             new_event = Event.parse_event(parsed_dict, True)
