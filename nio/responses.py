@@ -364,6 +364,10 @@ class EmptyResponse(Response):
 
 
 class _EmptyResponseWithRoomId(Response):
+    def __init__(self, room_id):
+        super().__init__()
+        self.room_id = room_id
+
     @staticmethod
     def create_error(parsed_dict, room_id):
         return ErrorResponse.from_dict(parsed_dict)
@@ -374,7 +378,7 @@ class _EmptyResponseWithRoomId(Response):
         try:
             validate_json(parsed_dict, Schemas.empty)
         except (SchemaError, ValidationError):
-            return cls.create_error(parsed_dict)
+            return cls.create_error(parsed_dict, room_id)
 
         return cls(room_id)
 
@@ -392,10 +396,6 @@ class RoomInviteResponse(EmptyResponse):
 
 
 class ShareGroupSessionResponse(_EmptyResponseWithRoomId):
-    def __init__(self, room_id):
-        self.room_id = room_id  # type: str
-        super().__init__()
-
     @staticmethod
     def create_error(parsed_dict):
         return ShareGroupSessionError.from_dict(parsed_dict)
