@@ -46,36 +46,37 @@ class TransportType(Enum):
 
 
 class TransportRequest(object):
-    def __init__(self, request, data=b""):
+    def __init__(self, request, data=b"", timeout=0):
         self._request = request
         self._data = data
         self.response = None  # Optional[TransportResponse]
+        self.timeout = timeout
 
     @classmethod
-    def get(host, target, data=None):
+    def get(host, target, timeout=0):
         raise NotImplementedError
 
     @classmethod
-    def post(host, target, data):
+    def post(host, target, data, timeout=0):
         raise NotImplementedError
 
     @classmethod
-    def put(host, target, data):
+    def put(host, target, data, timeout=0):
         raise NotImplementedError
 
 
 class HttpRequest(TransportRequest):
-    def __init__(self, request, data=b""):
-        super().__init__(request, data)
+    def __init__(self, request, data=b"", timeout=0):
+        super().__init__(request, data, timeout)
         self._end_of_message = h11.EndOfMessage()
 
     @classmethod
-    def get(cls, host, target):
+    def get(cls, host, target, timeout=0):
         request = h11.Request(
             method="GET", target=target, headers=HttpRequest._headers(host)
         )
 
-        return cls(request)
+        return cls(request, timeout=timeout)
 
     @staticmethod
     def _headers(host, data=None):
@@ -97,7 +98,7 @@ class HttpRequest(TransportRequest):
         return headers
 
     @classmethod
-    def _post_or_put(cls, method, host, target, data):
+    def _post_or_put(cls, method, host, target, data, timeout=0):
         request_data = (
             json.dumps(data, separators=(",", ":"))
             if isinstance(data, dict)
@@ -114,15 +115,15 @@ class HttpRequest(TransportRequest):
 
         d = h11.Data(data=request_data)
 
-        return cls(request, d)
+        return cls(request, d, timeout)
 
     @classmethod
-    def post(cls, host, target, data):
-        return cls._post_or_put("POST", host, target, data)
+    def post(cls, host, target, data, timeout=0):
+        return cls._post_or_put("POST", host, target, data, timeout)
 
     @classmethod
-    def put(cls, host, target, data):
-        return cls._post_or_put("PUT", host, target, data)
+    def put(cls, host, target, data, timeout=0):
+        return cls._post_or_put("PUT", host, target, data, timeout)
 
 
 class Http2Request(TransportRequest):
@@ -155,7 +156,7 @@ class Http2Request(TransportRequest):
         return headers
 
     @classmethod
-    def _post_or_put(cls, method, host, target, data):
+    def _post_or_put(cls, method, host, target, data, timeout):
         request_data = (
             json.dumps(data, separators=(",", ":"))
             if isinstance(data, dict)
@@ -170,23 +171,23 @@ class Http2Request(TransportRequest):
             headers=Http2Request._headers(host, request_data),
         )
 
-        return cls(request, request_data)
+        return cls(request, request_data, timeout)
 
     @classmethod
-    def put(cls, host, target, data):
-        return cls._post_or_put("PUT", host, target, data)
+    def put(cls, host, target, data, timeout=0):
+        return cls._post_or_put("PUT", host, target, data, timeout)
 
     @classmethod
-    def post(cls, host, target, data):
-        return cls._post_or_put("POST", host, target, data)
+    def post(cls, host, target, data, timeout=0):
+        return cls._post_or_put("POST", host, target, data, timeout)
 
     @classmethod
-    def get(cls, host, target):
+    def get(cls, host, target, timeout=0):
         request = Http2Request._request(
-            method="GET", target=target, headers=Http2Request._headers(host)
+            method="GET", target=target, headers=Http2Request._headers(host),
         )
 
-        return cls(request)
+        return cls(request, timeout=timeout)
 
 
 class HeaderDict(dict):
@@ -198,15 +199,16 @@ class HeaderDict(dict):
 
 
 class TransportResponse(object):
-    def __init__(self, uuid=None):
-        # type: () -> None
+    def __init__(self, uuid=None, timeout=0):
+        # type: (Optional[UUID], float) -> None
         self.headers = HeaderDict()  # type: HeaderDict
         self.content = b""  # type: bytes
         self.status_code = None  # type: Optional[int]
         self.uuid = uuid or uuid4()
         self.creation_time = time.time()
-        self.send_time = None  # type: Optional[int]
-        self.receive_time = None  # type: Optional[int]
+        self.timeout = timeout  # type: float
+        self.send_time = None  # type: Optional[float]
+        self.receive_time = None  # type: Optional[float]
         self.request_info = None  # type: Optional[Any]
 
     def add_response(self, response):
@@ -226,12 +228,15 @@ class TransportResponse(object):
     def elapsed(self):
         # type: () -> float
         if (self.receive_time is not None) and (self.send_time is not None):
-            return self.receive_time - self.send_time
+            elapsed = self.receive_time - self.send_time
 
-        if self.send_time is not None:
-            return time.time() - self.send_time
+        elif self.send_time is not None:
+            elapsed = time.time() - self.send_time
 
-        return 0
+        else:
+            elapsed = 0.0
+
+        return max(0, elapsed - (self.timeout / 1000))
 
     @property
     def text(self):
@@ -259,8 +264,8 @@ class HttpResponse(TransportResponse):
 
 
 class Http2Response(TransportResponse):
-    def __init__(self, uuid=None):
-        super().__init__(uuid)
+    def __init__(self, uuid=None, timeout=0):
+        super().__init__(uuid, timeout)
         self.was_reset = False
         self.error_code = None  # type: Optional[h2.errors.ErrorCodes]
 
@@ -320,16 +325,16 @@ class HttpConnection(Connection):
 
     @property
     def elapsed(self):
-        # type: () -> Tuple[Optional[UUID], float]
+        # type: () -> float
         if not self._current_response:
-            return None, 0
+            return 0
 
         response = self._current_response
 
-        return response.uuid, response.elapsed
+        return response.elapsed
 
     def send(self, request, uuid=None):
-        # type: (TransportRequest) -> Tuple[UUID, bytes]
+        # type: (TransportRequest, Optional[UUID]) -> Tuple[UUID, bytes]
         data = b""
 
         if not isinstance(request, HttpRequest):
@@ -349,7 +354,7 @@ class HttpConnection(Connection):
             if request.response:
                 self._current_response = request.response
             else:
-                self._current_response = HttpResponse(uuid)
+                self._current_response = HttpResponse(uuid, request.timeout)
 
             # Make mypy happy
             assert self._current_response
@@ -357,7 +362,7 @@ class HttpConnection(Connection):
             self._current_response.mark_as_sent()
             return self._current_response.uuid, data
         else:
-            request.response = HttpResponse(uuid)
+            request.response = HttpResponse(uuid, request.timeout)
             self._message_queue.append(request)
             return request.response.uuid, b""
 
@@ -403,16 +408,16 @@ class Http2Connection(Connection):
 
     @property
     def elapsed(self):
-        # type: () -> Tuple[Optional[UUID], float]
+        # type: () -> float
         if not self._responses:
-            return None, 0
+            return 0
 
         response = list(self._responses.values())[0]
 
-        return response.uuid, response.elapsed
+        return response.elapsed
 
     def send(self, request, uuid=None):
-        # type: (TransportRequest) -> Tuple[UUID, bytes]
+        # type: (TransportRequest, Optional[UUID]) -> Tuple[UUID, bytes]
         if not isinstance(request, Http2Request):
             raise TypeError("Invalid request type for HttpConnection")
 
@@ -430,7 +435,7 @@ class Http2Connection(Connection):
         self._connection.send_data(stream_id, request._data)
         self._connection.end_stream(stream_id)
         ret = self._connection.data_to_send()
-        response = Http2Response(uuid)
+        response = Http2Response(uuid, request.timeout)
         response.mark_as_sent()
         self._responses[stream_id] = response
 

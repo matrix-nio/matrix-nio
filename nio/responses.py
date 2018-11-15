@@ -102,12 +102,14 @@ class Response(object):
         self.uuid = ""
         self.start_time = None
         self.end_time = None
+        self.timeout = 0
 
     @property
     def elapsed(self):
         if not self.start_time or not self.end_time:
             return 0
-        return self.end_time - self.start_time
+        elapsed = self.end_time - self.start_time
+        return max(0, elapsed - (self.timeout / 1000))
 
 
 class ErrorResponse(Response):
@@ -361,6 +363,22 @@ class EmptyResponse(Response):
         return cls()
 
 
+class _EmptyResponseWithRoomId(Response):
+    @staticmethod
+    def create_error(parsed_dict, room_id):
+        return ErrorResponse.from_dict(parsed_dict)
+
+    @classmethod
+    def from_dict(cls, parsed_dict, room_id):
+        # type: (Dict[Any, Any], str) -> Union[Any, ErrorResponse]
+        try:
+            validate_json(parsed_dict, Schemas.empty)
+        except (SchemaError, ValidationError):
+            return cls.create_error(parsed_dict)
+
+        return cls(room_id)
+
+
 class RoomKickResponse(EmptyResponse):
     @staticmethod
     def create_error(parsed_dict):
@@ -373,9 +391,9 @@ class RoomInviteResponse(EmptyResponse):
         return RoomInviteError.from_dict(parsed_dict)
 
 
-class ShareGroupSessionResponse(EmptyResponse):
-    def __init__(self):
-        self.room_id = None  # type: Optional[str]
+class ShareGroupSessionResponse(_EmptyResponseWithRoomId):
+    def __init__(self, room_id):
+        self.room_id = room_id  # type: str
         super().__init__()
 
     @staticmethod

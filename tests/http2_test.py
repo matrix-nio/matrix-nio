@@ -56,80 +56,6 @@ class TestClass(object):
         )
         return f.serialize() + data.serialize()
 
-    def test_client(self):
-        client = HttpClient("localhost", "example")
-        client.connect(TransportType.HTTP2)
-        client.login("test")
-
-        e = ResponseReceived()
-        e.stream_id = 1
-        e.headers = self.example_response_headers
-
-        data = DataReceived()
-        data.stream_id = 1
-        data.flow_controlled_length = 88
-        data.data = self._load_response("tests/data/login_response.json")
-
-        end = StreamEnded()
-        end.stream_id = 1
-
-        response = client.connection._handle_events([e, data, end])
-        assert isinstance(response, TransportResponse)
-        assert response.status_code == 200
-        assert response.is_ok
-
-        client._client.receive(RequestType.login, response.text)
-        response = client.next_response()
-
-        assert isinstance(response, LoginResponse)
-
-        client.sync()
-
-        e = ResponseReceived()
-        e.stream_id = 3
-        e.headers = self.example_response_headers
-
-        data = DataReceived()
-        data.stream_id = 3
-        data.flow_controlled_length = 88
-        data.data = self._load_response("tests/data/sync.json")
-
-        end = StreamEnded()
-        end.stream_id = 3
-
-        response = client.connection._handle_events([e, data, end])
-
-        assert isinstance(response, TransportResponse)
-        assert response.status_code == 200
-        assert response.is_ok
-
-        client._client.receive("sync", response.text)
-        response = client.next_response()
-
-        assert isinstance(response, SyncResponse)
-
-        content = {
-            "body": "test",
-            "msgtype": "m.text"
-        }
-
-        sync_uuid, _ = client.sync()
-        uuid, _ = client.room_send(
-            "!test:localhost",
-            "m.room.message",
-            content
-        )
-
-        connection = client.connection
-
-        assert len(connection._responses) == 2
-
-        send_response = connection._responses[7]
-        sync_response = connection._responses[5]
-
-        assert send_response.uuid == uuid
-        assert sync_response.uuid == sync_uuid
-
     def test_api(self):
         content = {
             "body": "test",
@@ -153,6 +79,7 @@ class TestClass(object):
         response = Http2Response()
         response.send_time = 0
         response.receive_time = 30
+        response.timeout = 25 * 1000
         client.connection._responses[response.uuid] = response
         typed_response = RequestInfo("sync", 25 * 1000)
         client.requests_made[response.uuid] = typed_response

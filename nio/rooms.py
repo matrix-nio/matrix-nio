@@ -17,7 +17,7 @@
 from __future__ import unicode_literals
 
 from builtins import super
-from typing import Any, Dict, NamedTuple, Optional
+from typing import Any, Dict, NamedTuple, Optional, List
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
@@ -54,7 +54,7 @@ class MatrixRoom(object):
         self.users = dict()           # type: Dict[str, MatrixUser]
         self.encrypted = False        # type: bool
         self.power_levels = PowerLevels()  # type: PowerLevels
-        self.typing_users = []
+        self.typing_users = []        # type: List[str]
         # yapf: enable
 
     def display_name(self):

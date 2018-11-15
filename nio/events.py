@@ -50,6 +50,7 @@ def validate_or_badevent(
 class UnknownBadEvent(object):
     def __init__(self, source):
         self.source = Api.to_json(source)
+        self.transaction_id = None
 
 
 class Event(object):

@@ -359,13 +359,13 @@ class HttpApi(object):
         self._txn_id += 1
         return ret
 
-    def _build_request(self, method, path, data=None):
+    def _build_request(self, method, path, data=None, timeout=0):
         if method == "GET":
-            return HttpRequest.get(self.host, path)
+            return HttpRequest.get(self.host, path, timeout)
         elif method == "POST":
-            return HttpRequest.post(self.host, path, data)
+            return HttpRequest.post(self.host, path, data, timeout)
         elif method == "PUT":
-            return HttpRequest.put(self.host, path, data)
+            return HttpRequest.put(self.host, path, data, timeout)
         else:
             raise LocalProtocolError("Invalid request method")
 
@@ -383,11 +383,18 @@ class HttpApi(object):
     ):
         # type: (...) -> TransportRequest
         path = Api.sync(access_token, next_batch, timeout, filter)
-        return self._build_request("GET", path)
+        return self._build_request("GET", path, timeout=timeout)
 
-    def room_send(self, access_token, room_id, msg_type, content, txn_id=None):
-        # type: (str, str, str, Dict[Any, Any]) -> TransportRequest
-        txn_id = txn_id or self.txn_id
+    def room_send(
+        self,
+        access_token,  # type: str
+        room_id,       # type: str
+        msg_type,      # type: str
+        content,       # type: Dict[Any, Any]
+        txn_id=None    # type: Optional[str]
+    ):
+        # type: (...) -> TransportRequest
+        txn_id = txn_id or str(self.txn_id)
         path, data = Api.room_send(
             access_token, room_id, msg_type, content, txn_id
         )
@@ -484,12 +491,12 @@ class HttpApi(object):
 
 
 class Http2Api(HttpApi):
-    def _build_request(self, method, path, data=None):
+    def _build_request(self, method, path, data=None, timeout=0):
         if method == "GET":
-            return Http2Request.get(self.host, path)
+            return Http2Request.get(self.host, path, timeout)
         elif method == "POST":
-            return Http2Request.post(self.host, path, data)
+            return Http2Request.post(self.host, path, data, timeout)
         elif method == "PUT":
-            return Http2Request.put(self.host, path, data)
+            return Http2Request.put(self.host, path, data, timeout)
         else:
             raise LocalProtocolError("Invalid request method")

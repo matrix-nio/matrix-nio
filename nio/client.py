@@ -73,27 +73,10 @@ from .responses import (
     KeysClaimResponse,
     DevicesResponse,
     UpdateDeviceResponse,
-    UpdateDeviceError,
-    LoginError,
-    SyncError,
-    RoomSendError,
-    RoomPutStateError,
-    RoomRedactError,
-    RoomKickError,
-    RoomInviteError,
-    JoinError,
-    RoomLeaveError,
-    RoomMessagesError,
-    KeysUploadError,
-    KeysQueryError,
-    KeysClaimError,
-    ShareGroupSessionError,
-    DevicesError,
     DeleteDevicesAuthResponse,
     DeleteDevicesResponse,
-    DeleteDevicesError,
     JoinedMembersResponse,
-    JoinedMembersError
+    KeysUploadError
 )
 
 from .events import Event, BadEventType, RoomEncryptedEvent, MegolmEvent
@@ -107,15 +90,6 @@ except ImportError:
 
 logger = Logger("nio.client")
 logger_group.add_logger(logger)
-
-
-TimingInfo = NamedTuple(
-    "TimingInfo",
-    [
-        ("start", int),
-        ("end", int)
-    ]
-)
 
 
 @unique
@@ -138,28 +112,6 @@ class RequestType(Enum):
     delete_devices = 15
     update_device = 16
     joined_members = 17
-
-
-_TypedResponse = NamedTuple("TypedResponse", [
-    ("type", RequestType),
-    ("data", Dict[Any, Any]),
-    ("uuid", Optional[UUID]),
-    ("timing", Optional[TimingInfo]),
-    ("extra_data", Optional[str]),
-])
-
-
-class TypedResponse(_TypedResponse):
-    def __new__(
-        cls,
-        type,            # type: RequestType
-        data,            # type: Dict[Any, Any]
-        uuid=None,       # type: Optional[UUID]
-        timing=None,     # type: Optional[TimingInfo]
-        extra_data=None  # type: Optional[str]
-    ):
-        # type: (...) -> RequestInfo
-        return super().__new__(cls, type, data, uuid, timing, extra_data)
 
 
 _RequestInfo = NamedTuple(
@@ -189,8 +141,6 @@ class Client(object):
         self.user = user
         self.device_id = device_id
         self.session_dir = session_dir
-        self.parse_queue = deque()  # type: Deque[TypedResponse]
-        self.partial_sync = None  # type: Optional[PartialSyncResponse]
         self.olm = None  # type: Optional[Olm]
 
         self.user_id = ""
@@ -403,11 +353,6 @@ class Client(object):
 
             self.olm.users_for_key_query.update(changed_users)
 
-        if isinstance(response, PartialSyncResponse):
-            self.partial_sync = response
-        else:
-            self.partial_sync = None
-
     def _handle_messages_response(self, response):
         decrypted_events = []
 
@@ -439,132 +384,30 @@ class Client(object):
         for member in response.members:
             room.add_member(member.user_id, member.display_name)
 
-    def clear_parse_queue(self):
-        self.parse_queue.clear()
-
-    def receive(
-        self,
-        request_type,    # type: Union[str, RequestType]
-        json_string,     # type: str
-        uuid=None,       # type: Optional[UUID]
-        timing=None,     # type: Optional[TimingInfo]
-        extra_data=None  # type: Optional[str]
-    ):
-        # type: (...) -> bool
-        try:
-            parsed_dict = json.loads(json_string, encoding="utf-8") \
-                # type: Dict[Any, Any]
-        except JSONDecodeError as e:
-            raise RemoteProtocolError("Error parsing json: {}".format(str(e)))
-
-        if isinstance(request_type, str):
-            try:
-                request_type = RequestType[request_type]
-            except KeyError:
-                raise LocalProtocolError("Invalid request type {}".format(
-                    request_type))
-
-        response = TypedResponse(
-            request_type,
-            parsed_dict,
-            uuid,
-            timing,
-            extra_data
-        )
-        self.parse_queue.append(response)
-
-        return True
-
-    def next_response(self, max_events=0):
-        # type: (int) -> Optional[Response]
-        if not self.parse_queue and not self.partial_sync:
-            return None
-
-        if self.partial_sync:
-            sync_response = self.partial_sync.next_part(max_events)
-            self._handle_sync(sync_response)
-            return sync_response
-
-        typed_response = self.parse_queue.popleft()
-
-        response = None  # type: Optional[Response]
-
-        if typed_response.type is RequestType.login:
-            response = LoginResponse.from_dict(typed_response.data)
+    def receive_response(self, response):
+        """Receive a Matrix Response and change the client state accordingly.
+        Some responses will get edited for the callers convenience.
+        Args:
+            response (Response): the response that we wish the client to handle
+        """
+        if isinstance(response, LoginResponse):
             self._handle_login(response)
-        elif typed_response.type is RequestType.sync:
-            response = SyncResponse.from_dict(typed_response.data, max_events)
+        elif isinstance(response, SyncResponse):
             self._handle_sync(response)
-        elif typed_response.type is RequestType.room_send:
-            response = RoomSendResponse.from_dict(
-                typed_response.data,
-                typed_response.extra_data
-            )
-        elif typed_response.type is RequestType.room_put_state:
-            response = RoomPutStateResponse.from_dict(
-                typed_response.data,
-                typed_response.extra_data
-            )
-        elif typed_response.type is RequestType.room_redact:
-            response = RoomRedactResponse.from_dict(
-                typed_response.data,
-                typed_response.extra_data
-            )
-        elif typed_response.type is RequestType.room_kick:
-            response = RoomKickResponse.from_dict(typed_response.data)
-        elif typed_response.type is RequestType.room_invite:
-            response = RoomInviteResponse.from_dict(typed_response.data)
-        elif typed_response.type is RequestType.join:
-            response = JoinResponse.from_dict(typed_response.data)
-        elif typed_response.type is RequestType.room_leave:
-            response = RoomLeaveResponse.from_dict(typed_response.data)
-        elif typed_response.type is RequestType.room_messages:
-            response = RoomMessagesResponse.from_dict(typed_response.data)
+        elif isinstance(response, RoomMessagesResponse):
             self._handle_messages_response(response)
-        elif typed_response.type is RequestType.keys_upload:
-            response = KeysUploadResponse.from_dict(typed_response.data)
+        elif isinstance(response, KeysUploadResponse):
             self._handle_olm_response(response)
-        elif typed_response.type is RequestType.keys_query:
-            response = KeysQueryResponse.from_dict(typed_response.data)
+        elif isinstance(response, KeysQueryResponse):
             self._handle_olm_response(response)
-        elif typed_response.type is RequestType.keys_claim:
-            response = KeysClaimResponse.from_dict(typed_response.data)
-            if not isinstance(response, ErrorResponse):
-                response.room_id = typed_response.extra_data
-                self._handle_olm_response(response)
-        elif typed_response.type is RequestType.share_group_session:
-            response = ShareGroupSessionResponse.from_dict(typed_response.data)
-            if not isinstance(response, ErrorResponse):
-                response.room_id = typed_response.extra_data
-                self._handle_olm_response(response)
-        elif typed_response.type is RequestType.devices:
-            response = DevicesResponse.from_dict(typed_response.data)
-
-        elif typed_response.type is RequestType.delete_devices:
-            response = DeleteDevicesResponse.from_dict(typed_response.data)
-
-        elif typed_response.type is RequestType.update_device:
-            response = UpdateDeviceResponse.from_dict(typed_response.data)
-
-        elif typed_response.type is RequestType.joined_members:
-            assert typed_response.extra_data
-            response = JoinedMembersResponse.from_dict(
-                typed_response.data,
-                typed_response.extra_data
-            )
-            if not isinstance(response, ErrorResponse):
-                self._handle_joined_members(response)
-
-        if not response:
-            raise NotImplementedError(
-                "Response type {} not implemented".format(typed_response.type)
-            )
-
-        response.uuid = typed_response.uuid
-        if typed_response.timing:
-            response.start_time = typed_response.timing.start
-            response.end_time = typed_response.timing.end
-        return response
+        elif isinstance(response, KeysClaimResponse):
+            self._handle_olm_response(response)
+        elif isinstance(response, ShareGroupSessionResponse):
+            self._handle_olm_response(response)
+        elif isinstance(response, JoinedMembersResponse):
+            self._handle_joined_members(response)
+        else:
+            pass
 
 
 class HttpClient(object):
@@ -578,7 +421,9 @@ class HttpClient(object):
         # type: (...) -> None
         self.host = host
         self.requests_made = {}  # type: Dict[UUID, RequestInfo]
-        self.response_queue = deque()  # type: Deque[TransportResponse]
+        self.parse_queue = deque()  \
+            # type: Deque[Tuple[RequestInfo, TransportResponse]]
+        self.partial_sync = None  # type: Optional[PartialSyncResponse]
 
         self._client = Client(user, device_id, session_dir)
         self.api = None  # type: Optional[Union[HttpApi, Http2Api]]
@@ -586,7 +431,7 @@ class HttpClient(object):
             # type: Optional[Union[HttpConnection, Http2Connection]]
 
     def _send(self, request, uuid=None):
-        # type: (TransportRequest) -> Tuple[UUID, bytes]
+        # type: (TransportRequest, Optional[UUID]) -> Tuple[UUID, bytes]
         if not self.connection:
             raise LocalProtocolError("Not connected.")
 
@@ -648,17 +493,7 @@ class HttpClient(object):
         if not self.connection:
             return 0
 
-        uuid, elapsed = self.connection.elapsed
-
-        if not uuid:
-            return 0
-
-        request_info = self.requests_made[uuid]
-        # The timestamp are in seconds and the timeout is in ms
-        timeout = 0 if request_info.timeout is None else request_info.timeout
-        lag = max(0, elapsed - (timeout / 1000))
-
-        return lag
+        return self.connection.elapsed
 
     def verify_device(self, device):
         # type: (OlmDevice) -> bool
@@ -693,13 +528,17 @@ class HttpClient(object):
 
         return self.connection.connect()
 
+    def _clear_queues(self):
+        self.requests_made.clear()
+        self.parse_queue.clear()
+
     def disconnect(self):
         # type: () -> bytes
         if not self.connection:
             raise LocalProtocolError("Not connected.")
 
         data = self.connection.disconnect()
-        self._client.clear_parse_queue()
+        self._clear_queues()
         self.connection = None
         self.api = None
         return data
@@ -1097,7 +936,7 @@ class HttpClient(object):
         return uuid, data
 
     @staticmethod
-    def _create_error_resopnse(request_info, transport_response):
+    def _create_response(request_info, transport_response, max_events=0):
         request_type = request_info.type
         try:
             parsed_dict = json.loads(transport_response.text, encoding="utf-8")
@@ -1105,48 +944,51 @@ class HttpClient(object):
             parsed_dict = {}
 
         if request_type is RequestType.login:
-            response = LoginError.from_dict(parsed_dict)
+            response = LoginResponse.from_dict(parsed_dict)
         elif request_type is RequestType.sync:
-            response = SyncError.from_dict(parsed_dict)
+            response = SyncResponse.from_dict(parsed_dict, max_events)
         elif request_type is RequestType.room_send:
-            response = RoomSendError.from_dict(
+            response = RoomSendResponse.from_dict(
                 parsed_dict,
                 request_info.extra_data
             )
         elif request_type is RequestType.room_put_state:
-            response = RoomPutStateError.from_dict(
+            response = RoomPutStateResponse.from_dict(
                 parsed_dict,
                 request_info.extra_data
             )
         elif request_type is RequestType.room_redact:
-            response = RoomRedactError.from_dict(
+            response = RoomRedactResponse.from_dict(
                 parsed_dict,
                 request_info.extra_data
             )
         elif request_type is RequestType.room_kick:
-            response = RoomKickError.from_dict(parsed_dict)
+            response = RoomKickResponse.from_dict(parsed_dict)
         elif request_type is RequestType.room_invite:
-            response = RoomInviteError.from_dict(parsed_dict)
+            response = RoomInviteResponse.from_dict(parsed_dict)
         elif request_type is RequestType.join:
-            response = JoinError.from_dict(parsed_dict)
+            response = JoinResponse.from_dict(parsed_dict)
         elif request_type is RequestType.room_leave:
-            response = RoomLeaveError.from_dict(parsed_dict)
+            response = RoomLeaveResponse.from_dict(parsed_dict)
         elif request_type is RequestType.room_messages:
-            response = RoomMessagesError.from_dict(parsed_dict)
+            response = RoomMessagesResponse.from_dict(parsed_dict)
         elif request_type is RequestType.keys_upload:
-            response = KeysUploadError.from_dict(parsed_dict)
+            response = KeysUploadResponse.from_dict(parsed_dict)
         elif request_type is RequestType.keys_query:
-            response = KeysQueryError.from_dict(parsed_dict)
+            response = KeysQueryResponse.from_dict(parsed_dict)
         elif request_type is RequestType.keys_claim:
-            response = KeysClaimError.from_dict(parsed_dict)
+            response = KeysClaimResponse.from_dict(parsed_dict)
         elif request_type is RequestType.share_group_session:
-            response = ShareGroupSessionError.from_dict(parsed_dict)
+            response = ShareGroupSessionResponse.from_dict(
+                parsed_dict,
+                request_info.extra_data
+            )
         elif request_type is RequestType.devices:
-            response = DevicesError.from_dict(parsed_dict)
+            response = DevicesResponse.from_dict(parsed_dict)
         elif request_type is RequestType.update_device:
-            response = UpdateDeviceError.from_dict(parsed_dict)
+            response = UpdateDeviceResponse.from_dict(parsed_dict)
         elif request_type is RequestType.joined_members:
-            response = JoinedMembersError.from_dict(
+            response = JoinedMembersResponse.from_dict(
                 parsed_dict,
                 request_info.extra_data
             )
@@ -1154,10 +996,13 @@ class HttpClient(object):
             if transport_response.status_code == 401:
                 response = DeleteDevicesAuthResponse.from_dict(parsed_dict)
             else:
-                response = DeleteDevicesError.from_dict(parsed_dict)
+                response = DeleteDevicesResponse.from_dict(parsed_dict)
+
+        assert response
 
         response.start_time = transport_response.send_time
         response.end_time = transport_response.receive_time
+        response.timeout = transport_response.timeout
         response.status_code = transport_response.status_code
         response.uuid = transport_response.uuid
 
@@ -1189,17 +1034,6 @@ class HttpClient(object):
                 logger.info(
                     "Received response of type: {}".format(request_info.type)
                 )
-                if not response.send_time or not response.receive_time:
-                    timing = None
-                else:
-                    timing = TimingInfo(
-                        response.send_time,
-                        response.receive_time
-                    )
-                self._client.receive(
-                    request_info.type, response.text, response.uuid, timing,
-                    request_info.extra_data
-                )
             else:
                 logger.info(
                     (
@@ -1208,20 +1042,33 @@ class HttpClient(object):
                     ).format(request_info.type, response.status_code)
                 )
 
-                error_response = self._create_error_resopnse(
-                    request_info,
-                    response
-                )
-
-                if isinstance(error_response, KeysUploadError):
-                    self.handle_key_upload_error(error_response)
-
-                self.response_queue.append(error_response)
+            self.parse_queue.append((request_info, response))
         return
 
     def next_response(self, max_events=0):
         # type: (int) -> Optional[Union[TransportResponse, Response]]
-        if self.response_queue:
-            return self.response_queue.popleft()
+        if not self.parse_queue and not self.partial_sync:
+            return None
 
-        return self._client.next_response(max_events)
+        if self.partial_sync:
+            sync_response = self.partial_sync.next_part(max_events)
+            self._client.receive_response(sync_response)
+
+            if isinstance(sync_response, PartialSyncResponse):
+                self.partial_sync = sync_response
+
+            return sync_response
+
+        request_info, transport_response = self.parse_queue.popleft()
+        response = self._create_response(
+            request_info,
+            transport_response,
+            max_events
+        )
+
+        if isinstance(response, KeysUploadError):
+            self.handle_key_upload_error(response)
+
+        self._client.receive_response(response)
+
+        return response
