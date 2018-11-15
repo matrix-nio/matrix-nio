@@ -692,9 +692,7 @@ class Olm(object):
 
     def handle_response(self, response):
         if isinstance(response, KeysUploadResponse):
-            if not self.account.shared:
-                self.account.shared = True
-
+            self.account.shared = True
             self.uploaded_key_count = response.signed_curve25519_count
             self.mark_keys_as_published()
             self.save_account()
