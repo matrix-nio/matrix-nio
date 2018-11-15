@@ -409,7 +409,7 @@ class Client(object):
             pass
 
 
-class HttpClient(object):
+class HttpClient(Client):
     def __init__(
         self,
         host,  # type: str
@@ -424,10 +424,11 @@ class HttpClient(object):
             # type: Deque[Tuple[RequestInfo, TransportResponse]]
         self.partial_sync = None  # type: Optional[PartialSyncResponse]
 
-        self._client = Client(user, device_id, session_dir)
         self.api = None  # type: Optional[Union[HttpApi, Http2Api]]
         self.connection = None \
             # type: Optional[Union[HttpConnection, Http2Connection]]
+
+        super().__init__(user, device_id, session_dir)
 
     def _send(self, request, uuid=None):
         # type: (TransportRequest, Optional[UUID]) -> Tuple[UUID, bytes]
@@ -438,81 +439,12 @@ class HttpClient(object):
         return ret_uuid, data
 
     @property
-    def user(self):
-        return self._client.user
-
-    @user.setter
-    def user(self, user):
-        self._client.user = user
-
-    @property
-    def user_id(self):
-        return self._client.user_id
-
-    @property
-    def olm_account_shared(self):
-        return self._client.olm_account_shared
-
-    @property
-    def should_upload_keys(self):
-        return self._client.should_upload_keys
-
-    @property
-    def should_query_keys(self):
-        return self._client.should_query_keys
-
-    @property
-    def logged_in(self):
-        return self._client.logged_in
-
-    @property
-    def device_id(self):
-        return self._client.device_id
-
-    @device_id.setter
-    def device_id(self, device_id):
-        self._client.device_id = device_id
-
-    @property
-    def rooms(self):
-        return self._client.rooms
-
-    @property
-    def invited_rooms(self):
-        return self._client.invited_rooms
-
-    @property
-    def olm(self):
-        # type: () -> Optional[Olm]
-        return self._client.olm
-
-    @property
     def lag(self):
         # type: () -> float
         if not self.connection:
             return 0
 
         return self.connection.elapsed
-
-    def verify_device(self, device):
-        # type: (OlmDevice) -> bool
-        return self._client.verify_device(device)
-
-    def unverify_device(self, device):
-        # type: (OlmDevice) -> bool
-        return self._client.unverify_device(device)
-
-    def blacklist_device(self, device):
-        # type: (OlmDevice) -> bool
-        return self._client.blacklist_device(device)
-
-    def unblacklist_device(self, device):
-        # type: (OlmDevice) -> bool
-        return self._client.unblacklist_device(device)
-
-    def room_contains_unverified(self, room_id):
-        # type: (str) -> bool
-        return self._client.room_contains_unverified(room_id)
 
     def connect(self, transport_type=TransportType.HTTP):
         # type: (Optional[TransportType]) -> bytes
@@ -554,11 +486,11 @@ class HttpClient(object):
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
-        if not self._client.user:
+        if not self.user:
             raise LocalProtocolError("No user defined.")
 
         request = self.api.login(
-            self._client.user, password, device_name, self._client.device_id
+            self.user, password, device_name, self.device_id
         )
 
         uuid, data = self._send(request)
@@ -566,18 +498,18 @@ class HttpClient(object):
         return uuid, data
 
     def room_send(self, room_id, message_type, content):
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
         # TODO this can fail if we're not synced
-        if self._client.olm:
-            room = self._client.rooms[room_id]
+        if self.olm:
+            room = self.rooms[room_id]
 
             if room.encrypted:
-                content = self._client.olm.group_encrypt(
+                content = self.olm.group_encrypt(
                     room_id,
                     {
                         "content": content,
@@ -589,7 +521,7 @@ class HttpClient(object):
         uuid = uuid4()
 
         request = self.api.room_send(
-            self._client.access_token, room_id, message_type, content, uuid
+            self.access_token, room_id, message_type, content, uuid
         )
 
         ret_uuid, data = self._send(request, uuid)
@@ -600,14 +532,14 @@ class HttpClient(object):
         return ret_uuid, data
 
     def room_put_state(self, room_id, event_type, body):
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
         request = self.api.room_put_state(
-            self._client.access_token, room_id, event_type, body
+            self.access_token, room_id, event_type, body
         )
 
         uuid, data = self._send(request)
@@ -618,14 +550,14 @@ class HttpClient(object):
         return uuid, data
 
     def room_redact(self, room_id, event_id, reason=None):
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
         request = self.api.room_redact(
-            self._client.access_token, room_id, event_id, reason
+            self.access_token, room_id, event_id, reason
         )
 
         uuid, data = self._send(request)
@@ -636,14 +568,14 @@ class HttpClient(object):
         return uuid, data
 
     def room_kick(self, room_id, user_id, reason=None):
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
         request = self.api.room_kick(
-            self._client.access_token, room_id, user_id, reason
+            self.access_token, room_id, user_id, reason
         )
 
         uuid, data = self._send(request)
@@ -651,14 +583,14 @@ class HttpClient(object):
         return uuid, data
 
     def room_invite(self, room_id, user_id):
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
         request = self.api.room_invite(
-            self._client.access_token, room_id, user_id
+            self.access_token, room_id, user_id
         )
 
         uuid, data = self._send(request)
@@ -666,26 +598,26 @@ class HttpClient(object):
         return uuid, data
 
     def join(self, room_id):
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
-        request = self.api.join(self._client.access_token, room_id)
+        request = self.api.join(self.access_token, room_id)
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(RequestType.join)
         return uuid, data
 
     def room_leave(self, room_id):
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
-        request = self.api.room_leave(self._client.access_token, room_id)
+        request = self.api.room_leave(self.access_token, room_id)
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(RequestType.room_leave)
@@ -699,14 +631,14 @@ class HttpClient(object):
         direction=MessageDirection.back,
         limit=10
     ):
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
         request = self.api.room_messages(
-            self._client.access_token,
+            self.access_token,
             room_id,
             start,
             end,
@@ -719,55 +651,55 @@ class HttpClient(object):
         return uuid, data
 
     def keys_upload(self):
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
-        keys_dict = self._client.olm.share_keys()
+        keys_dict = self.olm.share_keys()
 
         logger.debug(pprint.pformat(keys_dict))
 
-        request = self.api.keys_upload(self._client.access_token, keys_dict)
+        request = self.api.keys_upload(self.access_token, keys_dict)
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(RequestType.keys_upload)
         return uuid, data
 
     def keys_query(self, full=False):
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
         if not full:
-            user_list = self._client.olm.users_for_key_query
+            user_list = self.olm.users_for_key_query
         else:
             user_list = [
-                user_id for room in self._client.rooms.values()
+                user_id for room in self.rooms.values()
                 if room.encrypted for user_id in room.users
             ]
 
-        request = self.api.keys_query(self._client.access_token, user_list)
+        request = self.api.keys_query(self.access_token, user_list)
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(RequestType.keys_query)
         return uuid, data
 
     def keys_claim(self, room_id):
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
-        if not self._client.olm:
+        if not self.olm:
             raise LocalProtocolError("Olm session is not loaded")
 
         try:
-            room = self._client.rooms[room_id]
+            room = self.rooms[room_id]
         except KeyError:
             raise LocalProtocolError("No such room with id {}".format(room_id))
 
@@ -775,10 +707,10 @@ class HttpClient(object):
             raise LocalProtocolError("Room with id {} is not encrypted".format(
                                      room_id))
 
-        user_list = self._client.olm.get_missing_sessions(
+        user_list = self.olm.get_missing_sessions(
             list(room.users.keys())
         )
-        request = self.api.keys_claim(self._client.access_token, user_list)
+        request = self.api.keys_claim(self.access_token, user_list)
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(
@@ -789,17 +721,17 @@ class HttpClient(object):
 
     def share_group_session(self, room_id, ignore_missing_sessions=False):
         # type: (str, bool) -> Tuple[UUID, bytes]
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
-        if not self._client.olm:
+        if not self.olm:
             raise LocalProtocolError("Olm session is not loaded")
 
         try:
-            room = self._client.rooms[room_id]
+            room = self.rooms[room_id]
         except KeyError:
             raise LocalProtocolError("No such room with id {}".format(room_id))
 
@@ -807,14 +739,14 @@ class HttpClient(object):
             raise LocalProtocolError("Room with id {} is not encrypted".format(
                 room_id))
 
-        to_device_dict = self._client.olm.share_group_session(
+        to_device_dict = self.olm.share_group_session(
             room_id,
             list(room.users.keys()),
             ignore_missing_sessions
         )
 
         request = self.api.to_device(
-            self._client.access_token,
+            self.access_token,
             "m.room.encrypted",
             to_device_dict
         )
@@ -828,13 +760,13 @@ class HttpClient(object):
 
     def devices(self):
         # type: () -> Tuple[UUID, bytes]
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
-        request = self.api.devices(self._client.access_token)
+        request = self.api.devices(self.access_token)
 
         uuid, data = self._send(request)
         self.requests_made[uuid] = RequestInfo(
@@ -845,14 +777,14 @@ class HttpClient(object):
 
     def update_device(self, device_id, content):
         # type: (str, Dict[str, str]) -> Tuple[UUID, bytes]
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
         request = self.api.update_device(
-            self._client.access_token,
+            self.access_token,
             device_id,
             content
         )
@@ -866,14 +798,14 @@ class HttpClient(object):
 
     def delete_devices(self, devices, auth=None):
         # type: (List[str], Optional[Dict[str, str]]) -> Tuple[UUID, bytes]
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
         request = self.api.delete_devices(
-            self._client.access_token,
+            self.access_token,
             devices,
             auth
         )
@@ -887,14 +819,14 @@ class HttpClient(object):
 
     def joined_members(self, room_id):
         # type: (str) -> Tuple[UUID, bytes]
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
         request = self.api.joined_members(
-            self._client.access_token,
+            self.access_token,
             room_id
         )
 
@@ -907,14 +839,14 @@ class HttpClient(object):
 
     def sync(self, timeout=None, filter=None):
         # type: (Optional[int], Optional[Dict[Any, Any]]) -> Tuple[UUID, bytes]
-        if not self._client.logged_in:
+        if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
         if not self.api:
             raise LocalProtocolError("Not connected.")
 
         request = self.api.sync(
-            self._client.access_token, self._client.next_batch, timeout, filter
+            self.access_token, self.next_batch, timeout, filter
         )
 
         uuid, data = self._send(request)
@@ -1040,7 +972,7 @@ class HttpClient(object):
 
         if self.partial_sync:
             sync_response = self.partial_sync.next_part(max_events)
-            self._client.receive_response(sync_response)
+            self.receive_response(sync_response)
 
             if isinstance(sync_response, PartialSyncResponse):
                 self.partial_sync = sync_response
@@ -1057,6 +989,6 @@ class HttpClient(object):
         if isinstance(response, KeysUploadError):
             self.handle_key_upload_error(response)
 
-        self._client.receive_response(response)
+        self.receive_response(response)
 
         return response
