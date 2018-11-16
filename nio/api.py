@@ -17,12 +17,15 @@
 from __future__ import unicode_literals
 
 import json
-from typing import Any, Dict, Optional, Tuple, List, Set, DefaultDict
+from typing import Any, Dict, Optional, Tuple, List, Set, DefaultDict, Union
 from enum import Enum, unique
 from collections import defaultdict
 
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest
+
+if False:
+    from uuid import UUID
 
 try:
     from urllib.parse import quote, urlencode, urlparse
@@ -127,7 +130,7 @@ class Api(object):
         if device_name:
             content_dict["initial_device_display_name"] = device_name
 
-        return path, Api.to_json(content_dict)
+        return "POST", path, Api.to_json(content_dict)
 
     @staticmethod
     def sync(
@@ -149,7 +152,7 @@ class Api(object):
             filter_json = json.dumps(filter, separators=(",", ":"))
             query_parameters["filter"] = filter_json
 
-        return Api._build_path("sync", query_parameters)
+        return "GET", Api._build_path("sync", query_parameters)
 
     @staticmethod
     def room_send(access_token, room_id, msg_type, content, tx_id):
@@ -159,7 +162,11 @@ class Api(object):
             room=room_id, msg_type=msg_type, tx_id=tx_id
         )
 
-        return Api._build_path(path, query_parameters), Api.to_json(content)
+        return (
+            "PUT",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content)
+        )
 
     @staticmethod
     def room_put_state(access_token, room_id, event_type, body):
@@ -169,7 +176,11 @@ class Api(object):
             room=room_id, event_type=event_type
         )
 
-        return Api._build_path(path, query_parameters), Api.to_json(body)
+        return (
+            "PUT",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body)
+        )
 
     @staticmethod
     def room_redact(access_token, room_id, event_id, tx_id, reason=None):
@@ -184,7 +195,11 @@ class Api(object):
             room=room_id, event_id=event_id, tx_id=tx_id
         )
 
-        return Api._build_path(path, query_parameters), Api.to_json(body)
+        return (
+            "PUT",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body)
+        )
 
     @staticmethod
     def room_kick(access_token, room_id, user_id, reason=None):
@@ -197,7 +212,11 @@ class Api(object):
 
         path = "rooms/{room}/kick".format(room=room_id)
 
-        return Api._build_path(path, query_parameters), Api.to_json(body)
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body)
+        )
 
     @staticmethod
     def room_invite(access_token, room_id, user_id):
@@ -205,7 +224,11 @@ class Api(object):
         body = {"user_id": user_id}
         path = "rooms/{room}/invite".format(room=room_id)
 
-        return Api._build_path(path, query_parameters), Api.to_json(body)
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body)
+        )
 
     @staticmethod
     def join(access_token, room_id):
@@ -213,7 +236,11 @@ class Api(object):
         body = {}
         path = "join/{room}".format(room=room_id)
 
-        return Api._build_path(path, query_parameters), Api.to_json(body)
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body)
+        )
 
     @staticmethod
     def room_leave(access_token, room_id):
@@ -221,7 +248,11 @@ class Api(object):
         body = {}
         path = "rooms/{room}/leave".format(room=room_id)
 
-        return Api._build_path(path, query_parameters), Api.to_json(body)
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body)
+        )
 
     @staticmethod
     def room_messages(
@@ -256,7 +287,7 @@ class Api(object):
 
         path = "rooms/{room}/messages".format(room=room_id)
 
-        return Api._build_path(path, query_parameters)
+        return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
     def keys_upload(access_token, key_dict):
@@ -264,7 +295,11 @@ class Api(object):
         body = key_dict
         path = "keys/upload"
 
-        return Api._build_path(path, query_parameters), Api.to_json(body)
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body)
+        )
 
     @staticmethod
     def keys_query(access_token, user_set):
@@ -276,7 +311,11 @@ class Api(object):
             "device_keys": {user: [] for user in user_set}
         }  # type: Dict[str, Dict[str, List]]
 
-        return Api._build_path(path, query_parameters), Api.to_json(content)
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content)
+        )
 
     @staticmethod
     def keys_claim(access_token, user_set):
@@ -294,25 +333,33 @@ class Api(object):
             "one_time_keys": payload
         }
 
-        return Api._build_path(path, query_parameters), Api.to_json(content)
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content)
+        )
 
     @staticmethod
     def to_device(access_token, event_type, content, tx_id):
-        # type: (str, str, Dict[Any, Any], int) -> Tuple[str, str]
+        # type: (str, str, Dict[Any, Any], Union[str, UUID]) -> Tuple[str, str]
         query_parameters = {"access_token": access_token}
         path = "sendToDevice/{event_type}/{tx_id}".format(
             event_type=event_type,
             tx_id=tx_id
         )
 
-        return Api._build_path(path, query_parameters), Api.to_json(content)
+        return (
+            "PUT",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content)
+        )
 
     @staticmethod
     def devices(access_token):
         # type: (str) -> str
         query_parameters = {"access_token": access_token}
         path = "devices"
-        return Api._build_path(path, query_parameters)
+        return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
     def update_device(access_token, device_id, content):
@@ -320,7 +367,11 @@ class Api(object):
         query_parameters = {"access_token": access_token}
         path = "devices/{}".format(device_id)
 
-        return Api._build_path(path, query_parameters), Api.to_json(content)
+        return (
+            "PUT",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content)
+        )
 
     @staticmethod
     def delete_devices(access_token, devices, auth_dict=None):
@@ -335,7 +386,11 @@ class Api(object):
         if auth_dict:
             content["auth"] = auth_dict
 
-        return Api._build_path(path, query_parameters), Api.to_json(content)
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content)
+        )
 
     @staticmethod
     def joined_members(access_token, room_id):
@@ -343,160 +398,4 @@ class Api(object):
         query_parameters = {"access_token": access_token}
         path = "rooms/{}/joined_members".format(room_id)
 
-        return Api._build_path(path, query_parameters)
-
-
-class HttpApi(object):
-    def __init__(self, host):
-        # type: (str) -> None
-        self.host = host
-        self._txn_id = 0
-
-    @property
-    def txn_id(self):
-        # type: () -> int
-        ret = self._txn_id
-        self._txn_id += 1
-        return ret
-
-    def _build_request(self, method, path, data=None, timeout=0):
-        if method == "GET":
-            return HttpRequest.get(self.host, path, timeout)
-        elif method == "POST":
-            return HttpRequest.post(self.host, path, data, timeout)
-        elif method == "PUT":
-            return HttpRequest.put(self.host, path, data, timeout)
-        else:
-            raise LocalProtocolError("Invalid request method")
-
-    def login(self, user, password, device_name="", device_id=""):
-        # type: (str, str, Optional[str], Optional[str]) -> TransportRequest
-        path, post_data = Api.login(user, password, device_name, device_id)
-        return self._build_request("POST", path, post_data)
-
-    def sync(
-        self,
-        access_token,  # type: str
-        next_batch=None,  # type: Optional[str]
-        timeout=None,  # type: Optional[int]
-        filter=None,  # type: Optional[Dict[Any, Any]]
-    ):
-        # type: (...) -> TransportRequest
-        path = Api.sync(access_token, next_batch, timeout, filter)
-        return self._build_request("GET", path, timeout=timeout)
-
-    def room_send(
-        self,
-        access_token,  # type: str
-        room_id,       # type: str
-        msg_type,      # type: str
-        content,       # type: Dict[Any, Any]
-        txn_id=None    # type: Optional[str]
-    ):
-        # type: (...) -> TransportRequest
-        txn_id = txn_id or str(self.txn_id)
-        path, data = Api.room_send(
-            access_token, room_id, msg_type, content, txn_id
-        )
-        return self._build_request("PUT", path, data)
-
-    def room_put_state(self, access_token, room_id, event_type, body):
-        path, data = Api.room_put_state(
-            access_token, room_id, event_type, body
-        )
-        return self._build_request("PUT", path, data)
-
-    def room_redact(self, access_token, room_id, event_id, reason=None):
-        path, data = Api.room_redact(
-            access_token, room_id, event_id, self.txn_id, reason
-        )
-        return self._build_request("PUT", path, data)
-
-    def room_kick(self, access_token, room_id, user_id, reason=None):
-        path, data = Api.room_kick(access_token, room_id, user_id, reason)
-        return self._build_request("POST", path, data)
-
-    def room_invite(self, access_token, room_id, user_id):
-        path, data = Api.room_invite(access_token, room_id, user_id)
-        return self._build_request("POST", path, data)
-
-    def join(self, access_token, room_id):
-        path, data = Api.join(access_token, room_id)
-        return self._build_request("POST", path, data)
-
-    def room_leave(self, access_token, room_id):
-        path, data = Api.room_leave(access_token, room_id)
-        return self._build_request("POST", path, data)
-
-    def room_messages(
-        self,
-        access_token,
-        room_id,
-        start,
-        end=None,
-        direction=MessageDirection.back,
-        limit=10
-    ):
-        path = Api.room_messages(
-            access_token,
-            room_id,
-            start,
-            end,
-            direction,
-            limit
-        )
-        return self._build_request("GET", path)
-
-    def keys_upload(self, access_token, keys_dict):
-        path, data = Api.keys_upload(access_token, keys_dict)
-        return self._build_request("POST", path, data)
-
-    def keys_query(self, access_token, user_set):
-        # type: (str, Set[str]) -> TransportRequest
-        path, data = Api.keys_query(access_token, user_set)
-        return self._build_request("POST", path, data)
-
-    def keys_claim(self, access_token, user_set):
-        # type: (str, Dict[str, List[str]]) -> TransportRequest
-        path, data = Api.keys_claim(access_token, user_set)
-        return self._build_request("POST", path, data)
-
-    def to_device(self, access_token, event_type, content):
-        path, data = Api.to_device(
-            access_token,
-            event_type,
-            content,
-            self.txn_id
-        )
-        return self._build_request("PUT", path, data)
-
-    def devices(self, access_token):
-        path = Api.devices(access_token)
-        return self._build_request("GET", path)
-
-    def update_device(self, access_token, device_id, content):
-        # type: (str, str, Dict[str, str]) -> TransportRequest
-        path, data = Api.update_device(access_token, device_id, content)
-        return self._build_request("PUT", path, data)
-
-    def delete_devices(self, access_token, devices, auth_dict=None):
-        # type: (str, List[str], Optional[Dict[str, str]]) -> TransportRequest
-        path, data = Api.delete_devices(access_token, devices, auth_dict)
-        return self._build_request("POST", path, data)
-
-    def joined_members(self, access_token, room_id):
-        # type: (str, str) -> TransportRequest
-        path = Api.joined_members(access_token, room_id)
-        return self._build_request("GET", path)
-
-
-class Http2Api(HttpApi):
-    def _build_request(self, method, path, data=None, timeout=0):
-        if method == "GET":
-            return Http2Request.get(self.host, path, timeout)
-        elif method == "POST":
-            return Http2Request.post(self.host, path, data, timeout)
-        elif method == "PUT":
-            return Http2Request.put(self.host, path, data, timeout)
-        else:
-            raise LocalProtocolError("Invalid request method")
+        return "GET", Api._build_path(path, query_parameters)

@@ -7,7 +7,6 @@ import h2
 from nio.client import HttpClient, TransportType, RequestInfo, RequestType
 from nio.http import TransportResponse, Http2Response
 from nio.responses import LoginResponse, SyncResponse
-from nio.api import Http2Api
 from h2.events import (
     ResponseReceived,
     DataReceived,
@@ -55,23 +54,6 @@ class TestClass(object):
             flags=['END_STREAM']
         )
         return f.serialize() + data.serialize()
-
-    def test_api(self):
-        content = {
-            "body": "test",
-            "msgtype": "m.text"
-        }
-
-        api = Http2Api("localhost")
-        request = api.room_send(
-            "token",
-            "!test:localhost",
-            "m.room.message",
-            content
-        )
-        assert request._request
-
-        # assert request._request == ""
 
     def test_client_lag(self, frame_factory):
         client = HttpClient("localhost", "example")
