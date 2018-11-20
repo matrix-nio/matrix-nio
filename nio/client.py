@@ -978,6 +978,10 @@ class HttpClient(Client):
 
         assert response
 
+        logger.info("Received new response of type {}".format(
+            response.__class__.__name__
+        ))
+
         response.start_time = transport_response.send_time
         response.end_time = transport_response.receive_time
         response.timeout = transport_response.timeout
@@ -1032,6 +1036,8 @@ class HttpClient(Client):
 
             if isinstance(sync_response, PartialSyncResponse):
                 self.partial_sync = sync_response
+            else:
+                self.partial_sync = None
 
             return sync_response
 
@@ -1042,7 +1048,10 @@ class HttpClient(Client):
             max_events
         )
 
-        if isinstance(response, KeysUploadError):
+        if isinstance(response, PartialSyncResponse):
+            self.partial_sync = response
+
+        elif isinstance(response, KeysUploadError):
             self.handle_key_upload_error(response)
 
         self.receive_response(response)
