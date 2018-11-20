@@ -449,9 +449,10 @@ class HttpClient(Client):
         super().__init__(user, device_id, session_dir)
 
     @connected
-    def _send(self, request, uuid=None):
+    def _send(self, request, request_info, uuid=None):
         # type: (TransportRequest, Optional[UUID]) -> Tuple[UUID, bytes]
         ret_uuid, data = self.connection.send(request, uuid)
+        self.requests_made[ret_uuid] = request_info
         return ret_uuid, data
 
     def _build_request(self, api_response, timeout=0):
@@ -531,9 +532,7 @@ class HttpClient(Client):
             )
         )
 
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.login, None)
-        return uuid, data
+        return self._send(request, RequestInfo(RequestType.login))
 
     @connected
     @logged_in
@@ -564,12 +563,11 @@ class HttpClient(Client):
             )
         )
 
-        ret_uuid, data = self._send(request, uuid)
-        self.requests_made[ret_uuid] = RequestInfo(
-            RequestType.room_send,
-            room_id
+        return self._send(
+            request,
+            RequestInfo(RequestType.room_send, room_id),
+            uuid
         )
-        return ret_uuid, data
 
     @connected
     @logged_in
@@ -583,12 +581,10 @@ class HttpClient(Client):
             )
         )
 
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(
-            RequestType.room_put_state,
-            room_id
+        return self._send(
+            request,
+            RequestInfo(RequestType.room_put_state, room_id)
         )
-        return uuid, data
 
     @connected
     @logged_in
@@ -605,12 +601,11 @@ class HttpClient(Client):
             )
         )
 
-        uuid, data = self._send(request, uuid)
-        self.requests_made[uuid] = RequestInfo(
-            RequestType.room_redact,
-            room_id
+        return self._send(
+            request,
+            RequestInfo(RequestType.room_redact, room_id),
+            uuid
         )
-        return uuid, data
 
     @connected
     @logged_in
@@ -624,9 +619,10 @@ class HttpClient(Client):
             )
         )
 
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.room_kick)
-        return uuid, data
+        return self._send(
+            request,
+            RequestInfo(RequestType.room_kick)
+        )
 
     @connected
     @logged_in
@@ -639,18 +635,13 @@ class HttpClient(Client):
             )
         )
 
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.room_invite)
-        return uuid, data
+        return self._send(request, RequestInfo(RequestType.room_invite))
 
     @connected
     @logged_in
     def join(self, room_id):
         request = self._build_request(Api.join(self.access_token, room_id))
-
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.join)
-        return uuid, data
+        return self._send(request, RequestInfo(RequestType.room_join))
 
     @connected
     @logged_in
@@ -661,10 +652,7 @@ class HttpClient(Client):
                 room_id
             )
         )
-
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.room_leave)
-        return uuid, data
+        return self._send(request, RequestInfo(RequestType.room_leave))
 
     @connected
     @logged_in
@@ -686,10 +674,7 @@ class HttpClient(Client):
                 limit=limit
             )
         )
-
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.room_messages)
-        return uuid, data
+        return self._send(request, RequestInfo(RequestType.room_messages))
 
     @connected
     @logged_in
@@ -704,10 +689,7 @@ class HttpClient(Client):
                 keys_dict
             )
         )
-
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.keys_upload)
-        return uuid, data
+        return self._send(request, RequestInfo(RequestType.keys_upload))
 
     @connected
     @logged_in
@@ -726,10 +708,7 @@ class HttpClient(Client):
                 user_list
             )
         )
-
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(RequestType.keys_query)
-        return uuid, data
+        return self._send(request, RequestInfo(RequestType.keys_query))
 
     @connected
     @logged_in
@@ -755,13 +734,10 @@ class HttpClient(Client):
                 user_list
             )
         )
-
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(
-            RequestType.keys_claim,
-            room_id
+        return self._send(
+            request,
+            RequestInfo(RequestType.keys_claim, room_id)
         )
-        return uuid, data
 
     @connected
     @logged_in
@@ -801,25 +777,17 @@ class HttpClient(Client):
             )
         )
 
-        uuid, data = self._send(request, uuid)
-        self.requests_made[uuid] = RequestInfo(
-            RequestType.share_group_session,
-            room_id
+        return self._send(
+            request,
+            RequestInfo(RequestType.share_group_session, room_id)
         )
-        return uuid, data
 
     @connected
     @logged_in
     def devices(self):
         # type: () -> Tuple[UUID, bytes]
         request = self._build_request(Api.devices(self.access_token))
-
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(
-            RequestType.devices,
-            None
-        )
-        return uuid, data
+        return self._send(request, RequestInfo(RequestType.devices))
 
     @connected
     @logged_in
@@ -833,12 +801,7 @@ class HttpClient(Client):
             )
         )
 
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(
-            RequestType.update_device,
-            None
-        )
-        return uuid, data
+        return self._send(request, RequestInfo(RequestType.update_device))
 
     @connected
     @logged_in
@@ -852,12 +815,7 @@ class HttpClient(Client):
             )
         )
 
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(
-            RequestType.delete_devices,
-            None
-        )
-        return uuid, data
+        return self._send(request, RequestInfo(RequestType.delete_devices))
 
     @connected
     @logged_in
@@ -870,12 +828,10 @@ class HttpClient(Client):
             )
         )
 
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(
-            RequestType.joined_members,
-            room_id
+        return self._send(
+            request,
+            RequestInfo(RequestType.joined_members, room_id)
         )
-        return uuid, data
 
     @connected
     @logged_in
@@ -891,11 +847,7 @@ class HttpClient(Client):
             timeout
         )
 
-        uuid, data = self._send(request)
-        self.requests_made[uuid] = RequestInfo(
-            RequestType.sync,
-        )
-        return uuid, data
+        return self._send(request, RequestInfo(RequestType.sync))
 
     @staticmethod
     def _create_response(request_info, transport_response, max_events=0):
