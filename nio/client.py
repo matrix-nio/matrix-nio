@@ -410,6 +410,15 @@ class Client(object):
             pass
 
 
+def connected(func):
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        if not self.connection:
+            raise LocalProtocolError("Not connected.")
+        return func(*args, **kwargs)
+    return wrapper
+
+
 class HttpClient(Client):
     def __init__(
         self,
@@ -430,11 +439,9 @@ class HttpClient(Client):
 
         super().__init__(user, device_id, session_dir)
 
+    @connected
     def _send(self, request, uuid=None):
         # type: (TransportRequest, Optional[UUID]) -> Tuple[UUID, bytes]
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
-
         ret_uuid, data = self.connection.send(request, uuid)
         return ret_uuid, data
 
@@ -490,28 +497,22 @@ class HttpClient(Client):
         self.requests_made.clear()
         self.parse_queue.clear()
 
+    @connected
     def disconnect(self):
         # type: () -> bytes
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
-
         data = self.connection.disconnect()
         self._clear_queues()
         self.connection = None
         return data
 
+    @connected
     def data_to_send(self):
         # type: () -> bytes
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
-
         return self.connection.data_to_send()
 
+    @connected
     def login(self, password, device_name=""):
         # type: (str, Optional[str]) -> Tuple[UUID, bytes]
-        if not self.user:
-            raise LocalProtocolError("No user defined.")
-
         request = self._build_request(
             Api.login(
                 self.user,
@@ -525,13 +526,10 @@ class HttpClient(Client):
         self.requests_made[uuid] = RequestInfo(RequestType.login, None)
         return uuid, data
 
+    @connected
     def room_send(self, room_id, message_type, content, tx_id=None):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
-
         # TODO this can fail if we're not synced
         if self.olm:
             room = self.rooms[room_id]
@@ -565,12 +563,10 @@ class HttpClient(Client):
         )
         return ret_uuid, data
 
+    @connected
     def room_put_state(self, room_id, event_type, body):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         request = self._build_request(
             Api.room_put_state(
@@ -588,12 +584,10 @@ class HttpClient(Client):
         )
         return uuid, data
 
+    @connected
     def room_redact(self, room_id, event_id, reason=None, tx_id=None):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         uuid = tx_id or uuid4()
 
@@ -614,12 +608,10 @@ class HttpClient(Client):
         )
         return uuid, data
 
+    @connected
     def room_kick(self, room_id, user_id, reason=None):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         request = self._build_request(
             Api.room_kick(
@@ -634,13 +626,10 @@ class HttpClient(Client):
         self.requests_made[uuid] = RequestInfo(RequestType.room_kick)
         return uuid, data
 
+    @connected
     def room_invite(self, room_id, user_id):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
-
         request = self._build_request(
             Api.room_invite(
                 self.access_token,
@@ -653,12 +642,10 @@ class HttpClient(Client):
         self.requests_made[uuid] = RequestInfo(RequestType.room_invite)
         return uuid, data
 
+    @connected
     def join(self, room_id):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         request = self._build_request(Api.join(self.access_token, room_id))
 
@@ -666,12 +653,10 @@ class HttpClient(Client):
         self.requests_made[uuid] = RequestInfo(RequestType.join)
         return uuid, data
 
+    @connected
     def room_leave(self, room_id):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         request = self._build_request(
             Api.room_leave(
@@ -684,6 +669,7 @@ class HttpClient(Client):
         self.requests_made[uuid] = RequestInfo(RequestType.room_leave)
         return uuid, data
 
+    @connected
     def room_messages(
         self,
         room_id,
@@ -694,9 +680,6 @@ class HttpClient(Client):
     ):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         request = self._build_request(
             Api.room_messages(
@@ -713,12 +696,10 @@ class HttpClient(Client):
         self.requests_made[uuid] = RequestInfo(RequestType.room_messages)
         return uuid, data
 
+    @connected
     def keys_upload(self):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         keys_dict = self.olm.share_keys()
 
@@ -735,12 +716,10 @@ class HttpClient(Client):
         self.requests_made[uuid] = RequestInfo(RequestType.keys_upload)
         return uuid, data
 
+    @connected
     def keys_query(self, full=False):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         if not full:
             user_list = self.olm.users_for_key_query
@@ -761,12 +740,10 @@ class HttpClient(Client):
         self.requests_made[uuid] = RequestInfo(RequestType.keys_query)
         return uuid, data
 
+    @connected
     def keys_claim(self, room_id):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         if not self.olm:
             raise LocalProtocolError("Olm session is not loaded")
@@ -797,6 +774,7 @@ class HttpClient(Client):
         )
         return uuid, data
 
+    @connected
     def share_group_session(
         self,
         room_id,
@@ -806,9 +784,6 @@ class HttpClient(Client):
         # type: (str, bool, str) -> Tuple[UUID, bytes]
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         if not self.olm:
             raise LocalProtocolError("Olm session is not loaded")
@@ -846,13 +821,11 @@ class HttpClient(Client):
         )
         return uuid, data
 
+    @connected
     def devices(self):
         # type: () -> Tuple[UUID, bytes]
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         request = self._build_request(Api.devices(self.access_token))
 
@@ -863,13 +836,11 @@ class HttpClient(Client):
         )
         return uuid, data
 
+    @connected
     def update_device(self, device_id, content):
         # type: (str, Dict[str, str]) -> Tuple[UUID, bytes]
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         request = self._build_request(
             Api.update_device(
@@ -886,13 +857,11 @@ class HttpClient(Client):
         )
         return uuid, data
 
+    @connected
     def delete_devices(self, devices, auth=None):
         # type: (List[str], Optional[Dict[str, str]]) -> Tuple[UUID, bytes]
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         request = self._build_request(
             Api.delete_devices(
@@ -909,13 +878,11 @@ class HttpClient(Client):
         )
         return uuid, data
 
+    @connected
     def joined_members(self, room_id):
         # type: (str) -> Tuple[UUID, bytes]
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         request = self._build_request(
             Api.joined_members(
@@ -931,13 +898,11 @@ class HttpClient(Client):
         )
         return uuid, data
 
+    @connected
     def sync(self, timeout=None, filter=None):
         # type: (Optional[int], Optional[Dict[Any, Any]]) -> Tuple[UUID, bytes]
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
 
         request = self._build_request(
             Api.sync(
@@ -1033,11 +998,9 @@ class HttpClient(Client):
             self.olm.mark_keys_as_published()
             self.olm.save_account()
 
+    @connected
     def receive(self, data):
         # type: (bytes) -> None
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
-
         try:
             response = self.connection.receive(data)
         except (h11.RemoteProtocolError, h2.exceptions.ProtocolError) as e:

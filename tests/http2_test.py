@@ -3,10 +3,12 @@
 from __future__ import unicode_literals
 
 import h2
+import pytest
 
 from nio.client import HttpClient, TransportType, RequestInfo, RequestType
 from nio.http import TransportResponse, Http2Response
 from nio.responses import LoginResponse, SyncResponse
+from nio.exceptions import LocalProtocolError
 from h2.events import (
     ResponseReceived,
     DataReceived,
@@ -67,6 +69,12 @@ class TestClass(object):
         client.requests_made[response.uuid] = typed_response
 
         assert client.lag == 5
+
+    def test_client_local_error(self, frame_factory):
+        client = HttpClient("localhost", "example")
+
+        with pytest.raises(LocalProtocolError):
+            uuid, request = client.login("wordpass")
 
     def test_client_receive(self, frame_factory):
         client = HttpClient("localhost", "example")
