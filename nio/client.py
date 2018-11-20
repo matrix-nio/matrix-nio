@@ -456,7 +456,7 @@ class Client(object):
         """
         if isinstance(response, LoginResponse):
             self._handle_login(response)
-        elif isinstance(response, SyncResponse):
+        elif isinstance(response, (SyncResponse, PartialSyncResponse)):
             self._handle_sync(response)
         elif isinstance(response, RoomMessagesResponse):
             self._handle_messages_response(response)
