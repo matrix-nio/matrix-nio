@@ -156,11 +156,17 @@ class Client(object):
 
     @property
     def logged_in(self):
+        """A property that tracks the logged in status of the client.
+        Returns True if the client is logged in to the server, False otherwise.
+        """
         # type: () -> bool
         return True if self.access_token else False
 
     @property
     def olm_account_shared(self):
+        """Check if the clients Olm account is shared with the server.
+        Returns True if the Olm account is shared, False otherwise.
+        """
         if not self.olm:
             raise LocalProtocolError("Olm account isn't loaded")
 
@@ -168,6 +174,9 @@ class Client(object):
 
     @property
     def should_upload_keys(self):
+        """Check if the client should upload encryption keys.
+        Returns True if a keys need to be uploaded, false otherwise.
+        """
         if not self.olm:
             return False
 
@@ -175,12 +184,23 @@ class Client(object):
 
     @property
     def should_query_keys(self):
+        """Check if the client should make a key query call to the server.
+        Returns True if a key query is necessary, false otherwise.
+        """
         if not self.olm:
             return False
 
         return self.olm.should_query_keys
 
     def room_contains_unverified(self, room_id):
+        """Check if a room contains unverified devices.
+        Args:
+            room_id (str): Room id of the room that should be checked.
+
+        Returns True if the room contains unverified devices, false otherwise.
+        Returns False if no Olm session is loaded or if the room isn't
+        encrypted.
+        """
         # type: (str) -> bool
         room = self.rooms[room_id]
 
@@ -197,6 +217,11 @@ class Client(object):
         return False
 
     def invalidate_outbound_session(self, room_id):
+        """Explicitely remove encryption keys for a room.
+        Args:
+            room_id (str): Room id for the room the encryption keys should be
+                removed.
+        """
         session = self.olm.outbound_group_sessions.pop(
             room_id,
             None
@@ -216,6 +241,18 @@ class Client(object):
                 self.invalidate_outbound_session(room.room_id)
 
     def verify_device(self, device):
+        """Mark a device as verified.
+        A device needs to be either trusted or blacklisted to either share room
+        encryption keys with it or not.
+        This method adds the device to the trusted devices and enables sharing
+        room encryption keys with it.
+
+        Args:
+            device (Device): The device which should be added to the trust
+                list.
+        Returns true if the device was verified, false if it was already
+        verified.
+        """
         # type: (OlmDevice) -> bool
         if not self.olm:
             raise LocalProtocolError("Olm account isn't loaded")
@@ -227,6 +264,17 @@ class Client(object):
         return changed
 
     def unverify_device(self, device):
+        """Unmark a device as verified.
+        This method removes the device from the trusted devices and disables
+        sharing room encryption keys with it. It also invalidates any
+        encryption keys for rooms that the device takes part of.
+
+        Args:
+            device (Device): The device which should be added to the trust
+                list.
+        Returns true if the device was unverified, false if it was already
+        unverified.
+        """
         # type: (OlmDevice) -> bool
         if not self.olm:
             raise LocalProtocolError("Olm account isn't loaded")
@@ -238,6 +286,15 @@ class Client(object):
         return changed
 
     def blacklist_device(self, device):
+        """Mark a device as blacklisted.
+        Devices on the blacklist will not receive room encryption keys and
+        therefore won't be able to decrypt messages coming from this client.
+        Args:
+            device (Device): The device which should be added to the
+                blacklist.
+        Returns true if the device was added, false if it was on the blacklist
+        already.
+        """
         # type: (OlmDevice) -> bool
         if not self.olm:
             raise LocalProtocolError("Olm account isn't loaded")
@@ -248,6 +305,13 @@ class Client(object):
         return changed
 
     def unblacklist_device(self, device):
+        """Unmark a device as blacklisted.
+        Args:
+            device (Device): The device which should be removed from the
+                blacklist.
+        Returns true if the device was removed, false if it wasn't on the
+        blacklist and no removal happened.
+        """
         # type: (OlmDevice) -> bool
         if not self.olm:
             raise LocalProtocolError("Olm account isn't loaded")
@@ -267,9 +331,7 @@ class Client(object):
 
     def _handle_sync(self, response):
         # type: (Union[SyncType, ErrorResponse]) -> None
-        if isinstance(response, ErrorResponse):
-            return
-
+        # We already recieved such a sync response, do nothing in that case.
         if self.next_batch == response.next_batch:
             return
 
@@ -386,7 +448,9 @@ class Client(object):
 
     def receive_response(self, response):
         """Receive a Matrix Response and change the client state accordingly.
-        Some responses will get edited for the callers convenience.
+        Some responses will get edited for the callers convenience e.g. sync
+        responses that contain encrypted messages. The encrypted messages will
+        be replaced by decrypted ones if decryption is possible.
         Args:
             response (Response): the response that we wish the client to handle
         """
