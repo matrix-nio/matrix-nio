@@ -16,7 +16,8 @@
 
 from __future__ import unicode_literals
 
-from builtins import super
+import attr
+
 from typing import Any, Dict, Optional, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
@@ -53,16 +54,15 @@ class UnknownBadEvent(object):
         self.transaction_id = None
 
 
+@attr.s
 class Event(object):
-    def __init__(self, event_id, sender, server_ts):
-        # type: (str, str, int) -> None
-        self.event_id = event_id
-        self.sender = sender
-        self.server_timestamp = server_ts
-        self.decrypted = False
-        self.verified = False
-        self.sender_key = None  # type: Optional[str]
-        self.transaction_id = None  # type: Optional[str]
+    event_id = attr.ib()
+    sender = attr.ib()
+    server_timestamp = attr.ib()
+    decrypted = False
+    verified = False
+    sender_key = None  # type: Optional[str]
+    transaction_id = None  # type: Optional[str]
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -115,7 +115,11 @@ class Event(object):
         return None
 
 
+@attr.s
 class CallEvent(Event):
+    call_id = attr.ib()
+    version = attr.ib()
+
     @staticmethod
     def parse_event(event_dict):
         event = None
@@ -132,20 +136,9 @@ class CallEvent(Event):
         return event
 
 
+@attr.s
 class CallCandidatesEvent(CallEvent):
-    def __init__(
-        self,
-        event_id,
-        sender,
-        server_ts,
-        call_id,
-        candidates,
-        version
-    ):
-        self.call_id = call_id
-        self.candidates = candidates
-        self.version = version
-        super().__init__(event_id, sender, server_ts)
+    candidates = attr.ib()
 
     @classmethod
     def from_dict(cls, event_dict):
@@ -160,27 +153,15 @@ class CallCandidatesEvent(CallEvent):
             event_dict["sender"],
             event_dict["origin_server_ts"],
             content["call_id"],
-            content["candidates"],
             content["version"],
+            content["candidates"],
         )
 
 
+@attr.s
 class CallInviteEvent(CallEvent):
-    def __init__(
-        self,
-        event_id,
-        sender,
-        server_ts,
-        call_id,
-        lifetime,
-        offer,
-        version
-    ):
-        self.call_id = call_id
-        self.lifetime = lifetime
-        self.offer = offer
-        self.version = version
-        super().__init__(event_id, sender, server_ts)
+    lifetime = attr.ib()
+    offer = attr.ib()
 
     @classmethod
     def from_dict(cls, event_dict):
@@ -195,26 +176,15 @@ class CallInviteEvent(CallEvent):
             event_dict["sender"],
             event_dict["origin_server_ts"],
             content["call_id"],
+            content["version"],
             content["lifetime"],
             content["offer"],
-            content["version"],
         )
 
 
+@attr.s
 class CallAnswerEvent(CallEvent):
-    def __init__(
-        self,
-        event_id,
-        sender,
-        server_ts,
-        call_id,
-        answer,
-        version
-    ):
-        self.call_id = call_id
-        self.answer = answer
-        self.version = version
-        super().__init__(event_id, sender, server_ts)
+    answer = attr.ib()
 
     @classmethod
     def from_dict(cls, event_dict):
@@ -229,24 +199,13 @@ class CallAnswerEvent(CallEvent):
             event_dict["sender"],
             event_dict["origin_server_ts"],
             content["call_id"],
-            content["answer"],
             content["version"],
+            content["answer"],
         )
 
 
+@attr.s
 class CallHangupEvent(CallEvent):
-    def __init__(
-        self,
-        event_id,
-        sender,
-        server_ts,
-        call_id,
-        version
-    ):
-        self.call_id = call_id
-        self.version = version
-        super().__init__(event_id, sender, server_ts)
-
     @classmethod
     def from_dict(cls, event_dict):
         bad = validate_or_badevent(event_dict, Schemas.call_hangup)
@@ -264,10 +223,9 @@ class CallHangupEvent(CallEvent):
         )
 
 
+@attr.s
 class ToDeviceEvent(object):
-    def __init__(self, sender):
-        # type: (str) -> None
-        self.sender = sender
+    sender = attr.ib()
 
     @classmethod
     def parse_event(
@@ -290,6 +248,7 @@ class ToDeviceEvent(object):
         return None
 
 
+@attr.s
 class RoomEncryptedEvent(object):
     @classmethod
     def parse_event(cls, event_dict):
@@ -308,11 +267,10 @@ class RoomEncryptedEvent(object):
         return None
 
 
+@attr.s
 class OlmEvent(ToDeviceEvent, RoomEncryptedEvent):
-    def __init__(self, sender, sender_key, ciphertext):
-        self.sender_key = sender_key
-        self.ciphertext = ciphertext
-        super().__init__(sender)
+    sender_key = attr.ib()
+    ciphertext = attr.ib()
 
     @classmethod
     def from_dict(cls, event_dict):
@@ -329,31 +287,20 @@ class OlmEvent(ToDeviceEvent, RoomEncryptedEvent):
         return cls(event_dict["sender"], sender_key, ciphertext)
 
 
+@attr.s
 class MegolmEvent(RoomEncryptedEvent):
-    def __init__(
-        self,
-        event_id,            # type: str
-        sender,              # type: str
-        server_ts,           # type: int
-        sender_key,          # type: str
-        device_id,           # type: str
-        session_id,          # type: str
-        ciphertext,          # type: str
-        room_id=None,        # type: Optional[str]
-        transaction_id=None  # type: Optional[str]
-    ):
-        # type: (...) -> None
-        self.event_id = event_id
-        self.sender = sender
-        self.server_timestamp = server_ts
-        self.room_id = room_id or ""
-        self.decrypted = False
-        self.verified = False
-        self.sender_key = sender_key  # type: str
-        self.session_id = session_id
-        self.device_id = device_id
-        self.ciphertext = ciphertext
-        self.transaction_id = transaction_id
+    event_id = attr.ib()
+    sender = attr.ib()
+    server_timestamp = attr.ib()
+    sender_key = attr.ib()
+    device_id = attr.ib()
+    session_id = attr.ib()
+    ciphertext = attr.ib()
+    room_id = attr.ib(default="")
+    transaction_id = attr.ib(default=None)
+
+    decrypted = False
+    verified = False
 
     @classmethod
     def from_dict(cls, event_dict):
@@ -386,10 +333,9 @@ class MegolmEvent(RoomEncryptedEvent):
         )
 
 
+@attr.s
 class InviteEvent(object):
-    def __init__(self, sender):
-        # type: (str) -> None
-        self.sender = sender
+    sender = attr.ib()
 
     @classmethod
     def parse_event(cls, event_dict):
@@ -408,19 +354,11 @@ class InviteEvent(object):
         return None
 
 
+@attr.s
 class InviteMemberEvent(InviteEvent):
-    def __init__(
-        self,
-        sender,  # type: str
-        state_key,  # type: str
-        content,  # type: Dict[str, str]
-        prev_content=None,  # type: Optional[Dict[str, str]]
-    ):
-        # type: (...) -> None
-        super().__init__(sender)
-        self.state_key = state_key
-        self.content = content
-        self.prev_content = prev_content
+    state_key = attr.ib()
+    content = attr.ib()
+    prev_content = attr.ib(default=None)
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -442,10 +380,9 @@ class InviteMemberEvent(InviteEvent):
         )
 
 
+@attr.s
 class InviteAliasEvent(InviteEvent):
-    def __init__(self, sender, canonical_alias):
-        self.canonical_alias = canonical_alias
-        super().__init__(sender)
+    canonical_alias = attr.ib()
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -461,10 +398,9 @@ class InviteAliasEvent(InviteEvent):
         return cls(sender, canonical_alias)
 
 
+@attr.s
 class InviteNameEvent(InviteEvent):
-    def __init__(self, sender, name):
-        self.name = name
-        super().__init__(sender)
+    name = attr.ib()
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -480,12 +416,10 @@ class InviteNameEvent(InviteEvent):
         return cls(sender, canonical_alias)
 
 
+@attr.s
 class BadEvent(Event):
-    def __init__(self, event_id, sender, server_ts, event_type, source):
-        # type: (str, str, int, str, str) -> None
-        self.source = source
-        self.type = event_type
-        super().__init__(event_id, sender, server_ts)
+    type = attr.ib()
+    source = attr.ib()
 
     def __str__(self):
         return "Bad event of type {}, from {}.".format(self.sender, self.type)
@@ -505,21 +439,11 @@ class BadEvent(Event):
 BadEventType = Union[BadEvent, UnknownBadEvent]
 
 
+@attr.s
 class RedactedEvent(Event):
-    def __init__(
-        self,
-        event_id,  # type: str
-        sender,  # type: str
-        server_ts,  # type: int
-        event_type,  # type: str
-        redacter,  # type: str
-        reason=None,  # type: Optional[str]
-    ):
-        # type: (...) -> None
-        self.event_type = event_type
-        self.redacter = redacter
-        self.reason = reason
-        super().__init__(event_id, sender, server_ts)
+    event_type = attr.ib()
+    redacter = attr.ib()
+    reason = attr.ib()
 
     def __str__(self):
         reason = ", reason: {}".format(self.reason) if self.reason else ""
@@ -537,7 +461,7 @@ class RedactedEvent(Event):
 
         redacter = parsed_dict["unsigned"]["redacted_because"]["sender"]
         content_dict = parsed_dict["unsigned"]["redacted_because"]["content"]
-        reason = content_dict["reason"] if "reason" in content_dict else None
+        reason = content_dict.get("reason", None)
 
         return cls(
             parsed_dict["event_id"],
@@ -549,14 +473,14 @@ class RedactedEvent(Event):
         )
 
 
+@attr.s
 class RoomEncryptionEvent(Event):
     pass
 
 
+@attr.s
 class RoomAliasEvent(Event):
-    def __init__(self, event_id, sender, server_ts, canonical_alias):
-        self.canonical_alias = canonical_alias
-        super().__init__(event_id, sender, server_ts)
+    canonical_alias = attr.ib()
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -575,10 +499,9 @@ class RoomAliasEvent(Event):
         return cls(event_id, sender, timestamp, canonical_alias)
 
 
+@attr.s
 class RoomNameEvent(Event):
-    def __init__(self, event_id, sender, server_ts, name):
-        self.name = name
-        super().__init__(event_id, sender, server_ts)
+    name = attr.ib()
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -597,10 +520,9 @@ class RoomNameEvent(Event):
         return cls(event_id, sender, timestamp, canonical_alias)
 
 
+@attr.s
 class RoomTopicEvent(Event):
-    def __init__(self, event_id, sender, server_ts, topic):
-        self.topic = topic
-        super().__init__(event_id, sender, server_ts)
+    topic = attr.ib()
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -619,6 +541,7 @@ class RoomTopicEvent(Event):
         return cls(event_id, sender, timestamp, canonical_alias)
 
 
+@attr.s
 class RoomMessage(Event):
     @staticmethod
     def parse_event(parsed_dict):
@@ -654,6 +577,7 @@ class RoomMessage(Event):
         return event
 
 
+@attr.s
 class RoomEncryptedMessage(RoomMessage):
     @staticmethod
     def parse_event(parsed_dict):
@@ -683,11 +607,10 @@ class RoomEncryptedMessage(RoomMessage):
         return event
 
 
+@attr.s
 class RoomMessageMedia(RoomMessage):
-    def __init__(self, event_id, sender, server_ts, url, body):
-        self.url = url
-        self.body = body
-        super().__init__(event_id, sender, server_ts)
+    url = attr.ib()
+    body = attr.ib()
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -705,24 +628,13 @@ class RoomMessageMedia(RoomMessage):
         )
 
 
+@attr.s
 class RoomEncryptedMedia(RoomMessage):
-    def __init__(
-        self,
-        event_id,
-        sender,
-        server_ts,
-        url,
-        body,
-        key,
-        hashes,
-        iv
-    ):
-        self.key = key
-        self.hashes = hashes
-        self.iv = iv
-        self.url = url
-        self.body = body
-        super().__init__(event_id, sender, server_ts)
+    url = attr.ib()
+    body = attr.ib()
+    key = attr.ib()
+    hashes = attr.ib()
+    iv = attr.ib()
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -743,44 +655,50 @@ class RoomEncryptedMedia(RoomMessage):
         )
 
 
+@attr.s
 class RoomEncryptedImage(RoomEncryptedMedia):
     pass
 
 
+@attr.s
 class RoomEncryptedAudio(RoomEncryptedMedia):
     pass
 
 
+@attr.s
 class RoomEncryptedVideo(RoomEncryptedMedia):
     pass
 
 
+@attr.s
 class RoomEncryptedFile(RoomEncryptedMedia):
     pass
 
 
+@attr.s
 class RoomMessageImage(RoomMessageMedia):
     pass
 
 
+@attr.s
 class RoomMessageAudio(RoomMessageMedia):
     pass
 
 
+@attr.s
 class RoomMessageVideo(RoomMessageMedia):
     pass
 
 
+@attr.s
 class RoomMessageFile(RoomMessageMedia):
     pass
 
 
+@attr.s
 class RoomMessageUnknown(RoomMessage):
-    def __init__(self, event_id, sender, server_ts, message_type, content):
-        # type: (str, str, int, str, str) -> None
-        self.content = content
-        self.type = message_type
-        super().__init__(event_id, sender, server_ts)
+    type = attr.ib()
+    content = attr.ib()
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -794,11 +712,9 @@ class RoomMessageUnknown(RoomMessage):
         )
 
 
+@attr.s
 class RoomMessageNotice(RoomMessage):
-    def __init__(self, event_id, sender, server_ts, body):
-        # type: (str, str, int, str) -> None
-        self.body = body
-        super().__init__(event_id, sender, server_ts)
+    body = attr.ib()
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -815,21 +731,11 @@ class RoomMessageNotice(RoomMessage):
         )
 
 
+@attr.s
 class RoomMessageText(RoomMessage):
-    def __init__(
-        self,
-        event_id,  # type: str
-        sender,  # type: str
-        server_ts,  # type: int
-        body,  # type: str
-        formatted_body,  # type: Optional[str]
-        body_format,  # type: Optional[str]
-    ):
-        # type: (...) -> None
-        super().__init__(event_id, sender, server_ts)
-        self.body = body
-        self.formatted_body = formatted_body
-        self.format = body_format
+    body = attr.ib()
+    formatted_body = attr.ib()
+    format = attr.ib()
 
     def __str__(self):
         # type: () -> str
@@ -870,6 +776,7 @@ class RoomMessageText(RoomMessage):
         )
 
 
+@attr.s
 class RoomMessageEmote(RoomMessageText):
     @staticmethod
     def _validate(parsed_dict):
@@ -877,35 +784,35 @@ class RoomMessageEmote(RoomMessageText):
         return validate_or_badevent(parsed_dict, Schemas.room_message_emote)
 
 
+@attr.s
 class DefaultLevels(object):
-    def __init__(self):
-        self.ban = 50
-        self.invite = 50
-        self.kick = 50
-        self.redact = 50
-        self.state_default = 0
-        self.events_default = 0
-        self.users_default = 0
+    ban = attr.ib(default=50)
+    invite = attr.ib(default=50)
+    kick = attr.ib(default=50)
+    redact = attr.ib(default=50)
+    state_default = attr.ib(default=0)
+    events_default = attr.ib(default=0)
+    users_default = attr.ib(default=0)
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        obj = cls()
         content = parsed_dict["content"]
-        obj.ban = content["ban"]
-        obj.invite = content["invite"]
-        obj.kick = content["kick"]
-        obj.redact = content["redact"]
-        obj.state_default = content["state_default"]
-        obj.events_default = content["events_default"]
-        obj.users_default = content["users_default"]
-        return obj
+        return cls(
+            content["ban"],
+            content["invite"],
+            content["kick"],
+            content["redact"],
+            content["state_default"],
+            content["events_default"],
+            content["users_default"]
+        )
 
 
+@attr.s
 class PowerLevels(object):
-    def __init__(self, defaults=None, users=None, events=None):
-        self.users = users or dict()
-        self.events = events or dict()
-        self.defaults = defaults or DefaultLevels()
+    defaults = attr.ib(default=attr.Factory(DefaultLevels))
+    users = attr.ib(default=attr.Factory(dict))
+    events = attr.ib(default=attr.Factory(dict))
 
     def get_user_level(self, user_id):
         # type: (str) -> int
@@ -923,10 +830,9 @@ class PowerLevels(object):
         self.users.update(new_levels.users)
 
 
+@attr.s
 class PowerLevelsEvent(Event):
-    def __init__(self, event_id, sender, server_ts, power_levels):
-        super().__init__(event_id, sender, server_ts)
-        self.power_levels = power_levels
+    power_levels = attr.ib()
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -950,19 +856,10 @@ class PowerLevelsEvent(Event):
         )
 
 
+@attr.s
 class RedactionEvent(Event):
-    def __init__(
-        self,
-        event_id,  # type: str
-        sender,  # type: str
-        server_ts,  # type: int
-        redacts,  # type: str
-        reason=None,  # type: Optional[str]
-    ):
-        # type: (...) -> None
-        super().__init__(event_id, sender, server_ts)
-        self.redacts = redacts
-        self.reason = reason
+    redacts = attr.ib()
+    reason = attr.ib(default=None)
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -984,21 +881,11 @@ class RedactionEvent(Event):
         )
 
 
+@attr.s
 class RoomMemberEvent(Event):
-    def __init__(
-        self,
-        event_id,  # type: str
-        sender,  # type: str
-        server_ts,  # type: int
-        state_key,  # type: str
-        content,  # type: Dict[str, str]
-        prev_content=None,  # type: Optional[Dict[str, str]]
-    ):
-        # type: (...) -> None
-        super().__init__(event_id, sender, server_ts)
-        self.state_key = state_key
-        self.content = content
-        self.prev_content = prev_content
+    state_key = attr.ib()
+    content = attr.ib()
+    prev_content = attr.ib(default=None)
 
     @classmethod
     def from_dict(cls, parsed_dict):
