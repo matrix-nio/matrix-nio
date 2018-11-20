@@ -109,8 +109,159 @@ class Event(object):
             return RedactionEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.encrypted":
             return RoomEncryptedEvent.parse_event(event_dict)
+        elif event_dict["type"].startswith("m.call"):
+            return CallEvent.parse_event(event_dict)
 
         return None
+
+
+class CallEvent(Event):
+    @staticmethod
+    def parse_event(event_dict):
+        event = None
+
+        if event_dict["type"] == "m.call.candidates":
+            event = CallCandidatesEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.call.invite":
+            event = CallInviteEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.call.answer":
+            event = CallAnswerEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.call.hangup":
+            event = CallHangupEvent.from_dict(event_dict)
+
+        return event
+
+
+class CallCandidatesEvent(CallEvent):
+    def __init__(
+        self,
+        event_id,
+        sender,
+        server_ts,
+        call_id,
+        candidates,
+        version
+    ):
+        self.call_id = call_id
+        self.candidates = candidates
+        self.version = version
+        super().__init__(event_id, sender, server_ts)
+
+    @classmethod
+    def from_dict(cls, event_dict):
+        bad = validate_or_badevent(event_dict, Schemas.call_candidates)
+
+        if bad:
+            return bad
+
+        content = event_dict.pop("content")
+        return cls(
+            event_dict["event_id"],
+            event_dict["sender"],
+            event_dict["origin_server_ts"],
+            content["call_id"],
+            content["candidates"],
+            content["version"],
+        )
+
+
+class CallInviteEvent(CallEvent):
+    def __init__(
+        self,
+        event_id,
+        sender,
+        server_ts,
+        call_id,
+        lifetime,
+        offer,
+        version
+    ):
+        self.call_id = call_id
+        self.lifetime = lifetime
+        self.offer = offer
+        self.version = version
+        super().__init__(event_id, sender, server_ts)
+
+    @classmethod
+    def from_dict(cls, event_dict):
+        bad = validate_or_badevent(event_dict, Schemas.call_invite)
+
+        if bad:
+            return bad
+
+        content = event_dict.pop("content")
+        return cls(
+            event_dict["event_id"],
+            event_dict["sender"],
+            event_dict["origin_server_ts"],
+            content["call_id"],
+            content["lifetime"],
+            content["offer"],
+            content["version"],
+        )
+
+
+class CallAnswerEvent(CallEvent):
+    def __init__(
+        self,
+        event_id,
+        sender,
+        server_ts,
+        call_id,
+        answer,
+        version
+    ):
+        self.call_id = call_id
+        self.answer = answer
+        self.version = version
+        super().__init__(event_id, sender, server_ts)
+
+    @classmethod
+    def from_dict(cls, event_dict):
+        bad = validate_or_badevent(event_dict, Schemas.call_answer)
+
+        if bad:
+            return bad
+
+        content = event_dict.pop("content")
+        return cls(
+            event_dict["event_id"],
+            event_dict["sender"],
+            event_dict["origin_server_ts"],
+            content["call_id"],
+            content["answer"],
+            content["version"],
+        )
+
+
+class CallHangupEvent(CallEvent):
+    def __init__(
+        self,
+        event_id,
+        sender,
+        server_ts,
+        call_id,
+        version
+    ):
+        self.call_id = call_id
+        self.version = version
+        super().__init__(event_id, sender, server_ts)
+
+    @classmethod
+    def from_dict(cls, event_dict):
+        bad = validate_or_badevent(event_dict, Schemas.call_hangup)
+
+        if bad:
+            return bad
+
+        content = event_dict.pop("content")
+        return cls(
+            event_dict["event_id"],
+            event_dict["sender"],
+            event_dict["origin_server_ts"],
+            content["call_id"],
+            content["version"],
+        )
 
 
 class ToDeviceEvent(object):

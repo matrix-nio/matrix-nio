@@ -900,4 +900,115 @@ class Schemas(object):
         }
     }
 
+    call_invite = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "call_id": {"type": "string"},
+                    "lifetime": {"type": "integer"},
+                    "version": {"type": "integer"},
+                    "offer": {"type": "object"},
+                },
+                "required": [
+                    "call_id",
+                    "lifetime",
+                    "version",
+                    "offer",
+                ]
+            }
+        },
+        "required": [
+            "type",
+            "content",
+        ],
+    }
+
+    call_answer = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "call_id": {"type": "string"},
+                    "version": {"type": "integer"},
+                    "answer": {"type": "object"},
+                },
+                "required": [
+                    "call_id",
+                    "version",
+                    "answer",
+                ]
+            }
+        },
+        "required": [
+            "type",
+            "content",
+        ],
+    }
+
+    call_hangup = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "call_id": {"type": "string"},
+                    "version": {"type": "integer"},
+                },
+                "required": [
+                    "call_id",
+                    "version",
+                ]
+            }
+        },
+        "required": [
+            "type",
+            "content",
+        ],
+    }
+
+    call_candidates = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "call_id": {"type": "string"},
+                    "version": {"type": "integer"},
+                    "candidates": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "candidate": {"type": "string"},
+                                "sdpMLineIndex": {"type": "integer"},
+                                "sdpMid": {"type": "string"},
+                            },
+                            "required": [
+                                "candidate",
+                                "sdpMLineIndex",
+                                "sdpMid"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "call_id",
+                    "version",
+                    "candidates"
+                ]
+            }
+        },
+        "required": [
+            "type",
+            "content",
+        ],
+    }
+
     empty = {"type": "object", "properties": {}, "additionalProperties": False}
