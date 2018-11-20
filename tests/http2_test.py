@@ -76,6 +76,16 @@ class TestClass(object):
         with pytest.raises(LocalProtocolError):
             uuid, request = client.login("wordpass")
 
+        client.connect(TransportType.HTTP2)
+        uuid, request = client.login("wordpass")
+
+        with pytest.raises(LocalProtocolError):
+            uuid, request = client.sync()
+
+        client.receive(self.login_response(1, frame_factory))
+        client.next_response()
+        uuid, request = client.sync()
+
     def test_client_receive(self, frame_factory):
         client = HttpClient("localhost", "example")
         client.connect(TransportType.HTTP2)
