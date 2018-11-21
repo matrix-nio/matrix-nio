@@ -65,7 +65,10 @@ class TestClass(object):
     def test_keys_claim(self):
         parsed_dict = TestClass._load_response(
             "tests/data/keys_claim.json")
-        response = KeysClaimResponse.from_dict(parsed_dict)
+        response = KeysClaimResponse.from_dict(
+            parsed_dict,
+            "!test:example.org"
+        )
         assert isinstance(response, KeysClaimResponse)
 
     def test_devices(self):

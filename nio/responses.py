@@ -43,6 +43,9 @@ from .events import (
 from .log import logger_group
 from .schemas import Schemas, validate_json
 
+if False:
+    from .encryption import OlmDevice
+
 logger = Logger("nio.responses")
 logger_group.add_logger(logger)
 
@@ -97,13 +100,12 @@ class RoomMember(object):
     avatar_url = attr.ib(type=str)
 
 
+@attr.s
 class Device(object):
-    def __init__(self, id, display_name, last_seen_ip, last_seen_date):
-        # type(str, str, str, datetime) -> None
-        self.id = id
-        self.display_name = display_name
-        self.last_seen_ip = last_seen_ip
-        self.last_seen_date = last_seen_date
+    id = attr.ib(type=str)
+    display_name = attr.ib(type=str)
+    last_seen_ip = attr.ib(type=str)
+    last_seen_date = attr.ib(type=datetime)
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -116,12 +118,12 @@ class Device(object):
         )
 
 
+@attr.s
 class Response(object):
-    def __init__(self):
-        self.uuid = ""
-        self.start_time = None
-        self.end_time = None
-        self.timeout = 0
+    uuid = ""          # type : str
+    start_time = None  # type : Optional[float]
+    end_time = None    # type : Optional[float]
+    timeout = 0        # type : int
 
     @property
     def elapsed(self):
@@ -131,12 +133,10 @@ class Response(object):
         return max(0, elapsed - (self.timeout / 1000))
 
 
+@attr.s
 class ErrorResponse(Response):
-    def __init__(self, message, code=None):
-        # type: (str, Optional[int]) -> None
-        super().__init__()
-        self.message = message
-        self.status_code = code
+    message = attr.ib(type=str)
+    status_code = attr.ib(default=None, type=Optional[int])
 
     def __str__(self):
         # type: () -> str
@@ -162,11 +162,9 @@ class ErrorResponse(Response):
         return cls(parsed_dict["error"], parsed_dict["errcode"])
 
 
+@attr.s
 class _ErrorWithRoomId(ErrorResponse):
-    def __init__(self, message, code=None, room_id=""):
-        # type: (str, Optional[int], Optional[str]) -> None
-        super().__init__(message, code)
-        self.room_id = room_id
+    room_id = attr.ib(default="", type=str)
 
     @classmethod
     def from_dict(cls, parsed_dict, room_id):
@@ -250,13 +248,11 @@ class JoinedMembersError(_ErrorWithRoomId):
     pass
 
 
+@attr.s
 class LoginResponse(Response):
-    def __init__(self, user_id, device_id, access_token):
-        # type: (str, str, str) -> None
-        super().__init__()
-        self.user_id = user_id
-        self.device_id = device_id
-        self.access_token = access_token
+    user_id = attr.ib(type=str)
+    device_id = attr.ib(type=str)
+    access_token = attr.ib(type=str)
 
     def __str__(self):
         # type: () -> str
@@ -279,12 +275,10 @@ class LoginResponse(Response):
         )
 
 
+@attr.s
 class JoinedMembersResponse(Response):
-    def __init__(self, members, room_id):
-        # type: (List[RoomMember], str) -> None
-        super().__init__()
-        self.room_id = room_id
-        self.members = members
+    members = attr.ib(type=List[RoomMember])
+    room_id = attr.ib(type=str)
 
     @classmethod
     def from_dict(
@@ -311,11 +305,10 @@ class JoinedMembersResponse(Response):
         return cls(members, room_id)
 
 
+@attr.s
 class RoomEventIdResponse(Response):
-    def __init__(self, event_id, room_id):
-        super().__init__()
-        self.event_id = event_id
-        self.room_id = room_id
+    event_id = attr.ib(type=str)
+    room_id = attr.ib(type=str)
 
     @staticmethod
     def create_error(parsed_dict, _room_id):
@@ -370,14 +363,13 @@ class EmptyResponse(Response):
         return cls()
 
 
+@attr.s
 class _EmptyResponseWithRoomId(Response):
-    def __init__(self, room_id):
-        super().__init__()
-        self.room_id = room_id
+    room_id = attr.ib(type=str)
 
     @staticmethod
     def create_error(parsed_dict, room_id):
-        return ErrorResponse.from_dict(parsed_dict)
+        return _ErrorWithRoomId.from_dict(parsed_dict, room_id)
 
     @classmethod
     def from_dict(cls, parsed_dict, room_id):
@@ -404,16 +396,15 @@ class RoomInviteResponse(EmptyResponse):
 
 class ShareGroupSessionResponse(_EmptyResponseWithRoomId):
     @staticmethod
-    def create_error(parsed_dict):
+    def create_error(parsed_dict, room_id):
         return ShareGroupSessionError.from_dict(parsed_dict)
 
 
+@attr.s
 class DeleteDevicesAuthResponse(Response):
-    def __init__(self, session, flows, params):
-        super().__init__()
-        self.session = session
-        self.flows = flows
-        self.params = params
+    session = attr.ib(type=str)
+    flows = attr.ib(type=Dict)
+    params = attr.ib(type=Dict)
 
     @classmethod
     def from_dict(
@@ -439,13 +430,11 @@ class DeleteDevicesResponse(EmptyResponse):
         return DeleteDevicesError.from_dict(parsed_dict)
 
 
+@attr.s
 class RoomMessagesResponse(Response):
-    def __init__(self, chunk, start, end):
-        # type: (List[Union[Event, UnknownBadEvent]], str, str) -> None
-        super().__init__()
-        self.chunk = chunk
-        self.start = start
-        self.end = end
+    chunk = attr.ib(type=List[Union[Event, UnknownBadEvent]])
+    start = attr.ib(type=str)
+    end = attr.ib(type=str)
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -461,10 +450,9 @@ class RoomMessagesResponse(Response):
         return cls(chunk, parsed_dict["start"], parsed_dict["end"])
 
 
+@attr.s
 class RoomIdResponse(Response):
-    def __init__(self, room_id):
-        super().__init__()
-        self.room_id = room_id
+    room_id = attr.ib(type=str)
 
     @staticmethod
     def create_error(parsed_dict):
@@ -493,12 +481,10 @@ class RoomLeaveResponse(EmptyResponse):
         return RoomLeaveError.from_dict(parsed_dict)
 
 
+@attr.s
 class KeysUploadResponse(Response):
-    def __init__(self, curve25519_count, signed_curve25519_count):
-        # type: (int, int) -> None
-        super().__init__()
-        self.curve25519_count = curve25519_count
-        self.signed_curve25519_count = signed_curve25519_count
+    curve25519_count = attr.ib(type=int)
+    signed_curve25519_count = attr.ib(type=int)
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -513,13 +499,11 @@ class KeysUploadResponse(Response):
         return cls(counts["curve25519"], counts["signed_curve25519"])
 
 
+@attr.s
 class KeysQueryResponse(Response):
-    def __init__(self, device_keys, failures):
-        # type: (Dict[Any, Any], Dict[Any, Any]) -> None
-        super().__init__()
-        self.device_keys = device_keys
-        self.failures = failures
-        self.changed = {}  # type: Dict[str, Any]
+    device_keys = attr.ib(type=Dict)
+    failures = attr.ib(type=Dict)
+    changed = {}  # type: Dict[str, Dict[str, OlmDevice]]
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -535,17 +519,19 @@ class KeysQueryResponse(Response):
         return cls(device_keys, failures)
 
 
+@attr.s
 class KeysClaimResponse(Response):
-    def __init__(self, one_time_keys, failures):
-        # type: (Dict[Any, Any], Dict[Any, Any]) -> None
-        super().__init__()
-        self.one_time_keys = one_time_keys
-        self.failures = failures
-        self.room_id = None  # type: Optional[str]
+    one_time_keys = attr.ib(type=Dict[Any, Any])
+    failures = attr.ib(type=Dict[Any, Any])
+    room_id = attr.ib(type=str)
 
     @classmethod
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[KeysClaimResponse, ErrorResponse]
+    def from_dict(
+        cls,
+        parsed_dict,  # type: Dict[Any, Any]
+        room_id       # type: str
+    ):
+        # type: (...) -> Union[KeysClaimResponse, ErrorResponse]
         try:
             validate_json(parsed_dict, Schemas.keys_claim)
         except (SchemaError, ValidationError):
@@ -554,14 +540,12 @@ class KeysClaimResponse(Response):
         one_time_keys = parsed_dict["one_time_keys"]
         failures = parsed_dict["failures"]
 
-        return cls(one_time_keys, failures)
+        return cls(one_time_keys, failures, room_id)
 
 
+@attr.s
 class DevicesResponse(Response):
-    def __init__(self, devices):
-        # type: (List[Device]) -> None
-        super().__init__()
-        self.devices = devices
+    devices = attr.ib(type=List[Device])
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -588,22 +572,13 @@ class UpdateDeviceResponse(EmptyResponse):
         return UpdateDeviceError.from_dict(parsed_dict)
 
 
+@attr.s
 class _SyncResponse(Response):
-    def __init__(
-        self,
-        next_batch,        # type: str
-        rooms,             # type: Rooms
-        device_key_count,  # type: DeviceOneTimeKeyCount
-        device_list,       # type: DeviceList
-        to_device_events,  # type: List[ToDeviceEvent]
-    ):
-        # type: (...) -> None
-        super().__init__()
-        self.next_batch = next_batch
-        self.rooms = rooms
-        self.device_key_count = device_key_count
-        self.device_list = device_list
-        self.to_device_events = to_device_events
+    next_batch = attr.ib(type=str)
+    rooms = attr.ib(type=Rooms)
+    device_key_count = attr.ib(type=DeviceOneTimeKeyCount)
+    device_list = attr.ib(type=DeviceList)
+    to_device_events = attr.ib(type=List[ToDeviceEvent])
 
     def __str__(self):
         # type: () -> str
@@ -863,25 +838,9 @@ class SyncResponse(_SyncResponse):
     pass
 
 
+@attr.s
 class PartialSyncResponse(_SyncResponse):
-    def __init__(
-        self,
-        next_batch,        # type: str
-        rooms,             # type: Rooms
-        device_key_count,  # type: DeviceOneTimeKeyCount
-        device_list,       # type: DeviceList
-        to_device_events,  # type: List[ToDeviceEvent]
-        unhandled_rooms,   # type: Dict[str, RoomInfo]
-    ):
-        # type: (...) -> None
-        super().__init__(
-            next_batch,
-            rooms,
-            device_key_count,
-            device_list,
-            to_device_events
-        )
-        self.unhandled_rooms = unhandled_rooms
+    unhandled_rooms = attr.ib(type=Dict[str, RoomInfo])
 
     def next_part(self, max_events=0):
         # type: (int) -> SyncType

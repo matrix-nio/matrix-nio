@@ -965,7 +965,10 @@ class HttpClient(Client):
         elif request_type is RequestType.keys_query:
             response = KeysQueryResponse.from_dict(parsed_dict)
         elif request_type is RequestType.keys_claim:
-            response = KeysClaimResponse.from_dict(parsed_dict)
+            response = KeysClaimResponse.from_dict(
+                parsed_dict,
+                request_info.extra_data
+            )
         elif request_type is RequestType.share_group_session:
             response = ShareGroupSessionResponse.from_dict(
                 parsed_dict,
