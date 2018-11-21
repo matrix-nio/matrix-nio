@@ -369,6 +369,9 @@ class Client(object):
             for event in join_info.state:
                 room.handle_event(event)
 
+            if join_info.summary:
+                room.update_summary(join_info.summary)
+
             decrypted_events = []  \
                 # type: List[Tuple[int, Union[Event, BadEventType]]]
 

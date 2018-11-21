@@ -17,7 +17,7 @@
 from __future__ import unicode_literals
 
 import attr
-from builtins import str, super
+from builtins import str
 from typing import (
     Any,
     Dict,
@@ -87,10 +87,18 @@ class TypingNoticeEvent(object):
 
 
 @attr.s
+class RoomSummary(object):
+    invited_member_count = attr.ib(default=None, type=Optional[int])
+    joined_member_count = attr.ib(default=None, type=Optional[int])
+    heroes = attr.ib(default=[], type=List[str])
+
+
+@attr.s
 class RoomInfo(object):
     timeline = attr.ib(type=Timeline)
     state = attr.ib(type=List)
     ephemeral = attr.ib(type=List)
+    summary = attr.ib(default=None, type=Optional[RoomSummary])
 
 
 @attr.s
@@ -697,12 +705,13 @@ class _SyncResponse(Response):
 
     @staticmethod
     def _get_join_info(
-        state_events,     # type: List[Any]
-        timeline_events,  # type: List[Any]
-        prev_batch,       # type: str
-        limited,          # type: bool
+        state_events,      # type: List[Any]
+        timeline_events,   # type: List[Any]
+        prev_batch,        # type: str
+        limited,           # type: bool
         ephemeral_events,  # type: List[Any]
-        max_events=0      # type: int
+        summary_events,    # type: Dict[str, Any]
+        max_events=0       # type: int
     ):
         # type: (...) -> Tuple[RoomInfo, Optional[RoomInfo]]
         counter, state = _SyncResponse._get_room_events(
@@ -742,7 +751,13 @@ class _SyncResponse(Response):
         if unhandled_timeline.events or unhandled_state:
             unhandled_info = RoomInfo(unhandled_timeline, unhandled_state, [])
 
-        join_info = RoomInfo(timeline, state, ephemeral_event_list)
+        summary = RoomSummary(
+            summary_events.get("m.invited_member_count", None),
+            summary_events.get("m.joined_member_count", None),
+            summary_events.get("m.heroes", [])
+        )
+
+        join_info = RoomInfo(timeline, state, ephemeral_event_list, summary)
 
         return join_info, unhandled_info
 
@@ -774,6 +789,7 @@ class _SyncResponse(Response):
                 room_dict["timeline"]["prev_batch"],
                 room_dict["timeline"]["limited"],
                 room_dict["ephemeral"]["events"],
+                room_dict.get("summary", {}),
                 max_events
             )
 
@@ -853,6 +869,7 @@ class PartialSyncResponse(_SyncResponse):
                 room_info.timeline.prev_batch,
                 room_info.timeline.limited,
                 [],
+                {},
                 max_events
             )
 

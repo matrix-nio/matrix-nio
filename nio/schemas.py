@@ -298,6 +298,10 @@ class Schemas(object):
                                             "m.joined_member_count": {
                                                 "type": "integer"
                                             },
+                                            "m.heroes": {
+                                                "type": "array",
+                                                "items": {"type": "string"}
+                                            },
                                         }
                                     }
                                 },

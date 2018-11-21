@@ -36,7 +36,7 @@ from .events import (
     RoomTopicEvent,
 )
 
-from .responses import TypingNoticeEvent
+from .responses import TypingNoticeEvent, RoomSummary
 from .log import logger_group
 
 logger = Logger("nio.rooms")
@@ -55,6 +55,7 @@ class MatrixRoom(object):
         self.encrypted = False        # type: bool
         self.power_levels = PowerLevels()  # type: PowerLevels
         self.typing_users = []        # type: List[str]
+        self.summary = None           # type: Optional[RoomSummary]
         # yapf: enable
 
     def display_name(self):
@@ -222,6 +223,27 @@ class MatrixRoom(object):
                         )
                     )
                     self.users[user_id].power_level = level
+
+    def update_summary(self, summary):
+        if not self.summary:
+            self.summary = summary
+            return
+
+        if summary.joined_member_count:
+            self.summary.joined_member_count = summary.joined_member_count
+
+        if summary.invited_member_count:
+            self.summary.invited_member_count = summary.joined_member_count
+
+        if summary.heroes:
+            self.summary.heroes = summary.heroes
+
+    @property
+    def member_count(self):
+        if self.summary:
+            return self.summary.joined_member_count or len(self.users)
+
+        return len(self.users)
 
 
 class MatrixInvitedRoom(MatrixRoom):
