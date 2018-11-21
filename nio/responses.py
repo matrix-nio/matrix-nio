@@ -16,6 +16,7 @@
 
 from __future__ import unicode_literals
 
+import attr
 from builtins import str, super
 from typing import (
     Any,
@@ -46,36 +47,54 @@ logger = Logger("nio.responses")
 logger_group.add_logger(logger)
 
 
-Rooms = NamedTuple(
-    "Rooms", [("invite", dict), ("join", dict), ("leave", dict)]
-)
+@attr.s
+class Rooms(object):
+    invite = attr.ib(type=Dict)
+    join = attr.ib(type=Dict)
+    leave = attr.ib(type=Dict)
 
-DeviceOneTimeKeyCount = NamedTuple(
-    "DeviceOneTimeKeyCount", [("curve25519", int), ("signed_curve25519", int)]
-)
 
-DeviceList = NamedTuple(
-    "DeviceList", [("changed", list), ("left", list)]
-)
+@attr.s
+class DeviceOneTimeKeyCount(object):
+    curve25519 = attr.ib(type=int)
+    signed_curve25519 = attr.ib(type=int)
 
-Timeline = NamedTuple(
-    "Timeline", [("events", list), ("limited", bool), ("prev_batch", str)]
-)
 
-InviteInfo = NamedTuple("InviteInfo", [("invite_state", list)])
+@attr.s
+class DeviceList(object):
+    changed = attr.ib(type=List[str])
+    left = attr.ib(type=List[str])
 
-TypingNoticeEvent = NamedTuple("TypingNoticeEvent", [("users", list)])
 
-RoomInfo = NamedTuple("RoomInfo", [
-    ("timeline", Timeline),
-    ("state", list),
-    ("ephemeral", list),
-])
+@attr.s
+class Timeline(object):
+    events = attr.ib(type=List)
+    limited = attr.ib(type=bool)
+    prev_batch = attr.ib(type=str)
 
-RoomMember = NamedTuple(
-    "RoomMember",
-    [("user_id", str), ("display_name", str), ("avatar_url", str)]
-)
+
+@attr.s
+class InviteInfo(object):
+    invite_state = attr.ib(type=List)
+
+
+@attr.s
+class TypingNoticeEvent(object):
+    users = attr.ib(type=List)
+
+
+@attr.s
+class RoomInfo(object):
+    timeline = attr.ib(type=Timeline)
+    state = attr.ib(type=List)
+    ephemeral = attr.ib(type=List)
+
+
+@attr.s
+class RoomMember(object):
+    user_id = attr.ib(type=str)
+    display_name = attr.ib(type=str)
+    avatar_url = attr.ib(type=str)
 
 
 class Device(object):
