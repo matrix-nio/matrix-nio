@@ -246,20 +246,8 @@ class UpdateDeviceError(ErrorResponse):
     pass
 
 
-class JoinedMembersError(ErrorResponse):
-    def __init__(self, message, code=None, room_id=""):
-        # type: (str, Optional[int], Optional[str]) -> None
-        super().__init__(message, code)
-        self.room_id = room_id
-
-    @classmethod
-    def from_dict(cls, parsed_dict, room_id):
-        try:
-            validate_json(parsed_dict, Schemas.error)
-        except (SchemaError, ValidationError):
-            return cls("unknown error")
-
-        return cls(parsed_dict["error"], parsed_dict["errcode"], room_id)
+class JoinedMembersError(_ErrorWithRoomId):
+    pass
 
 
 class LoginResponse(Response):
