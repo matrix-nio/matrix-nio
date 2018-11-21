@@ -303,6 +303,32 @@ class OlmEvent(ToDeviceEvent, RoomEncryptedEvent):
 
 
 @attr.s
+class RoomKeyEvent(object):
+    sender = attr.ib(type=str)
+    sender_key = attr.ib(type=str)
+    room_id = attr.ib(type=str)
+    session_id = attr.ib(type=str)
+    algorithm = attr.ib(type=str)
+
+    @classmethod
+    def from_dict(cls, event_dict, sender, sender_key):
+        bad = validate_or_badevent(event_dict, Schemas.room_key_event)
+
+        if bad:
+            return bad
+
+        content = event_dict["content"]
+
+        return cls(
+            sender,
+            sender_key,
+            content["room_id"],
+            content["session_id"],
+            content["algorithm"]
+        )
+
+
+@attr.s
 class MegolmEvent(RoomEncryptedEvent):
     event_id = attr.ib()
     sender = attr.ib()

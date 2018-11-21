@@ -83,6 +83,7 @@ from .events import (
     RoomEncryptedEvent,
     RoomEncryptedMessage,
     BadEventType,
+    RoomKeyEvent,
     UnknownBadEvent,
     validate_or_badevent
 )
@@ -914,7 +915,7 @@ class Olm(object):
         return True
 
     def _handle_olm_event(self, sender, sender_key, payload):
-        # type: (str, str, Dict[Any, Any]) -> None
+        # type: (str, str, Dict[Any, Any]) -> Optional[RoomKeyEvent]
         logger.info("Recieved Olm event of type: {}".format(payload["type"]))
 
         if payload["type"] != "m.room_key":
@@ -923,32 +924,22 @@ class Olm(object):
                     payload["type"]
                 )
             )
-            return
-
-        try:
-            validate_json(payload, Schemas.room_key_event)
-        except (ValidationError, SchemaError) as e:
-            logger.error(
-                "Error m.room_key event event from {}"
-                ": {}".format(sender, str(e.message))
-            )
             return None
 
+        event = RoomKeyEvent.from_dict(payload, sender, sender_key)
         content = payload["content"]
 
-        if content["algorithm"] != "m.megolm.v1.aes-sha2":
+        if event.algorithm != "m.megolm.v1.aes-sha2":
             logger.error(
                 "Error: unsuported room key of type {}".format(
-                    payload["algorithm"]
+                    event.algorithm
                 )
             )
-            return
-
-        room_id = content["room_id"]
+            return event
 
         logger.info(
             "Recieved new group session key for room {} "
-            "from {}".format(room_id, sender)
+            "from {}".format(event.room_id, sender)
         )
 
         self.create_group_session(
@@ -959,10 +950,10 @@ class Olm(object):
             content["session_key"],
         )
 
-        return
+        return event
 
     def decrypt_event(self, event):
-        # type: (RoomEncryptedEvent) -> Optional[Union[Event, BadEventType]]
+        # type: (RoomEncryptedEvent) -> Union[Event, BadEventType, RoomKeyEvent, None]
         logger.debug("Decrypting event of type {}".format(
             type(event).__name__
         ))
@@ -983,7 +974,7 @@ class Olm(object):
                     own_ciphertext["type"]))
                 return None
 
-            self.decrypt(event.sender, event.sender_key, message)
+            return self.decrypt(event.sender, event.sender_key, message)
 
         elif isinstance(event, MegolmEvent):
             if not event.room_id:
@@ -1094,7 +1085,7 @@ class Olm(object):
         sender_key,  # type: str
         message,  # type: Union[OlmPreKeyMessage, OlmMessage]
     ):
-        # type: (...) -> None
+        # type: (...) -> Optional[RoomKeyEvent]
 
         try:
             # First try to decrypt using an existing session.
@@ -1102,7 +1093,7 @@ class Olm(object):
         except EncryptionError:
             # We found a matching session for a prekey message but decryption
             # failed, don't try to decrypt any further.
-            return
+            return None
 
         # Decryption failed with every known session or no known sessions,
         # let's try to create a new session.
@@ -1111,7 +1102,7 @@ class Olm(object):
             # can't decrypt the message if it isn't one at this point in time
             # anymore, so return early
             if not isinstance(message, OlmPreKeyMessage):
-                return
+                return None
 
             try:
                 # Let's create a new session.
@@ -1126,13 +1117,13 @@ class Olm(object):
                     "Failed to create new session from prekey"
                     "message: {}".format(str(e))
                 )
-                return
+                return None
 
         # Mypy complains that the plaintext can still be empty here,
         # realistically this can't happen but let's make mypy happy
         if not plaintext:
             logger.error("Failed to decrypt Olm message: unknown error")
-            return
+            return None
 
         # The plaintext should be valid json, let's parse it and verify it.
         try:
@@ -1142,7 +1133,7 @@ class Olm(object):
             logger.error(
                 "Failed to parse Olm message payload: {}".format(str(e))
             )
-            return
+            return None
 
         # Validate the payload, check that it contains all required keys as
         # well that the types of the values are the one we expect.
@@ -1157,7 +1148,7 @@ class Olm(object):
                 "Error validating decrypted Olm event from {}"
                 ": {}".format(sender, str(e.message))
             )
-            return
+            return None
 
         # Verify that the payload properties contain correct values:
         # sender/recipient/keys/recipient_keys and check if the sender device
@@ -1169,11 +1160,11 @@ class Olm(object):
             # We found a missmatched property don't process the event any
             # further
             logger.error(e)
-            return
+            return None
 
         else:
             # Verification succeded, handle the event
-            self._handle_olm_event(sender, sender_key, parsed_payload)
+            return self._handle_olm_event(sender, sender_key, parsed_payload)
 
     def rotate_outbound_group_session(self, room_id):
         logger.info("Rotating outbound group session for room {}".format(

@@ -338,11 +338,20 @@ class Client(object):
         if isinstance(response, SyncResponse):
             self.next_batch = response.next_batch
 
-        for to_device_event in response.to_device_events:
+        decrypted_to_device = []  # type: ignore
+
+        for index, to_device_event in enumerate(response.to_device_events):
             if isinstance(to_device_event, RoomEncryptedEvent):
                 if not self.olm:
                     continue
-                self.olm.decrypt_event(to_device_event)
+                event = self.olm.decrypt_event(to_device_event)
+                if event:
+                    decrypted_to_device.append((index, event))
+
+        # Replace the encrypted to_device events with decrypted ones
+        for decrypted_event in decrypted_to_device:
+            index, event = decrypted_event
+            response.to_device_events[index] = event
 
         for room_id, info in response.rooms.invite.items():
             if room_id not in self.invited_rooms:
@@ -372,8 +381,7 @@ class Client(object):
             if join_info.summary:
                 room.update_summary(join_info.summary)
 
-            decrypted_events = []  \
-                # type: List[Tuple[int, Union[Event, BadEventType]]]
+            decrypted_events = []
 
             for index, event in enumerate(join_info.timeline.events):
                 if isinstance(event, MegolmEvent) and self.olm:
