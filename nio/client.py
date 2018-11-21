@@ -133,7 +133,7 @@ class RequestInfo(_RequestInfo):
 class Client(object):
     def __init__(
         self,
-        user=None,  # type: Optional[str]
+        user,            # type: str
         device_id=None,  # type: Optional[str]
         session_dir="",  # type: Optional[str]
     ):
@@ -156,10 +156,10 @@ class Client(object):
 
     @property
     def logged_in(self):
+        # type: () -> bool
         """A property that tracks the logged in status of the client.
         Returns True if the client is logged in to the server, False otherwise.
         """
-        # type: () -> bool
         return True if self.access_token else False
 
     @property
@@ -193,6 +193,7 @@ class Client(object):
         return self.olm.should_query_keys
 
     def room_contains_unverified(self, room_id):
+        # type: (str) -> bool
         """Check if a room contains unverified devices.
         Args:
             room_id (str): Room id of the room that should be checked.
@@ -201,7 +202,6 @@ class Client(object):
         Returns False if no Olm session is loaded or if the room isn't
         encrypted.
         """
-        # type: (str) -> bool
         room = self.rooms[room_id]
 
         if not room.encrypted:
@@ -241,6 +241,7 @@ class Client(object):
                 self.invalidate_outbound_session(room.room_id)
 
     def verify_device(self, device):
+        # type: (OlmDevice) -> bool
         """Mark a device as verified.
         A device needs to be either trusted or blacklisted to either share room
         encryption keys with it or not.
@@ -253,7 +254,6 @@ class Client(object):
         Returns true if the device was verified, false if it was already
         verified.
         """
-        # type: (OlmDevice) -> bool
         if not self.olm:
             raise LocalProtocolError("Olm account isn't loaded")
 
@@ -264,6 +264,7 @@ class Client(object):
         return changed
 
     def unverify_device(self, device):
+        # type: (OlmDevice) -> bool
         """Unmark a device as verified.
         This method removes the device from the trusted devices and disables
         sharing room encryption keys with it. It also invalidates any
@@ -275,7 +276,6 @@ class Client(object):
         Returns true if the device was unverified, false if it was already
         unverified.
         """
-        # type: (OlmDevice) -> bool
         if not self.olm:
             raise LocalProtocolError("Olm account isn't loaded")
 
@@ -286,6 +286,7 @@ class Client(object):
         return changed
 
     def blacklist_device(self, device):
+        # type: (OlmDevice) -> bool
         """Mark a device as blacklisted.
         Devices on the blacklist will not receive room encryption keys and
         therefore won't be able to decrypt messages coming from this client.
@@ -295,7 +296,6 @@ class Client(object):
         Returns true if the device was added, false if it was on the blacklist
         already.
         """
-        # type: (OlmDevice) -> bool
         if not self.olm:
             raise LocalProtocolError("Olm account isn't loaded")
         changed = self.olm.blacklist_device(device)
@@ -305,6 +305,7 @@ class Client(object):
         return changed
 
     def unblacklist_device(self, device):
+        # type: (OlmDevice) -> bool
         """Unmark a device as blacklisted.
         Args:
             device (Device): The device which should be removed from the
@@ -312,7 +313,6 @@ class Client(object):
         Returns true if the device was removed, false if it wasn't on the
         blacklist and no removal happened.
         """
-        # type: (OlmDevice) -> bool
         if not self.olm:
             raise LocalProtocolError("Olm account isn't loaded")
         return self.olm.unblacklist_device(device)
@@ -330,7 +330,7 @@ class Client(object):
             self.olm = Olm(self.user_id, self.device_id, self.session_dir)
 
     def _handle_sync(self, response):
-        # type: (Union[SyncType, ErrorResponse]) -> None
+        # type: (SyncType) -> None
         # We already recieved such a sync response, do nothing in that case.
         if self.next_batch == response.next_batch:
             return
@@ -513,8 +513,15 @@ class HttpClient(Client):
         super().__init__(user, device_id, session_dir)
 
     @connected
-    def _send(self, request, request_info, uuid=None):
-        # type: (TransportRequest, Optional[UUID]) -> Tuple[UUID, bytes]
+    def _send(
+        self,
+        request,       # type: TransportRequest
+        request_info,  # type: RequestInfo
+        uuid=None      # type: Optional[UUID]
+    ):
+        # type: (...) -> Tuple[UUID, bytes]
+        assert self.connection
+
         ret_uuid, data = self.connection.send(request, uuid)
         self.requests_made[ret_uuid] = request_info
         return ret_uuid, data
@@ -574,6 +581,8 @@ class HttpClient(Client):
     @connected
     def disconnect(self):
         # type: () -> bytes
+        assert self.connection
+
         data = self.connection.disconnect()
         self._clear_queues()
         self.connection = None
@@ -582,6 +591,7 @@ class HttpClient(Client):
     @connected
     def data_to_send(self):
         # type: () -> bytes
+        assert self.connection
         return self.connection.data_to_send()
 
     @connected
@@ -998,6 +1008,8 @@ class HttpClient(Client):
     @connected
     def receive(self, data):
         # type: (bytes) -> None
+        assert self.connection
+
         try:
             response = self.connection.receive(data)
         except (h11.RemoteProtocolError, h2.exceptions.ProtocolError) as e:
