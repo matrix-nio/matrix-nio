@@ -114,8 +114,13 @@ class Api(object):
         return path
 
     @staticmethod
-    def login(user, password, device_name="", device_id=""):
-        # type: (str, str, Optional[str], Optional[str]) -> Tuple[str, str]
+    def login(
+        user,            # type: str
+        password,        # type: str
+        device_name="",  # type: Optional[str]
+        device_id=""     # type: Optional[str]
+    ):
+        # type: (...) -> Tuple[str, str, str]
         path = Api._build_path("login")
 
         content_dict = {
@@ -134,12 +139,12 @@ class Api(object):
 
     @staticmethod
     def sync(
-        access_token,  # type: str
+        access_token,     # type: str
         next_batch=None,  # type: Optional[str]
-        timeout=None,  # type: Optional[int]
-        filter=None,  # type: Optional[Dict[Any, Any]]
+        timeout=None,     # type: Optional[int]
+        filter=None,      # type: Optional[Dict[Any, Any]]
     ):
-        # type: (...) -> str
+        # type: (...) -> Tuple[str, str]
         query_parameters = {"access_token": access_token}
 
         if next_batch:
@@ -303,7 +308,7 @@ class Api(object):
 
     @staticmethod
     def keys_query(access_token, user_set):
-        # type: (str, Set[str]) -> Tuple[str, str]
+        # type: (str, Set[str]) -> Tuple[str, str, str]
         query_parameters = {"access_token": access_token}
         path = "keys/query"
 
@@ -319,7 +324,7 @@ class Api(object):
 
     @staticmethod
     def keys_claim(access_token, user_set):
-        # type: (str, Dict[str, List[str]]) -> Tuple[str, str]
+        # type: (str, Dict[str, List[str]]) -> Tuple[str, str, str]
         query_parameters = {"access_token": access_token}
         path = "keys/claim"
 
@@ -340,8 +345,13 @@ class Api(object):
         )
 
     @staticmethod
-    def to_device(access_token, event_type, content, tx_id):
-        # type: (str, str, Dict[Any, Any], Union[str, UUID]) -> Tuple[str, str]
+    def to_device(
+        access_token,  # type: str
+        event_type,    # type: str
+        content,       # type: Dict[Any, Any]
+        tx_id          # type: Union[str, UUID]
+    ):
+        # type: (...) -> Tuple[str, str, str]
         query_parameters = {"access_token": access_token}
         path = "sendToDevice/{event_type}/{tx_id}".format(
             event_type=event_type,
@@ -356,14 +366,14 @@ class Api(object):
 
     @staticmethod
     def devices(access_token):
-        # type: (str) -> str
+        # type: (str) -> Tuple[str, str]
         query_parameters = {"access_token": access_token}
         path = "devices"
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
     def update_device(access_token, device_id, content):
-        # type: (str, Dict[str, str]) -> Tuple[str, str]
+        # type: (str, Dict[str, str]) -> Tuple[str, str, str]
         query_parameters = {"access_token": access_token}
         path = "devices/{}".format(device_id)
 
@@ -374,8 +384,12 @@ class Api(object):
         )
 
     @staticmethod
-    def delete_devices(access_token, devices, auth_dict=None):
-        # type: (str, List[str], Optional[Dict[str, str]]) -> Tuple[str, str]
+    def delete_devices(
+        access_token,   # type: str
+        devices,        # type: List[str]
+        auth_dict=None  # type: Optional[Dict[str, str]]
+    ):
+        # type: (...) -> Tuple[str, str, str]
         query_parameters = {"access_token": access_token}
         path = "delete_devices"
 
@@ -394,7 +408,7 @@ class Api(object):
 
     @staticmethod
     def joined_members(access_token, room_id):
-        # type: (str, str) -> str
+        # type: (str, str) -> Tuple[str, str]
         query_parameters = {"access_token": access_token}
         path = "rooms/{}/joined_members".format(room_id)
 
