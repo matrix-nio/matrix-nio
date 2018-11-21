@@ -77,6 +77,7 @@ from .responses import (
 )
 from .events import (
     Event,
+    EncryptedEvent,
     MegolmEvent,
     OlmEvent,
     RoomEncryptedEvent,
@@ -1070,7 +1071,7 @@ class Olm(object):
                     "transaction_id": event.transaction_id
                 }
 
-            new_event = Event.parse_event(parsed_dict, True)
+            new_event = EncryptedEvent.parse_event(parsed_dict)
 
             if not new_event:
                 return None

@@ -82,7 +82,6 @@ class Event(object):
     def parse_event(
         cls,
         event_dict,  # type: Dict[Any, Any]
-        encrytped=False,
     ):
         # type: (...) -> Optional[Union[Event, BadEventType]]
         if "unsigned" in event_dict:
@@ -90,8 +89,6 @@ class Event(object):
                 return RedactedEvent.from_dict(event_dict)
 
         if event_dict["type"] == "m.room.message":
-            if encrytped:
-                return RoomEncryptedMessage.parse_event(event_dict)
             return RoomMessage.parse_event(event_dict)
         elif event_dict["type"] == "m.room.member":
             return RoomMemberEvent.from_dict(event_dict)
@@ -113,6 +110,23 @@ class Event(object):
             return CallEvent.parse_event(event_dict)
 
         return None
+
+
+@attr.s
+class EncryptedEvent(Event):
+    @classmethod
+    def parse_event(
+        cls,
+        event_dict,  # type: Dict[Any, Any]
+    ):
+        # type: (...) -> Optional[Union[Event, BadEventType]]
+        if "unsigned" in event_dict:
+            if "redacted_because" in event_dict["unsigned"]:
+                return RedactedEvent.from_dict(event_dict)
+
+        if event_dict["type"] == "m.room.message":
+            return RoomEncryptedMessage.parse_event(event_dict)
+        return super().parse_event(event_dict)
 
 
 @attr.s
@@ -786,13 +800,13 @@ class RoomMessageEmote(RoomMessageText):
 
 @attr.s
 class DefaultLevels(object):
-    ban = attr.ib(default=50)
-    invite = attr.ib(default=50)
-    kick = attr.ib(default=50)
-    redact = attr.ib(default=50)
-    state_default = attr.ib(default=0)
-    events_default = attr.ib(default=0)
-    users_default = attr.ib(default=0)
+    ban = attr.ib(default=50, type=int)
+    invite = attr.ib(default=50, type=int)
+    kick = attr.ib(default=50, type=int)
+    redact = attr.ib(default=50, type=int)
+    state_default = attr.ib(default=0, type=int)
+    events_default = attr.ib(default=0, type=int)
+    users_default = attr.ib(default=0, type=int)
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -811,8 +825,8 @@ class DefaultLevels(object):
 @attr.s
 class PowerLevels(object):
     defaults = attr.ib(default=attr.Factory(DefaultLevels))
-    users = attr.ib(default=attr.Factory(dict))
-    events = attr.ib(default=attr.Factory(dict))
+    users = attr.ib(default=attr.Factory(dict), type=Dict[str, int])
+    events = attr.ib(default=attr.Factory(dict), type=Dict[str, int])
 
     def get_user_level(self, user_id):
         # type: (str) -> int
