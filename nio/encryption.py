@@ -1082,6 +1082,7 @@ class Olm(object):
             new_event.decrypted = True
             new_event.verified = verified
             new_event.sender_key = event.sender_key
+            new_event.session_id = event.session_id
 
             return new_event
 

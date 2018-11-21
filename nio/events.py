@@ -62,6 +62,7 @@ class Event(object):
     decrypted = False
     verified = False
     sender_key = None  # type: Optional[str]
+    session_id = None  # type: Optional[str]
     transaction_id = None  # type: Optional[str]
 
     @classmethod
