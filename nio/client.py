@@ -158,6 +158,7 @@ class Client(object):
     def logged_in(self):
         # type: () -> bool
         """A property that tracks the logged in status of the client.
+
         Returns True if the client is logged in to the server, False otherwise.
         """
         return True if self.access_token else False
@@ -165,6 +166,7 @@ class Client(object):
     @property
     def olm_account_shared(self):
         """Check if the clients Olm account is shared with the server.
+
         Returns True if the Olm account is shared, False otherwise.
         """
         if not self.olm:
@@ -175,6 +177,7 @@ class Client(object):
     @property
     def should_upload_keys(self):
         """Check if the client should upload encryption keys.
+
         Returns True if a keys need to be uploaded, false otherwise.
         """
         if not self.olm:
@@ -185,6 +188,7 @@ class Client(object):
     @property
     def should_query_keys(self):
         """Check if the client should make a key query call to the server.
+
         Returns True if a key query is necessary, false otherwise.
         """
         if not self.olm:
@@ -195,6 +199,7 @@ class Client(object):
     def room_contains_unverified(self, room_id):
         # type: (str) -> bool
         """Check if a room contains unverified devices.
+
         Args:
             room_id (str): Room id of the room that should be checked.
 
@@ -218,6 +223,7 @@ class Client(object):
 
     def invalidate_outbound_session(self, room_id):
         """Explicitely remove encryption keys for a room.
+
         Args:
             room_id (str): Room id for the room the encryption keys should be
                 removed.
@@ -243,6 +249,7 @@ class Client(object):
     def verify_device(self, device):
         # type: (OlmDevice) -> bool
         """Mark a device as verified.
+
         A device needs to be either trusted or blacklisted to either share room
         encryption keys with it or not.
         This method adds the device to the trusted devices and enables sharing
@@ -266,6 +273,7 @@ class Client(object):
     def unverify_device(self, device):
         # type: (OlmDevice) -> bool
         """Unmark a device as verified.
+
         This method removes the device from the trusted devices and disables
         sharing room encryption keys with it. It also invalidates any
         encryption keys for rooms that the device takes part of.
@@ -288,6 +296,7 @@ class Client(object):
     def blacklist_device(self, device):
         # type: (OlmDevice) -> bool
         """Mark a device as blacklisted.
+
         Devices on the blacklist will not receive room encryption keys and
         therefore won't be able to decrypt messages coming from this client.
         Args:
@@ -307,6 +316,7 @@ class Client(object):
     def unblacklist_device(self, device):
         # type: (OlmDevice) -> bool
         """Unmark a device as blacklisted.
+
         Args:
             device (Device): The device which should be removed from the
                 blacklist.
