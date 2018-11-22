@@ -20,6 +20,7 @@ import attr
 
 from typing import Any, Dict, Optional, Union
 
+from functools import wraps
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
@@ -46,6 +47,21 @@ def validate_or_badevent(
             return UnknownBadEvent(parsed_dict)
 
     return None
+
+
+def verify(schema):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            event_dict = args[1]
+
+            bad = validate_or_badevent(event_dict, schema)
+            if bad:
+                return bad
+
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 class UnknownBadEvent(object):
@@ -156,12 +172,8 @@ class CallCandidatesEvent(CallEvent):
     candidates = attr.ib()
 
     @classmethod
+    @verify(Schemas.call_candidates)
     def from_dict(cls, event_dict):
-        bad = validate_or_badevent(event_dict, Schemas.call_candidates)
-
-        if bad:
-            return bad
-
         content = event_dict.pop("content")
         return cls(
             event_dict["event_id"],
@@ -179,12 +191,8 @@ class CallInviteEvent(CallEvent):
     offer = attr.ib()
 
     @classmethod
+    @verify(Schemas.call_invite)
     def from_dict(cls, event_dict):
-        bad = validate_or_badevent(event_dict, Schemas.call_invite)
-
-        if bad:
-            return bad
-
         content = event_dict.pop("content")
         return cls(
             event_dict["event_id"],
@@ -202,12 +210,8 @@ class CallAnswerEvent(CallEvent):
     answer = attr.ib()
 
     @classmethod
+    @verify(Schemas.call_answer)
     def from_dict(cls, event_dict):
-        bad = validate_or_badevent(event_dict, Schemas.call_answer)
-
-        if bad:
-            return bad
-
         content = event_dict.pop("content")
         return cls(
             event_dict["event_id"],
@@ -222,12 +226,8 @@ class CallAnswerEvent(CallEvent):
 @attr.s
 class CallHangupEvent(CallEvent):
     @classmethod
+    @verify(Schemas.call_hangup)
     def from_dict(cls, event_dict):
-        bad = validate_or_badevent(event_dict, Schemas.call_hangup)
-
-        if bad:
-            return bad
-
         content = event_dict.pop("content")
         return cls(
             event_dict["event_id"],
@@ -243,16 +243,12 @@ class ToDeviceEvent(object):
     sender = attr.ib()
 
     @classmethod
+    @verify(Schemas.to_device)
     def parse_event(
         cls,
         event_dict  # type: Dict[Any, Any]
     ):
         # type: (...) -> Optional[Union[ToDeviceEvent, BadEventType]]
-        bad = validate_or_badevent(event_dict, Schemas.to_device)
-
-        if bad:
-            return bad
-
         # A redacted event will have an empty content.
         if not event_dict["content"]:
             return None
@@ -266,12 +262,8 @@ class ToDeviceEvent(object):
 @attr.s
 class RoomEncryptedEvent(object):
     @classmethod
+    @verify(Schemas.room_encrypted)
     def parse_event(cls, event_dict):
-        bad = validate_or_badevent(event_dict, Schemas.room_encrypted)
-
-        if bad:
-            return bad
-
         content = event_dict["content"]
 
         if content["algorithm"] == "m.olm.v1.curve25519-aes-sha2":
@@ -288,12 +280,8 @@ class OlmEvent(ToDeviceEvent, RoomEncryptedEvent):
     ciphertext = attr.ib()
 
     @classmethod
+    @verify(Schemas.room_olm_encrypted)
     def from_dict(cls, event_dict):
-        bad = validate_or_badevent(event_dict, Schemas.room_olm_encrypted)
-
-        if bad:
-            return bad
-
         content = event_dict["content"]
 
         ciphertext = content["ciphertext"]
@@ -311,12 +299,8 @@ class RoomKeyEvent(object):
     algorithm = attr.ib(type=str)
 
     @classmethod
+    @verify(Schemas.room_key_event)
     def from_dict(cls, event_dict, sender, sender_key):
-        bad = validate_or_badevent(event_dict, Schemas.room_key_event)
-
-        if bad:
-            return bad
-
         content = event_dict["content"]
 
         return cls(
@@ -344,12 +328,8 @@ class MegolmEvent(RoomEncryptedEvent):
     verified = False
 
     @classmethod
+    @verify(Schemas.room_megolm_encrypted)
     def from_dict(cls, event_dict):
-        bad = validate_or_badevent(event_dict, Schemas.room_megolm_encrypted)
-
-        if bad:
-            return bad
-
         content = event_dict["content"]
 
         ciphertext = content["ciphertext"]
@@ -402,13 +382,9 @@ class InviteMemberEvent(InviteEvent):
     prev_content = attr.ib(default=None)
 
     @classmethod
+    @verify(Schemas.room_membership)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[InviteMemberEvent, BadEventType]
-        bad = validate_or_badevent(parsed_dict, Schemas.room_membership)
-
-        if bad:
-            return bad
-
         content = parsed_dict.pop("content")
         unsigned = parsed_dict.get("unsigned", {})
         prev_content = unsigned.get("prev_content", None)
@@ -426,13 +402,9 @@ class InviteAliasEvent(InviteEvent):
     canonical_alias = attr.ib()
 
     @classmethod
+    @verify(Schemas.room_canonical_alias)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[InviteAliasEvent, BadEventType]
-        bad = validate_or_badevent(parsed_dict, Schemas.room_canonical_alias)
-
-        if bad:
-            return bad
-
         sender = parsed_dict["sender"]
         canonical_alias = parsed_dict["content"]["alias"]
 
@@ -444,13 +416,9 @@ class InviteNameEvent(InviteEvent):
     name = attr.ib()
 
     @classmethod
+    @verify(Schemas.room_name)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[InviteNameEvent, BadEventType]
-        bad = validate_or_badevent(parsed_dict, Schemas.room_name)
-
-        if bad:
-            return bad
-
         sender = parsed_dict["sender"]
         canonical_alias = parsed_dict["content"]["name"]
 
@@ -493,13 +461,9 @@ class RedactedEvent(Event):
         )
 
     @classmethod
+    @verify(Schemas.redacted_event)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RedactedEvent, BadEventType]
-        bad = validate_or_badevent(parsed_dict, Schemas.redacted_event)
-
-        if bad:
-            return bad
-
         redacter = parsed_dict["unsigned"]["redacted_because"]["sender"]
         content_dict = parsed_dict["unsigned"]["redacted_because"]["content"]
         reason = content_dict.get("reason", None)
@@ -524,13 +488,9 @@ class RoomAliasEvent(Event):
     canonical_alias = attr.ib()
 
     @classmethod
+    @verify(Schemas.room_canonical_alias)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomAliasEvent, BadEventType]
-        bad = validate_or_badevent(parsed_dict, Schemas.room_canonical_alias)
-
-        if bad:
-            return bad
-
         event_id = parsed_dict["event_id"]
         sender = parsed_dict["sender"]
         timestamp = parsed_dict["origin_server_ts"]
@@ -545,13 +505,9 @@ class RoomNameEvent(Event):
     name = attr.ib()
 
     @classmethod
+    @verify(Schemas.room_name)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomNameEvent, BadEventType]
-        bad = validate_or_badevent(parsed_dict, Schemas.room_name)
-
-        if bad:
-            return bad
-
         event_id = parsed_dict["event_id"]
         sender = parsed_dict["sender"]
         timestamp = parsed_dict["origin_server_ts"]
@@ -566,13 +522,9 @@ class RoomTopicEvent(Event):
     topic = attr.ib()
 
     @classmethod
+    @verify(Schemas.room_topic)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomTopicEvent, BadEventType]
-        bad = validate_or_badevent(parsed_dict, Schemas.room_topic)
-
-        if bad:
-            return bad
-
         event_id = parsed_dict["event_id"]
         sender = parsed_dict["sender"]
         timestamp = parsed_dict["origin_server_ts"]
@@ -584,14 +536,10 @@ class RoomTopicEvent(Event):
 
 @attr.s
 class RoomMessage(Event):
-    @staticmethod
-    def parse_event(parsed_dict):
+    @classmethod
+    @verify(Schemas.room_message)
+    def parse_event(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomMessage, BadEventType]
-        bad = validate_or_badevent(parsed_dict, Schemas.room_message)
-
-        if bad:
-            return bad
-
         content_dict = parsed_dict["content"]
 
         if content_dict["msgtype"] == "m.text":
@@ -620,14 +568,10 @@ class RoomMessage(Event):
 
 @attr.s
 class RoomEncryptedMessage(RoomMessage):
-    @staticmethod
-    def parse_event(parsed_dict):
+    @classmethod
+    @verify(Schemas.room_message)
+    def parse_event(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomMessage, BadEventType]
-        bad = validate_or_badevent(parsed_dict, Schemas.room_message)
-
-        if bad:
-            return bad
-
         msgtype = parsed_dict["content"]["msgtype"]
 
         if msgtype == "m.image":
@@ -654,12 +598,8 @@ class RoomMessageMedia(RoomMessage):
     body = attr.ib()
 
     @classmethod
+    @verify(Schemas.room_message_media)
     def from_dict(cls, parsed_dict):
-        bad = validate_or_badevent(parsed_dict, Schemas.room_message_media)
-
-        if bad:
-            return bad
-
         return cls(
             parsed_dict["event_id"],
             parsed_dict["sender"],
@@ -678,12 +618,8 @@ class RoomEncryptedMedia(RoomMessage):
     iv = attr.ib()
 
     @classmethod
+    @verify(Schemas.room_encrypted_media)
     def from_dict(cls, parsed_dict):
-        bad = validate_or_badevent(parsed_dict, Schemas.room_encrypted_media)
-
-        if bad:
-            return bad
-
         return cls(
             parsed_dict["event_id"],
             parsed_dict["sender"],
@@ -758,12 +694,8 @@ class RoomMessageNotice(RoomMessage):
     body = attr.ib()
 
     @classmethod
+    @verify(Schemas.room_message_notice)
     def from_dict(cls, parsed_dict):
-        bad = validate_or_badevent(parsed_dict, Schemas.room_message_notice)
-
-        if bad:
-            return bad
-
         return cls(
             parsed_dict["event_id"],
             parsed_dict["sender"],
@@ -876,12 +808,8 @@ class PowerLevelsEvent(Event):
     power_levels = attr.ib()
 
     @classmethod
+    @verify(Schemas.room_power_levels)
     def from_dict(cls, parsed_dict):
-        bad = validate_or_badevent(parsed_dict, Schemas.room_power_levels)
-
-        if bad:
-            return bad
-
         default_levels = DefaultLevels.from_dict(parsed_dict)
 
         users = parsed_dict["content"].pop("users")
@@ -903,13 +831,9 @@ class RedactionEvent(Event):
     reason = attr.ib(default=None)
 
     @classmethod
+    @verify(Schemas.room_redaction)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RedactionEvent, BadEventType]
-        bad = validate_or_badevent(parsed_dict, Schemas.room_redaction)
-
-        if bad:
-            return bad
-
         content = parsed_dict.get("content", {})
         reason = content.get("reason", None)
 
@@ -929,13 +853,9 @@ class RoomMemberEvent(Event):
     prev_content = attr.ib(default=None)
 
     @classmethod
+    @verify(Schemas.room_membership)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomMemberEvent, BadEventType]
-        bad = validate_or_badevent(parsed_dict, Schemas.room_membership)
-
-        if bad:
-            return bad
-
         content = parsed_dict.pop("content")
         unsigned = parsed_dict.get("unsigned", {})
         prev_content = unsigned.get("prev_content", None)
