@@ -64,10 +64,10 @@ def verify(schema):
     return decorator
 
 
+@attr.s
 class UnknownBadEvent(object):
-    def __init__(self, source):
-        self.source = Api.to_json(source)
-        self.transaction_id = None
+    event_dict = attr.ib()
+    transaction_id = None
 
 
 @attr.s
