@@ -14,6 +14,7 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+import attr
 import json
 import pprint
 from builtins import bytes, str, super
@@ -80,7 +81,13 @@ from .responses import (
     KeysUploadError
 )
 
-from .events import Event, BadEventType, RoomEncryptedEvent, MegolmEvent
+from .events import (
+    Event,
+    BadEventType,
+    RoomEncryptedEvent,
+    MegolmEvent,
+    RoomKeyEvent
+)
 from .rooms import MatrixInvitedRoom, MatrixRoom
 
 try:
@@ -115,19 +122,10 @@ class RequestType(Enum):
     joined_members = 17
 
 
-_RequestInfo = NamedTuple(
-    "RequestInfo",
-    [
-        ("type", RequestType),
-        ("extra_data", Optional[str])
-    ]
-)
-
-
-class RequestInfo(_RequestInfo):
-    def __new__(cls, type, extra_data=None):
-        # type: (RequestType, Optional[str]) -> RequestInfo
-        return super().__new__(cls, type, extra_data)
+@attr.s
+class RequestInfo(object):
+    type = attr.ib(type=RequestType)
+    extra_data = attr.ib(default=None)
 
 
 class Client(object):
