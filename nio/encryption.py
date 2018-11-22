@@ -952,8 +952,11 @@ class Olm(object):
 
         return event
 
-    def decrypt_event(self, event):
-        # type: (RoomEncryptedEvent) -> Union[Event, BadEventType, RoomKeyEvent, None]
+    def decrypt_event(
+        self,
+        event  # type: RoomEncryptedEvent
+    ):
+        # type: (...) -> Union[Event, BadEventType, RoomKeyEvent, None]
         logger.debug("Decrypting event of type {}".format(
             type(event).__name__
         ))

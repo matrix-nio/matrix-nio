@@ -337,8 +337,11 @@ class Client(object):
         if self.session_dir:
             self.olm = Olm(self.user_id, self.device_id, self.session_dir)
 
-    def decrypt_event(self, event):
-        # type: (MegolmEvent) -> Event
+    def decrypt_event(
+        self,
+        event  # type: MegolmEvent
+    ):
+        # type: (...) -> Optional[Union[Event, BadEventType, RoomKeyEvent]]
         """Decrypt a undecrypted megolm event."""
         if not self.olm:
             raise LocalProtocolError("Olm account isn't loaded")
