@@ -32,6 +32,7 @@ from typing import (
 
 from datetime import datetime
 from jsonschema.exceptions import SchemaError, ValidationError
+from functools import wraps
 from logbook import Logger
 
 from .events import (
@@ -48,6 +49,24 @@ if False:
 
 logger = Logger("nio.responses")
 logger_group.add_logger(logger)
+
+
+def verify(schema, error_class):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            parsed_dict = args[1]
+
+            try:
+                logger.info("Validating response schema")
+                validate_json(parsed_dict, schema)
+            except (SchemaError, ValidationError) as e:
+                logger.error("Error validating response: " + str(e.message))
+                return error_class.from_dict(parsed_dict)
+
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 @attr.s
@@ -269,13 +288,9 @@ class LoginResponse(Response):
         )
 
     @classmethod
+    @verify(Schemas.login, LoginError)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[LoginResponse, ErrorResponse]
-        try:
-            validate_json(parsed_dict, Schemas.login)
-        except (SchemaError, ValidationError):
-            return LoginError.from_dict(parsed_dict)
-
         return cls(
             parsed_dict["user_id"],
             parsed_dict["device_id"],
@@ -289,17 +304,13 @@ class JoinedMembersResponse(Response):
     room_id = attr.ib(type=str)
 
     @classmethod
+    @verify(Schemas.joined_members, JoinedMembersError)
     def from_dict(
         cls,
         parsed_dict,  # type: Dict[Any, Any]
         room_id       # type: str
     ):
         # type: (...) -> Union[JoinedMembersResponse, ErrorResponse]
-        try:
-            validate_json(parsed_dict, Schemas.joined_members)
-        except (SchemaError, ValidationError):
-            return JoinedMembersError.from_dict(parsed_dict, room_id)
-
         members = []
 
         for user_id, user_info in parsed_dict["joined"].items():
@@ -415,16 +426,12 @@ class DeleteDevicesAuthResponse(Response):
     params = attr.ib(type=Dict)
 
     @classmethod
+    @verify(Schemas.delete_devices, DeleteDevicesError)
     def from_dict(
         cls,
         parsed_dict  # type: Dict[Any, Any]
     ):
         # type: (...) -> Union[DeleteDevicesAuthResponse, ErrorResponse]
-        try:
-            validate_json(parsed_dict, Schemas.delete_devices)
-        except (SchemaError, ValidationError):
-            return DeleteDevicesError.from_dict(parsed_dict)
-
         return cls(
             parsed_dict["session"],
             parsed_dict["flows"],
@@ -445,16 +452,11 @@ class RoomMessagesResponse(Response):
     end = attr.ib(type=str)
 
     @classmethod
+    @verify(Schemas.room_messages, RoomMessagesError)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomMessagesResponse, ErrorResponse]
         chunk = []  # type: List[Union[Event, UnknownBadEvent]]
-        try:
-            validate_json(parsed_dict, Schemas.room_messages)
-            _, chunk = SyncResponse._get_room_events(parsed_dict["chunk"])
-        except (SchemaError, ValidationError) as e:
-            print(str(e))
-            return RoomMessagesError.from_dict(parsed_dict)
-
+        _, chunk = SyncResponse._get_room_events(parsed_dict["chunk"])
         return cls(chunk, parsed_dict["start"], parsed_dict["end"])
 
 
@@ -495,15 +497,10 @@ class KeysUploadResponse(Response):
     signed_curve25519_count = attr.ib(type=int)
 
     @classmethod
+    @verify(Schemas.keys_upload, KeysUploadError)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[KeysUploadResponse, ErrorResponse]
-        try:
-            validate_json(parsed_dict, Schemas.keys_upload)
-        except (SchemaError, ValidationError):
-            return KeysUploadError.from_dict(parsed_dict)
-
         counts = parsed_dict["one_time_key_counts"]
-
         return cls(counts["curve25519"], counts["signed_curve25519"])
 
 
@@ -514,13 +511,9 @@ class KeysQueryResponse(Response):
     changed = {}  # type: Dict[str, Dict[str, OlmDevice]]
 
     @classmethod
+    @verify(Schemas.keys_query, KeysQueryError)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[KeysQueryResponse, ErrorResponse]
-        try:
-            validate_json(parsed_dict, Schemas.keys_query)
-        except (SchemaError, ValidationError):
-            return KeysQueryError.from_dict(parsed_dict)
-
         device_keys = parsed_dict["device_keys"]
         failures = parsed_dict["failures"]
 
@@ -534,17 +527,13 @@ class KeysClaimResponse(Response):
     room_id = attr.ib(type=str)
 
     @classmethod
+    @verify(Schemas.keys_claim, KeysClaimError)
     def from_dict(
         cls,
         parsed_dict,  # type: Dict[Any, Any]
         room_id       # type: str
     ):
         # type: (...) -> Union[KeysClaimResponse, ErrorResponse]
-        try:
-            validate_json(parsed_dict, Schemas.keys_claim)
-        except (SchemaError, ValidationError):
-            return KeysClaimError.from_dict(parsed_dict)
-
         one_time_keys = parsed_dict["one_time_keys"]
         failures = parsed_dict["failures"]
 
@@ -556,13 +545,9 @@ class DevicesResponse(Response):
     devices = attr.ib(type=List[Device])
 
     @classmethod
+    @verify(Schemas.devices, DevicesError)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[DevicesResponse, ErrorResponse]
-        try:
-            validate_json(parsed_dict, Schemas.devices)
-        except (SchemaError, ValidationError):
-            return DevicesError.from_dict(parsed_dict)
-
         devices = []
         for device_dict in parsed_dict["devices"]:
             try:
@@ -801,20 +786,13 @@ class _SyncResponse(Response):
         return Rooms(invited_rooms, joined_rooms, left_rooms), unhandled_rooms
 
     @classmethod
+    @verify(Schemas.sync, SyncError)
     def from_dict(
         cls,
         parsed_dict,  # type: Dict[Any, Any]
         max_events=0,  # type: int
     ):
         # type: (...) -> Union[SyncType, ErrorResponse]
-
-        try:
-            logger.info("Validating sync response schema")
-            validate_json(parsed_dict, Schemas.sync)
-        except (SchemaError, ValidationError) as e:
-            logger.error("Error validating sync response: " + str(e.message))
-            return SyncError.from_dict(parsed_dict)
-
         to_device = cls._get_to_device(parsed_dict["to_device"])
 
         key_count_dict = parsed_dict["device_one_time_keys_count"]

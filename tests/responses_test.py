@@ -16,6 +16,7 @@ from nio.responses import (
     DevicesResponse,
     DeleteDevicesAuthResponse,
     JoinedMembersResponse,
+    LoginError,
 )
 
 
@@ -36,7 +37,7 @@ class TestClass(object):
         parsed_dict = TestClass._load_response(
             "tests/data/login_response_error.json")
         response = LoginResponse.from_dict(parsed_dict)
-        assert isinstance(response, ErrorResponse)
+        assert isinstance(response, LoginError)
 
     def test_login_failure_format(self):
         parsed_dict = TestClass._load_response(
