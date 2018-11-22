@@ -329,6 +329,13 @@ class Client(object):
         if self.session_dir:
             self.olm = Olm(self.user_id, self.device_id, self.session_dir)
 
+    def decrypt_event(self, event):
+        # type: (MegolmEvent) -> Event
+        """Decrypt a undecrypted megolm event."""
+        if not self.olm:
+            raise LocalProtocolError("Olm account isn't loaded")
+        return self.olm.decrypt_event(event)
+
     def _handle_sync(self, response):
         # type: (SyncType) -> None
         # We already recieved such a sync response, do nothing in that case.
