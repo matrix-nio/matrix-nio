@@ -126,7 +126,23 @@ class Event(object):
         elif event_dict["type"].startswith("m.call"):
             return CallEvent.parse_event(event_dict)
 
-        return None
+        return UnknownEvent.from_dict(event_dict)
+
+
+@attr.s
+class UnknownEvent(Event):
+    type = attr.ib()
+    event_dict = attr.ib()
+
+    @classmethod
+    def from_dict(cls, event_dict):
+        return cls(
+            event_dict["event_id"],
+            event_dict["sender"],
+            event_dict["origin_server_ts"],
+            event_dict["type"],
+            event_dict
+        )
 
 
 @attr.s
