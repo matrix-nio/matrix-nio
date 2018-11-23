@@ -19,7 +19,7 @@ import json
 import pprint
 from builtins import bytes, str, super
 from enum import Enum, unique
-from collections import deque, namedtuple
+from collections import deque
 from typing import (
     Any,
     AnyStr,
@@ -29,7 +29,6 @@ from typing import (
     Optional,
     Tuple,
     Union,
-    NamedTuple
 )
 from uuid import UUID, uuid4
 
