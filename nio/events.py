@@ -83,7 +83,7 @@ class Event(object):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[Event, BadEventType]
+        # type: (Dict[Any, Any]) -> Union[Event, UnknownBadEvent]
         return cls(
             parsed_dict["event_id"],
             parsed_dict["sender"],
@@ -100,7 +100,7 @@ class Event(object):
         cls,
         event_dict,  # type: Dict[Any, Any]
     ):
-        # type: (...) -> Optional[Union[Event, BadEventType]]
+        # type: (...) -> Union[Event, BadEventType]
         if "unsigned" in event_dict:
             if "redacted_because" in event_dict["unsigned"]:
                 return RedactedEvent.from_dict(event_dict)
@@ -152,7 +152,7 @@ class EncryptedEvent(Event):
         cls,
         event_dict,  # type: Dict[Any, Any]
     ):
-        # type: (...) -> Optional[Union[Event, BadEventType]]
+        # type: (...) -> Union[Event, UnknownBadEvent]
         if "unsigned" in event_dict:
             if "redacted_because" in event_dict["unsigned"]:
                 return RedactedEvent.from_dict(event_dict)
