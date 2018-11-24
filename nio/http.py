@@ -412,6 +412,9 @@ class Http2Connection(Connection):
         if not self._responses:
             return 0
 
+        # TODO find the response with the biggest elapsed value and return
+        # this as the connection elapsed value (note, the first one isn't
+        # necessarily the biggest one because a request can have a timeout)
         response = list(self._responses.values())[0]
 
         return response.elapsed
