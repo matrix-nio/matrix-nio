@@ -13,12 +13,16 @@ setup(
     license="ISC",
     packages=["nio"],
     install_requires=[
-        "attr"
+        "attr",
         "future",
-        "typing",
+        "typing;python_version<'3.5'",
         "h11",
         "h2",
         "logbook",
+        "python-olm",
+    ],
+    dependency_links=[
+        "git+https://github.com/poljar/python-olm.git#egg=python-olm"
     ],
     zip_safe=False
 )
