@@ -90,11 +90,6 @@ class Event(object):
             parsed_dict["origin_server_ts"],
         )
 
-    def __str__(self):
-        return "Got event of type {} from {}.".format(
-            type(self).__name__, self.sender
-        )
-
     @classmethod
     def parse_event(
         cls,
