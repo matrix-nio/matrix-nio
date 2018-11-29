@@ -110,7 +110,7 @@ class TestClass(object):
         ) == 0
         assert len(
             response.rooms.join["!SVkFJHzfwvuaIEawgC:localhost"].state
-        ) == 1
+        ) == 5
 
         new_response = response.next_part(1)
         assert isinstance(new_response, PartialSyncResponse)
