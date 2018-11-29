@@ -77,7 +77,8 @@ from .responses import (
     DeleteDevicesAuthResponse,
     DeleteDevicesResponse,
     JoinedMembersResponse,
-    KeysUploadError
+    KeysUploadError,
+    RoomTypingResponse
 )
 
 from .events import (
@@ -119,6 +120,7 @@ class RequestType(Enum):
     delete_devices = 15
     update_device = 16
     joined_members = 17
+    room_typing = 18
 
 
 @attr.s
@@ -780,6 +782,44 @@ class HttpClient(Client):
 
     @connected
     @logged_in
+    def room_typing(
+        self,
+        room_id,            # type: str
+        typing_state=True,  # type: bool
+        timeout=30000       # type: int
+    ):
+        # type: (...) -> Tuple[UUID, bytes]
+        """Send a typing notice to the server.
+
+        This tells the server that the user is typing for the next N
+        milliseconds or that the user has stopped typing.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            room_id (str): Room id of the room where the user is typing.
+            typign_state (bool): A flag representing whether the user started
+                or stopped typing
+            timeout (int): For how long should the new typing notice be
+                valid for in milliseconds.
+        """
+        request = self._build_request(
+            Api.room_typing(
+                self.access_token,
+                room_id,
+                self.user_id,
+                typing_state,
+                timeout
+            )
+        )
+        return self._send(request, RequestInfo(
+            RequestType.room_typing,
+            room_id
+        ))
+
+    @connected
+    @logged_in
     def keys_upload(self):
         keys_dict = self.olm.share_keys()
 
@@ -988,6 +1028,11 @@ class HttpClient(Client):
             response = RoomLeaveResponse.from_dict(parsed_dict)
         elif request_type is RequestType.room_messages:
             response = RoomMessagesResponse.from_dict(parsed_dict)
+        elif request_type is RequestType.room_typing:
+            response = RoomTypingResponse.from_dict(
+                parsed_dict,
+                request_info.extra_data
+            )
         elif request_type is RequestType.keys_upload:
             response = KeysUploadResponse.from_dict(parsed_dict)
         elif request_type is RequestType.keys_query:

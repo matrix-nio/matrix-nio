@@ -413,3 +413,43 @@ class Api(object):
         path = "rooms/{}/joined_members".format(room_id)
 
         return "GET", Api._build_path(path, query_parameters)
+
+    @staticmethod
+    def room_typing(
+        access_token,       # type: str
+        room_id,            # type: str
+        user_id,            # type: str
+        typing_state=True,  # type: bool
+        timeout=30000       # type: int
+    ):
+        # type: (...) -> Tuple[str, str, str]
+        """Send a typing notice to the server.
+
+        This tells the server that the user is typing for the next N
+        milliseconds or that the user has stopped typing.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            room_id (str): Room id of the room where the user is typing.
+            user_id (str): The user who has started to type.
+            typign_state (bool): A flag representing whether the user started
+                or stopped typing
+            timeout (int): For how long should the new typing notice be
+                valid for in milliseconds.
+        """
+        query_parameters = {"access_token": access_token}
+        path = "rooms/{}/typing/{}".format(room_id, user_id)
+
+        content = {
+            "typing": typing_state
+        }
+
+        if typing_state:
+            content["timeout"] = timeout  # type: ignore
+
+        return (
+            "PUT",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content)
+        )
