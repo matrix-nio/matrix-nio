@@ -64,11 +64,18 @@ class TestClass(object):
         response.send_time = 0
         response.receive_time = 30
         response.timeout = 25 * 1000
+
+        response2 = Http2Response()
+        response2.send_time = 0
+        response2.receive_time = 31
+        response2.timeout = 25 * 1000
+
         client.connection._responses[response.uuid] = response
+        client.connection._responses[response2.uuid] = response2
         typed_response = RequestInfo("sync", 25 * 1000)
         client.requests_made[response.uuid] = typed_response
 
-        assert client.lag == 5
+        assert client.lag == 6
 
     def test_client_local_error(self, frame_factory):
         client = HttpClient("localhost", "example")
