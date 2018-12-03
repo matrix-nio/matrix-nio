@@ -130,6 +130,8 @@ class RequestInfo(object):
 
 
 class Client(object):
+    """Create a new Matrix Client."""
+
     def __init__(
         self,
         user,            # type: str
@@ -257,6 +259,7 @@ class Client(object):
         Args:
             device (Device): The device which should be added to the trust
                 list.
+
         Returns true if the device was verified, false if it was already
         verified.
         """
@@ -280,6 +283,7 @@ class Client(object):
         Args:
             device (Device): The device which should be added to the trust
                 list.
+
         Returns true if the device was unverified, false if it was already
         unverified.
         """
@@ -298,9 +302,11 @@ class Client(object):
 
         Devices on the blacklist will not receive room encryption keys and
         therefore won't be able to decrypt messages coming from this client.
+
         Args:
             device (Device): The device which should be added to the
                 blacklist.
+
         Returns true if the device was added, false if it was on the blacklist
         already.
         """
@@ -319,6 +325,7 @@ class Client(object):
         Args:
             device (Device): The device which should be removed from the
                 blacklist.
+
         Returns true if the device was removed, false if it wasn't on the
         blacklist and no removal happened.
         """
@@ -982,7 +989,7 @@ class HttpClient(Client):
         request = self._build_request(
             Api.sync(
                 self.access_token,
-                next_batch=self.next_batch,
+                since=self.next_batch,
                 timeout=timeout,
                 filter=filter
             ),

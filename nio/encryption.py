@@ -471,7 +471,7 @@ class Olm(object):
         return True
 
     def share_keys(self):
-        # type: () -> Dict[Any, Any]
+        # type: () -> Dict[str, Any]
         def generate_one_time_keys(current_key_count):
             # type: (int) -> None
             max_keys = self.account.max_one_time_keys
