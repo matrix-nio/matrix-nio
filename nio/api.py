@@ -714,3 +714,43 @@ class Api(object):
             Api._build_path(path, query_parameters),
             Api.to_json(content)
         )
+
+    @staticmethod
+    def room_read_markers(
+        access_token,       # type: str
+        room_id,            # type: str
+        fully_read_event,   # type: str
+        read_event=None,    # type: Optional[str]
+    ):
+        # type: (...) -> Tuple[str, str, str]
+        """Update read markers for a room.
+
+        This sets the position of the read marker for a given room,
+        and optionally the read receipt's location.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): Room id of the room of the room where the read
+                markers should be updated
+            fully_read_event (str): The event ID the read marker should be
+                located at.
+            read_event (Optional[str]): The event ID to set the read receipt
+                location at.
+        """
+        query_parameters = {"access_token": access_token}
+        path = "rooms/{}/read_markers".format(room_id)
+
+        content = {
+            "m.fully_read": fully_read_event
+        }
+
+        if read_event:
+            content["m.read"] = read_event
+
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content)
+        )

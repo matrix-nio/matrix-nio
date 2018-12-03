@@ -104,6 +104,8 @@ __all__ = [
     "UpdateDeviceError",
     "RoomTypingResponse",
     "RoomTypingError",
+    "RoomReadMarkersResponse",
+    "RoomReadMarkersError",
 ]
 
 
@@ -281,6 +283,13 @@ class RoomRedactError(_ErrorWithRoomId):
 
 class RoomTypingError(_ErrorWithRoomId):
     """A response representing a unsuccessful room typing request."""
+
+    pass
+
+
+class RoomReadMarkersError(_ErrorWithRoomId):
+    """A response representing a unsuccessful room read markers request."""
+
     pass
 
 
@@ -482,6 +491,14 @@ class ShareGroupSessionResponse(_EmptyResponseWithRoomId):
 
 class RoomTypingResponse(_EmptyResponseWithRoomId):
     """A response representing a successful room typing request."""
+
+    @staticmethod
+    def create_error(parsed_dict, room_id):
+        return RoomTypingError.from_dict(parsed_dict, room_id)
+
+
+class RoomReadMarkersResponse(_EmptyResponseWithRoomId):
+    """A response representing a successful room read markers request."""
 
     @staticmethod
     def create_error(parsed_dict, room_id):

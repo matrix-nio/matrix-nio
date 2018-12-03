@@ -78,7 +78,8 @@ from .responses import (
     DeleteDevicesResponse,
     JoinedMembersResponse,
     KeysUploadError,
-    RoomTypingResponse
+    RoomTypingResponse,
+    RoomReadMarkersResponse
 )
 
 from .events import (
@@ -121,6 +122,7 @@ class RequestType(Enum):
     update_device = 16
     joined_members = 17
     room_typing = 18
+    room_read_markers = 19
 
 
 @attr.s
@@ -827,6 +829,43 @@ class HttpClient(Client):
 
     @connected
     @logged_in
+    def room_read_markers(
+        self,
+        room_id,            # type: str
+        fully_read_event,   # type: str
+        read_event=None,    # type: Optional[str]
+    ):
+        # type: (...) -> Tuple[UUID, bytes]
+        """Update read markers for a room.
+
+        This sets the position of the read marker for a given room,
+        and optionally the read receipt's location.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            room_id (str): Room id of the room of the room where the read
+                markers should be updated
+            fully_read_event (str): The event ID the read marker should be
+                located at.
+            read_event (Optiona[str]): The event ID to set the read
+                receipt location at.
+        """
+        request = self._build_request(
+            Api.room_read_markers(
+                self.access_token,
+                room_id,
+                fully_read_event,
+                read_event
+            )
+        )
+        return self._send(request, RequestInfo(
+            RequestType.room_read_markers,
+            room_id
+        ))
+
+    @connected
+    @logged_in
     def keys_upload(self):
         keys_dict = self.olm.share_keys()
 
@@ -1037,6 +1076,11 @@ class HttpClient(Client):
             response = RoomMessagesResponse.from_dict(parsed_dict)
         elif request_type is RequestType.room_typing:
             response = RoomTypingResponse.from_dict(
+                parsed_dict,
+                request_info.extra_data
+            )
+        elif request_type is RequestType.room_read_markers:
+            response = RoomReadMarkersResponse.from_dict(
                 parsed_dict,
                 request_info.extra_data
             )
