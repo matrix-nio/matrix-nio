@@ -21,6 +21,7 @@ import attr
 from typing import Any, Dict, Optional, Union
 
 from functools import wraps
+from builtins import super
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
