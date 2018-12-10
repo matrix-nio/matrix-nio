@@ -159,6 +159,73 @@ class EncryptedEvent(Event):
 
 
 @attr.s
+class AccountDataEvent(object):
+    """Abstract class for account data events."""
+
+    @classmethod
+    @verify(Schemas.account_data)
+    def parse_event(
+        cls,
+        event_dict,  # type: Dict[Any, Any]
+    ):
+
+        if event_dict["type"] == "m.fully_read":
+            return FullyReadEvent.from_dict(event_dict)
+
+        return UnknownAccountDataEvent.from_dict(event_dict)
+
+
+@attr.s
+class FullyReadEvent(AccountDataEvent):
+    """Read marker location event.
+
+    The current location of the user's read marker in a room.
+    This event appears in the user's room account data for the room the marker
+    is applicable for.
+
+    Attributes:
+        event_id (str): The event id the user's read marker is located
+            at in the room.
+
+    """
+
+    event_id = attr.ib()
+
+    @classmethod
+    @verify(Schemas.fully_read)
+    def from_dict(cls, event_dict):
+        """Construct a FullyReadEvent from a dictionary."""
+        content = event_dict.pop("content")
+        return cls(
+            content["event_id"],
+        )
+
+
+@attr.s
+class UnknownAccountDataEvent(AccountDataEvent):
+    """Account data event of an unknown type.
+
+    Attributes:
+        type (str): The type of the event.
+        content (Dict): The content of the event.
+
+    """
+
+    type = attr.ib()
+    content = attr.ib()
+
+    @classmethod
+    @verify(Schemas.fully_read)
+    def from_dict(cls, event_dict):
+        """Construct an UnknownAccountDataEvent from a dictionary."""
+        content = event_dict.pop("content")
+        return cls(
+            event_dict["type"],
+            content
+        )
+
+
+@attr.s
 class CallEvent(Event):
     call_id = attr.ib()
     version = attr.ib()

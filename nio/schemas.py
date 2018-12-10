@@ -222,6 +222,16 @@ class Schemas(object):
         "required": ["error", "errcode"],
     }
 
+    room_timeline = {
+        "type": "object",
+        "properties": {
+            "events": {"type": "array"},
+            "limited": {"type": "boolean"},
+            "prev_batch": {"type": "string"},
+        },
+        "required": ["events", "limited", "prev_batch"],
+    }
+
     sync = {
         "type": "object",
         "properties": {
@@ -268,13 +278,7 @@ class Schemas(object):
                             RoomRegex: {
                                 "type": "object",
                                 "properties": {
-                                    "timeline": {
-                                        "type": "object",
-                                        "properties": {
-                                            "events": {"type": "array"}
-                                        },
-                                        "required": ["events"]
-                                    },
+                                    "timeline": room_timeline,
                                     "state": {
                                         "type": "object",
                                         "properties": {
@@ -303,12 +307,20 @@ class Schemas(object):
                                                 "items": {"type": "string"}
                                             },
                                         }
-                                    }
+                                    },
+                                    "account_data": {
+                                        "type": "object",
+                                        "properties": {
+                                            "events": {"type": "array"}
+                                        },
+                                        "required": ["events"]
+                                    },
                                 },
                                 "required": [
                                     "timeline",
                                     "state",
                                     "ephemeral",
+                                    "account_data",
                                 ]
                             }
                         },
@@ -373,16 +385,6 @@ class Schemas(object):
             },
         },
         "required": ["event_id", "sender", "type"],
-    }
-
-    room_timeline = {
-        "type": "object",
-        "properties": {
-            "events": {"type": "array"},
-            "limited": {"type": "boolean"},
-            "prev_batch": {"type": "string"},
-        },
-        "required": ["events", "limited", "prev_batch"],
     }
 
     room_state = {
@@ -1006,6 +1008,38 @@ class Schemas(object):
                     "call_id",
                     "version",
                     "candidates"
+                ]
+            }
+        },
+        "required": [
+            "type",
+            "content",
+        ],
+    }
+
+    account_data = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string"},
+            "content": {"type": "object"}
+        },
+        "required": [
+            "type",
+            "content",
+        ],
+    }
+
+    fully_read = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "event_id": {"type": "string"},
+                },
+                "required": [
+                    "event_id",
                 ]
             }
         },

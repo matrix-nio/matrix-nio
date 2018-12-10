@@ -37,6 +37,7 @@ from logbook import Logger
 
 from .events import (
     Event,
+    AccountDataEvent,
     InviteEvent,
     UnknownBadEvent,
     ToDeviceEvent,
@@ -175,7 +176,18 @@ class RoomInfo(object):
     timeline = attr.ib(type=Timeline)
     state = attr.ib(type=List)
     ephemeral = attr.ib(type=List)
+    account_data = attr.ib(type=List)
     summary = attr.ib(default=None, type=Optional[RoomSummary])
+
+    @staticmethod
+    def parse_account_data(event_dict):
+        """Parse the account data dictionary and produce a list of events."""
+        events = []
+
+        for event in event_dict:
+            events.append(AccountDataEvent.parse_event(event))
+
+        return events
 
 
 @attr.s
@@ -776,13 +788,14 @@ class _SyncResponse(Response):
 
     @staticmethod
     def _get_join_info(
-        state_events,      # type: List[Any]
-        timeline_events,   # type: List[Any]
-        prev_batch,        # type: str
-        limited,           # type: bool
-        ephemeral_events,  # type: List[Any]
-        summary_events,    # type: Dict[str, Any]
-        max_events=0       # type: int
+        state_events,         # type: List[Any]
+        timeline_events,      # type: List[Any]
+        prev_batch,           # type: str
+        limited,              # type: bool
+        ephemeral_events,     # type: List[Any]
+        summary_events,       # type: Dict[str, Any]
+        account_data_events,  # type: List[Any]
+        max_events=0          # type: int
     ):
         # type: (...) -> Tuple[RoomInfo, Optional[RoomInfo]]
         counter, state = _SyncResponse._get_room_events(
@@ -820,7 +833,12 @@ class _SyncResponse(Response):
         unhandled_info = None
 
         if unhandled_timeline.events or unhandled_state:
-            unhandled_info = RoomInfo(unhandled_timeline, unhandled_state, [])
+            unhandled_info = RoomInfo(
+                unhandled_timeline,
+                unhandled_state,
+                [],
+                []
+            )
 
         summary = RoomSummary(
             summary_events.get("m.invited_member_count", None),
@@ -828,7 +846,15 @@ class _SyncResponse(Response):
             summary_events.get("m.heroes", [])
         )
 
-        join_info = RoomInfo(timeline, state, ephemeral_event_list, summary)
+        account_data = RoomInfo.parse_account_data(account_data_events)
+
+        join_info = RoomInfo(
+            timeline,
+            state,
+            ephemeral_event_list,
+            account_data,
+            summary,
+        )
 
         return join_info, unhandled_info
 
@@ -850,7 +876,7 @@ class _SyncResponse(Response):
         for room_id, room_dict in parsed_dict["leave"].items():
             _, state = _SyncResponse._get_state(room_dict["state"])
             _, timeline = _SyncResponse._get_timeline(room_dict["timeline"])
-            leave_info = RoomInfo(timeline, state, [])
+            leave_info = RoomInfo(timeline, state, [], [])
             left_rooms[room_id] = leave_info
 
         for room_id, room_dict in parsed_dict["join"].items():
@@ -861,6 +887,7 @@ class _SyncResponse(Response):
                 room_dict["timeline"]["limited"],
                 room_dict["ephemeral"]["events"],
                 room_dict.get("summary", {}),
+                room_dict["account_data"]["events"],
                 max_events
             )
 
@@ -934,6 +961,7 @@ class PartialSyncResponse(_SyncResponse):
                 room_info.timeline.limited,
                 [],
                 {},
+                [],
                 max_events
             )
 
