@@ -215,7 +215,6 @@ class UnknownAccountDataEvent(AccountDataEvent):
     content = attr.ib()
 
     @classmethod
-    @verify(Schemas.fully_read)
     def from_dict(cls, event_dict):
         """Construct an UnknownAccountDataEvent from a dictionary."""
         content = event_dict.pop("content")
