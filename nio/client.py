@@ -754,7 +754,7 @@ class HttpClient(Client):
     @logged_in
     def join(self, room_id):
         request = self._build_request(Api.join(self.access_token, room_id))
-        return self._send(request, RequestInfo(RequestType.room_join))
+        return self._send(request, RequestInfo(RequestType.join))
 
     @connected
     @logged_in
