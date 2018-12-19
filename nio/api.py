@@ -41,6 +41,7 @@ except ImportError:
 
 
 MATRIX_API_PATH = "/_matrix/client/r0"  # type: str
+MATRIX_MEDIA_API_PATH = "/_matrix/media/r0"  # type: str
 
 
 @unique
@@ -73,6 +74,19 @@ class Api(object):
             separators=(",", ":"),
             sort_keys=True,
         )
+
+    @staticmethod
+    def mimetype_to_msgtype(mimetype):
+        # type: (str) -> str
+        """Turn a mimetype into a matrix message type."""
+        if mimetype.startswith("image"):
+            return "m.image"
+        elif mimetype.startswith("video"):
+            return "m.video"
+        elif mimetype.startswith("audio"):
+            return "m.audio"
+
+        return "m.file"
 
     @staticmethod
     def mxc_to_http(mxc):
@@ -138,9 +152,9 @@ class Api(object):
         return plumb_url
 
     @staticmethod
-    def _build_path(path, query_parameters=None):
-        # type: (str, dict) -> str
-        path = ("{api}/{path}").format(api=MATRIX_API_PATH, path=path)
+    def _build_path(path, query_parameters=None, api_path=MATRIX_API_PATH):
+        # type: (str, dict, str) -> str
+        path = ("{api}/{path}").format(api=api_path, path=path)
 
         if query_parameters:
             path += "?{}".format(urlencode(query_parameters))
@@ -753,4 +767,34 @@ class Api(object):
             "POST",
             Api._build_path(path, query_parameters),
             Api.to_json(content)
+        )
+
+    @staticmethod
+    def upload(
+        access_token,       # type: str
+        filename=None,      # type: str
+    ):
+        # type: (...) -> Tuple[str, str, str]
+        """Upload some content to the content repository.
+
+        Returns the HTTP method, HTTP path and empty data for the request.
+        The real data should be read from the file that should be uploaded.
+
+        Note: This requests also requires the Content-Type http header to be
+        set.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            filename (str): The name of the file being uploaded
+        """
+        query_parameters = {"access_token": access_token}
+        path = "upload"
+
+        if filename:
+            query_parameters["filename"] = filename
+
+        return (
+            "POST",
+            Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH),
+            ""
         )

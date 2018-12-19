@@ -107,6 +107,8 @@ __all__ = [
     "RoomTypingError",
     "RoomReadMarkersResponse",
     "RoomReadMarkersError",
+    "UploadResponse",
+    "UploadError",
 ]
 
 
@@ -337,6 +339,12 @@ class KeysClaimError(ErrorResponse):
     pass
 
 
+class UploadError(ErrorResponse):
+    """A response representing a unsuccessful upload request."""
+
+    pass
+
+
 class ShareGroupSessionError(ErrorResponse):
     pass
 
@@ -404,6 +412,21 @@ class JoinedMembersResponse(Response):
             members.append(user)
 
         return cls(members, room_id)
+
+
+@attr.s
+class UploadResponse(Response):
+    """A response representing a successful upload request."""
+
+    content_uri = attr.ib(type=str)
+
+    @classmethod
+    @verify(Schemas.upload, UploadError)
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[UploadResponse, ErrorResponse]
+        return cls(
+            parsed_dict["content_uri"],
+        )
 
 
 @attr.s

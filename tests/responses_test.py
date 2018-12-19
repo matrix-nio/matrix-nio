@@ -17,6 +17,7 @@ from nio.responses import (
     DeleteDevicesAuthResponse,
     JoinedMembersResponse,
     LoginError,
+    UploadResponse
 )
 
 
@@ -91,6 +92,12 @@ class TestClass(object):
             "tests/data/joined_members_response.json")
         response = JoinedMembersResponse.from_dict(parsed_dict, "!testroom")
         assert isinstance(response, JoinedMembersResponse)
+
+    def test_upload_parse(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/upload_response.json")
+        response = UploadResponse.from_dict(parsed_dict)
+        assert isinstance(response, UploadResponse)
 
     def test_sync_parse(self):
         parsed_dict = TestClass._load_response(

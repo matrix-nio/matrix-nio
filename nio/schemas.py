@@ -1049,4 +1049,11 @@ class Schemas(object):
         ],
     }
 
+    upload = {
+        "type": "object",
+        "properties": {"content_uri": {"type": "string"}},
+        "required": ["content_uri"],
+        "additionalProperties": False,
+    }
+
     empty = {"type": "object", "properties": {}, "additionalProperties": False}
