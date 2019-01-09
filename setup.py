@@ -13,7 +13,7 @@ setup(
     license="ISC",
     packages=["nio"],
     install_requires=[
-        "attr",
+        "attrs",
         "future",
         "typing;python_version<'3.5'",
         "h11",
