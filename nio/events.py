@@ -516,7 +516,7 @@ class BadEvent(Event):
     source = attr.ib()
 
     def __str__(self):
-        return "Bad event of type {}, from {}.".format(self.sender, self.type)
+        return "Bad event of type {}, from {}.".format(self.type, self.sender)
 
     @classmethod
     def from_dict(cls, parsed_dict):
