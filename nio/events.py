@@ -68,7 +68,7 @@ def verify(schema):
 @attr.s
 class UnknownBadEvent(object):
     event_dict = attr.ib()
-    transaction_id = None
+    transaction_id = attr.ib(default=None, init=False)
 
 
 @attr.s
@@ -76,11 +76,11 @@ class Event(object):
     event_id = attr.ib()
     sender = attr.ib()
     server_timestamp = attr.ib()
-    decrypted = False
-    verified = False
-    sender_key = None  # type: Optional[str]
-    session_id = None  # type: Optional[str]
-    transaction_id = None  # type: Optional[str]
+    decrypted = attr.ib(default=False, init=False)
+    verified = attr.ib(default=False, init=False)
+    sender_key = attr.ib(default=None, init=False)  # type: Optional[str]
+    session_id = attr.ib(default=None, init=False)  # type: Optional[str]
+    transaction_id = attr.ib(default=None, init=False)  # type: Optional[str]
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -402,8 +402,8 @@ class MegolmEvent(RoomEncryptedEvent):
     room_id = attr.ib(default="")
     transaction_id = attr.ib(default=None)
 
-    decrypted = False
-    verified = False
+    decrypted = attr.ib(default=False, init=False)
+    verified = attr.ib(default=False, init=False)
 
     @classmethod
     @verify(Schemas.room_megolm_encrypted)

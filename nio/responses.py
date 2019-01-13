@@ -45,8 +45,7 @@ from .events import (
 from .log import logger_group
 from .schemas import Schemas, validate_json
 
-if False:
-    from .encryption import OlmDevice
+from .encryption import OlmDevice
 
 logger = Logger("nio.responses")
 logger_group.add_logger(logger)
@@ -629,7 +628,11 @@ class KeysUploadResponse(Response):
 class KeysQueryResponse(Response):
     device_keys = attr.ib(type=Dict)
     failures = attr.ib(type=Dict)
-    changed = {}  # type: Dict[str, Dict[str, OlmDevice]]
+    changed = attr.ib(
+        type=Dict[str, Dict[str, OlmDevice]],
+        init=False,
+        factory=dict
+    )
 
     @classmethod
     @verify(Schemas.keys_query, KeysQueryError)
