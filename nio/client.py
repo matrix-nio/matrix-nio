@@ -153,10 +153,6 @@ class Client(object):
         self.rooms = dict()  # type: Dict[str, MatrixRoom]
         self.invited_rooms = dict()  # type: Dict[str, MatrixRoom]
 
-    def _load_olm(self):
-        # TODO load the olm account and sessions from the session dir
-        return False
-
     @property
     def logged_in(self):
         # type: () -> bool
