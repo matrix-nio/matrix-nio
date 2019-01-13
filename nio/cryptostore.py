@@ -84,10 +84,10 @@ class OutboundSession(olm.OutboundSession, Session):
 
 
 class InboundGroupSession(olm.InboundGroupSession):
-    def __init__(self, session_key, signing_key):
-        # type: (str, str) -> None
+    def __init__(self, session_key, signing_key, forwarding_chains=None):
+        # type: (str, str, Optional[List[str]]) -> None
         self.ed25519 = signing_key
-        self.forwarding_chain = []  # type: List[str]
+        self.forwarding_chain = forwarding_chains or []  # type: List[str]
         super().__init__(session_key)
 
     def __new__(cls, *args):
