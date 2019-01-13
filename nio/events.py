@@ -17,6 +17,7 @@
 from __future__ import unicode_literals
 
 import attr
+import time
 
 from typing import Any, Dict, Optional, Union
 
@@ -267,6 +268,12 @@ class CallCandidatesEvent(CallEvent):
 class CallInviteEvent(CallEvent):
     lifetime = attr.ib()
     offer = attr.ib()
+
+    @property
+    def expired(self):
+        """Property marking if the invite event expired."""
+        now = time.time()
+        return now - (self.server_timestamp / 1000) > (self.lifetime / 1000)
 
     @classmethod
     @verify(Schemas.call_invite)
