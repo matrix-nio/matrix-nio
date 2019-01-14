@@ -10,22 +10,162 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sqlite3
 import os
+import attr
+import olm
+import time
 
-from builtins import super
+from builtins import super, bytes
 from logbook import Logger
 from collections import defaultdict
-from typing import List, Optional
+from typing import List, Optional, DefaultDict, Iterator, Dict
 from datetime import timedelta, datetime
-
-import olm
+from functools import wraps
 
 from .log import logger_group
 from .exceptions import EncryptionError
 
+from peewee import (
+    SqliteDatabase,
+    Model,
+    TextField,
+    BlobField,
+    BooleanField,
+    ForeignKeyField,
+    CompositeKey,
+    DateTimeField,
+    DoesNotExist
+)
+
+
 logger = Logger("nio.cryptostore")
 logger_group.add_logger(logger)
+
+
+class ByteField(BlobField):
+    def python_value(self, value):
+        if isinstance(value, bytes):
+            return value
+
+        return bytes(value, "utf-8")
+
+    def db_value(self, value):
+        if isinstance(value, bytearray):
+            return bytes(value)
+
+        return value
+
+# Please don't remove this.
+# This is a workaround for this bug: https://bugs.python.org/issue27400
+class DateField(TextField):
+    def python_value(self, value):
+        format = "%Y-%m-%d %H:%M:%S.%f"
+        try:
+            return datetime.strptime(value, format)
+        except TypeError:
+            return datetime(*(time.strptime(value, format)[0:6]))
+
+    def db_value(self, value):
+        return value.strftime("%Y-%m-%d %H:%M:%S.%f")
+
+
+class Accounts(Model):
+    account = ByteField()
+    device_id = TextField(unique=True)
+    shared = BooleanField()
+    user_id = TextField(primary_key=True)
+
+    class Meta:
+        table_name = "accounts"
+
+
+class DeviceKeys(Model):
+    curve_key = TextField()
+    deleted = BooleanField()
+    device = ForeignKeyField(
+        column_name="device_id",
+        field="device_id",
+        model=Accounts,
+        on_delete="CASCADE"
+    )
+    ed_key = TextField()
+    user_device_id = TextField()
+    user_id = TextField()
+
+    class Meta:
+        table_name = "device_keys"
+        indexes = (
+            (("device", "user_id", "user_device_id"), True),
+        )
+        primary_key = CompositeKey("device", "user_device_id", "user_id")
+
+
+class MegolmInboundSessions(Model):
+    curve_key = TextField()
+    device = ForeignKeyField(
+        column_name="device_id",
+        field="device_id",
+        model=Accounts,
+        on_delete="CASCADE"
+    )
+    ed_key = TextField()
+    room_id = TextField()
+    session = ByteField()
+    session_id = TextField(primary_key=True)
+
+    class Meta:
+        table_name = "megolm_inbound_sessions"
+
+
+class ForwardedChains(Model):
+    curve_key = TextField()
+    session = ForeignKeyField(
+        MegolmInboundSessions,
+        backref="forwarded_chains",
+        on_delete="CASCADE"
+    )
+
+
+class OlmSessions(Model):
+    creation_time = DateField()
+    curve_key = TextField()
+    device = ForeignKeyField(
+        column_name="device_id",
+        field="device_id",
+        model=Accounts,
+        on_delete="CASCADE"
+    )
+    session = ByteField()
+    session_id = TextField(primary_key=True)
+
+    class Meta:
+        table_name = "olm_sessions"
+
+
+class OutgoingKeyRequests(Model):
+    session_id = TextField()
+    device = ForeignKeyField(
+        Accounts,
+        on_delete="CASCADE",
+        backref="key_requests",
+    )
+
+
+class SyncTokens(Model):
+    token = TextField()
+    device = ForeignKeyField(
+        model=Accounts,
+        primary_key=True,
+        on_delete="CASCADE"
+    )
+
+
+class TrackedUsers(Model):
+    user_id = TextField()
+    device = ForeignKeyField(
+        Accounts,
+        on_delete="CASCADE"
+    )
 
 
 class OlmDevice(object):
@@ -179,528 +319,358 @@ class OlmAccount(olm.Account):
         return account
 
 
-class CryptoStore(object):
-    """Manages persistent storage for an OlmDevice.
-    Args:
-        user_id (str): The user ID of the OlmDevice.
-        device_id (str): Optional. The device ID of the OlmDevice. Will be
-            retrieved using ``user_id`` if not present.
-        db_name (str): Optional. The name of the database file to use. Will
-            be created if necessary.
-        db_path (str): Optional. The path where to store the database file.
-            Defaults to the system default application data directory.
-        app_name (str): Optional. The application name, which will be used
-            to determine where the database is located. Ignored if db_path
-            is supplied.
-        pickle_key (str): Optional. A key to encrypt the database contents.
-    """
+class SessionStore(object):
+    def __init__(self):
+        # type: () -> None
+        self._entries = defaultdict(list) \
+            # type: DefaultDict[str, List[Session]]
 
-    def __init__(
-        self,
-        user_id,
-        device_id,
-        session_path,
-        db_name=None,
-        pickle_key="DEFAULT_KEY",
-    ):
-        self.user_id = user_id
-        self.device_id = device_id
-        db_name = db_name or "{}_{}.db".format(user_id, device_id)
-        self.db_filepath = os.path.join(session_path, db_name)
+    def add(self, curve_key, session):
+        # type: (str, Session) -> bool
+        if session in self._entries[curve_key]:
+            return False
 
-        self._conn = self.instanciate_connection()
-        self.pickle_key = pickle_key
-        self.create_tables_if_needed()
+        self._entries[curve_key].append(session)
+        self._entries[curve_key].sort(key=lambda x: x.id)
+        return True
 
-    def instanciate_connection(self):
-        con = sqlite3.connect(
-            self.db_filepath, detect_types=sqlite3.PARSE_DECLTYPES
+    def __iter__(self):
+        # type: () -> Iterator[Session]
+        for session_list in self._entries.values():
+            for session in session_list:
+                yield session
+
+    def values(self):
+        return self._entries.values()
+
+    def items(self):
+        return self._entries.items()
+
+    def get(self, curve_key):
+        # type: (str) -> Optional[Session]
+        if self._entries[curve_key]:
+            return self._entries[curve_key][0]
+
+        return None
+
+    def __getitem__(self, curve_key):
+        # type: (str) -> List[Session]
+        return self._entries[curve_key]
+
+
+class GroupSessionStore(object):
+    def __init__(self):
+        self._entries = defaultdict(lambda: defaultdict(dict))  \
+            # type: GroupStoreType
+
+    def __iter__(self):
+        # type: () -> Iterator[InboundGroupSession]
+        for room_sessions in self._entries.values():
+            for sender_sessions in room_sessions.values():
+                for session in sender_sessions.values():
+                    yield session
+
+    def add(self, session, room_id, sender_key):
+        # type: (InboundGroupSession, str, str) -> bool
+        if session in self._entries[room_id][sender_key].values():
+            return False
+
+        self._entries[room_id][sender_key][session.id] = session
+        return True
+
+    def get(self, room_id, sender_key, session_id):
+        # type: (str, str, str) -> Optional[InboundGroupSession]
+        if session_id in self._entries[room_id][sender_key]:
+            return self._entries[room_id][sender_key][session_id]
+
+        return None
+
+    def __getitem__(self, room_id):
+        # type: (str) -> DefaultDict[str, Dict[str, InboundGroupSession]]
+        return self._entries[room_id]
+
+
+class DeviceStore(object):
+    def __init__(self):
+        # type: () -> None
+        self._entries = defaultdict(dict)  \
+            # type: DefaultDict[str, Dict[str, OlmDevice]]
+
+    def __iter__(self):
+        # type: () -> Iterator[OlmDevice]
+        for user_devices in self._entries.values():
+            for device in user_devices.values():
+                yield device
+
+    def __getitem__(self, user_id):
+        # type: (str) -> Dict[str, OlmDevice]
+        return self._entries[user_id]
+
+    def active_user_devices(self, user_id):
+        # type: (str) -> Iterator[OlmDevice]
+        for device in self._entries[user_id].values():
+            if not device.deleted:
+                yield device
+
+    @property
+    def users(self):
+        # type () -> str
+        return self._entries.keys()
+
+    def devices(self, user_id):
+        # type (str) -> str
+        return self._entries[user_id].keys()
+
+    def add(self, device):
+        # type: (OlmDevice) -> bool
+        if device in self:
+            return False
+
+        self._entries[device.user_id][device.id] = device
+        return True
+
+
+def use_database(fn):
+    @wraps(fn)
+    def inner(self, *args, **kwargs):
+        with self.database.bind_ctx(self.models):
+            return fn(self, *args, **kwargs)
+    return inner
+
+
+@attr.s
+class MatrixStore(object):
+    """Storage class for matrix state."""
+
+    models = [
+        Accounts,
+        OlmSessions,
+        MegolmInboundSessions,
+        ForwardedChains,
+        DeviceKeys,
+    ]
+
+    user_id = attr.ib(type=str)
+    device_id = attr.ib(type=str)
+    store_path = attr.ib(type=str)
+    pickle_key = attr.ib(type=str, default="DEFAULT_KEY")
+    database_name = attr.ib(type=str, default="")
+    database_path = attr.ib(type=str, init=False)
+    database = attr.ib(type=SqliteDatabase, init=False)
+
+    def __attrs_post_init__(self):
+        self.database_name = self.database_name or "{}_{}.db".format(
+            self.user_id,
+            self.device_id
         )
-        con.row_factory = sqlite3.Row
-        return con
-
-    def create_tables_if_needed(self):
-        """Ensures all the tables exist."""
-        c = self._conn.cursor()
-        c.executescript(
-            """
-PRAGMA secure_delete = ON;
-PRAGMA foreign_keys = ON;
-CREATE TABLE IF NOT EXISTS accounts(
-    device_id TEXT NOT NULL UNIQUE,
-    account BLOB, user_id TEXT PRIMARY KEY NOT NULL, shared INTEGER
-);
-CREATE TABLE IF NOT EXISTS olm_sessions(
-    device_id TEXT, session_id TEXT PRIMARY KEY, curve_key TEXT, session BLOB,
-    creation_time TIMESTAMP,
-    FOREIGN KEY(device_id) REFERENCES accounts(device_id) ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS megolm_inbound_sessions(
-    device_id TEXT, session_id TEXT PRIMARY KEY, room_id TEXT, curve_key TEXT,
-    ed_key TEXT, session BLOB,
-    FOREIGN KEY(device_id) REFERENCES accounts(device_id) ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS forwarded_chains(
-    device_id TEXT, session_id TEXT, curve_key TEXT,
-    PRIMARY KEY(device_id, session_id, curve_key),
-    FOREIGN KEY(device_id) REFERENCES accounts(device_id) ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS megolm_outbound_sessions(
-    device_id TEXT, room_id TEXT, session BLOB, max_age_s FLOAT,
-    max_messages INTEGER, creation_time TIMESTAMP, message_count INTEGER,
-    PRIMARY KEY(device_id, room_id),
-    FOREIGN KEY(device_id) REFERENCES accounts(device_id) ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS megolm_outbound_devices(
-    device_id TEXT, room_id TEXT, user_device_id TEXT,
-    PRIMARY KEY(device_id, room_id, user_device_id),
-    FOREIGN KEY(device_id, room_id) REFERENCES
-    megolm_outbound_sessions(device_id, room_id) ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS device_keys(
-    device_id TEXT, user_id TEXT, user_device_id TEXT, ed_key TEXT,
-    curve_key TEXT, deleted INTEGER,
-    PRIMARY KEY(device_id, user_id, user_device_id),
-    FOREIGN KEY(device_id) REFERENCES accounts(device_id) ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS tracked_users(
-    device_id TEXT, user_id TEXT,
-    PRIMARY KEY(device_id, user_id),
-    FOREIGN KEY(device_id) REFERENCES accounts(device_id) ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS sync_tokens(
-    device_id TEXT PRIMARY KEY, token TEXT,
-    FOREIGN KEY(device_id) REFERENCES accounts(device_id) ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS outgoing_key_requests(
-    device_id TEXT PRIMARY KEY, session_id TEXT,
-    FOREIGN KEY(device_id) REFERENCES accounts(device_id) ON DELETE CASCADE
-);
-        """
+        self.database_path = os.path.join(self.store_path, self.database_name)
+        self.database = SqliteDatabase(
+            self.database_path,
+            pragmas={
+                "foreign_keys": 1,
+                "secure_delete": 1,
+            }
         )
-        c.close()
-        self._conn.commit()
+        with self.database.bind_ctx(self.models):
+            self.database.connect()
+            self.database.create_tables(self.models)
 
-    def save_olm_account(self, account):
-        """Saves an Olm account.
-        Args:
-            account (OlmAccount): The account object to save.
-        """
-        account_data = account.pickle(self.pickle_key)
-        c = self._conn.cursor()
-        c.execute(
-            "INSERT OR IGNORE INTO accounts "
-            "(device_id, account, user_id, shared) VALUES (?,?,?,?)",
-            (self.device_id, account_data, self.user_id, int(account.shared)),
-        )
-        c.execute(
-            "UPDATE accounts SET account=?, shared=? WHERE device_id=?",
-            (account_data, int(account.shared), self.device_id),
-        )
-        c.close()
-        self._conn.commit()
+    @use_database
+    def load_account(self):
+        # type: () -> Optional[OlmAccount]
+        """Load the Olm account from the database.
 
-    def replace_olm_account(self, account):
-        """Replace an Olm account.
-        Instead of updating it as done with :meth:`save_olm_account`,
-        this saves the new account and discards all data associated with the
-        previous one.
-        Args:
-            account (OlmAccount): The account object to save.
-        """
-        account_data = account.pickle(self.pickle_key)
-        c = self._conn.cursor()
-        c.execute(
-            "REPLACE INTO accounts (device_id, account, user_id, shared) "
-            "VALUES (?,?,?,?)",
-            (self.device_id, account_data, self.user_id, int(account.shared)),
-        )
-        c.close()
-        self._conn.commit()
-
-    def get_olm_account(self):
-        """Gets the Olm account.
         Returns:
             ``OlmAccount`` object, or ``None`` if it wasn't found for the
-            current device_id.
-        Raises:
-            ``ValueError`` if ``device_id`` was ``None`` and couldn't be
-            retrieved.
+                current device_id.
+
         """
-        c = self._conn.cursor()
-        if self.device_id:
-            c.execute(
-                "SELECT account, device_id, shared FROM accounts WHERE "
-                "user_id=? AND device_id=?",
-                (self.user_id, self.device_id),
-            )
-        else:
-            c.execute(
-                "SELECT account, device_id, shared FROM accounts "
-                "WHERE user_id=?",
-                (self.user_id,),
-            )
-        row = c.fetchone()
-        if not row and not self.device_id:
-            raise ValueError("Failed to retrieve device_id.")
         try:
-            self.device_id = row["device_id"]
-            account_data = row["account"]
-            shared = bool(row["shared"])
-            # sqlite gives us unicode in Python2, we want bytes
-            account_data = bytes(account_data)
-        except TypeError:
-            return None
-        finally:
-            c.close()
-        return OlmAccount.from_pickle(account_data, self.pickle_key, shared)
-
-    def remove_olm_account(self):
-        """Removes the Olm account.
-        NOTE: Doing so will remove any saved information associated with the
-        account (keys, sessions...)
-        """
-        c = self._conn.cursor()
-        c.execute("DELETE FROM accounts WHERE user_id=?", (self.user_id,))
-        c.close()
-
-    def save_olm_session(self, curve_key, session):
-        self.save_olm_sessions({curve_key: [session]})
-
-    def save_olm_sessions(self, sessions):
-        """Saves Olm sessions.
-        Args:
-            sessions (defaultdict(list)): A map from curve25519 keys to a
-                list of ``olm.Session`` objects.
-        """
-        c = self._conn.cursor()
-        rows = [
-            (self.device_id, s.id, key, s.pickle(self.pickle_key),
-                s.creation_time)
-            for key in sessions
-            for s in sessions[key]
-        ]
-        c.executemany("REPLACE INTO olm_sessions VALUES (?,?,?,?,?)", rows)
-        c.close()
-        self._conn.commit()
-
-    def load_olm_sessions(self, sessions):
-        """Loads all saved Olm sessions.
-        Args:
-            sessions (defaultdict(list)): A map from curve25519 keys to a
-                list of ``olm.Session`` objects, which will be populated.
-        """
-        c = self._conn.cursor()
-        rows = c.execute(
-            ("SELECT curve_key, session , creation_time FROM olm_sessions "
-                "WHERE device_id=?"),
-            (self.device_id,),
-        )
-        for row in rows:
-            session = Session.from_pickle(
-                bytes(row["session"]), row["creation_time"], self.pickle_key
+            account = Accounts.get(
+                Accounts.user_id == self.user_id,
+                Accounts.device_id == self.device_id
             )
-            sessions[row["curve_key"]].append(session)
-        c.close()
+        except DoesNotExist:
+            return None
 
-    def get_olm_sessions(self, curve_key, sessions_dict=None):
-        """Get the Olm sessions corresponding to a device.
-        Args:
-            curve_key (str): The curve25519 key of the device.
-            sessions_dict (defaultdict(list)): Optional. A map from curve25519
-                keys to a list of ``olm.Session`` objects, to which the session
-                list will be added.
-        Returns:
-            A list of ``olm.Session`` objects, or ``None`` if none were found.
-        NOTE:
-            When overriding this, be careful to append the retrieved sessions
-            to the list of sessions already present and not to overwrite its
-            reference.
-        """
-        c = self._conn.cursor()
-        rows = c.execute(
-            "SELECT session, creation_time FROM olm_sessions "
-            "WHERE device_id=? AND curve_key=?",
-            (self.device_id, curve_key),
+        return OlmAccount.from_pickle(
+            account.account,
+            self.pickle_key,
+            account.shared
         )
-        sessions = [
-            olm.Session.from_pickle(
-                bytes(row["session"]),
-                row["creation_time"],
+
+    @use_database
+    def save_account(self, account):
+        """Save the provided Olm account to the database.
+
+        Args:
+            account (OlmAccount): The olm account that will be pickled and
+                saved in the database.
+        """
+        Accounts.insert(
+            user_id=self.user_id,
+            device_id=self.device_id,
+            shared=account.shared,
+            account=account.pickle(self.pickle_key)
+        ).on_conflict(
+            conflict_target=(Accounts.device_id),
+            preserve=(Accounts.user_id, Accounts.device_id),
+            update={
+                Accounts.account: account.pickle(self.pickle_key),
+                Accounts.shared: account.shared
+            }
+        ).execute()
+
+    @use_database
+    def load_sessions(self):
+        # type: () -> SessionStore
+        """Load all Olm sessions from the database.
+
+        Returns:
+            ``SessionStore`` object, containing all the loaded sessions.
+
+        """
+        session_store = SessionStore()
+
+        sessions = OlmSessions.select().join(Accounts).where(
+            Accounts.device_id == self.device_id
+        )
+
+        for s in sessions:
+            session = Session.from_pickle(
+                s.session,
+                s.creation_time,
                 self.pickle_key
             )
-            for row in rows
-        ]
-        if sessions_dict is not None:
-            sessions_dict[curve_key].extend(sessions)
-        c.close()
-        # For consistency with other get_ methods, do not return an empty list
-        return sessions or None
+            session_store.add(s.curve_key, session)
 
-    def save_inbound_session(self, room_id, curve_key, session):
-        """Saves a Megolm inbound session.
+        return session_store
+
+    @use_database
+    def save_session(self, curve_key, session):
+        """Save the provided Olm session to the database.
+
+        Args:
+            curve_key (str): The curve key that owns the Olm session.
+            session (Session): The Olm session that will be pickled and
+                saved in the database.
+        """
+        OlmSessions.replace(
+            device=self.device_id,
+            curve_key=curve_key,
+            session=session.pickle(self.pickle_key),
+            session_id=session.id,
+            creation_time=session.creation_time
+        ).execute()
+
+    @use_database
+    def load_inbound_group_sessions(self):
+        # type: () -> GroupSessionStore
+        """Load all Olm sessions from the database.
+
+        Returns:
+            ``GroupSessionStore`` object, containing all the loaded sessions.
+
+        """
+        store = GroupSessionStore()
+
+        sessions = MegolmInboundSessions.select().join(Accounts).where(
+            Accounts.device_id == self.device_id
+        )
+
+        for s in sessions:
+            session = InboundGroupSession.from_pickle(
+                s.session,
+                s.ed_key,
+                self.pickle_key,
+                [chain.curve_key for chain in s.forwarded_chains]
+            )
+            store.add(session, s.room_id, s.curve_key)
+
+        return store
+
+    @use_database
+    def save_inbound_group_session(self, room_id, curve_key, session):
+        """Save the provided Megolm inbound group session to the database.
+
         Args:
             room_id (str): The room corresponding to the session.
             curve_key (str): The curve25519 key of the device.
             session (InboundGroupSession): The session to save.
         """
-        c = self._conn.cursor()
-        c.execute(
-            "REPLACE INTO megolm_inbound_sessions VALUES (?,?,?,?,?,?)",
-            (
-                self.device_id,
-                session.id,
-                room_id,
-                curve_key,
-                session.ed25519,
-                session.pickle(self.pickle_key),
+        MegolmInboundSessions.insert(
+            curve_key=curve_key,
+            device=self.device_id,
+            ed_key=session.ed25519,
+            room_id=room_id,
+            session=session.pickle(self.pickle_key),
+            session_id=session.id
+        ).on_conflict(
+            conflict_target=(MegolmInboundSessions.session_id),
+            preserve=(
+                MegolmInboundSessions.curve_key,
+                MegolmInboundSessions.device,
+                MegolmInboundSessions.ed_key,
+                MegolmInboundSessions.room_id,
+                MegolmInboundSessions.session_id,
             ),
-        )
-        rows = [
-            (self.device_id, session.id, curve_key)
-            for curve_key in session.forwarding_chain
-        ]
-        c.executemany(
-            "INSERT OR IGNORE INTO forwarded_chains VALUES(?,?,?)", rows
-        )
-        c.close()
-        self._conn.commit()
+            update={
+                MegolmInboundSessions.session: session.pickle(self.pickle_key),
+            }
+        ).execute()
 
-    def load_inbound_sessions(self, sessions):
-        """Loads all saved inbound Megolm sessions.
-        Args:
-            sessions (defaultdict(defaultdict(dict))): An object which will get
-                populated with the sessions. The format is
-                ``{<room_id>: {<curve25519_key>: {<session_id>:
-                <InboundGroupSession>}}}``.
-        """
-        c = self._conn.cursor()
-        rows = c.execute(
-            "SELECT * FROM megolm_inbound_sessions WHERE device_id=?",
-            (self.device_id,),
-        )
-        for row in rows:
-            session = InboundGroupSession.from_pickle(
-                bytes(row["session"]), row["ed_key"], self.pickle_key
-            )
-            sessions[row["room_id"]][row["curve_key"]][session.id] = session
-            self._load_forwarding_chain(session)
-        c.close()
+        # TODO, use replace many here
+        for chain in session.forwarding_chain:
+            ForwardedChains.replace(
+                curve_key=chain,
+                session=session.id
+            ).execute()
 
-    def get_inbound_session(
-        self, room_id, curve_key, session_id, sessions=None
-    ):
-        """Gets a saved inbound Megolm session.
-        Args:
-            room_id (str): The room corresponding to the session.
-            curve_key (str): The curve25519 key of the device.
-            session_id (str): The id of the session.
-            sessions (dict): Optional. A map from session id to
-                ``InboundGroupSession`` object, to which the session will be
-                added.
-        Returns:
-            ``InboundGroupSession`` object, or ``None`` if the session was not
-            found.
-        """
-        c = self._conn.cursor()
-        c.execute(
-            "SELECT session, ed_key FROM megolm_inbound_sessions WHERE "
-            "device_id=? AND room_id=? AND curve_key=? AND session_id=?",
-            (self.device_id, room_id, curve_key, session_id),
+    @use_database
+    def load_device_keys(self):
+        # type: () -> DeviceStore
+        store = DeviceStore()
+        device_keys = DeviceKeys.select().join(Accounts).where(
+            Accounts.device_id == self.device_id
         )
-        try:
-            row = c.fetchone()
-            session_data = bytes(row["session"])
-        except TypeError:
-            return None
-        finally:
-            c.close()
-        session = InboundGroupSession.from_pickle(
-            session_data, row["ed_key"], self.pickle_key
-        )
-        self._load_forwarding_chain(session)
-        if sessions is not None:
-            sessions[session.id] = session
-        return session
 
-    def _load_forwarding_chain(self, session):
-        c = self._conn.cursor()
-        c.execute(
-            "SELECT curve_key FROM forwarded_chains WHERE device_id=? "
-            "AND session_id=?",
-            (self.device_id, session.id),
-        )
-        session.forwarding_chain = [row["curve_key"] for row in c]
-        c.close()
+        for d in device_keys:
+            store.add(OlmDevice(
+                d.user_id,
+                d.user_device_id,
+                d.ed_key,
+                d.curve_key,
+                d.deleted,
+            ))
 
+        return store
+
+    @use_database
     def save_device_keys(self, device_keys):
-        """Saves device keys.
+        """Save the provided device keys to the database.
+
         Args:
-            device_keys (defaultdict(dict)): The format is
-                ``{<user_id>: {<device_id>: Device}}``.
+            device_keys (Dict[str, Dict[str, OlmDevice]]): A dictionary
+                containing a mapping from an user id to a dictionary containing
+                a mapping of a device id to a OlmDevice.
         """
-        c = self._conn.cursor()
         rows = []
+
         for user_id, devices_dict in device_keys.items():
             for device_id, device in devices_dict.items():
                 rows.append(
-                    (
-                        self.device_id,
-                        user_id,
-                        device_id,
-                        device.ed25519,
-                        device.curve25519,
-                        device.deleted
-                    )
+                    {
+                        "curve_key": device.curve25519,
+                        "deleted": device.deleted,
+                        "device": self.device_id,
+                        "ed_key": device.ed25519,
+                        "user_device_id": device_id,
+                        "user_id": user_id,
+                    }
                 )
-        c.executemany(
-            "REPLACE INTO device_keys VALUES (?,?,?,?,?,?)", rows
-        )
-        c.close()
-        self._conn.commit()
 
-    def load_device_keys(self, device_keys):
-        """Loads all saved device keys.
-        Args:
-            device_keys (defaultdict(dict)): An object which will get populated
-                with the keys. The format is
-                ``{<user_id>: {<device_id>: Device}}``.
-        """
-        c = self._conn.cursor()
-        rows = c.execute(
-            "SELECT * FROM device_keys WHERE device_id=?", (self.device_id,)
-        )
-        for row in rows:
-            device_keys[row["user_id"]][
-                row["user_device_id"]
-            ] = self._device_from_row(row)
-        c.close()
+        if not rows:
+            return
 
-    def get_device_keys(self, user_devices, device_keys=None):
-        """Gets the devices keys of the specified devices.
-        Args:
-            user_devices (dict): A map from user ids to a list of device ids.
-                If no device ids are given for a user, all will be retrieved.
-            device_keys (defaultdict(dict)): Optional. Will be updated with
-                the retrieved keys. The format is ``{<user_id>: {<device_id>:
-                Device}}``.
-        Returns:
-            A ``defaultdict(dict)`` containing the keys, the format is the same
-            as the ``device_keys`` argument.
-        """
-        c = self._conn.cursor()
-        rows = []
-        for user_id in user_devices:
-            if not user_devices[user_id]:
-                c.execute(
-                    "SELECT * FROM device_keys WHERE device_id=? "
-                    "AND user_id=?",
-                    (self.device_id, user_id),
-                )
-                rows.extend(c.fetchall())
-            else:
-                for device_id in user_devices[user_id]:
-                    c.execute(
-                        "SELECT * FROM device_keys WHERE device_id=? "
-                        "AND user_id=? AND user_device_id=?",
-                        (self.device_id, user_id, device_id),
-                    )
-                    rows.extend(c.fetchall())
-        c.close()
-        result = defaultdict(dict)
-        for row in rows:
-            result[row["user_id"]][
-                row["user_device_id"]
-            ] = self._device_from_row(row)
-
-        if device_keys is not None and result:
-            device_keys.update(result)
-        return result
-
-    def _device_from_row(self, row):
-        return OlmDevice(
-            row["user_id"],
-            row["user_device_id"],
-            ed25519_key=row["ed_key"],
-            curve25519_key=row["curve_key"],
-            deleted=bool(row["deleted"])
-        )
-
-    def save_tracked_users(self, user_ids):
-        """Saves tracked users.
-        Args:
-            user_ids (iterable): The user ids to save.
-        """
-        c = self._conn.cursor()
-        rows = [(self.device_id, user_id) for user_id in user_ids]
-        c.executemany("INSERT OR IGNORE INTO tracked_users VALUES (?,?)", rows)
-        c.close()
-        self._conn.commit()
-
-    def remove_tracked_users(self, user_ids):
-        """Removes tracked users.
-        Args:
-            user_ids (iterable): The user ids to remove.
-        """
-        c = self._conn.cursor()
-        rows = [(user_id,) for user_id in user_ids]
-        c.executemany("DELETE FROM tracked_users WHERE user_id=?", rows)
-        c.close()
-        self._conn.commit()
-
-    def load_tracked_users(self, tracked_users):
-        """Loads all tracked users.
-        Args:
-            tracked_users (set): Will be populated with user ids.
-        """
-        c = self._conn.cursor()
-        rows = c.execute(
-            "SELECT user_id FROM tracked_users WHERE device_id=?",
-            (self.device_id,),
-        )
-        tracked_users.update(row["user_id"] for row in rows)
-        c.close()
-        return tracked_users
-
-    def add_outgoing_key_request(self, session_id):
-        """Saves a key request.
-        Args:
-            session_id (str): The requested session.
-        """
-        c = self._conn.cursor()
-        c.execute(
-            "INSERT OR IGNORE INTO outgoing_key_requests VALUES (?,?)",
-            (self.device_id, session_id),
-        )
-        c.close()
-        self._conn.commit()
-
-    def remove_outgoing_key_request(self, session_id):
-        """Removes a key request.
-        Args:
-            session_id (str): The requested session.
-        """
-        c = self._conn.cursor()
-        c.execute(
-            "DELETE FROM outgoing_key_requests WHERE device_id=? and "
-            "session_id=?",
-            (self.device_id, session_id),
-        )
-        c.close()
-
-    def load_outgoing_key_requests(self, session_ids):
-        """Load key requests.
-        Args:
-            session_ids (set): Will be populated with session IDs.
-        """
-        c = self._conn.cursor()
-        c.execute(
-            "SELECT session_id FROM outgoing_key_requests WHERE device_id=?",
-            (self.device_id,),
-        )
-        for row in c:
-            session_ids.add(row["session_id"])
-        c.close()
-
-    def close(self):
-        self._conn.close()
+        # TODO this needs to be batched
+        DeviceKeys.replace_many(rows).execute()

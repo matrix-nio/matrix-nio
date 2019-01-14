@@ -59,14 +59,17 @@ from .exceptions import (
     VerificationError
 )
 from .cryptostore import (
-    CryptoStore,
+    MatrixStore,
     OutboundGroupSession,
     InboundGroupSession,
     OlmDevice,
     OlmAccount,
     Session,
     OutboundSession,
-    InboundSession
+    InboundSession,
+    SessionStore,
+    GroupSessionStore,
+    DeviceStore
 )
 from .responses import (
     KeysUploadResponse,
@@ -102,12 +105,6 @@ try:
     FileNotFoundError  # type: ignore
 except NameError:  # pragma: no cover
     FileNotFoundError = IOError
-
-
-GroupStoreType = DefaultDict[
-    str,
-    DefaultDict[str, Dict[str, InboundGroupSession]]
-]
 
 
 class Key(object):
@@ -170,46 +167,6 @@ class Ed25519Key(Key):
             return True
 
         return False
-
-
-class DeviceStore(object):
-    def __init__(self):
-        # type: () -> None
-        self._entries = defaultdict(dict)  \
-            # type: DefaultDict[str, Dict[str, OlmDevice]]
-
-    def __iter__(self):
-        # type: () -> Iterator[OlmDevice]
-        for user_devices in self._entries.values():
-            for device in user_devices.values():
-                yield device
-
-    def __getitem__(self, user_id):
-        # type: (str) -> Dict[str, OlmDevice]
-        return self._entries[user_id]
-
-    def active_user_devices(self, user_id):
-        # type: (str) -> Iterator[OlmDevice]
-        for device in self._entries[user_id].values():
-            if not device.deleted:
-                yield device
-
-    @property
-    def users(self):
-        # type () -> str
-        return self._entries.keys()
-
-    def devices(self, user_id):
-        # type (str) -> str
-        return self._entries[user_id].keys()
-
-    def add(self, device):
-        # type: (OlmDevice) -> bool
-        if device in self:
-            return False
-
-        self._entries[device.user_id][device.id] = device
-        return True
 
 
 class KeyStore(object):
@@ -313,77 +270,6 @@ class KeyStore(object):
         return key in self._entries
 
 
-class SessionStore(object):
-    def __init__(self):
-        # type: () -> None
-        self._entries = defaultdict(list) \
-            # type: DefaultDict[str, List[Session]]
-
-    def add(self, curve_key, session):
-        # type: (str, Session) -> bool
-        if session in self._entries[curve_key]:
-            return False
-
-        self._entries[curve_key].append(session)
-        self._entries[curve_key].sort(key=lambda x: x.id)
-        return True
-
-    def __iter__(self):
-        # type: () -> Iterator[Session]
-        for session_list in self._entries.values():
-            for session in session_list:
-                yield session
-
-    def values(self):
-        return self._entries.values()
-
-    def items(self):
-        return self._entries.items()
-
-    def get(self, curve_key):
-        # type: (str) -> Optional[Session]
-        if self._entries[curve_key]:
-            return self._entries[curve_key][0]
-
-        return None
-
-    def __getitem__(self, curve_key):
-        # type: (str) -> List[Session]
-        return self._entries[curve_key]
-
-
-class GroupSessionStore(object):
-    def __init__(self):
-        self._entries = defaultdict(lambda: defaultdict(dict))  \
-            # type: GroupStoreType
-
-    def __iter__(self):
-        # type: () -> Iterator[InboundGroupSession]
-        for room_sessions in self._entries.values():
-            for sender_sessions in room_sessions.values():
-                for session in sender_sessions.values():
-                    yield session
-
-    def add(self, session, room_id, sender_key):
-        # type: (InboundGroupSession, str, str) -> bool
-        if session in self._entries[room_id][sender_key].values():
-            return False
-
-        self._entries[room_id][sender_key][session.id] = session
-        return True
-
-    def get(self, room_id, sender_key, session_id):
-        # type: (str, str, str) -> Optional[InboundGroupSession]
-        if session_id in self._entries[room_id][sender_key]:
-            return self._entries[room_id][sender_key][session_id]
-
-        return None
-
-    def __getitem__(self, room_id):
-        # type: (str) -> DefaultDict[str, Dict[str, InboundGroupSession]]
-        return self._entries[room_id]
-
-
 class Olm(object):
     def __init__(
         self,
@@ -412,9 +298,9 @@ class Olm(object):
         self.outbound_group_sessions = {} \
             # type: Dict[str, OutboundGroupSession]
 
-        self.store = CryptoStore(user_id, device_id, session_path)
+        self.store = MatrixStore(user_id, device_id, session_path)
 
-        self.account = self.store.get_olm_account()
+        self.account = self.store.load_account()
 
         if not self.account:
             logger.info("Creating new Olm account for {} on device {}".format(
@@ -1284,7 +1170,7 @@ class Olm(object):
                 olm_message = session.encrypt(
                     Api.to_json(device_payload_dict)
                 )
-                self.store.save_olm_session(device.curve25519, session)
+                self.store.save_session(device.curve25519, session)
 
                 olm_dict = {
                     "algorithm": "m.olm.v1.curve25519-aes-sha2",
@@ -1306,9 +1192,9 @@ class Olm(object):
 
     def load(self):
         # type: () -> None
-        self.store.load_olm_sessions(self.session_store)
-        self.store.load_inbound_sessions(self.inbound_group_store)
-        self.store.load_device_keys(self.device_store)
+        self.session_store = self.store.load_sessions()
+        self.inbound_group_store = self.store.load_inbound_group_sessions()
+        self.device_store = self.store.load_device_keys()
 
     def save(self):
         # type: () -> None
@@ -1320,16 +1206,16 @@ class Olm(object):
 
     def save_session(self, curve_key, session):
         # type: (str, Session) -> None
-        self.store.save_olm_session(curve_key, session)
+        self.store.save_session(curve_key, session)
 
     def save_inbound_group_session(self, room_id, sender_key, session):
         # type: (str, str, InboundGroupSession) -> None
-        self.store.save_inbound_session(room_id, sender_key, session)
+        self.store.save_inbound_group_session(room_id, sender_key, session)
 
     def save_account(self):
         # type: () -> None
         logger.debug("Saving account")
-        self.store.save_olm_account(self.account)
+        self.store.save_account(self.account)
 
     def sign_json(self, json_dict):
         # type: (Dict[Any, Any]) -> str

@@ -15,6 +15,7 @@ setup(
     install_requires=[
         "attrs",
         "future",
+        "peewee",
         "typing;python_version<'3.5'",
         "h11",
         "h2",

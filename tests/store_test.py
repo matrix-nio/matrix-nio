@@ -8,14 +8,13 @@ from random import choice
 from string import ascii_uppercase
 
 from nio.cryptostore import (
-    CryptoStore,
+    MatrixStore,
     OlmAccount,
     OlmDevice,
     OutboundSession,
     OutboundGroupSession,
     InboundGroupSession
 )
-from nio.encryption import SessionStore, GroupSessionStore, DeviceStore
 
 ephermal_dir = os.path.join(os.curdir, "tests/data/encryption")
 
@@ -75,7 +74,7 @@ class TestClass(object):
 
     @property
     def ephermal_store(self):
-        return CryptoStore("ephermal", "DEVICEID", ephermal_dir)
+        return MatrixStore("ephermal", "DEVICEID", ephermal_dir)
 
     @property
     def example_devices(self):
@@ -99,13 +98,13 @@ class TestClass(object):
     def _create_ephermal_account(self):
         store = self.ephermal_store
         account = OlmAccount()
-        store.save_olm_account(account)
+        store.save_account(account)
         return account
 
     @ephermal
     def test_store_opening(self):
         store = self.ephermal_store
-        account = store.get_olm_account()
+        account = store.load_account()
         assert not account
 
     @ephermal
@@ -113,7 +112,7 @@ class TestClass(object):
         account = self._create_ephermal_account()
 
         store2 = self.ephermal_store
-        loaded_account = store2.get_olm_account()
+        loaded_account = store2.load_account()
 
         assert account.identity_keys == loaded_account.identity_keys
 
@@ -123,11 +122,10 @@ class TestClass(object):
         store = self.ephermal_store
 
         session = OutboundSession(account, BOB_CURVE, BOB_ONETIME)
-        store.save_olm_session(BOB_CURVE, session)
+        store.save_session(BOB_CURVE, session)
 
-        session_store = SessionStore()
         store2 = self.ephermal_store
-        store2.load_olm_sessions(session_store)
+        session_store = store2.load_sessions()
 
         loaded_session = session_store.get(BOB_CURVE)
 
@@ -145,15 +143,14 @@ class TestClass(object):
             account.identity_keys["ed25519"],
             TEST_FORWARDING_CHAIN
         )
-        store.save_inbound_session(
+        store.save_inbound_group_session(
             TEST_ROOM,
             account.identity_keys["curve25519"],
             in_group
         )
 
-        session_store = GroupSessionStore()
         store2 = self.ephermal_store
-        store2.load_inbound_sessions(session_store)
+        session_store = store2.load_inbound_group_sessions()
 
         loaded_session = session_store.get(
             TEST_ROOM,
@@ -177,8 +174,7 @@ class TestClass(object):
         store.save_device_keys(devices)
 
         store2 = self.ephermal_store
-        device_store = DeviceStore()
-        store2.load_device_keys(device_store)
+        device_store = store2.load_device_keys()
 
         bob_device = device_store[BOB_ID][BOB_DEVICE]
         assert bob_device
@@ -188,3 +184,29 @@ class TestClass(object):
         assert bob_device.curve25519 == BOB_CURVE
         assert not bob_device.deleted
         assert len(device_store.users) == 11
+
+    @ephermal
+    def test_two_stores(self):
+        try:
+            account = self._create_ephermal_account()
+            store = self.ephermal_store
+            loaded_account = store.load_account()
+            assert account.identity_keys == loaded_account.identity_keys
+
+            store2 = MatrixStore("ephermal2", "DEVICEID2", ephermal_dir)
+            assert not store2.load_account()
+
+            loaded_account = store.load_account()
+            assert account.identity_keys == loaded_account.identity_keys
+
+        finally:
+            os.remove(os.path.join(
+                ephermal_dir,
+                "ephermal2_DEVICEID2.db"
+            ))
+
+    @ephermal
+    def test_empty_device_keys(self):
+        account = self._create_ephermal_account()
+        store = self.ephermal_store
+        store.save_device_keys(dict())
