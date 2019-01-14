@@ -844,9 +844,9 @@ class Schemas(object):
                     "type": "object",
                     "properties": {
                         "device_id": {"type": "string"},
-                        "display_name": {"type": "string"},
-                        "last_seen_ip": {"type": "string"},
-                        "last_seen_ts": {"type": "integer"},
+                        "display_name": {"type": ["string", "null"]},
+                        "last_seen_ip": {"type": ["string", "null"]},
+                        "last_seen_ts": {"type": ["integer", "null"]},
                     },
                     "required": [
                         "device_id",

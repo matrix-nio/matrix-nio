@@ -207,7 +207,11 @@ class Device(object):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        date = datetime.fromtimestamp(parsed_dict["last_seen_ts"] / 1000)
+        date = None
+
+        if parsed_dict["last_seen_ts"] is not None:
+            date = datetime.fromtimestamp(parsed_dict["last_seen_ts"] / 1000)
+
         return cls(
             parsed_dict["device_id"],
             parsed_dict["display_name"],
