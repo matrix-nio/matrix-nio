@@ -427,15 +427,16 @@ class MatrixStore(object):
             device_id=self.device_id,
             shared=account.shared,
             account=account.pickle(self.pickle_key)
-        ).on_conflict(
-            conflict_target=(Accounts.device_id),
-            preserve=(),
-            update={
-                Accounts.user_id: self.user_id,
-                Accounts.device_id: self.device_id,
+        ).on_conflict_ignore().execute()
+
+        Accounts.update(
+            {
                 Accounts.account: account.pickle(self.pickle_key),
                 Accounts.shared: account.shared
             }
+        ).where(
+            (Accounts.user_id == self.user_id)
+            & (Accounts.device_id == self.device_id)
         ).execute()
 
     @use_database
@@ -522,17 +523,14 @@ class MatrixStore(object):
             room_id=room_id,
             session=session.pickle(self.pickle_key),
             session_id=session.id
-        ).on_conflict(
-            conflict_target=(MegolmInboundSessions.session_id),
-            preserve=(),
-            update={
-                MegolmInboundSessions.curve_key: curve_key,
-                MegolmInboundSessions.device: self.device_id,
-                MegolmInboundSessions.ed_key: session.ed25519,
-                MegolmInboundSessions.room_id: room_id,
-                MegolmInboundSessions.session_id: session.id,
-                MegolmInboundSessions.session: session.pickle(self.pickle_key),
+        ).on_conflict_ignore().execute()
+
+        MegolmInboundSessions.update(
+            {
+                MegolmInboundSessions.session: session.pickle(self.pickle_key)
             }
+        ).where(
+            MegolmInboundSessions.session_id == session.id
         ).execute()
 
         # TODO, use replace many here
