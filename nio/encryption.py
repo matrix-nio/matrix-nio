@@ -67,7 +67,7 @@ from .crypto import (
     GroupSessionStore,
     DeviceStore
 )
-from .store import MatrixStore, Key, KeyStore
+from .store import DefaultStore
 
 from .responses import (
     KeysUploadResponse,
@@ -126,7 +126,7 @@ class Olm(object):
         self.outbound_group_sessions = {} \
             # type: Dict[str, OutboundGroupSession]
 
-        self.store = MatrixStore(user_id, device_id, session_path)
+        self.store = DefaultStore(user_id, device_id, session_path)
 
         self.account = self.store.load_account()
 
@@ -137,18 +137,6 @@ class Olm(object):
             self.save_account()
         else:
             self.load()
-
-        trust_file_path = "{}_{}.trusted_devices".format(user_id, device_id)
-        self.trust_db = KeyStore(os.path.join(session_path, trust_file_path))
-
-        blacklist_file_path = "{}_{}.blacklisted_devices".format(
-            user_id,
-            device_id
-        )
-        self.blacklist_db = KeyStore(os.path.join(
-            session_path,
-            blacklist_file_path
-        ))
 
     def update_tracked_users(self, room):
         already_tracked = set(self.device_store.users)
@@ -447,35 +435,27 @@ class Olm(object):
 
     def blacklist_device(self, device):
         # type: (OlmDevice) -> bool
-        key = Key.from_olmdevice(device)
-        self.trust_db.remove(key)
-        return self.blacklist_db.add(key)
+        return self.store.blacklist_device(device)
 
     def unblacklist_device(self, device):
         # type: (OlmDevice) -> bool
-        key = Key.from_olmdevice(device)
-        return self.blacklist_db.remove(key)
+        return self.store.unblacklist_device(device)
 
     def verify_device(self, device):
         # type: (OlmDevice) -> bool
-        key = Key.from_olmdevice(device)
-        self.blacklist_db.remove(key)
-        return self.trust_db.add(key)
+        return self.store.verify_device(device)
 
     def is_device_verified(self, device):
         # type: (OlmDevice) -> bool
-        key = Key.from_olmdevice(device)
-        return key in self.trust_db
+        return self.store.is_device_verified(device)
 
     def is_device_blacklisted(self, device):
         # type: (OlmDevice) -> bool
-        key = Key.from_olmdevice(device)
-        return key in self.blacklist_db
+        return self.store.is_device_blacklisted(device)
 
     def unverify_device(self, device):
         # type: (OlmDevice) -> bool
-        key = Key.from_olmdevice(device)
-        return self.trust_db.remove(key)
+        return self.store.unverify_device(device)
 
     def create_session(self, one_time_key, curve_key):
         # type: (str, str) -> None

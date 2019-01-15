@@ -14,7 +14,7 @@ import os
 import attr
 import time
 
-from builtins import bytes
+from builtins import bytes, super
 from logbook import Logger
 from typing import List, Optional, DefaultDict, Iterator, Dict
 from datetime import datetime
@@ -588,3 +588,60 @@ class MatrixStore(object):
 
         # TODO this needs to be batched
         DeviceKeys.replace_many(rows).execute()
+
+
+@attr.s
+class DefaultStore(MatrixStore):
+    trust_db = attr.ib(type=SqliteDatabase, init=False)
+    blacklist_db = attr.ib(type=SqliteDatabase, init=False)
+
+    def __attrs_post_init__(self):
+        super().__attrs_post_init__()
+
+        trust_file_path = "{}_{}.trusted_devices".format(
+            self.user_id,
+            self.device_id
+        )
+        self.trust_db = KeyStore(
+            os.path.join(self.store_path, trust_file_path)
+        )
+
+        blacklist_file_path = "{}_{}.blacklisted_devices".format(
+            self.user_id,
+            self.device_id
+        )
+        self.blacklist_db = KeyStore(
+            os.path.join(self.store_path, blacklist_file_path)
+        )
+
+    def blacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        key = Key.from_olmdevice(device)
+        self.trust_db.remove(key)
+        return self.blacklist_db.add(key)
+
+    def unblacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        key = Key.from_olmdevice(device)
+        return self.blacklist_db.remove(key)
+
+    def verify_device(self, device):
+        # type: (OlmDevice) -> bool
+        key = Key.from_olmdevice(device)
+        self.blacklist_db.remove(key)
+        return self.trust_db.add(key)
+
+    def is_device_verified(self, device):
+        # type: (OlmDevice) -> bool
+        key = Key.from_olmdevice(device)
+        return key in self.trust_db
+
+    def is_device_blacklisted(self, device):
+        # type: (OlmDevice) -> bool
+        key = Key.from_olmdevice(device)
+        return key in self.blacklist_db
+
+    def unverify_device(self, device):
+        # type: (OlmDevice) -> bool
+        key = Key.from_olmdevice(device)
+        return self.trust_db.remove(key)
