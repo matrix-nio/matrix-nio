@@ -67,7 +67,7 @@ from .crypto import (
     GroupSessionStore,
     DeviceStore
 )
-from .cryptostore import MatrixStore, Key, KeyStore
+from .store import MatrixStore, Key, KeyStore
 
 from .responses import (
     KeysUploadResponse,

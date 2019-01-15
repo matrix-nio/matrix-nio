@@ -15,7 +15,7 @@ from nio.encryption import Olm
 from nio.crypto import OlmDevice, OutboundSession, SessionStore, DeviceStore
 from nio.exceptions import OlmTrustError
 from nio.responses import KeysQueryResponse
-from nio.cryptostore import KeyStore, Ed25519Key, Key
+from nio.store import KeyStore, Ed25519Key, Key
 
 
 AliceId = "@alice:example.org"
