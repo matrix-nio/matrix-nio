@@ -211,3 +211,20 @@ class TestClass(object):
         account = self._create_ephermal_account()
         store = self.ephermal_store
         store.save_device_keys(dict())
+
+    @ephermal
+    def test_saving_account_twice(self):
+        account = self._create_ephermal_account()
+        store = self.ephermal_store
+
+        session = OutboundSession(account, BOB_CURVE, BOB_ONETIME)
+        store.save_session(BOB_CURVE, session)
+        store.save_account(account)
+
+        store2 = self.ephermal_store
+        session_store = store2.load_sessions()
+
+        loaded_session = session_store.get(BOB_CURVE)
+
+        assert loaded_session
+        assert session.id == loaded_session.id

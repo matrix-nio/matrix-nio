@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright 2018 Zil0
+# Copyright © 2019 Damir Jelić <poljar@termina.org.uk>
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -428,8 +429,10 @@ class MatrixStore(object):
             account=account.pickle(self.pickle_key)
         ).on_conflict(
             conflict_target=(Accounts.device_id),
-            preserve=(Accounts.user_id, Accounts.device_id),
+            preserve=(),
             update={
+                Accounts.user_id: self.user_id,
+                Accounts.device_id: self.device_id,
                 Accounts.account: account.pickle(self.pickle_key),
                 Accounts.shared: account.shared
             }
@@ -521,14 +524,13 @@ class MatrixStore(object):
             session_id=session.id
         ).on_conflict(
             conflict_target=(MegolmInboundSessions.session_id),
-            preserve=(
-                MegolmInboundSessions.curve_key,
-                MegolmInboundSessions.device,
-                MegolmInboundSessions.ed_key,
-                MegolmInboundSessions.room_id,
-                MegolmInboundSessions.session_id,
-            ),
+            preserve=(),
             update={
+                MegolmInboundSessions.curve_key: curve_key,
+                MegolmInboundSessions.device: self.device_id,
+                MegolmInboundSessions.ed_key: session.ed25519,
+                MegolmInboundSessions.room_id: room_id,
+                MegolmInboundSessions.session_id: session.id,
                 MegolmInboundSessions.session: session.pickle(self.pickle_key),
             }
         ).execute()
