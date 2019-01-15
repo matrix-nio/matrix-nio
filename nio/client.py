@@ -44,7 +44,7 @@ from .exceptions import (
 )
 from .encryption import Olm
 from .http import HttpRequest, Http2Request
-from .cryptostore import OlmDevice
+
 from .http import (
     Http2Connection,
     HttpConnection,
@@ -90,6 +90,9 @@ from .events import (
     RoomKeyEvent
 )
 from .rooms import MatrixInvitedRoom, MatrixRoom
+
+if False:
+    from .crypto import OlmDevice
 
 try:
     from json.decoder import JSONDecodeError

@@ -11,11 +11,11 @@ from olm import (
     OlmMessage
 )
 
-from nio.encryption import (KeyStore, Olm,
-                            SessionStore, Ed25519Key, DeviceStore, Key,
-                            OlmTrustError)
-from nio.crypto import OlmDevice, OutboundSession
+from nio.encryption import Olm
+from nio.crypto import OlmDevice, OutboundSession, SessionStore, DeviceStore
+from nio.exceptions import OlmTrustError
 from nio.responses import KeysQueryResponse
+from nio.cryptostore import KeyStore, Ed25519Key, Key
 
 
 AliceId = "@alice:example.org"

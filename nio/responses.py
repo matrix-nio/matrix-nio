@@ -45,7 +45,7 @@ from .events import (
 from .log import logger_group
 from .schemas import Schemas, validate_json
 
-from .encryption import OlmDevice
+from .crypto import OlmDevice
 
 logger = Logger("nio.responses")
 logger_group.add_logger(logger)
