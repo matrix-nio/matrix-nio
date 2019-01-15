@@ -9,6 +9,9 @@ from string import ascii_uppercase
 
 from nio.cryptostore import (
     MatrixStore,
+)
+
+from nio.crypto import (
     OlmAccount,
     OlmDevice,
     OutboundSession,

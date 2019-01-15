@@ -18,12 +18,10 @@ from __future__ import unicode_literals
 
 import json
 import os
-import pprint
-import sqlite3
 
 # pylint: disable=redefined-builtin
-from builtins import bytes, str, super
-from collections import defaultdict, deque
+from builtins import str
+from collections import defaultdict
 from functools import wraps
 from typing import (
     Any,
@@ -43,7 +41,6 @@ from jsonschema import SchemaError, ValidationError
 from logbook import Logger
 import olm
 from olm import (
-    OlmAccountError,
     OlmGroupSessionError,
     OlmMessage,
     OlmPreKeyMessage,
@@ -58,8 +55,7 @@ from .exceptions import (
     OlmTrustError,
     VerificationError
 )
-from .cryptostore import (
-    MatrixStore,
+from .crypto import (
     OutboundGroupSession,
     InboundGroupSession,
     OlmDevice,
@@ -71,11 +67,12 @@ from .cryptostore import (
     GroupSessionStore,
     DeviceStore
 )
+from .cryptostore import MatrixStore
+
 from .responses import (
     KeysUploadResponse,
     KeysQueryResponse,
     KeysClaimResponse,
-    SyncResponse,
     ShareGroupSessionResponse
 )
 from .events import (
