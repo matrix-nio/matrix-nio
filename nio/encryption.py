@@ -646,6 +646,107 @@ class Olm(object):
 
         return event
 
+    def decrypt_megolm_event(self, event):
+        # type (MegolmEvent) -> Union[Event, BadEvent]
+        if not event.room_id:
+            raise EncryptionError("Event doens't contain a room id")
+
+        verified = False
+
+        session = self.inbound_group_store.get(
+            event.room_id,
+            event.sender_key,
+            event.session_id
+        )
+
+        if not session:
+            message = (
+                "Error decrypting megolm event, no session found "
+                "with session id {} for room {}".format(
+                    event.session_id,
+                    event.room_id
+                )
+            )
+            logger.warn(message)
+            raise EncryptionError(message)
+
+        try:
+            plaintext, message_index = session.decrypt(event.ciphertext)
+        except OlmGroupSessionError as e:
+            message = "Error decrypting megolm event: {}".format(str(e))
+            logger.warn(message)
+            raise EncryptionError(message)
+
+        # TODO check the message index for replay attacks
+
+        # If the message is from our own session mark it as verified
+        if (event.sender == self.user_id
+                and event.device_id == self.device_id
+                and session.ed25519
+                == self.account.identity_keys["ed25519"]
+                and event.sender_key
+                == self.account.identity_keys["curve25519"]):
+            verified = True
+        # Else check that the message is from a verified device
+        else:
+            try:
+                device = self.device_store[event.sender][event.device_id]
+            except KeyError:
+                # We don't have the device keys for this device, add them
+                # to our quey set so we fetch in the next key query.
+                self.users_for_key_query.add(event.sender)
+                pass
+            else:
+                # Do not mark events decrypted using a forwarded key as
+                # verified
+                if (self.is_device_verified(device)
+                        and not session.forwarding_chain):
+                    if (device.ed25519 != session.ed25519
+                            or device.curve25519 != event.sender_key):
+                        message = ("Device keys mismatch in event sent "
+                                   "by device {}.".format(device.id))
+                        logger.warn(message)
+                        raise EncryptionError(message)
+
+                    logger.info("Event {} succesfully verified".format(
+                        event.event_id))
+                    verified = True
+
+        try:
+            parsed_dict = json.loads(plaintext, encoding="utf-8") \
+                # type: Dict[Any, Any]
+        except JSONDecodeError as e:
+            raise EncryptionError("Error parsing payload: {}".format(str(e)))
+
+        bad = validate_or_badevent(
+            parsed_dict,
+            Schemas.room_megolm_decrypted
+        )
+
+        if bad:
+            return bad
+
+        parsed_dict["event_id"] = event.event_id
+        parsed_dict["sender"] = event.sender
+        parsed_dict["origin_server_ts"] = event.server_timestamp
+
+        if event.transaction_id:
+            parsed_dict["unsigned"] = {
+                "transaction_id": event.transaction_id
+            }
+
+        new_event = EncryptedEvent.parse_event(parsed_dict)
+
+        if isinstance(new_event, UnknownBadEvent):
+            return new_event
+
+        new_event.decrypted = True
+        new_event.verified = verified
+        new_event.sender_key = event.sender_key
+        new_event.session_id = event.session_id
+
+        return new_event
+
     def decrypt_event(
         self,
         event  # type: RoomEncryptedEvent
@@ -674,105 +775,10 @@ class Olm(object):
             return self.decrypt(event.sender, event.sender_key, message)
 
         elif isinstance(event, MegolmEvent):
-            if not event.room_id:
-                return None
-
-            verified = False
-
-            session = self.inbound_group_store.get(
-                event.room_id,
-                event.sender_key,
-                event.session_id
-            )
-
-            if not session:
-                logger.warn(
-                    "Error decrypting megolm event, no session found "
-                    "with session id {} for room {}".format(
-                        event.session_id,
-                        event.room_id
-                    )
-                )
-                return None
-
-            plaintext, message_index = self._group_decrypt(
-                session,
-                event.ciphertext
-            )
-            if not plaintext:
-                return None
-
-            # TODO check the message index for replay attacks
-
-            # If the message is from our own session mark it as verified
-            if (event.sender == self.user_id
-                    and event.device_id == self.device_id
-                    and session.ed25519
-                    == self.account.identity_keys["ed25519"]
-                    and event.sender_key
-                    == self.account.identity_keys["curve25519"]):
-                verified = True
-            # Else check that the message is from a verified device
-            else:
-                try:
-                    device = self.device_store[event.sender][event.device_id]
-                except KeyError:
-                    # We don't have the device keys for this device, add them
-                    # to our quey set so we fetch in the next key query.
-                    self.users_for_key_query.add(event.sender)
-                    pass
-                else:
-                    # Do not mark events decrypted using a forwarded key as
-                    # verified
-                    if (self.is_device_verified(device)
-                            and not session.forwarding_chain):
-                        if (device.ed25519 != session.ed25519
-                                or device.curve25519 != event.sender_key):
-                            logger.warn("Device keys mismatch in event sent "
-                                        "by device {}.".format(device.id))
-                            return None
-
-                        logger.info("Event {} succesfully verified".format(
-                            event.event_id))
-                        verified = True
-
             try:
-                parsed_dict = json.loads(plaintext, encoding="utf-8") \
-                    # type: Dict[Any, Any]
-            except JSONDecodeError:
+                return self.decrypt_megolm_event(event)
+            except EncryptionError:
                 return None
-
-            bad = validate_or_badevent(
-                parsed_dict,
-                Schemas.room_megolm_decrypted
-            )
-
-            if bad:
-                return bad
-
-            parsed_dict["event_id"] = event.event_id
-            parsed_dict["sender"] = event.sender
-            parsed_dict["origin_server_ts"] = event.server_timestamp
-
-            if event.transaction_id:
-                parsed_dict["unsigned"] = {
-                    "transaction_id": event.transaction_id
-                }
-
-            new_event = EncryptedEvent.parse_event(parsed_dict)
-
-            if not new_event:
-                return None
-
-            if isinstance(new_event, UnknownBadEvent):
-                return new_event
-
-            new_event.decrypted = True
-            new_event.verified = verified
-            new_event.sender_key = event.sender_key
-            new_event.session_id = event.session_id
-
-            return new_event
 
         return None
 

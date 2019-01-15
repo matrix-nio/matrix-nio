@@ -350,11 +350,23 @@ class Client(object):
         self,
         event  # type: MegolmEvent
     ):
-        # type: (...) -> Optional[Union[Event, BadEventType, RoomKeyEvent]]
-        """Decrypt a undecrypted megolm event."""
+        # type: (...) -> Union[Event, BadEventType]
+        """Decrypt a undecrypted megolm event.
+
+        Args:
+            event (MegolmEvent): Event that should be decrypted.
+
+        Returns the decrypted event, raises EncryptionError if there was an
+        error while decrypting.
+        """
         if not self.olm:
             raise LocalProtocolError("Olm account isn't loaded")
-        return self.olm.decrypt_event(event)
+
+        if not isinstance(event, MegolmEvent):
+            raise ValueError("Invalid event, this function can only decrypt "
+                             "MegolmEvents")
+
+        return self.olm.decrypt_megolm_event(event)
 
     def _handle_sync(self, response):
         # type: (SyncType) -> None
