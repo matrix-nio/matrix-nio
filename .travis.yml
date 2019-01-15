@@ -1,0 +1,28 @@
+language: python
+sudo: false
+before_install:
+    - wget https://matrix.org/git/olm/snapshot/olm-2.3.0.tar.bz2
+    - tar -xvf olm-2.3.0.tar.bz2
+    - pushd olm-2.3.0 && make && sudo make PREFIX="/usr" install && popd
+    - rm -r olm-2.3.0
+
+matrix:
+    include:
+        - python: 2.7
+          env: TOXENV=py27
+        - python: 3.6
+          env: TOXENV=py36
+        - python: 3.7
+          env: TOXENV=py37
+          dist: xenial
+          sudo: true
+        - python: pypy
+          env: TOXENV=pypy
+        - python: 3.6
+          env: TOXENV=py2-cov,py3-cov,coverage
+
+install: pip install tox-travis
+script: tox
+
+after_success:
+    - bash <(curl -s https://codecov.io/bash)
