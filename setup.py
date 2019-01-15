@@ -21,6 +21,7 @@ setup(
         "h2",
         "logbook",
         "jsonschema",
+        "atomicwrites",
         "python-olm"
     ],
     dependency_links=[

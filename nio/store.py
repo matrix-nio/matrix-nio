@@ -20,6 +20,7 @@ from logbook import Logger
 from typing import List, Optional, DefaultDict, Iterator, Dict
 from datetime import datetime
 from functools import wraps
+from atomicwrites import atomic_write
 
 from .exceptions import OlmTrustError
 from .log import logger_group
@@ -173,7 +174,7 @@ class KeyStore(object):
 
     def _save(self):
         # type: () -> None
-        with open(self._filename, "w") as f:
+        with atomic_write(self._filename, overwrite=True) as f:
             for entry in self._entries:
                 line = entry.to_line()
                 f.write(line)
