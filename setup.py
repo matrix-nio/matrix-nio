@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name="matrix-nio",
@@ -11,7 +11,7 @@ setup(
     description=("A Python Matrix client library, designed according to sans"
                  "I/O principles."),
     license="ISC",
-    packages=["nio"],
+    packages=find_packages(),
     install_requires=[
         "attrs",
         "future",
