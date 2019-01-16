@@ -1022,7 +1022,7 @@ class HttpClient(Client):
             ignore_missing_sessions
         )
 
-        uuid = str(tx_id) or uuid4()
+        uuid = tx_id or uuid4()
 
         request = self._build_request(
             Api.to_device(
