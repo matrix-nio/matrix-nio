@@ -1,0 +1,995 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>nio.api &mdash; nio 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> nio
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../nio.html">nio API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">nio</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>nio.api</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for nio.api</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="c1"># Copyright © 2018 Damir Jelić &lt;poljar@termina.org.uk&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># Permission to use, copy, modify, and/or distribute this software for</span>
+<span class="c1"># any purpose with or without fee is hereby granted, provided that the</span>
+<span class="c1"># above copyright notice and this permission notice appear in all copies.</span>
+<span class="c1">#</span>
+<span class="c1"># THE SOFTWARE IS PROVIDED &quot;AS IS&quot; AND THE AUTHOR DISCLAIMS ALL WARRANTIES</span>
+<span class="c1"># WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF</span>
+<span class="c1"># MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY</span>
+<span class="c1"># SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER</span>
+<span class="c1"># RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF</span>
+<span class="c1"># CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN</span>
+<span class="c1"># CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.</span>
+
+<span class="sd">&quot;&quot;&quot;nio api module.</span>
+
+<span class="sd">This module contains primitives to build Matrix API http requests.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">unicode_literals</span>
+
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">DefaultDict</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">unique</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span>
+
+<span class="kn">from</span> <span class="nn">.exceptions</span> <span class="k">import</span> <span class="n">LocalProtocolError</span>
+<span class="kn">from</span> <span class="nn">.http</span> <span class="k">import</span> <span class="n">Http2Request</span><span class="p">,</span> <span class="n">HttpRequest</span><span class="p">,</span> <span class="n">TransportRequest</span>
+
+<span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">uuid</span> <span class="k">import</span> <span class="n">UUID</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">urllib.parse</span> <span class="k">import</span> <span class="n">quote</span><span class="p">,</span> <span class="n">urlencode</span><span class="p">,</span> <span class="n">urlparse</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">urllib</span> <span class="k">import</span> <span class="n">quote</span><span class="p">,</span> <span class="n">urlencode</span>  <span class="c1"># type: ignore</span>
+    <span class="kn">from</span> <span class="nn">urlparse</span> <span class="k">import</span> <span class="n">urlparse</span>  <span class="c1"># type: ignore</span>
+
+
+<span class="n">MATRIX_API_PATH</span> <span class="o">=</span> <span class="s2">&quot;/_matrix/client/r0&quot;</span>  <span class="c1"># type: str</span>
+<span class="n">MATRIX_MEDIA_API_PATH</span> <span class="o">=</span> <span class="s2">&quot;/_matrix/media/r0&quot;</span>  <span class="c1"># type: str</span>
+
+
+<span class="nd">@unique</span>
+<span class="k">class</span> <span class="nc">MessageDirection</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Enum representing the direction messages should be fetched from.&quot;&quot;&quot;</span>
+
+    <span class="n">back</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">front</span> <span class="o">=</span> <span class="mi">1</span>
+
+
+<div class="viewcode-block" id="Api"><a class="viewcode-back" href="../../nio.html#nio.Api">[docs]</a><span class="k">class</span> <span class="nc">Api</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Matrix API class.</span>
+
+<span class="sd">    Static methods reflecting the Matrix REST API.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Api.to_json"><a class="viewcode-back" href="../../nio.html#nio.Api.to_json">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">to_json</span><span class="p">(</span><span class="n">content_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; str</span>
+        <span class="sd">&quot;&quot;&quot;Turn a dictionary into a json string.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">content_dict</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;:&quot;</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Api.to_canonical_json"><a class="viewcode-back" href="../../nio.html#nio.Api.to_canonical_json">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">to_canonical_json</span><span class="p">(</span><span class="n">content_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; str</span>
+        <span class="sd">&quot;&quot;&quot;Turn a dictionary into a canonical json string.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+            <span class="n">content_dict</span><span class="p">,</span>
+            <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;:&quot;</span><span class="p">),</span>
+            <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.mimetype_to_msgtype"><a class="viewcode-back" href="../../nio.html#nio.Api.mimetype_to_msgtype">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">mimetype_to_msgtype</span><span class="p">(</span><span class="n">mimetype</span><span class="p">):</span>
+        <span class="c1"># type: (str) -&gt; str</span>
+        <span class="sd">&quot;&quot;&quot;Turn a mimetype into a matrix message type.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">mimetype</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;image&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s2">&quot;m.image&quot;</span>
+        <span class="k">elif</span> <span class="n">mimetype</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;video&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s2">&quot;m.video&quot;</span>
+        <span class="k">elif</span> <span class="n">mimetype</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;audio&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s2">&quot;m.audio&quot;</span>
+
+        <span class="k">return</span> <span class="s2">&quot;m.file&quot;</span></div>
+
+<div class="viewcode-block" id="Api.mxc_to_http"><a class="viewcode-back" href="../../nio.html#nio.Api.mxc_to_http">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">mxc_to_http</span><span class="p">(</span><span class="n">mxc</span><span class="p">):</span>
+        <span class="c1"># type: (str) -&gt; Optional[str]</span>
+        <span class="sd">&quot;&quot;&quot;Convert a matrix content URI to a HTTP URI.&quot;&quot;&quot;</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="n">mxc</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">url</span><span class="o">.</span><span class="n">scheme</span> <span class="o">!=</span> <span class="s2">&quot;mxc&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">url</span><span class="o">.</span><span class="n">netloc</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">http_url</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;https://</span><span class="si">{host}</span><span class="s2">/_matrix/media/r0/download/&quot;</span>
+            <span class="s2">&quot;</span><span class="si">{server_name}{mediaId}</span><span class="s2">&quot;</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">url</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">server_name</span><span class="o">=</span><span class="n">url</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">mediaId</span><span class="o">=</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">http_url</span></div>
+
+<div class="viewcode-block" id="Api.encrypted_mxc_to_plumb"><a class="viewcode-back" href="../../nio.html#nio.Api.encrypted_mxc_to_plumb">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">encrypted_mxc_to_plumb</span><span class="p">(</span><span class="n">mxc</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="nb">hash</span><span class="p">,</span> <span class="n">iv</span><span class="p">):</span>
+        <span class="c1"># type: (str, str, str, str) -&gt; Optional[str]</span>
+        <span class="sd">&quot;&quot;&quot;Convert a matrix content URI to a encrypted mxc URI.</span>
+
+<span class="sd">        The return value of this function will have a URI schema of emxc://.</span>
+<span class="sd">        The path of the URI will be converted just like the mxc_to_http()</span>
+<span class="sd">        function does, but it will also contain query parameters that are</span>
+<span class="sd">        necessary to decrypt the payload the URI is pointing to.</span>
+
+<span class="sd">        This function is useful to present a clickable URI that can be passed</span>
+<span class="sd">        to a plumber program that will download and decrypt the content that</span>
+<span class="sd">        the matrix content URI is pointing to.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mxc (str): The matrix content URI.</span>
+<span class="sd">            key (str): The encryption key that can be used to decrypt the</span>
+<span class="sd">                payload the URI is pointing to.</span>
+<span class="sd">            hash (str): The hash of the payload.</span>
+<span class="sd">            iv (str): The initial value needed to decrypt the payload.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="n">mxc</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">url</span><span class="o">.</span><span class="n">scheme</span> <span class="o">!=</span> <span class="s2">&quot;mxc&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">url</span><span class="o">.</span><span class="n">netloc</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">plumb_url</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;emxc://</span><span class="si">{host}</span><span class="s2">/_matrix/media/r0/download/&quot;</span>
+            <span class="s2">&quot;</span><span class="si">{server_name}{mediaId}</span><span class="s2">&quot;</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">url</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">server_name</span><span class="o">=</span><span class="n">url</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span> <span class="n">mediaId</span><span class="o">=</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="n">key</span><span class="p">,</span>
+            <span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="nb">hash</span><span class="p">,</span>
+            <span class="s2">&quot;iv&quot;</span><span class="p">:</span> <span class="n">iv</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="n">plumb_url</span> <span class="o">+=</span> <span class="s2">&quot;?</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">urlencode</span><span class="p">(</span><span class="n">query_parameters</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">plumb_url</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">api_path</span><span class="o">=</span><span class="n">MATRIX_API_PATH</span><span class="p">):</span>
+        <span class="c1"># type: (str, dict, str) -&gt; str</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;</span><span class="si">{api}</span><span class="s2">/</span><span class="si">{path}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">api</span><span class="o">=</span><span class="n">api_path</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">query_parameters</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">+=</span> <span class="s2">&quot;?</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">urlencode</span><span class="p">(</span><span class="n">query_parameters</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">path</span>
+
+<div class="viewcode-block" id="Api.login"><a class="viewcode-back" href="../../nio.html#nio.Api.login">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">login</span><span class="p">(</span>
+        <span class="n">user</span><span class="p">,</span>            <span class="c1"># type: str</span>
+        <span class="n">password</span><span class="p">,</span>        <span class="c1"># type: str</span>
+        <span class="n">device_name</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>  <span class="c1"># type: Optional[str]</span>
+        <span class="n">device_id</span><span class="o">=</span><span class="s2">&quot;&quot;</span>     <span class="c1"># type: Optional[str]</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Authenticate the user.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            user (str): The fully qualified user ID or just local part of the</span>
+<span class="sd">                user ID, to log in.</span>
+<span class="sd">            password (str): The user&#39;s password.</span>
+<span class="sd">            device_name (str): A display name to assign to a newly-created</span>
+<span class="sd">                device. Ignored if device_id corresponds to a known device</span>
+<span class="sd">            device_id (str): ID of the client device. If this does not</span>
+<span class="sd">                correspond to a known client device, a new device will be</span>
+<span class="sd">                created.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="s2">&quot;login&quot;</span><span class="p">)</span>
+
+        <span class="n">content_dict</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;m.login.password&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">,</span>
+            <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">password</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">device_id</span><span class="p">:</span>
+            <span class="n">content_dict</span><span class="p">[</span><span class="s2">&quot;device_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">device_id</span>
+
+        <span class="k">if</span> <span class="n">device_name</span><span class="p">:</span>
+            <span class="n">content_dict</span><span class="p">[</span><span class="s2">&quot;initial_device_display_name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">device_name</span>
+
+        <span class="k">return</span> <span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">content_dict</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.sync"><a class="viewcode-back" href="../../nio.html#nio.Api.sync">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">sync</span><span class="p">(</span>
+        <span class="n">access_token</span><span class="p">,</span>     <span class="c1"># type: str</span>
+        <span class="n">since</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>       <span class="c1"># type: Optional[str]</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>     <span class="c1"># type: Optional[int]</span>
+        <span class="nb">filter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>      <span class="c1"># type: Optional[Dict[Any, Any]]</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Tuple[str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Synchronise the client&#39;s state with the latest state on the server.</span>
+
+<span class="sd">        Returns the HTTP method and HTTP path for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            since (str): The room id of the room where the event will be sent</span>
+<span class="sd">                to.</span>
+<span class="sd">            timeout(int): The maximum time to wait, in milliseconds, before</span>
+<span class="sd">                returning this request.</span>
+<span class="sd">            filter (Dict): A dictionary containing a filter configuration for</span>
+<span class="sd">                the request.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">since</span><span class="p">:</span>
+            <span class="n">query_parameters</span><span class="p">[</span><span class="s2">&quot;since&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">since</span>
+
+        <span class="k">if</span> <span class="n">timeout</span><span class="p">:</span>
+            <span class="n">query_parameters</span><span class="p">[</span><span class="s2">&quot;timeout&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">filter</span><span class="p">:</span>
+            <span class="n">filter_json</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">filter</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;:&quot;</span><span class="p">))</span>
+            <span class="n">query_parameters</span><span class="p">[</span><span class="s2">&quot;filter&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filter_json</span>
+
+        <span class="k">return</span> <span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="s2">&quot;sync&quot;</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.room_send"><a class="viewcode-back" href="../../nio.html#nio.Api.room_send">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">room_send</span><span class="p">(</span>
+        <span class="n">access_token</span><span class="p">,</span>  <span class="c1"># type: str</span>
+        <span class="n">room_id</span><span class="p">,</span>       <span class="c1"># type: str</span>
+        <span class="n">event_type</span><span class="p">,</span>    <span class="c1"># type: str</span>
+        <span class="n">body</span><span class="p">,</span>          <span class="c1"># type: Dict[Any, Any]</span>
+        <span class="n">tx_id</span>          <span class="c1"># type: Union[str, UUID]</span>
+    <span class="p">):</span>
+        <span class="c1"># type (...) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Send a message event to a room.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            room_id (str): The room id of the room where the event will be sent</span>
+<span class="sd">                to.</span>
+<span class="sd">            event_type (str): The type of the message that will be sent.</span>
+<span class="sd">            body(Dict): The body of the event. The fields in this</span>
+<span class="sd">                object will vary depending on the type of event.</span>
+<span class="sd">            tx_id (str): The transaction ID for this event.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;rooms/</span><span class="si">{room}</span><span class="s2">/send/</span><span class="si">{msg_type}</span><span class="s2">/</span><span class="si">{tx_id}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">room</span><span class="o">=</span><span class="n">room_id</span><span class="p">,</span> <span class="n">msg_type</span><span class="o">=</span><span class="n">event_type</span><span class="p">,</span> <span class="n">tx_id</span><span class="o">=</span><span class="n">tx_id</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;PUT&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.room_put_state"><a class="viewcode-back" href="../../nio.html#nio.Api.room_put_state">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">room_put_state</span><span class="p">(</span><span class="n">access_token</span><span class="p">,</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">event_type</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+        <span class="c1"># type (str, str, str, Dict[Any, Any]) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Send a state event.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            room_id (str): The room id of the room where the event will be sent</span>
+<span class="sd">                to.</span>
+<span class="sd">            event_type (str): The type of the event that will be sent.</span>
+<span class="sd">            body(Dict): The body of the event. The fields in this</span>
+<span class="sd">                object will vary depending on the type of event.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;rooms/</span><span class="si">{room}</span><span class="s2">/state/</span><span class="si">{event_type}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">room</span><span class="o">=</span><span class="n">room_id</span><span class="p">,</span> <span class="n">event_type</span><span class="o">=</span><span class="n">event_type</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;PUT&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.room_redact"><a class="viewcode-back" href="../../nio.html#nio.Api.room_redact">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">room_redact</span><span class="p">(</span>
+        <span class="n">access_token</span><span class="p">,</span>  <span class="c1"># type: str</span>
+        <span class="n">room_id</span><span class="p">,</span>       <span class="c1"># type: str</span>
+        <span class="n">event_id</span><span class="p">,</span>      <span class="c1"># type: str</span>
+        <span class="n">tx_id</span><span class="p">,</span>         <span class="c1"># type: Union[str, UUID]</span>
+        <span class="n">reason</span><span class="o">=</span><span class="kc">None</span>    <span class="c1"># type: Optional[str]</span>
+    <span class="p">):</span>
+        <span class="c1"># type (...) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Strip information out of an event.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            room_id (str): The room id of the room that contains the event that</span>
+<span class="sd">                will be redacted.</span>
+<span class="sd">            event_id (str): The ID of the event that will be redacted.</span>
+<span class="sd">            tx_id (str): The transaction ID for this event.</span>
+<span class="sd">            reason(str): A description explaining why the event was redacted.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+
+        <span class="n">body</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="n">reason</span><span class="p">:</span>
+            <span class="n">body</span><span class="p">[</span><span class="s2">&quot;reason&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reason</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;rooms/</span><span class="si">{room}</span><span class="s2">/redact/</span><span class="si">{event_id}</span><span class="s2">/</span><span class="si">{tx_id}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">room</span><span class="o">=</span><span class="n">room_id</span><span class="p">,</span> <span class="n">event_id</span><span class="o">=</span><span class="n">event_id</span><span class="p">,</span> <span class="n">tx_id</span><span class="o">=</span><span class="n">tx_id</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;PUT&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.room_kick"><a class="viewcode-back" href="../../nio.html#nio.Api.room_kick">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">room_kick</span><span class="p">(</span><span class="n">access_token</span><span class="p">,</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># type (str, str, str, Optional[str]) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Kick a user from a room.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            room_id (str): The room id of the room that the user will be</span>
+<span class="sd">                kicked from.</span>
+<span class="sd">            user_id (str): The user_id of the user that should be kicked.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+
+        <span class="n">body</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user_id&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">reason</span><span class="p">:</span>
+            <span class="n">body</span><span class="p">[</span><span class="s2">&quot;reason&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reason</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;rooms/</span><span class="si">{room}</span><span class="s2">/kick&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">room</span><span class="o">=</span><span class="n">room_id</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.room_invite"><a class="viewcode-back" href="../../nio.html#nio.Api.room_invite">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">room_invite</span><span class="p">(</span><span class="n">access_token</span><span class="p">,</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+        <span class="c1"># type (str, str, str) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Invite a user to a room.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            room_id (str): The room id of the room that the user will be</span>
+<span class="sd">                invited to.</span>
+<span class="sd">            user_id (str): The user_id of the user that should be invited.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user_id&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;rooms/</span><span class="si">{room}</span><span class="s2">/invite&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">room</span><span class="o">=</span><span class="n">room_id</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.join"><a class="viewcode-back" href="../../nio.html#nio.Api.join">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">join</span><span class="p">(</span><span class="n">access_token</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="c1"># type (str, str) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Join a room.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            room_id (str): The room identifier or alias to join.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;join/</span><span class="si">{room}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">room</span><span class="o">=</span><span class="n">room_id</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.room_leave"><a class="viewcode-back" href="../../nio.html#nio.Api.room_leave">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">room_leave</span><span class="p">(</span><span class="n">access_token</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="c1"># type (str, str) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Leave a room.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            room_id (str): The room id of the room that will left.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;rooms/</span><span class="si">{room}</span><span class="s2">/leave&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">room</span><span class="o">=</span><span class="n">room_id</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.room_messages"><a class="viewcode-back" href="../../nio.html#nio.Api.room_messages">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">room_messages</span><span class="p">(</span>
+        <span class="n">access_token</span><span class="p">,</span>                     <span class="c1"># type: str</span>
+        <span class="n">room_id</span><span class="p">,</span>                          <span class="c1"># type: str</span>
+        <span class="n">start</span><span class="p">,</span>                            <span class="c1"># type: str</span>
+        <span class="n">end</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>                         <span class="c1"># type: Optional[str]</span>
+        <span class="n">direction</span><span class="o">=</span><span class="n">MessageDirection</span><span class="o">.</span><span class="n">back</span><span class="p">,</span>  <span class="c1"># type: MessageDirection</span>
+        <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>                         <span class="c1"># type: int</span>
+    <span class="p">):</span>
+        <span class="c1"># type (...) -&gt; Tuple[str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Get room messages.</span>
+
+<span class="sd">        Returns the HTTP method and HTTP path for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            room_id (str): room id of the room for which to download the</span>
+<span class="sd">                messages</span>
+<span class="sd">            start (str): The token to start returning events from.</span>
+<span class="sd">            end (str): The token to stop returning events at.</span>
+<span class="sd">            direction (MessageDirection): The direction to return events from.</span>
+<span class="sd">            limit (int): The maximum number of events to return.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">,</span>
+            <span class="s2">&quot;from&quot;</span><span class="p">:</span> <span class="n">start</span><span class="p">,</span>
+            <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="n">limit</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">end</span><span class="p">:</span>
+            <span class="n">query_parameters</span><span class="p">[</span><span class="s2">&quot;to&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">end</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">direction</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">direction</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;back&quot;</span><span class="p">):</span>
+                <span class="n">direction</span> <span class="o">=</span> <span class="n">MessageDirection</span><span class="o">.</span><span class="n">back</span>
+            <span class="k">elif</span> <span class="n">direction</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;f&quot;</span><span class="p">,</span> <span class="s2">&quot;fron&quot;</span><span class="p">):</span>
+                <span class="n">direction</span> <span class="o">=</span> <span class="n">MessageDirection</span><span class="o">.</span><span class="n">front</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid direction&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">direction</span> <span class="ow">is</span> <span class="n">MessageDirection</span><span class="o">.</span><span class="n">front</span><span class="p">:</span>
+            <span class="n">query_parameters</span><span class="p">[</span><span class="s2">&quot;dir&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;f&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">query_parameters</span><span class="p">[</span><span class="s2">&quot;dir&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;b&quot;</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;rooms/</span><span class="si">{room}</span><span class="s2">/messages&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">room</span><span class="o">=</span><span class="n">room_id</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.keys_upload"><a class="viewcode-back" href="../../nio.html#nio.Api.keys_upload">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">keys_upload</span><span class="p">(</span><span class="n">access_token</span><span class="p">,</span> <span class="n">key_dict</span><span class="p">):</span>
+        <span class="c1"># type: (str, Dict[str, Any]) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Publish end-to-end encryption keys.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            key_dict (Dict): The dictionary containing device and one-time</span>
+<span class="sd">                keys that will be published to the server.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="n">key_dict</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;keys/upload&quot;</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.keys_query"><a class="viewcode-back" href="../../nio.html#nio.Api.keys_query">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">keys_query</span><span class="p">(</span><span class="n">access_token</span><span class="p">,</span> <span class="n">user_set</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># type: (str, Set[str], Optional[str]) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Query the current devices and identity keys for the given users.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            user_set (Set[str]): The users for which the keys should be</span>
+<span class="sd">                downloaded.</span>
+<span class="sd">            token (Optional[str]): If the client is fetching keys as a result</span>
+<span class="sd">                of a device update received in a sync request, this should be</span>
+<span class="sd">                the &#39;since&#39; token of that sync request, or any later sync</span>
+<span class="sd">                token.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;keys/query&quot;</span>
+
+        <span class="n">content</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;device_keys&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">user</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">user_set</span><span class="p">}</span>
+        <span class="p">}</span>  <span class="c1"># type: Dict[str, Dict[str, List]]</span>
+
+        <span class="k">if</span> <span class="n">token</span><span class="p">:</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;token&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">token</span>  <span class="c1"># type: ignore</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.keys_claim"><a class="viewcode-back" href="../../nio.html#nio.Api.keys_claim">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">keys_claim</span><span class="p">(</span><span class="n">access_token</span><span class="p">,</span> <span class="n">user_set</span><span class="p">):</span>
+        <span class="c1"># type: (str, Dict[str, List[str]]) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Claim one-time keys for use in Olm pre-key messages.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            user_set (Dict[str, List[str]]): The users and devices for which to</span>
+<span class="sd">                claim one-time keys to be claimed. A map from user ID, to a</span>
+<span class="sd">                list of device IDs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;keys/claim&quot;</span>
+
+        <span class="n">payload</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>  <span class="c1"># type: DefaultDict[str, Dict[str, str]]</span>
+
+        <span class="k">for</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">device_list</span> <span class="ow">in</span> <span class="n">user_set</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">device_id</span> <span class="ow">in</span> <span class="n">device_list</span><span class="p">:</span>
+                <span class="n">payload</span><span class="p">[</span><span class="n">user_id</span><span class="p">][</span><span class="n">device_id</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;signed_curve25519&quot;</span>
+
+        <span class="n">content</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;one_time_keys&quot;</span><span class="p">:</span> <span class="n">payload</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.to_device"><a class="viewcode-back" href="../../nio.html#nio.Api.to_device">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">to_device</span><span class="p">(</span>
+        <span class="n">access_token</span><span class="p">,</span>  <span class="c1"># type: str</span>
+        <span class="n">event_type</span><span class="p">,</span>    <span class="c1"># type: str</span>
+        <span class="n">content</span><span class="p">,</span>       <span class="c1"># type: Dict[Any, Any]</span>
+        <span class="n">tx_id</span>          <span class="c1"># type: Union[str, UUID]</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Tuple[str, str, str]</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Send to-device events to a set of client devices.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            event_type (str): The type of the event which will be sent.</span>
+<span class="sd">            content (Dict): The messages to send. A map from user ID, to a map</span>
+<span class="sd">                from device ID to message body. The device ID may also be \*,</span>
+<span class="sd">                meaning all known devices for the user.</span>
+<span class="sd">            tx_id (str): The transaction ID for this event.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;sendToDevice/</span><span class="si">{event_type}</span><span class="s2">/</span><span class="si">{tx_id}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">event_type</span><span class="o">=</span><span class="n">event_type</span><span class="p">,</span>
+            <span class="n">tx_id</span><span class="o">=</span><span class="n">tx_id</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;PUT&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.devices"><a class="viewcode-back" href="../../nio.html#nio.Api.devices">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">devices</span><span class="p">(</span><span class="n">access_token</span><span class="p">):</span>
+        <span class="c1"># type: (str) -&gt; Tuple[str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Get the list of devices for the current user.</span>
+
+<span class="sd">        Returns the HTTP method and HTTP path for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;devices&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.update_device"><a class="viewcode-back" href="../../nio.html#nio.Api.update_device">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">update_device</span><span class="p">(</span><span class="n">access_token</span><span class="p">,</span> <span class="n">device_id</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
+        <span class="c1"># type: (str, Dict[str, str]) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Update the metadata of the given device.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            device_id (str): The device for which the metadata will be updated.</span>
+<span class="sd">            content (Dict): A dictionary of metadata values that will be</span>
+<span class="sd">                updated for the device.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;devices/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">device_id</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;PUT&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.delete_devices"><a class="viewcode-back" href="../../nio.html#nio.Api.delete_devices">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">delete_devices</span><span class="p">(</span>
+        <span class="n">access_token</span><span class="p">,</span>   <span class="c1"># type: str</span>
+        <span class="n">devices</span><span class="p">,</span>        <span class="c1"># type: List[str]</span>
+        <span class="n">auth_dict</span><span class="o">=</span><span class="kc">None</span>  <span class="c1"># type: Optional[Dict[str, str]]</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Delete a device.</span>
+
+<span class="sd">        This API endpoint uses the User-Interactive Authentication API.</span>
+
+<span class="sd">        This tells the server to delete the given devices and invalidate their</span>
+<span class="sd">        associated access tokens.</span>
+
+<span class="sd">        Should first be called with no additional authentication information.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            devices (List[str]): A list of devices which will be deleted.</span>
+<span class="sd">            auth_dict (Dict): Additional authentication information for</span>
+<span class="sd">                the user-interactive authentication API.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;delete_devices&quot;</span>
+
+        <span class="n">content</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;devices&quot;</span><span class="p">:</span> <span class="n">devices</span>
+        <span class="p">}</span>  <span class="c1"># type: Dict[str, Any]</span>
+
+        <span class="k">if</span> <span class="n">auth_dict</span><span class="p">:</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;auth&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">auth_dict</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.joined_members"><a class="viewcode-back" href="../../nio.html#nio.Api.joined_members">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">joined_members</span><span class="p">(</span><span class="n">access_token</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="c1"># type: (str, str) -&gt; Tuple[str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Get the list of joined members for a room.</span>
+
+<span class="sd">        This tells the server that the user is typing for the next N</span>
+<span class="sd">        milliseconds or that the user has stopped typing.</span>
+
+<span class="sd">        Returns the HTTP method and HTTP path for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            room_id (str): Room id of the room where the user is typing.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;rooms/</span><span class="si">{}</span><span class="s2">/joined_members&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">room_id</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.room_typing"><a class="viewcode-back" href="../../nio.html#nio.Api.room_typing">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">room_typing</span><span class="p">(</span>
+        <span class="n">access_token</span><span class="p">,</span>       <span class="c1"># type: str</span>
+        <span class="n">room_id</span><span class="p">,</span>            <span class="c1"># type: str</span>
+        <span class="n">user_id</span><span class="p">,</span>            <span class="c1"># type: str</span>
+        <span class="n">typing_state</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># type: bool</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="mi">30000</span>       <span class="c1"># type: int</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Send a typing notice to the server.</span>
+
+<span class="sd">        This tells the server that the user is typing for the next N</span>
+<span class="sd">        milliseconds or that the user has stopped typing.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            room_id (str): Room id of the room where the user is typing.</span>
+<span class="sd">            user_id (str): The user who has started to type.</span>
+<span class="sd">            typign_state (bool): A flag representing whether the user started</span>
+<span class="sd">                or stopped typing</span>
+<span class="sd">            timeout (int): For how long should the new typing notice be</span>
+<span class="sd">                valid for in milliseconds.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;rooms/</span><span class="si">{}</span><span class="s2">/typing/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">room_id</span><span class="p">,</span> <span class="n">user_id</span><span class="p">)</span>
+
+        <span class="n">content</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;typing&quot;</span><span class="p">:</span> <span class="n">typing_state</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">typing_state</span><span class="p">:</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;timeout&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">timeout</span>  <span class="c1"># type: ignore</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;PUT&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.room_read_markers"><a class="viewcode-back" href="../../nio.html#nio.Api.room_read_markers">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">room_read_markers</span><span class="p">(</span>
+        <span class="n">access_token</span><span class="p">,</span>       <span class="c1"># type: str</span>
+        <span class="n">room_id</span><span class="p">,</span>            <span class="c1"># type: str</span>
+        <span class="n">fully_read_event</span><span class="p">,</span>   <span class="c1"># type: str</span>
+        <span class="n">read_event</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>    <span class="c1"># type: Optional[str]</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Update read markers for a room.</span>
+
+<span class="sd">        This sets the position of the read marker for a given room,</span>
+<span class="sd">        and optionally the read receipt&#39;s location.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            room_id (str): Room id of the room of the room where the read</span>
+<span class="sd">                markers should be updated</span>
+<span class="sd">            fully_read_event (str): The event ID the read marker should be</span>
+<span class="sd">                located at.</span>
+<span class="sd">            read_event (Optional[str]): The event ID to set the read receipt</span>
+<span class="sd">                location at.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;rooms/</span><span class="si">{}</span><span class="s2">/read_markers&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">room_id</span><span class="p">)</span>
+
+        <span class="n">content</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;m.fully_read&quot;</span><span class="p">:</span> <span class="n">fully_read_event</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">read_event</span><span class="p">:</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;m.read&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">read_event</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">),</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Api.upload"><a class="viewcode-back" href="../../nio.html#nio.Api.upload">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">upload</span><span class="p">(</span>
+        <span class="n">access_token</span><span class="p">,</span>       <span class="c1"># type: str</span>
+        <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>      <span class="c1"># type: str</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Tuple[str, str, str]</span>
+        <span class="sd">&quot;&quot;&quot;Upload some content to the content repository.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and empty data for the request.</span>
+<span class="sd">        The real data should be read from the file that should be uploaded.</span>
+
+<span class="sd">        Note: This requests also requires the Content-Type http header to be</span>
+<span class="sd">        set.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            access_token (str): The access token to be used with the request.</span>
+<span class="sd">            filename (str): The name of the file being uploaded</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">query_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;upload&quot;</span>
+
+        <span class="k">if</span> <span class="n">filename</span><span class="p">:</span>
+            <span class="n">query_parameters</span><span class="p">[</span><span class="s2">&quot;filename&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filename</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">_build_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">query_parameters</span><span class="p">,</span> <span class="n">MATRIX_MEDIA_API_PATH</span><span class="p">),</span>
+            <span class="s2">&quot;&quot;</span>
+        <span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Damir Jelić
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

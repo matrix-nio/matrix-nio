@@ -1,0 +1,1150 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>nio.events &mdash; nio 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> nio
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../nio.html">nio API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">nio</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>nio.events</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for nio.events</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="c1"># Copyright © 2018 Damir Jelić &lt;poljar@termina.org.uk&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># Permission to use, copy, modify, and/or distribute this software for</span>
+<span class="c1"># any purpose with or without fee is hereby granted, provided that the</span>
+<span class="c1"># above copyright notice and this permission notice appear in all copies.</span>
+<span class="c1">#</span>
+<span class="c1"># THE SOFTWARE IS PROVIDED &quot;AS IS&quot; AND THE AUTHOR DISCLAIMS ALL WARRANTIES</span>
+<span class="c1"># WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF</span>
+<span class="c1"># MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY</span>
+<span class="c1"># SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER</span>
+<span class="c1"># RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF</span>
+<span class="c1"># CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN</span>
+<span class="c1"># CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">unicode_literals</span>
+
+<span class="kn">import</span> <span class="nn">attr</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
+<span class="kn">from</span> <span class="nn">builtins</span> <span class="k">import</span> <span class="nb">super</span>
+<span class="kn">from</span> <span class="nn">jsonschema.exceptions</span> <span class="k">import</span> <span class="n">SchemaError</span><span class="p">,</span> <span class="n">ValidationError</span>
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span>
+
+<span class="kn">from</span> <span class="nn">.api</span> <span class="k">import</span> <span class="n">Api</span>
+<span class="kn">from</span> <span class="nn">.log</span> <span class="k">import</span> <span class="n">logger_group</span>
+<span class="kn">from</span> <span class="nn">.schemas</span> <span class="k">import</span> <span class="n">Schemas</span><span class="p">,</span> <span class="n">validate_json</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s2">&quot;nio.events&quot;</span><span class="p">)</span>
+<span class="n">logger_group</span><span class="o">.</span><span class="n">add_logger</span><span class="p">(</span><span class="n">logger</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="validate_or_badevent"><a class="viewcode-back" href="../../nio.html#nio.events.validate_or_badevent">[docs]</a><span class="k">def</span> <span class="nf">validate_or_badevent</span><span class="p">(</span>
+    <span class="n">parsed_dict</span><span class="p">,</span>  <span class="c1"># type: Dict[Any, Any]</span>
+    <span class="n">schema</span>        <span class="c1"># type: Dict[Any, Any]</span>
+<span class="p">):</span>
+    <span class="c1"># type: (...) -&gt; Optional[Union[BadEvent, UnknownBadEvent]]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">validate_json</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">ValidationError</span><span class="p">,</span> <span class="n">SchemaError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Error validating event: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">BadEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">UnknownBadEvent</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="verify"><a class="viewcode-back" href="../../nio.html#nio.events.verify">[docs]</a><span class="k">def</span> <span class="nf">verify</span><span class="p">(</span><span class="n">schema</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">event_dict</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="n">bad</span> <span class="o">=</span> <span class="n">validate_or_badevent</span><span class="p">(</span><span class="n">event_dict</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">bad</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">bad</span>
+
+            <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">wrapper</span>
+    <span class="k">return</span> <span class="n">decorator</span></div>
+
+
+<div class="viewcode-block" id="UnknownBadEvent"><a class="viewcode-back" href="../../nio.html#nio.events.UnknownBadEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">UnknownBadEvent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">event_dict</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">transaction_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Event"><a class="viewcode-back" href="../../nio.html#nio.events.Event">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">Event</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">event_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">sender</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">server_timestamp</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">decrypted</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">verified</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">sender_key</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>  <span class="c1"># type: Optional[str]</span>
+    <span class="n">session_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>  <span class="c1"># type: Optional[str]</span>
+    <span class="n">transaction_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>  <span class="c1"># type: Optional[str]</span>
+
+<div class="viewcode-block" id="Event.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.Event.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[Event, UnknownBadEvent]</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Event.parse_event"><a class="viewcode-back" href="../../nio.html#nio.events.Event.parse_event">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">parse_event</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">event_dict</span><span class="p">,</span>  <span class="c1"># type: Dict[Any, Any]</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Union[Event, BadEventType]</span>
+        <span class="k">if</span> <span class="s2">&quot;unsigned&quot;</span> <span class="ow">in</span> <span class="n">event_dict</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;redacted_because&quot;</span> <span class="ow">in</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;unsigned&quot;</span><span class="p">]:</span>
+                <span class="k">return</span> <span class="n">RedactedEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.message&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RoomMessage</span><span class="o">.</span><span class="n">parse_event</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.member&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RoomMemberEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.canonical_alias&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RoomAliasEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.name&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RoomNameEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.topic&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RoomTopicEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.power_levels&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">PowerLevelsEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.encryption&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RoomEncryptionEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.redaction&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RedactionEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.encrypted&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RoomEncryptedEvent</span><span class="o">.</span><span class="n">parse_event</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;m.call&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">CallEvent</span><span class="o">.</span><span class="n">parse_event</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">UnknownEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="UnknownEvent"><a class="viewcode-back" href="../../nio.html#nio.events.UnknownEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">UnknownEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+    <span class="nb">type</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">event_dict</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="UnknownEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.UnknownEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">event_dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="EncryptedEvent"><a class="viewcode-back" href="../../nio.html#nio.events.EncryptedEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">EncryptedEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+<div class="viewcode-block" id="EncryptedEvent.parse_event"><a class="viewcode-back" href="../../nio.html#nio.events.EncryptedEvent.parse_event">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">parse_event</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">event_dict</span><span class="p">,</span>  <span class="c1"># type: Dict[Any, Any]</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Union[Event, UnknownBadEvent]</span>
+        <span class="k">if</span> <span class="s2">&quot;unsigned&quot;</span> <span class="ow">in</span> <span class="n">event_dict</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;redacted_because&quot;</span> <span class="ow">in</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;unsigned&quot;</span><span class="p">]:</span>
+                <span class="k">return</span> <span class="n">RedactedEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.message&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RoomEncryptedMessage</span><span class="o">.</span><span class="n">parse_event</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">parse_event</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="AccountDataEvent"><a class="viewcode-back" href="../../nio.html#nio.events.AccountDataEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">AccountDataEvent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Abstract class for account data events.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AccountDataEvent.parse_event"><a class="viewcode-back" href="../../nio.html#nio.events.AccountDataEvent.parse_event">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">account_data</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">parse_event</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">event_dict</span><span class="p">,</span>  <span class="c1"># type: Dict[Any, Any]</span>
+    <span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.fully_read&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">FullyReadEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">UnknownAccountDataEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="FullyReadEvent"><a class="viewcode-back" href="../../nio.html#nio.events.FullyReadEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">FullyReadEvent</span><span class="p">(</span><span class="n">AccountDataEvent</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read marker location event.</span>
+
+<span class="sd">    The current location of the user&#39;s read marker in a room.</span>
+<span class="sd">    This event appears in the user&#39;s room account data for the room the marker</span>
+<span class="sd">    is applicable for.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        event_id (str): The event id the user&#39;s read marker is located</span>
+<span class="sd">            at in the room.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">event_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="FullyReadEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.FullyReadEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">fully_read</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">event_dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Construct a FullyReadEvent from a dictionary.&quot;&quot;&quot;</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">event_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="UnknownAccountDataEvent"><a class="viewcode-back" href="../../nio.html#nio.events.UnknownAccountDataEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">UnknownAccountDataEvent</span><span class="p">(</span><span class="n">AccountDataEvent</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Account data event of an unknown type.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        type (str): The type of the event.</span>
+<span class="sd">        content (Dict): The content of the event.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nb">type</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="UnknownAccountDataEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.UnknownAccountDataEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">event_dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Construct an UnknownAccountDataEvent from a dictionary.&quot;&quot;&quot;</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">event_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">],</span>
+            <span class="n">content</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="CallEvent"><a class="viewcode-back" href="../../nio.html#nio.events.CallEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">CallEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+    <span class="n">call_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">version</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="CallEvent.parse_event"><a class="viewcode-back" href="../../nio.html#nio.events.CallEvent.parse_event">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">parse_event</span><span class="p">(</span><span class="n">event_dict</span><span class="p">):</span>
+        <span class="n">event</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.call.candidates&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">CallCandidatesEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.call.invite&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">CallInviteEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.call.answer&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">CallAnswerEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.call.hangup&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">CallHangupEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">event</span></div></div>
+
+
+<div class="viewcode-block" id="CallCandidatesEvent"><a class="viewcode-back" href="../../nio.html#nio.events.CallCandidatesEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">CallCandidatesEvent</span><span class="p">(</span><span class="n">CallEvent</span><span class="p">):</span>
+    <span class="n">candidates</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="CallCandidatesEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.CallCandidatesEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">call_candidates</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">event_dict</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">event_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;call_id&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;version&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;candidates&quot;</span><span class="p">],</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="CallInviteEvent"><a class="viewcode-back" href="../../nio.html#nio.events.CallInviteEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">CallInviteEvent</span><span class="p">(</span><span class="n">CallEvent</span><span class="p">):</span>
+    <span class="n">lifetime</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">offer</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">expired</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Property marking if the invite event expired.&quot;&quot;&quot;</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">now</span> <span class="o">-</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">server_timestamp</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">&gt;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lifetime</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CallInviteEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.CallInviteEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">call_invite</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">event_dict</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">event_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;call_id&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;version&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;lifetime&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;offer&quot;</span><span class="p">],</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="CallAnswerEvent"><a class="viewcode-back" href="../../nio.html#nio.events.CallAnswerEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">CallAnswerEvent</span><span class="p">(</span><span class="n">CallEvent</span><span class="p">):</span>
+    <span class="n">answer</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="CallAnswerEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.CallAnswerEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">call_answer</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">event_dict</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">event_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;call_id&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;version&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;answer&quot;</span><span class="p">],</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="CallHangupEvent"><a class="viewcode-back" href="../../nio.html#nio.events.CallHangupEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">CallHangupEvent</span><span class="p">(</span><span class="n">CallEvent</span><span class="p">):</span>
+<div class="viewcode-block" id="CallHangupEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.CallHangupEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">call_hangup</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">event_dict</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">event_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;call_id&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;version&quot;</span><span class="p">],</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="ToDeviceEvent"><a class="viewcode-back" href="../../nio.html#nio.events.ToDeviceEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">ToDeviceEvent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">sender</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="ToDeviceEvent.parse_event"><a class="viewcode-back" href="../../nio.html#nio.events.ToDeviceEvent.parse_event">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">to_device</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">parse_event</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">event_dict</span>  <span class="c1"># type: Dict[Any, Any]</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Optional[Union[ToDeviceEvent, BadEventType]]</span>
+        <span class="c1"># A redacted event will have an empty content.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.encrypted&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RoomEncryptedEvent</span><span class="o">.</span><span class="n">parse_event</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div></div>
+
+
+<div class="viewcode-block" id="RoomEncryptedEvent"><a class="viewcode-back" href="../../nio.html#nio.events.RoomEncryptedEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomEncryptedEvent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="RoomEncryptedEvent.parse_event"><a class="viewcode-back" href="../../nio.html#nio.events.RoomEncryptedEvent.parse_event">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_encrypted</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">parse_event</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">event_dict</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">content</span><span class="p">[</span><span class="s2">&quot;algorithm&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.olm.v1.curve25519-aes-sha2&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">OlmEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">content</span><span class="p">[</span><span class="s2">&quot;algorithm&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.megolm.v1.aes-sha2&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MegolmEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div></div>
+
+
+<div class="viewcode-block" id="OlmEvent"><a class="viewcode-back" href="../../nio.html#nio.events.OlmEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">OlmEvent</span><span class="p">(</span><span class="n">ToDeviceEvent</span><span class="p">,</span> <span class="n">RoomEncryptedEvent</span><span class="p">):</span>
+    <span class="n">sender_key</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">ciphertext</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="OlmEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.OlmEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_olm_encrypted</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">event_dict</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span>
+
+        <span class="n">ciphertext</span> <span class="o">=</span> <span class="n">content</span><span class="p">[</span><span class="s2">&quot;ciphertext&quot;</span><span class="p">]</span>
+        <span class="n">sender_key</span> <span class="o">=</span> <span class="n">content</span><span class="p">[</span><span class="s2">&quot;sender_key&quot;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span> <span class="n">sender_key</span><span class="p">,</span> <span class="n">ciphertext</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomKeyEvent"><a class="viewcode-back" href="../../nio.html#nio.events.RoomKeyEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomKeyEvent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">sender</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">sender_key</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">room_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">session_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">algorithm</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RoomKeyEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.RoomKeyEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_key_event</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">event_dict</span><span class="p">,</span> <span class="n">sender</span><span class="p">,</span> <span class="n">sender_key</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">sender</span><span class="p">,</span>
+            <span class="n">sender_key</span><span class="p">,</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;room_id&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;session_id&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;algorithm&quot;</span><span class="p">]</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="MegolmEvent"><a class="viewcode-back" href="../../nio.html#nio.events.MegolmEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">MegolmEvent</span><span class="p">(</span><span class="n">RoomEncryptedEvent</span><span class="p">):</span>
+    <span class="n">event_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">sender</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">server_timestamp</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">sender_key</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">device_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">session_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">ciphertext</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">room_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="n">transaction_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="n">decrypted</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">verified</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MegolmEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.MegolmEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_megolm_encrypted</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">event_dict</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span>
+
+        <span class="n">ciphertext</span> <span class="o">=</span> <span class="n">content</span><span class="p">[</span><span class="s2">&quot;ciphertext&quot;</span><span class="p">]</span>
+        <span class="n">sender_key</span> <span class="o">=</span> <span class="n">content</span><span class="p">[</span><span class="s2">&quot;sender_key&quot;</span><span class="p">]</span>
+        <span class="n">session_id</span> <span class="o">=</span> <span class="n">content</span><span class="p">[</span><span class="s2">&quot;session_id&quot;</span><span class="p">]</span>
+        <span class="n">device_id</span> <span class="o">=</span> <span class="n">content</span><span class="p">[</span><span class="s2">&quot;device_id&quot;</span><span class="p">]</span>
+
+        <span class="n">room_id</span> <span class="o">=</span> <span class="n">event_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;room_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">tx_id</span> <span class="o">=</span> <span class="p">(</span><span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;unsigned&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transaction_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                 <span class="k">if</span> <span class="s2">&quot;unsigned&quot;</span> <span class="ow">in</span> <span class="n">event_dict</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">sender_key</span><span class="p">,</span>
+            <span class="n">device_id</span><span class="p">,</span>
+            <span class="n">session_id</span><span class="p">,</span>
+            <span class="n">ciphertext</span><span class="p">,</span>
+            <span class="n">room_id</span><span class="p">,</span>
+            <span class="n">tx_id</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="InviteEvent"><a class="viewcode-back" href="../../nio.html#nio.events.InviteEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">InviteEvent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">sender</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="InviteEvent.parse_event"><a class="viewcode-back" href="../../nio.html#nio.events.InviteEvent.parse_event">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">parse_event</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">event_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Optional[Union[InviteEvent, BadEventType]]</span>
+        <span class="k">if</span> <span class="s2">&quot;unsigned&quot;</span> <span class="ow">in</span> <span class="n">event_dict</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;redacted_because&quot;</span> <span class="ow">in</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;unsigned&quot;</span><span class="p">]:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.member&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">InviteMemberEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.canonical_alias&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">InviteAliasEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.room.name&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">InviteNameEvent</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div></div>
+
+
+<div class="viewcode-block" id="InviteMemberEvent"><a class="viewcode-back" href="../../nio.html#nio.events.InviteMemberEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">InviteMemberEvent</span><span class="p">(</span><span class="n">InviteEvent</span><span class="p">):</span>
+    <span class="n">state_key</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">prev_content</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+<div class="viewcode-block" id="InviteMemberEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.InviteMemberEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_membership</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[InviteMemberEvent, BadEventType]</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+        <span class="n">unsigned</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;unsigned&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">prev_content</span> <span class="o">=</span> <span class="n">unsigned</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;prev_content&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;state_key&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">,</span>
+            <span class="n">prev_content</span><span class="p">,</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="InviteAliasEvent"><a class="viewcode-back" href="../../nio.html#nio.events.InviteAliasEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">InviteAliasEvent</span><span class="p">(</span><span class="n">InviteEvent</span><span class="p">):</span>
+    <span class="n">canonical_alias</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="InviteAliasEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.InviteAliasEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_canonical_alias</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[InviteAliasEvent, BadEventType]</span>
+        <span class="n">sender</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">]</span>
+        <span class="n">canonical_alias</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;alias&quot;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">canonical_alias</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="InviteNameEvent"><a class="viewcode-back" href="../../nio.html#nio.events.InviteNameEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">InviteNameEvent</span><span class="p">(</span><span class="n">InviteEvent</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="InviteNameEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.InviteNameEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_name</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[InviteNameEvent, BadEventType]</span>
+        <span class="n">sender</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">]</span>
+        <span class="n">canonical_alias</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">canonical_alias</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="BadEvent"><a class="viewcode-back" href="../../nio.html#nio.events.BadEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">BadEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+    <span class="nb">type</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Bad event of type </span><span class="si">{}</span><span class="s2">, from </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sender</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BadEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.BadEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; BadEvent</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">],</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">),</span>
+        <span class="p">)</span></div></div>
+
+
+<span class="n">BadEventType</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">BadEvent</span><span class="p">,</span> <span class="n">UnknownBadEvent</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="RedactedEvent"><a class="viewcode-back" href="../../nio.html#nio.events.RedactedEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RedactedEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+    <span class="n">event_type</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">redacter</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">reason</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">reason</span> <span class="o">=</span> <span class="s2">&quot;, reason: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reason</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reason</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;Redacted event of type </span><span class="si">{}</span><span class="s2">, by </span><span class="si">{}{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">event_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">redacter</span><span class="p">,</span> <span class="n">reason</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="RedactedEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.RedactedEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">redacted_event</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[RedactedEvent, BadEventType]</span>
+        <span class="n">redacter</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;unsigned&quot;</span><span class="p">][</span><span class="s2">&quot;redacted_because&quot;</span><span class="p">][</span><span class="s2">&quot;sender&quot;</span><span class="p">]</span>
+        <span class="n">content_dict</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;unsigned&quot;</span><span class="p">][</span><span class="s2">&quot;redacted_because&quot;</span><span class="p">][</span><span class="s2">&quot;content&quot;</span><span class="p">]</span>
+        <span class="n">reason</span> <span class="o">=</span> <span class="n">content_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reason&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">],</span>
+            <span class="n">redacter</span><span class="p">,</span>
+            <span class="n">reason</span><span class="p">,</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomEncryptionEvent"><a class="viewcode-back" href="../../nio.html#nio.events.RoomEncryptionEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomEncryptionEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomAliasEvent"><a class="viewcode-back" href="../../nio.html#nio.events.RoomAliasEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomAliasEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+    <span class="n">canonical_alias</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="RoomAliasEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.RoomAliasEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_canonical_alias</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[RoomAliasEvent, BadEventType]</span>
+        <span class="n">event_id</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">]</span>
+        <span class="n">sender</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">]</span>
+        <span class="n">timestamp</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">]</span>
+
+        <span class="n">canonical_alias</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;alias&quot;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">event_id</span><span class="p">,</span> <span class="n">sender</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">,</span> <span class="n">canonical_alias</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomNameEvent"><a class="viewcode-back" href="../../nio.html#nio.events.RoomNameEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomNameEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="RoomNameEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.RoomNameEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_name</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[RoomNameEvent, BadEventType]</span>
+        <span class="n">event_id</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">]</span>
+        <span class="n">sender</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">]</span>
+        <span class="n">timestamp</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">]</span>
+
+        <span class="n">canonical_alias</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">event_id</span><span class="p">,</span> <span class="n">sender</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">,</span> <span class="n">canonical_alias</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomTopicEvent"><a class="viewcode-back" href="../../nio.html#nio.events.RoomTopicEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomTopicEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+    <span class="n">topic</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="RoomTopicEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.RoomTopicEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_topic</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[RoomTopicEvent, BadEventType]</span>
+        <span class="n">event_id</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">]</span>
+        <span class="n">sender</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">]</span>
+        <span class="n">timestamp</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">]</span>
+
+        <span class="n">canonical_alias</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;topic&quot;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">event_id</span><span class="p">,</span> <span class="n">sender</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">,</span> <span class="n">canonical_alias</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomMessage"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessage">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomMessage</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+<div class="viewcode-block" id="RoomMessage.parse_event"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessage.parse_event">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_message</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">parse_event</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[RoomMessage, BadEventType]</span>
+        <span class="n">content_dict</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">content_dict</span><span class="p">[</span><span class="s2">&quot;msgtype&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.text&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">RoomMessageText</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">content_dict</span><span class="p">[</span><span class="s2">&quot;msgtype&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.emote&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">RoomMessageEmote</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">content_dict</span><span class="p">[</span><span class="s2">&quot;msgtype&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.notice&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">RoomMessageNotice</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">content_dict</span><span class="p">[</span><span class="s2">&quot;msgtype&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.image&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">RoomMessageImage</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">content_dict</span><span class="p">[</span><span class="s2">&quot;msgtype&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.audio&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">RoomMessageAudio</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">content_dict</span><span class="p">[</span><span class="s2">&quot;msgtype&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.video&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">RoomMessageVideo</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">content_dict</span><span class="p">[</span><span class="s2">&quot;msgtype&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.file&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">RoomMessageFile</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">RoomMessageUnknown</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;unsigned&quot;</span> <span class="ow">in</span> <span class="n">parsed_dict</span><span class="p">:</span>
+            <span class="n">txn_id</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;unsigned&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transaction_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">event</span><span class="o">.</span><span class="n">transaction_id</span> <span class="o">=</span> <span class="n">txn_id</span>
+
+        <span class="k">return</span> <span class="n">event</span></div></div>
+
+
+<div class="viewcode-block" id="RoomEncryptedMessage"><a class="viewcode-back" href="../../nio.html#nio.events.RoomEncryptedMessage">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomEncryptedMessage</span><span class="p">(</span><span class="n">RoomMessage</span><span class="p">):</span>
+<div class="viewcode-block" id="RoomEncryptedMessage.parse_event"><a class="viewcode-back" href="../../nio.html#nio.events.RoomEncryptedMessage.parse_event">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_message</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">parse_event</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[RoomMessage, BadEventType]</span>
+        <span class="n">msgtype</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;msgtype&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">msgtype</span> <span class="o">==</span> <span class="s2">&quot;m.image&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">RoomEncryptedImage</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">msgtype</span> <span class="o">==</span> <span class="s2">&quot;m.audio&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">RoomEncryptedAudio</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">msgtype</span> <span class="o">==</span> <span class="s2">&quot;m.video&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">RoomEncryptedVideo</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">msgtype</span> <span class="o">==</span> <span class="s2">&quot;m.file&quot;</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">RoomEncryptedFile</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">RoomMessage</span><span class="o">.</span><span class="n">parse_event</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;unsigned&quot;</span> <span class="ow">in</span> <span class="n">parsed_dict</span><span class="p">:</span>
+            <span class="n">txn_id</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;unsigned&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transaction_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">event</span><span class="o">.</span><span class="n">transaction_id</span> <span class="o">=</span> <span class="n">txn_id</span>
+
+        <span class="k">return</span> <span class="n">event</span></div></div>
+
+
+<div class="viewcode-block" id="RoomMessageMedia"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessageMedia">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomMessageMedia</span><span class="p">(</span><span class="n">RoomMessage</span><span class="p">):</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="RoomMessageMedia.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessageMedia.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_message_media</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;url&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;body&quot;</span><span class="p">],</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomEncryptedMedia"><a class="viewcode-back" href="../../nio.html#nio.events.RoomEncryptedMedia">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomEncryptedMedia</span><span class="p">(</span><span class="n">RoomMessage</span><span class="p">):</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">hashes</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">iv</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="RoomEncryptedMedia.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.RoomEncryptedMedia.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_encrypted_media</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;file&quot;</span><span class="p">][</span><span class="s2">&quot;url&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;body&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;file&quot;</span><span class="p">][</span><span class="s2">&quot;key&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;file&quot;</span><span class="p">][</span><span class="s2">&quot;hashes&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;file&quot;</span><span class="p">][</span><span class="s2">&quot;iv&quot;</span><span class="p">],</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomEncryptedImage"><a class="viewcode-back" href="../../nio.html#nio.events.RoomEncryptedImage">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomEncryptedImage</span><span class="p">(</span><span class="n">RoomEncryptedMedia</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomEncryptedAudio"><a class="viewcode-back" href="../../nio.html#nio.events.RoomEncryptedAudio">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomEncryptedAudio</span><span class="p">(</span><span class="n">RoomEncryptedMedia</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomEncryptedVideo"><a class="viewcode-back" href="../../nio.html#nio.events.RoomEncryptedVideo">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomEncryptedVideo</span><span class="p">(</span><span class="n">RoomEncryptedMedia</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomEncryptedFile"><a class="viewcode-back" href="../../nio.html#nio.events.RoomEncryptedFile">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomEncryptedFile</span><span class="p">(</span><span class="n">RoomEncryptedMedia</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomMessageImage"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessageImage">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomMessageImage</span><span class="p">(</span><span class="n">RoomMessageMedia</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomMessageAudio"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessageAudio">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomMessageAudio</span><span class="p">(</span><span class="n">RoomMessageMedia</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomMessageVideo"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessageVideo">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomMessageVideo</span><span class="p">(</span><span class="n">RoomMessageMedia</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomMessageFile"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessageFile">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomMessageFile</span><span class="p">(</span><span class="n">RoomMessageMedia</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomMessageUnknown"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessageUnknown">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomMessageUnknown</span><span class="p">(</span><span class="n">RoomMessage</span><span class="p">):</span>
+    <span class="nb">type</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="RoomMessageUnknown.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessageUnknown.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; RoomMessage</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">),</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomMessageNotice"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessageNotice">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomMessageNotice</span><span class="p">(</span><span class="n">RoomMessage</span><span class="p">):</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="RoomMessageNotice.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessageNotice.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_message_notice</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;body&quot;</span><span class="p">],</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomMessageText"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessageText">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomMessageText</span><span class="p">(</span><span class="n">RoomMessage</span><span class="p">):</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">formatted_body</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="nb">format</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># type: () -&gt; str</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sender</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_validate</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Optional[BadEventType]</span>
+        <span class="k">return</span> <span class="n">validate_or_badevent</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">room_message_text</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RoomMessageText.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessageText.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[RoomMessage, BadEventType]</span>
+        <span class="n">bad</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_validate</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">bad</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">bad</span>
+
+        <span class="n">body</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;body&quot;</span><span class="p">]</span>
+        <span class="n">formatted_body</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;formatted_body&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="s2">&quot;formatted_body&quot;</span> <span class="ow">in</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="n">body_format</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;format&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="s2">&quot;format&quot;</span> <span class="ow">in</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">body</span><span class="p">,</span>
+            <span class="n">formatted_body</span><span class="p">,</span>
+            <span class="n">body_format</span><span class="p">,</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomMessageEmote"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMessageEmote">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomMessageEmote</span><span class="p">(</span><span class="n">RoomMessageText</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_validate</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Optional[BadEventType]</span>
+        <span class="k">return</span> <span class="n">validate_or_badevent</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">room_message_emote</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DefaultLevels"><a class="viewcode-back" href="../../nio.html#nio.events.DefaultLevels">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">DefaultLevels</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">ban</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">invite</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">kick</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">redact</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">state_default</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">events_default</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">users_default</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DefaultLevels.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.DefaultLevels.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;ban&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;invite&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;kick&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;redact&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;state_default&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;events_default&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">[</span><span class="s2">&quot;users_default&quot;</span><span class="p">]</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="PowerLevels"><a class="viewcode-back" href="../../nio.html#nio.events.PowerLevels">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">PowerLevels</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">defaults</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="n">attr</span><span class="o">.</span><span class="n">Factory</span><span class="p">(</span><span class="n">DefaultLevels</span><span class="p">))</span>
+    <span class="n">users</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="n">attr</span><span class="o">.</span><span class="n">Factory</span><span class="p">(</span><span class="nb">dict</span><span class="p">),</span> <span class="nb">type</span><span class="o">=</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span>
+    <span class="n">events</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="n">attr</span><span class="o">.</span><span class="n">Factory</span><span class="p">(</span><span class="nb">dict</span><span class="p">),</span> <span class="nb">type</span><span class="o">=</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span>
+
+<div class="viewcode-block" id="PowerLevels.get_user_level"><a class="viewcode-back" href="../../nio.html#nio.events.PowerLevels.get_user_level">[docs]</a>    <span class="k">def</span> <span class="nf">get_user_level</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+        <span class="c1"># type: (str) -&gt; int</span>
+        <span class="k">if</span> <span class="n">user_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">[</span><span class="n">user_id</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">defaults</span><span class="o">.</span><span class="n">users_default</span></div>
+
+<div class="viewcode-block" id="PowerLevels.update"><a class="viewcode-back" href="../../nio.html#nio.events.PowerLevels.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_levels</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_levels</span><span class="p">,</span> <span class="n">PowerLevels</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">defaults</span> <span class="o">=</span> <span class="n">new_levels</span><span class="o">.</span><span class="n">defaults</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">new_levels</span><span class="o">.</span><span class="n">events</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">new_levels</span><span class="o">.</span><span class="n">users</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="PowerLevelsEvent"><a class="viewcode-back" href="../../nio.html#nio.events.PowerLevelsEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">PowerLevelsEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+    <span class="n">power_levels</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="PowerLevelsEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.PowerLevelsEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_power_levels</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="n">default_levels</span> <span class="o">=</span> <span class="n">DefaultLevels</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+
+        <span class="n">users</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;users&quot;</span><span class="p">)</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;events&quot;</span><span class="p">)</span>
+
+        <span class="n">levels</span> <span class="o">=</span> <span class="n">PowerLevels</span><span class="p">(</span><span class="n">default_levels</span><span class="p">,</span> <span class="n">users</span><span class="p">,</span> <span class="n">events</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">levels</span><span class="p">,</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RedactionEvent"><a class="viewcode-back" href="../../nio.html#nio.events.RedactionEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RedactionEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+    <span class="n">redacts</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">reason</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RedactionEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.RedactionEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_redaction</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[RedactionEvent, BadEventType]</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">reason</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reason&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;redacts&quot;</span><span class="p">],</span>
+            <span class="n">reason</span><span class="p">,</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomMemberEvent"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMemberEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomMemberEvent</span><span class="p">(</span><span class="n">Event</span><span class="p">):</span>
+    <span class="n">state_key</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">prev_content</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RoomMemberEvent.from_dict"><a class="viewcode-back" href="../../nio.html#nio.events.RoomMemberEvent.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_membership</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[RoomMemberEvent, BadEventType]</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+        <span class="n">unsigned</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;unsigned&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">prev_content</span> <span class="o">=</span> <span class="n">unsigned</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;prev_content&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;origin_server_ts&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;state_key&quot;</span><span class="p">],</span>
+            <span class="n">content</span><span class="p">,</span>
+            <span class="n">prev_content</span><span class="p">,</span>
+        <span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Damir Jelić
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

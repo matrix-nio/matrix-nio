@@ -1,0 +1,1228 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>nio.responses &mdash; nio 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> nio
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../nio.html">nio API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">nio</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>nio.responses</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for nio.responses</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="c1"># Copyright © 2018 Damir Jelić &lt;poljar@termina.org.uk&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># Permission to use, copy, modify, and/or distribute this software for</span>
+<span class="c1"># any purpose with or without fee is hereby granted, provided that the</span>
+<span class="c1"># above copyright notice and this permission notice appear in all copies.</span>
+<span class="c1">#</span>
+<span class="c1"># THE SOFTWARE IS PROVIDED &quot;AS IS&quot; AND THE AUTHOR DISCLAIMS ALL WARRANTIES</span>
+<span class="c1"># WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF</span>
+<span class="c1"># MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY</span>
+<span class="c1"># SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER</span>
+<span class="c1"># RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF</span>
+<span class="c1"># CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN</span>
+<span class="c1"># CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">unicode_literals</span>
+
+<span class="kn">import</span> <span class="nn">attr</span>
+<span class="kn">from</span> <span class="nn">builtins</span> <span class="k">import</span> <span class="nb">str</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">Any</span><span class="p">,</span>
+    <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">List</span><span class="p">,</span>
+    <span class="n">NamedTuple</span><span class="p">,</span>
+    <span class="n">Optional</span><span class="p">,</span>
+    <span class="n">Union</span><span class="p">,</span>
+    <span class="n">Type</span><span class="p">,</span>
+    <span class="n">TypeVar</span><span class="p">,</span>
+    <span class="n">Tuple</span>
+<span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">jsonschema.exceptions</span> <span class="k">import</span> <span class="n">SchemaError</span><span class="p">,</span> <span class="n">ValidationError</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span>
+
+<span class="kn">from</span> <span class="nn">.events</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">Event</span><span class="p">,</span>
+    <span class="n">AccountDataEvent</span><span class="p">,</span>
+    <span class="n">InviteEvent</span><span class="p">,</span>
+    <span class="n">UnknownBadEvent</span><span class="p">,</span>
+    <span class="n">ToDeviceEvent</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.log</span> <span class="k">import</span> <span class="n">logger_group</span>
+<span class="kn">from</span> <span class="nn">.schemas</span> <span class="k">import</span> <span class="n">Schemas</span><span class="p">,</span> <span class="n">validate_json</span>
+
+<span class="kn">from</span> <span class="nn">.crypto</span> <span class="k">import</span> <span class="n">OlmDevice</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s2">&quot;nio.responses&quot;</span><span class="p">)</span>
+<span class="n">logger_group</span><span class="o">.</span><span class="n">add_logger</span><span class="p">(</span><span class="n">logger</span><span class="p">)</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;DeleteDevicesAuthResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DeleteDevicesResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DeleteDevicesError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Device&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DeviceList&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DevicesResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DevicesError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DeviceOneTimeKeyCount&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ErrorResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;InviteInfo&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;JoinResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;JoinError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;JoinedMembersResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;JoinedMembersError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;KeysClaimResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;KeysClaimError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;KeysQueryResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;KeysQueryError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;KeysUploadResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;KeysUploadError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;LoginResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;LoginError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Response&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomInfo&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomInviteResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomInviteError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomKickResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomKickResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomLeaveResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomLeaveError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomMember&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomMessagesResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomMessagesError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomPutStateResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomPutStateError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomRedactResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomRedactError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomSendResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomSendError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomSummary&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Rooms&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ShareGroupSessionResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ShareGroupSessionError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;SyncResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PartialSyncResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;SyncError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Timeline&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TypingNoticeEvent&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;UpdateDeviceResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;UpdateDeviceError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomTypingResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomTypingError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomReadMarkersResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RoomReadMarkersError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;UploadResponse&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;UploadError&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">verify</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">error_class</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">parsed_dict</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Validating response schema&quot;</span><span class="p">)</span>
+                <span class="n">validate_json</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="n">SchemaError</span><span class="p">,</span> <span class="n">ValidationError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Error validating response: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">message</span><span class="p">))</span>
+                <span class="k">return</span> <span class="n">error_class</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">wrapper</span>
+    <span class="k">return</span> <span class="n">decorator</span>
+
+
+<div class="viewcode-block" id="Rooms"><a class="viewcode-back" href="../../nio.html#nio.responses.Rooms">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">Rooms</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">invite</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">Dict</span><span class="p">)</span>
+    <span class="n">join</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">Dict</span><span class="p">)</span>
+    <span class="n">leave</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">Dict</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DeviceOneTimeKeyCount"><a class="viewcode-back" href="../../nio.html#nio.responses.DeviceOneTimeKeyCount">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">DeviceOneTimeKeyCount</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">curve25519</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">signed_curve25519</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DeviceList"><a class="viewcode-back" href="../../nio.html#nio.responses.DeviceList">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">DeviceList</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">changed</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span>
+    <span class="n">left</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="Timeline"><a class="viewcode-back" href="../../nio.html#nio.responses.Timeline">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">Timeline</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">events</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+    <span class="n">limited</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">prev_batch</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="InviteInfo"><a class="viewcode-back" href="../../nio.html#nio.responses.InviteInfo">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">InviteInfo</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">invite_state</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">List</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TypingNoticeEvent"><a class="viewcode-back" href="../../nio.html#nio.responses.TypingNoticeEvent">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">TypingNoticeEvent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">users</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">List</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RoomSummary"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomSummary">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomSummary</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">invited_member_count</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span>
+    <span class="n">joined_member_count</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span>
+    <span class="n">heroes</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="p">[],</span> <span class="nb">type</span><span class="o">=</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="RoomInfo"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomInfo">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomInfo</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">timeline</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">Timeline</span><span class="p">)</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+    <span class="n">ephemeral</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+    <span class="n">account_data</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+    <span class="n">summary</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Optional</span><span class="p">[</span><span class="n">RoomSummary</span><span class="p">])</span>
+
+<div class="viewcode-block" id="RoomInfo.parse_account_data"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomInfo.parse_account_data">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">parse_account_data</span><span class="p">(</span><span class="n">event_dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Parse the account data dictionary and produce a list of events.&quot;&quot;&quot;</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">event_dict</span><span class="p">:</span>
+            <span class="n">events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AccountDataEvent</span><span class="o">.</span><span class="n">parse_event</span><span class="p">(</span><span class="n">event</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">events</span></div></div>
+
+
+<div class="viewcode-block" id="RoomMember"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomMember">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomMember</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">user_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">display_name</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">avatar_url</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Device"><a class="viewcode-back" href="../../nio.html#nio.responses.Device">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">Device</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="nb">id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">display_name</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">last_seen_ip</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">last_seen_date</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">datetime</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Device.from_dict"><a class="viewcode-back" href="../../nio.html#nio.responses.Device.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;last_seen_ts&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;last_seen_ts&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;device_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;display_name&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;last_seen_ip&quot;</span><span class="p">],</span>
+            <span class="n">date</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="Response"><a class="viewcode-back" href="../../nio.html#nio.responses.Response">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">Response</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">uuid</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>          <span class="c1"># type : str</span>
+    <span class="n">start_time</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># type : Optional[float]</span>
+    <span class="n">end_time</span> <span class="o">=</span> <span class="kc">None</span>    <span class="c1"># type : Optional[float]</span>
+    <span class="n">timeout</span> <span class="o">=</span> <span class="mi">0</span>        <span class="c1"># type : int</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">elapsed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="n">elapsed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">elapsed</span> <span class="o">-</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="ErrorResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.ErrorResponse">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">ErrorResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">status_code</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># type: () -&gt; str</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">:</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">:</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">message</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span><span class="p">:</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> unknown error&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">status_code</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="s2">&quot;unknown error&quot;</span>
+
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ErrorResponse.from_dict"><a class="viewcode-back" href="../../nio.html#nio.responses.ErrorResponse.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; ErrorResponse</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">validate_json</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">error</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">SchemaError</span><span class="p">,</span> <span class="n">ValidationError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="s2">&quot;unknown error&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">],</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;errcode&quot;</span><span class="p">])</span></div></div>
+
+
+<span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">_ErrorWithRoomId</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="n">room_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">validate_json</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">error</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">SchemaError</span><span class="p">,</span> <span class="n">ValidationError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="s2">&quot;unknown error&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">],</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;errcode&quot;</span><span class="p">],</span> <span class="n">room_id</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="LoginError"><a class="viewcode-back" href="../../nio.html#nio.responses.LoginError">[docs]</a><span class="k">class</span> <span class="nc">LoginError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="SyncError"><a class="viewcode-back" href="../../nio.html#nio.responses.SyncError">[docs]</a><span class="k">class</span> <span class="nc">SyncError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomSendError"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomSendError">[docs]</a><span class="k">class</span> <span class="nc">RoomSendError</span><span class="p">(</span><span class="n">_ErrorWithRoomId</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomPutStateError"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomPutStateError">[docs]</a><span class="k">class</span> <span class="nc">RoomPutStateError</span><span class="p">(</span><span class="n">_ErrorWithRoomId</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomRedactError"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomRedactError">[docs]</a><span class="k">class</span> <span class="nc">RoomRedactError</span><span class="p">(</span><span class="n">_ErrorWithRoomId</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomTypingError"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomTypingError">[docs]</a><span class="k">class</span> <span class="nc">RoomTypingError</span><span class="p">(</span><span class="n">_ErrorWithRoomId</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A response representing a unsuccessful room typing request.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomReadMarkersError"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomReadMarkersError">[docs]</a><span class="k">class</span> <span class="nc">RoomReadMarkersError</span><span class="p">(</span><span class="n">_ErrorWithRoomId</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A response representing a unsuccessful room read markers request.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+<span class="k">class</span> <span class="nc">RoomKickError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<div class="viewcode-block" id="RoomInviteError"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomInviteError">[docs]</a><span class="k">class</span> <span class="nc">RoomInviteError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="JoinError"><a class="viewcode-back" href="../../nio.html#nio.responses.JoinError">[docs]</a><span class="k">class</span> <span class="nc">JoinError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomLeaveError"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomLeaveError">[docs]</a><span class="k">class</span> <span class="nc">RoomLeaveError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RoomMessagesError"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomMessagesError">[docs]</a><span class="k">class</span> <span class="nc">RoomMessagesError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="KeysUploadError"><a class="viewcode-back" href="../../nio.html#nio.responses.KeysUploadError">[docs]</a><span class="k">class</span> <span class="nc">KeysUploadError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="KeysQueryError"><a class="viewcode-back" href="../../nio.html#nio.responses.KeysQueryError">[docs]</a><span class="k">class</span> <span class="nc">KeysQueryError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="KeysClaimError"><a class="viewcode-back" href="../../nio.html#nio.responses.KeysClaimError">[docs]</a><span class="k">class</span> <span class="nc">KeysClaimError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="UploadError"><a class="viewcode-back" href="../../nio.html#nio.responses.UploadError">[docs]</a><span class="k">class</span> <span class="nc">UploadError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A response representing a unsuccessful upload request.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="ShareGroupSessionError"><a class="viewcode-back" href="../../nio.html#nio.responses.ShareGroupSessionError">[docs]</a><span class="k">class</span> <span class="nc">ShareGroupSessionError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DevicesError"><a class="viewcode-back" href="../../nio.html#nio.responses.DevicesError">[docs]</a><span class="k">class</span> <span class="nc">DevicesError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DeleteDevicesError"><a class="viewcode-back" href="../../nio.html#nio.responses.DeleteDevicesError">[docs]</a><span class="k">class</span> <span class="nc">DeleteDevicesError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="UpdateDeviceError"><a class="viewcode-back" href="../../nio.html#nio.responses.UpdateDeviceError">[docs]</a><span class="k">class</span> <span class="nc">UpdateDeviceError</span><span class="p">(</span><span class="n">ErrorResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="JoinedMembersError"><a class="viewcode-back" href="../../nio.html#nio.responses.JoinedMembersError">[docs]</a><span class="k">class</span> <span class="nc">JoinedMembersError</span><span class="p">(</span><span class="n">_ErrorWithRoomId</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="LoginResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.LoginResponse">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">LoginResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="n">user_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">device_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">access_token</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># type: () -&gt; str</span>
+        <span class="k">return</span> <span class="s2">&quot;Logged in as </span><span class="si">{}</span><span class="s2">, device id: </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_id</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="LoginResponse.from_dict"><a class="viewcode-back" href="../../nio.html#nio.responses.LoginResponse.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">login</span><span class="p">,</span> <span class="n">LoginError</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[LoginResponse, ErrorResponse]</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;user_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;device_id&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;access_token&quot;</span><span class="p">],</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="JoinedMembersResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.JoinedMembersResponse">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">JoinedMembersResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="n">members</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">List</span><span class="p">[</span><span class="n">RoomMember</span><span class="p">])</span>
+    <span class="n">room_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+
+<div class="viewcode-block" id="JoinedMembersResponse.from_dict"><a class="viewcode-back" href="../../nio.html#nio.responses.JoinedMembersResponse.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">joined_members</span><span class="p">,</span> <span class="n">JoinedMembersError</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">parsed_dict</span><span class="p">,</span>  <span class="c1"># type: Dict[Any, Any]</span>
+        <span class="n">room_id</span>       <span class="c1"># type: str</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Union[JoinedMembersResponse, ErrorResponse]</span>
+        <span class="n">members</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">user_info</span> <span class="ow">in</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;joined&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">user</span> <span class="o">=</span> <span class="n">RoomMember</span><span class="p">(</span>
+                <span class="n">user_id</span><span class="p">,</span>
+                <span class="n">user_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;display_name&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+                <span class="n">user_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avatar_url&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">members</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">members</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="UploadResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.UploadResponse">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">UploadResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A response representing a successful upload request.&quot;&quot;&quot;</span>
+
+    <span class="n">content_uri</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+
+<div class="viewcode-block" id="UploadResponse.from_dict"><a class="viewcode-back" href="../../nio.html#nio.responses.UploadResponse.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">upload</span><span class="p">,</span> <span class="n">UploadError</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[UploadResponse, ErrorResponse]</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;content_uri&quot;</span><span class="p">],</span>
+        <span class="p">)</span></div></div>
+
+
+<span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomEventIdResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="n">event_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">room_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">_room_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ErrorResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">parsed_dict</span><span class="p">,</span>  <span class="c1"># type: Dict[Any, Any]</span>
+        <span class="n">room_id</span>       <span class="c1"># type: str</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Union[RoomEventIdResponse, ErrorResponse]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">validate_json</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">room_event_id</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">SchemaError</span><span class="p">,</span> <span class="n">ValidationError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;event_id&quot;</span><span class="p">],</span> <span class="n">room_id</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="RoomSendResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomSendResponse">[docs]</a><span class="k">class</span> <span class="nc">RoomSendResponse</span><span class="p">(</span><span class="n">RoomEventIdResponse</span><span class="p">):</span>
+<div class="viewcode-block" id="RoomSendResponse.create_error"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomSendResponse.create_error">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RoomSendError</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomPutStateResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomPutStateResponse">[docs]</a><span class="k">class</span> <span class="nc">RoomPutStateResponse</span><span class="p">(</span><span class="n">RoomEventIdResponse</span><span class="p">):</span>
+<div class="viewcode-block" id="RoomPutStateResponse.create_error"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomPutStateResponse.create_error">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RoomPutStateError</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomRedactResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomRedactResponse">[docs]</a><span class="k">class</span> <span class="nc">RoomRedactResponse</span><span class="p">(</span><span class="n">RoomEventIdResponse</span><span class="p">):</span>
+<div class="viewcode-block" id="RoomRedactResponse.create_error"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomRedactResponse.create_error">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RoomRedactError</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span></div></div>
+
+
+<span class="k">class</span> <span class="nc">EmptyResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ErrorResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[Any, ErrorResponse]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">validate_json</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">empty</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">SchemaError</span><span class="p">,</span> <span class="n">ValidationError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">()</span>
+
+
+<span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">_EmptyResponseWithRoomId</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="n">room_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_ErrorWithRoomId</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any], str) -&gt; Union[Any, ErrorResponse]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">validate_json</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">empty</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">SchemaError</span><span class="p">,</span> <span class="n">ValidationError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">room_id</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="RoomKickResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomKickResponse">[docs]</a><span class="k">class</span> <span class="nc">RoomKickResponse</span><span class="p">(</span><span class="n">EmptyResponse</span><span class="p">):</span>
+<div class="viewcode-block" id="RoomKickResponse.create_error"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomKickResponse.create_error">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RoomKickError</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomInviteResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomInviteResponse">[docs]</a><span class="k">class</span> <span class="nc">RoomInviteResponse</span><span class="p">(</span><span class="n">EmptyResponse</span><span class="p">):</span>
+<div class="viewcode-block" id="RoomInviteResponse.create_error"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomInviteResponse.create_error">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RoomInviteError</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="ShareGroupSessionResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.ShareGroupSessionResponse">[docs]</a><span class="k">class</span> <span class="nc">ShareGroupSessionResponse</span><span class="p">(</span><span class="n">_EmptyResponseWithRoomId</span><span class="p">):</span>
+<div class="viewcode-block" id="ShareGroupSessionResponse.create_error"><a class="viewcode-back" href="../../nio.html#nio.responses.ShareGroupSessionResponse.create_error">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ShareGroupSessionError</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomTypingResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomTypingResponse">[docs]</a><span class="k">class</span> <span class="nc">RoomTypingResponse</span><span class="p">(</span><span class="n">_EmptyResponseWithRoomId</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A response representing a successful room typing request.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="RoomTypingResponse.create_error"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomTypingResponse.create_error">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RoomTypingError</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomReadMarkersResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomReadMarkersResponse">[docs]</a><span class="k">class</span> <span class="nc">RoomReadMarkersResponse</span><span class="p">(</span><span class="n">_EmptyResponseWithRoomId</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A response representing a successful room read markers request.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="RoomReadMarkersResponse.create_error"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomReadMarkersResponse.create_error">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RoomTypingError</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="DeleteDevicesAuthResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.DeleteDevicesAuthResponse">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">DeleteDevicesAuthResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">flows</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">Dict</span><span class="p">)</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">Dict</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DeleteDevicesAuthResponse.from_dict"><a class="viewcode-back" href="../../nio.html#nio.responses.DeleteDevicesAuthResponse.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">delete_devices</span><span class="p">,</span> <span class="n">DeleteDevicesError</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">parsed_dict</span>  <span class="c1"># type: Dict[Any, Any]</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Union[DeleteDevicesAuthResponse, ErrorResponse]</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;session&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;flows&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;params&quot;</span><span class="p">]</span>
+        <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="DeleteDevicesResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.DeleteDevicesResponse">[docs]</a><span class="k">class</span> <span class="nc">DeleteDevicesResponse</span><span class="p">(</span><span class="n">EmptyResponse</span><span class="p">):</span>
+<div class="viewcode-block" id="DeleteDevicesResponse.create_error"><a class="viewcode-back" href="../../nio.html#nio.responses.DeleteDevicesResponse.create_error">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">DeleteDevicesError</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomMessagesResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomMessagesResponse">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomMessagesResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="n">chunk</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Event</span><span class="p">,</span> <span class="n">UnknownBadEvent</span><span class="p">]])</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">end</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RoomMessagesResponse.from_dict"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomMessagesResponse.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">room_messages</span><span class="p">,</span> <span class="n">RoomMessagesError</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[RoomMessagesResponse, ErrorResponse]</span>
+        <span class="n">chunk</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># type: List[Union[Event, UnknownBadEvent]]</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">chunk</span> <span class="o">=</span> <span class="n">SyncResponse</span><span class="o">.</span><span class="n">_get_room_events</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;chunk&quot;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">chunk</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">],</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;end&quot;</span><span class="p">])</span></div></div>
+
+
+<span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RoomIdResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="n">room_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ErrorResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[RoomIdResponse, ErrorResponse]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">validate_json</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">room_id</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">SchemaError</span><span class="p">,</span> <span class="n">ValidationError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;room_id&quot;</span><span class="p">])</span>
+
+
+<div class="viewcode-block" id="JoinResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.JoinResponse">[docs]</a><span class="k">class</span> <span class="nc">JoinResponse</span><span class="p">(</span><span class="n">RoomIdResponse</span><span class="p">):</span>
+<div class="viewcode-block" id="JoinResponse.create_error"><a class="viewcode-back" href="../../nio.html#nio.responses.JoinResponse.create_error">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">JoinError</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="RoomLeaveResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomLeaveResponse">[docs]</a><span class="k">class</span> <span class="nc">RoomLeaveResponse</span><span class="p">(</span><span class="n">EmptyResponse</span><span class="p">):</span>
+<div class="viewcode-block" id="RoomLeaveResponse.create_error"><a class="viewcode-back" href="../../nio.html#nio.responses.RoomLeaveResponse.create_error">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RoomLeaveError</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="KeysUploadResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.KeysUploadResponse">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">KeysUploadResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="n">curve25519_count</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">signed_curve25519_count</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+<div class="viewcode-block" id="KeysUploadResponse.from_dict"><a class="viewcode-back" href="../../nio.html#nio.responses.KeysUploadResponse.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">keys_upload</span><span class="p">,</span> <span class="n">KeysUploadError</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[KeysUploadResponse, ErrorResponse]</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;one_time_key_counts&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="s2">&quot;curve25519&quot;</span><span class="p">],</span> <span class="n">counts</span><span class="p">[</span><span class="s2">&quot;signed_curve25519&quot;</span><span class="p">])</span></div></div>
+
+
+<div class="viewcode-block" id="KeysQueryResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.KeysQueryResponse">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">KeysQueryResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="n">device_keys</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">Dict</span><span class="p">)</span>
+    <span class="n">failures</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">Dict</span><span class="p">)</span>
+    <span class="n">changed</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">OlmDevice</span><span class="p">]],</span>
+        <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="KeysQueryResponse.from_dict"><a class="viewcode-back" href="../../nio.html#nio.responses.KeysQueryResponse.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">keys_query</span><span class="p">,</span> <span class="n">KeysQueryError</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[KeysQueryResponse, ErrorResponse]</span>
+        <span class="n">device_keys</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;device_keys&quot;</span><span class="p">]</span>
+        <span class="n">failures</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;failures&quot;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">device_keys</span><span class="p">,</span> <span class="n">failures</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="KeysClaimResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.KeysClaimResponse">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">KeysClaimResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="n">one_time_keys</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span>
+    <span class="n">failures</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span>
+    <span class="n">room_id</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+
+<div class="viewcode-block" id="KeysClaimResponse.from_dict"><a class="viewcode-back" href="../../nio.html#nio.responses.KeysClaimResponse.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">keys_claim</span><span class="p">,</span> <span class="n">KeysClaimError</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">parsed_dict</span><span class="p">,</span>  <span class="c1"># type: Dict[Any, Any]</span>
+        <span class="n">room_id</span>       <span class="c1"># type: str</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Union[KeysClaimResponse, ErrorResponse]</span>
+        <span class="n">one_time_keys</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;one_time_keys&quot;</span><span class="p">]</span>
+        <span class="n">failures</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;failures&quot;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">one_time_keys</span><span class="p">,</span> <span class="n">failures</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="DevicesResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.DevicesResponse">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">DevicesResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="n">devices</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">List</span><span class="p">[</span><span class="n">Device</span><span class="p">])</span>
+
+<div class="viewcode-block" id="DevicesResponse.from_dict"><a class="viewcode-back" href="../../nio.html#nio.responses.DevicesResponse.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">devices</span><span class="p">,</span> <span class="n">DevicesError</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; Union[DevicesResponse, ErrorResponse]</span>
+        <span class="n">devices</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">device_dict</span> <span class="ow">in</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;devices&quot;</span><span class="p">]:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">device</span> <span class="o">=</span> <span class="n">Device</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">device_dict</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">devices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">devices</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="UpdateDeviceResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.UpdateDeviceResponse">[docs]</a><span class="k">class</span> <span class="nc">UpdateDeviceResponse</span><span class="p">(</span><span class="n">EmptyResponse</span><span class="p">):</span>
+<div class="viewcode-block" id="UpdateDeviceResponse.create_error"><a class="viewcode-back" href="../../nio.html#nio.responses.UpdateDeviceResponse.create_error">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">create_error</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">UpdateDeviceError</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span></div></div>
+
+
+<span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">_SyncResponse</span><span class="p">(</span><span class="n">Response</span><span class="p">):</span>
+    <span class="n">next_batch</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">rooms</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">Rooms</span><span class="p">)</span>
+    <span class="n">device_key_count</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">DeviceOneTimeKeyCount</span><span class="p">)</span>
+    <span class="n">device_list</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">DeviceList</span><span class="p">)</span>
+    <span class="n">to_device_events</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">List</span><span class="p">[</span><span class="n">ToDeviceEvent</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># type: () -&gt; str</span>
+        <span class="n">room_messages</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">room_info</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="o">.</span><span class="n">join</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">room_header</span> <span class="o">=</span> <span class="s2">&quot;  Messages for room </span><span class="si">{}</span><span class="s2">:</span><span class="se">\n</span><span class="s2">    &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">room_id</span><span class="p">)</span>
+            <span class="n">messages</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">room_info</span><span class="o">.</span><span class="n">timeline</span><span class="o">.</span><span class="n">events</span><span class="p">:</span>
+                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">event</span><span class="p">))</span>
+
+            <span class="n">room_message</span> <span class="o">=</span> <span class="n">room_header</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">    &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+            <span class="n">room_messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">room_message</span><span class="p">)</span>
+
+        <span class="n">body</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">room_messages</span><span class="p">)</span>
+        <span class="n">string</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Sync response until batch: </span><span class="si">{}</span><span class="s2">:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">next_batch</span><span class="p">,</span> <span class="n">body</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">string</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_get_room_events</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">,</span>  <span class="c1"># type: List[Dict[Any, Any]]</span>
+            <span class="n">max_events</span><span class="o">=</span><span class="mi">0</span>  <span class="c1"># type: int</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Tuple[int, List[Union[Event, UnknownBadEvent]]]</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># type: List[Union[Event, UnknownBadEvent]]</span>
+        <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">counter</span><span class="p">,</span> <span class="n">event_dict</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">validate_json</span><span class="p">(</span><span class="n">event_dict</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">room_event</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="n">SchemaError</span><span class="p">,</span> <span class="n">ValidationError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Error validating event: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span>
+                <span class="n">events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">UnknownBadEvent</span><span class="p">(</span><span class="n">event_dict</span><span class="p">))</span>
+                <span class="k">continue</span>
+
+            <span class="n">event</span> <span class="o">=</span> <span class="n">Event</span><span class="o">.</span><span class="n">parse_event</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">event</span><span class="p">:</span>
+                <span class="n">events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">max_events</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">counter</span> <span class="o">&gt;=</span> <span class="n">max_events</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="k">return</span> <span class="n">counter</span><span class="p">,</span> <span class="n">events</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_get_to_device</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any]) -&gt; List[ToDeviceEvent]</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># type: List[ToDeviceEvent]</span>
+        <span class="k">for</span> <span class="n">event_dict</span> <span class="ow">in</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">]:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">ToDeviceEvent</span><span class="o">.</span><span class="n">parse_event</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">ToDeviceEvent</span><span class="p">):</span>
+                <span class="n">events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">events</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_get_timeline</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">max_events</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any], int) -&gt; Tuple[int, Timeline]</span>
+        <span class="n">validate_json</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">room_timeline</span><span class="p">)</span>
+
+        <span class="n">counter</span><span class="p">,</span> <span class="n">events</span> <span class="o">=</span> <span class="n">_SyncResponse</span><span class="o">.</span><span class="n">_get_room_events</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">],</span>
+            <span class="n">max_events</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">counter</span><span class="p">,</span> <span class="n">Timeline</span><span class="p">(</span>
+            <span class="n">events</span><span class="p">,</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;limited&quot;</span><span class="p">],</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;prev_batch&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_get_state</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">max_events</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="n">validate_json</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">room_state</span><span class="p">)</span>
+        <span class="n">counter</span><span class="p">,</span> <span class="n">events</span> <span class="o">=</span> <span class="n">_SyncResponse</span><span class="o">.</span><span class="n">_get_room_events</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">],</span>
+            <span class="n">max_events</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">counter</span><span class="p">,</span> <span class="n">events</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_get_invite_state</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="n">validate_json</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">room_state</span><span class="p">)</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">event_dict</span> <span class="ow">in</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">]:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="n">InviteEvent</span><span class="o">.</span><span class="n">parse_event</span><span class="p">(</span><span class="n">event_dict</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">event</span><span class="p">:</span>
+                <span class="n">events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">events</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_get_ephemeral_events</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">):</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">parsed_dict</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">validate_json</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">ephemeral_event</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="n">SchemaError</span><span class="p">,</span> <span class="n">ValidationError</span><span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="n">event</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;m.typing&quot;</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">validate_json</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">Schemas</span><span class="o">.</span><span class="n">m_typing</span><span class="p">)</span>
+                <span class="k">except</span> <span class="p">(</span><span class="n">SchemaError</span><span class="p">,</span> <span class="n">ValidationError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                        <span class="s2">&quot;Error validating typing notice event: &quot;</span>
+                        <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">message</span><span class="p">)</span>
+                    <span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="n">events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">TypingNoticeEvent</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">][</span><span class="s2">&quot;user_ids&quot;</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="n">events</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_get_join_info</span><span class="p">(</span>
+        <span class="n">state_events</span><span class="p">,</span>         <span class="c1"># type: List[Any]</span>
+        <span class="n">timeline_events</span><span class="p">,</span>      <span class="c1"># type: List[Any]</span>
+        <span class="n">prev_batch</span><span class="p">,</span>           <span class="c1"># type: str</span>
+        <span class="n">limited</span><span class="p">,</span>              <span class="c1"># type: bool</span>
+        <span class="n">ephemeral_events</span><span class="p">,</span>     <span class="c1"># type: List[Any]</span>
+        <span class="n">summary_events</span><span class="p">,</span>       <span class="c1"># type: Dict[str, Any]</span>
+        <span class="n">account_data_events</span><span class="p">,</span>  <span class="c1"># type: List[Any]</span>
+        <span class="n">max_events</span><span class="o">=</span><span class="mi">0</span>          <span class="c1"># type: int</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Tuple[RoomInfo, Optional[RoomInfo]]</span>
+        <span class="n">counter</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">_SyncResponse</span><span class="o">.</span><span class="n">_get_room_events</span><span class="p">(</span>
+            <span class="n">state_events</span><span class="p">,</span>
+            <span class="n">max_events</span>
+        <span class="p">)</span>
+
+        <span class="n">unhandled_state</span> <span class="o">=</span> <span class="n">state_events</span><span class="p">[</span><span class="n">counter</span><span class="p">:]</span>
+
+        <span class="n">timeline_max</span> <span class="o">=</span> <span class="n">max_events</span> <span class="o">-</span> <span class="n">counter</span>
+
+        <span class="k">if</span> <span class="n">timeline_max</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">max_events</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">timeline</span> <span class="o">=</span> <span class="n">Timeline</span><span class="p">(</span>
+                <span class="p">[],</span>
+                <span class="n">limited</span><span class="p">,</span>
+                <span class="n">prev_batch</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">counter</span><span class="p">,</span> <span class="n">events</span> <span class="o">=</span> <span class="n">_SyncResponse</span><span class="o">.</span><span class="n">_get_room_events</span><span class="p">(</span>
+                <span class="n">timeline_events</span><span class="p">,</span> <span class="n">timeline_max</span>
+            <span class="p">)</span>
+            <span class="n">timeline</span> <span class="o">=</span> <span class="n">Timeline</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="n">limited</span><span class="p">,</span> <span class="n">prev_batch</span><span class="p">)</span>
+
+        <span class="n">unhandled_timeline</span> <span class="o">=</span> <span class="n">Timeline</span><span class="p">(</span>
+            <span class="n">timeline_events</span><span class="p">[</span><span class="n">counter</span><span class="p">:],</span>
+            <span class="n">limited</span><span class="p">,</span>
+            <span class="n">prev_batch</span>
+        <span class="p">)</span>
+
+        <span class="n">ephemeral_event_list</span> <span class="o">=</span> <span class="n">_SyncResponse</span><span class="o">.</span><span class="n">_get_ephemeral_events</span><span class="p">(</span>
+            <span class="n">ephemeral_events</span>
+        <span class="p">)</span>
+
+        <span class="n">unhandled_info</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">unhandled_timeline</span><span class="o">.</span><span class="n">events</span> <span class="ow">or</span> <span class="n">unhandled_state</span><span class="p">:</span>
+            <span class="n">unhandled_info</span> <span class="o">=</span> <span class="n">RoomInfo</span><span class="p">(</span>
+                <span class="n">unhandled_timeline</span><span class="p">,</span>
+                <span class="n">unhandled_state</span><span class="p">,</span>
+                <span class="p">[],</span>
+                <span class="p">[]</span>
+            <span class="p">)</span>
+
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">RoomSummary</span><span class="p">(</span>
+            <span class="n">summary_events</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;m.invited_member_count&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+            <span class="n">summary_events</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;m.joined_member_count&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+            <span class="n">summary_events</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;m.heroes&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="p">)</span>
+
+        <span class="n">account_data</span> <span class="o">=</span> <span class="n">RoomInfo</span><span class="o">.</span><span class="n">parse_account_data</span><span class="p">(</span><span class="n">account_data_events</span><span class="p">)</span>
+
+        <span class="n">join_info</span> <span class="o">=</span> <span class="n">RoomInfo</span><span class="p">(</span>
+            <span class="n">timeline</span><span class="p">,</span>
+            <span class="n">state</span><span class="p">,</span>
+            <span class="n">ephemeral_event_list</span><span class="p">,</span>
+            <span class="n">account_data</span><span class="p">,</span>
+            <span class="n">summary</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">join_info</span><span class="p">,</span> <span class="n">unhandled_info</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_get_room_info</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">max_events</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="c1"># type: (Dict[Any, Any], int) -&gt; Tuple[Rooms, Dict[str, RoomInfo]]</span>
+        <span class="n">joined_rooms</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">key</span><span class="p">:</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;join&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="p">}</span>  <span class="c1"># type: Dict[str, Optional[RoomInfo]]</span>
+        <span class="n">invited_rooms</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># type: Dict[str, InviteInfo]</span>
+        <span class="n">left_rooms</span> <span class="o">=</span> <span class="p">{}</span>     <span class="c1"># type: Dict[str, RoomInfo]</span>
+        <span class="n">unhandled_rooms</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">room_dict</span> <span class="ow">in</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;invite&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">state</span> <span class="o">=</span> <span class="n">_SyncResponse</span><span class="o">.</span><span class="n">_get_invite_state</span><span class="p">(</span><span class="n">room_dict</span><span class="p">[</span><span class="s2">&quot;invite_state&quot;</span><span class="p">])</span>
+            <span class="n">invite_info</span> <span class="o">=</span> <span class="n">InviteInfo</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+            <span class="n">invited_rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">invite_info</span>
+
+        <span class="k">for</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">room_dict</span> <span class="ow">in</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;leave&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">_SyncResponse</span><span class="o">.</span><span class="n">_get_state</span><span class="p">(</span><span class="n">room_dict</span><span class="p">[</span><span class="s2">&quot;state&quot;</span><span class="p">])</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">timeline</span> <span class="o">=</span> <span class="n">_SyncResponse</span><span class="o">.</span><span class="n">_get_timeline</span><span class="p">(</span><span class="n">room_dict</span><span class="p">[</span><span class="s2">&quot;timeline&quot;</span><span class="p">])</span>
+            <span class="n">leave_info</span> <span class="o">=</span> <span class="n">RoomInfo</span><span class="p">(</span><span class="n">timeline</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[])</span>
+            <span class="n">left_rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">leave_info</span>
+
+        <span class="k">for</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">room_dict</span> <span class="ow">in</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;join&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">join_info</span><span class="p">,</span> <span class="n">unhandled_info</span> <span class="o">=</span> <span class="n">_SyncResponse</span><span class="o">.</span><span class="n">_get_join_info</span><span class="p">(</span>
+                <span class="n">room_dict</span><span class="p">[</span><span class="s2">&quot;state&quot;</span><span class="p">][</span><span class="s2">&quot;events&quot;</span><span class="p">],</span>
+                <span class="n">room_dict</span><span class="p">[</span><span class="s2">&quot;timeline&quot;</span><span class="p">][</span><span class="s2">&quot;events&quot;</span><span class="p">],</span>
+                <span class="n">room_dict</span><span class="p">[</span><span class="s2">&quot;timeline&quot;</span><span class="p">][</span><span class="s2">&quot;prev_batch&quot;</span><span class="p">],</span>
+                <span class="n">room_dict</span><span class="p">[</span><span class="s2">&quot;timeline&quot;</span><span class="p">][</span><span class="s2">&quot;limited&quot;</span><span class="p">],</span>
+                <span class="n">room_dict</span><span class="p">[</span><span class="s2">&quot;ephemeral&quot;</span><span class="p">][</span><span class="s2">&quot;events&quot;</span><span class="p">],</span>
+                <span class="n">room_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;summary&quot;</span><span class="p">,</span> <span class="p">{}),</span>
+                <span class="n">room_dict</span><span class="p">[</span><span class="s2">&quot;account_data&quot;</span><span class="p">][</span><span class="s2">&quot;events&quot;</span><span class="p">],</span>
+                <span class="n">max_events</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">unhandled_info</span><span class="p">:</span>
+                <span class="n">unhandled_rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">unhandled_info</span>
+
+            <span class="n">joined_rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">join_info</span>
+
+        <span class="k">return</span> <span class="n">Rooms</span><span class="p">(</span><span class="n">invited_rooms</span><span class="p">,</span> <span class="n">joined_rooms</span><span class="p">,</span> <span class="n">left_rooms</span><span class="p">),</span> <span class="n">unhandled_rooms</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="nd">@verify</span><span class="p">(</span><span class="n">Schemas</span><span class="o">.</span><span class="n">sync</span><span class="p">,</span> <span class="n">SyncError</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">parsed_dict</span><span class="p">,</span>  <span class="c1"># type: Dict[Any, Any]</span>
+        <span class="n">max_events</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>  <span class="c1"># type: int</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Union[SyncType, ErrorResponse]</span>
+        <span class="n">to_device</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_get_to_device</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;to_device&quot;</span><span class="p">])</span>
+
+        <span class="n">key_count_dict</span> <span class="o">=</span> <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;device_one_time_keys_count&quot;</span><span class="p">]</span>
+        <span class="n">key_count</span> <span class="o">=</span> <span class="n">DeviceOneTimeKeyCount</span><span class="p">(</span>
+            <span class="n">key_count_dict</span><span class="p">[</span><span class="s2">&quot;curve25519&quot;</span><span class="p">],</span>
+            <span class="n">key_count_dict</span><span class="p">[</span><span class="s2">&quot;signed_curve25519&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="n">devices</span> <span class="o">=</span> <span class="n">DeviceList</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;device_lists&quot;</span><span class="p">][</span><span class="s2">&quot;changed&quot;</span><span class="p">],</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;device_lists&quot;</span><span class="p">][</span><span class="s2">&quot;left&quot;</span><span class="p">],</span>
+        <span class="p">)</span>
+
+        <span class="n">rooms</span><span class="p">,</span> <span class="n">unhandled_rooms</span> <span class="o">=</span> <span class="n">_SyncResponse</span><span class="o">.</span><span class="n">_get_room_info</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;rooms&quot;</span><span class="p">],</span> <span class="n">max_events</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">unhandled_rooms</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">PartialSyncResponse</span><span class="p">(</span>
+                <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;next_batch&quot;</span><span class="p">],</span>
+                <span class="n">rooms</span><span class="p">,</span>
+                <span class="n">key_count</span><span class="p">,</span>
+                <span class="n">devices</span><span class="p">,</span>
+                <span class="n">to_device</span><span class="p">,</span>
+                <span class="n">unhandled_rooms</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">SyncResponse</span><span class="p">(</span>
+            <span class="n">parsed_dict</span><span class="p">[</span><span class="s2">&quot;next_batch&quot;</span><span class="p">],</span>
+            <span class="n">rooms</span><span class="p">,</span>
+            <span class="n">key_count</span><span class="p">,</span>
+            <span class="n">devices</span><span class="p">,</span>
+            <span class="n">to_device</span><span class="p">,</span>
+        <span class="p">)</span>
+
+
+<div class="viewcode-block" id="SyncResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.SyncResponse">[docs]</a><span class="k">class</span> <span class="nc">SyncResponse</span><span class="p">(</span><span class="n">_SyncResponse</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="PartialSyncResponse"><a class="viewcode-back" href="../../nio.html#nio.responses.PartialSyncResponse">[docs]</a><span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">PartialSyncResponse</span><span class="p">(</span><span class="n">_SyncResponse</span><span class="p">):</span>
+    <span class="n">unhandled_rooms</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">RoomInfo</span><span class="p">])</span>
+
+<div class="viewcode-block" id="PartialSyncResponse.next_part"><a class="viewcode-back" href="../../nio.html#nio.responses.PartialSyncResponse.next_part">[docs]</a>    <span class="k">def</span> <span class="nf">next_part</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_events</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="c1"># type: (int) -&gt; SyncType</span>
+        <span class="n">unhandled_rooms</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">joined_rooms</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">room_info</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unhandled_rooms</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">join_info</span><span class="p">,</span> <span class="n">unhandled_info</span> <span class="o">=</span> <span class="n">_SyncResponse</span><span class="o">.</span><span class="n">_get_join_info</span><span class="p">(</span>
+                <span class="n">room_info</span><span class="o">.</span><span class="n">state</span><span class="p">,</span>
+                <span class="n">room_info</span><span class="o">.</span><span class="n">timeline</span><span class="o">.</span><span class="n">events</span><span class="p">,</span>
+                <span class="n">room_info</span><span class="o">.</span><span class="n">timeline</span><span class="o">.</span><span class="n">prev_batch</span><span class="p">,</span>
+                <span class="n">room_info</span><span class="o">.</span><span class="n">timeline</span><span class="o">.</span><span class="n">limited</span><span class="p">,</span>
+                <span class="p">[],</span>
+                <span class="p">{},</span>
+                <span class="p">[],</span>
+                <span class="n">max_events</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">unhandled_info</span><span class="p">:</span>
+                <span class="n">unhandled_rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">unhandled_info</span>
+
+            <span class="n">joined_rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">join_info</span>
+
+        <span class="n">new_rooms</span> <span class="o">=</span> <span class="n">Rooms</span><span class="p">({},</span> <span class="n">joined_rooms</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="k">if</span> <span class="n">unhandled_rooms</span><span class="p">:</span>
+            <span class="n">next_response</span> <span class="o">=</span> <span class="n">PartialSyncResponse</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">next_batch</span><span class="p">,</span>
+                <span class="n">new_rooms</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">device_key_count</span><span class="p">,</span>
+                <span class="n">DeviceList</span><span class="p">([],</span> <span class="p">[]),</span>
+                <span class="p">[],</span>
+                <span class="n">unhandled_rooms</span><span class="p">,</span>
+            <span class="p">)</span>  <span class="c1"># type: SyncType</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">next_response</span> <span class="o">=</span> <span class="n">SyncResponse</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">next_batch</span><span class="p">,</span>
+                <span class="n">new_rooms</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">device_key_count</span><span class="p">,</span>
+                <span class="n">DeviceList</span><span class="p">([],</span> <span class="p">[]),</span>
+                <span class="p">[],</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uuid</span><span class="p">:</span>
+            <span class="n">next_response</span><span class="o">.</span><span class="n">uuid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">uuid</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span><span class="p">:</span>
+            <span class="n">next_response</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+            <span class="n">next_response</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span>
+
+        <span class="k">return</span> <span class="n">next_response</span></div></div>
+
+
+<span class="n">SyncType</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">SyncResponse</span><span class="p">,</span> <span class="n">PartialSyncResponse</span><span class="p">]</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Damir Jelić
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

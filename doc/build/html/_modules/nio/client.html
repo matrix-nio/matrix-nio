@@ -1,0 +1,1404 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>nio.client &mdash; nio 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> nio
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../nio.html">nio API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">nio</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>nio.client</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for nio.client</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="c1"># Copyright © 2018 Damir Jelić &lt;poljar@termina.org.uk&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># Permission to use, copy, modify, and/or distribute this software for</span>
+<span class="c1"># any purpose with or without fee is hereby granted, provided that the</span>
+<span class="c1"># above copyright notice and this permission notice appear in all copies.</span>
+<span class="c1">#</span>
+<span class="c1"># THE SOFTWARE IS PROVIDED &quot;AS IS&quot; AND THE AUTHOR DISCLAIMS ALL WARRANTIES</span>
+<span class="c1"># WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF</span>
+<span class="c1"># MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY</span>
+<span class="c1"># SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER</span>
+<span class="c1"># RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF</span>
+<span class="c1"># CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN</span>
+<span class="c1"># CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.</span>
+
+<span class="kn">import</span> <span class="nn">attr</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">pprint</span>
+<span class="kn">from</span> <span class="nn">builtins</span> <span class="k">import</span> <span class="nb">bytes</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">super</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">unique</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">deque</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">Any</span><span class="p">,</span>
+    <span class="n">AnyStr</span><span class="p">,</span>
+    <span class="n">Deque</span><span class="p">,</span>
+    <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">List</span><span class="p">,</span>
+    <span class="n">Optional</span><span class="p">,</span>
+    <span class="n">Tuple</span><span class="p">,</span>
+    <span class="n">Union</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">uuid</span> <span class="k">import</span> <span class="n">UUID</span><span class="p">,</span> <span class="n">uuid4</span>
+
+<span class="kn">import</span> <span class="nn">h2</span>
+<span class="kn">import</span> <span class="nn">h11</span>
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span>
+
+<span class="kn">from</span> <span class="nn">.api</span> <span class="k">import</span> <span class="n">Api</span><span class="p">,</span> <span class="n">MessageDirection</span>
+<span class="kn">from</span> <span class="nn">.exceptions</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">LocalProtocolError</span><span class="p">,</span>
+    <span class="n">RemoteProtocolError</span><span class="p">,</span>
+    <span class="n">RemoteTransportError</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.encryption</span> <span class="k">import</span> <span class="n">Olm</span>
+<span class="kn">from</span> <span class="nn">.http</span> <span class="k">import</span> <span class="n">HttpRequest</span><span class="p">,</span> <span class="n">Http2Request</span>
+
+<span class="kn">from</span> <span class="nn">.http</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">Http2Connection</span><span class="p">,</span>
+    <span class="n">HttpConnection</span><span class="p">,</span>
+    <span class="n">TransportType</span><span class="p">,</span>
+    <span class="n">TransportResponse</span><span class="p">,</span>
+    <span class="n">TransportRequest</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.log</span> <span class="k">import</span> <span class="n">logger_group</span>
+<span class="kn">from</span> <span class="nn">.responses</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">JoinResponse</span><span class="p">,</span>
+    <span class="n">LoginResponse</span><span class="p">,</span>
+    <span class="n">Response</span><span class="p">,</span>
+    <span class="n">RoomInviteResponse</span><span class="p">,</span>
+    <span class="n">RoomKickResponse</span><span class="p">,</span>
+    <span class="n">RoomLeaveResponse</span><span class="p">,</span>
+    <span class="n">RoomPutStateResponse</span><span class="p">,</span>
+    <span class="n">RoomRedactResponse</span><span class="p">,</span>
+    <span class="n">RoomSendResponse</span><span class="p">,</span>
+    <span class="n">SyncResponse</span><span class="p">,</span>
+    <span class="n">SyncType</span><span class="p">,</span>
+    <span class="n">PartialSyncResponse</span><span class="p">,</span>
+    <span class="n">RoomMessagesResponse</span><span class="p">,</span>
+    <span class="n">KeysUploadResponse</span><span class="p">,</span>
+    <span class="n">KeysQueryResponse</span><span class="p">,</span>
+    <span class="n">ErrorResponse</span><span class="p">,</span>
+    <span class="n">ShareGroupSessionResponse</span><span class="p">,</span>
+    <span class="n">KeysClaimResponse</span><span class="p">,</span>
+    <span class="n">DevicesResponse</span><span class="p">,</span>
+    <span class="n">UpdateDeviceResponse</span><span class="p">,</span>
+    <span class="n">DeleteDevicesAuthResponse</span><span class="p">,</span>
+    <span class="n">DeleteDevicesResponse</span><span class="p">,</span>
+    <span class="n">JoinedMembersResponse</span><span class="p">,</span>
+    <span class="n">KeysUploadError</span><span class="p">,</span>
+    <span class="n">RoomTypingResponse</span><span class="p">,</span>
+    <span class="n">RoomReadMarkersResponse</span>
+<span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">.events</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">Event</span><span class="p">,</span>
+    <span class="n">BadEventType</span><span class="p">,</span>
+    <span class="n">RoomEncryptedEvent</span><span class="p">,</span>
+    <span class="n">MegolmEvent</span><span class="p">,</span>
+    <span class="n">RoomKeyEvent</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.rooms</span> <span class="k">import</span> <span class="n">MatrixInvitedRoom</span><span class="p">,</span> <span class="n">MatrixRoom</span>
+
+<span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">.crypto</span> <span class="k">import</span> <span class="n">OlmDevice</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">json.decoder</span> <span class="k">import</span> <span class="n">JSONDecodeError</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">JSONDecodeError</span> <span class="o">=</span> <span class="ne">ValueError</span>  <span class="c1"># type: ignore</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s2">&quot;nio.client&quot;</span><span class="p">)</span>
+<span class="n">logger_group</span><span class="o">.</span><span class="n">add_logger</span><span class="p">(</span><span class="n">logger</span><span class="p">)</span>
+
+
+<span class="nd">@unique</span>
+<span class="k">class</span> <span class="nc">RequestType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">login</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">sync</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">room_send</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">room_put_state</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">room_redact</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">room_kick</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">room_invite</span> <span class="o">=</span> <span class="mi">6</span>
+    <span class="n">join</span> <span class="o">=</span> <span class="mi">7</span>
+    <span class="n">room_leave</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">room_messages</span> <span class="o">=</span> <span class="mi">9</span>
+    <span class="n">keys_upload</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">keys_query</span> <span class="o">=</span> <span class="mi">11</span>
+    <span class="n">keys_claim</span> <span class="o">=</span> <span class="mi">12</span>
+    <span class="n">share_group_session</span> <span class="o">=</span> <span class="mi">13</span>
+    <span class="n">devices</span> <span class="o">=</span> <span class="mi">14</span>
+    <span class="n">delete_devices</span> <span class="o">=</span> <span class="mi">15</span>
+    <span class="n">update_device</span> <span class="o">=</span> <span class="mi">16</span>
+    <span class="n">joined_members</span> <span class="o">=</span> <span class="mi">17</span>
+    <span class="n">room_typing</span> <span class="o">=</span> <span class="mi">18</span>
+    <span class="n">room_read_markers</span> <span class="o">=</span> <span class="mi">19</span>
+
+
+<span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">RequestInfo</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="nb">type</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">RequestType</span><span class="p">)</span>
+    <span class="n">extra_data</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Client"><a class="viewcode-back" href="../../nio.html#nio.Client">[docs]</a><span class="k">class</span> <span class="nc">Client</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create a new Matrix Client.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">user</span><span class="p">,</span>            <span class="c1"># type: str</span>
+        <span class="n">device_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># type: Optional[str]</span>
+        <span class="n">session_dir</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>  <span class="c1"># type: Optional[str]</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user</span> <span class="o">=</span> <span class="n">user</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device_id</span> <span class="o">=</span> <span class="n">device_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session_dir</span> <span class="o">=</span> <span class="n">session_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">olm</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># type: Optional[Olm]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">next_batch</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># type: Dict[str, MatrixRoom]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">invited_rooms</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># type: Dict[str, MatrixRoom]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">logged_in</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># type: () -&gt; bool</span>
+        <span class="sd">&quot;&quot;&quot;A property that tracks the logged in status of the client.</span>
+
+<span class="sd">        Returns True if the client is logged in to the server, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span> <span class="k">else</span> <span class="kc">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">olm_account_shared</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Check if the clients Olm account is shared with the server.</span>
+
+<span class="sd">        Returns True if the Olm account is shared, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;Olm account isn&#39;t loaded&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">account</span><span class="o">.</span><span class="n">shared</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">should_upload_keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Check if the client should upload encryption keys.</span>
+
+<span class="sd">        Returns True if a keys need to be uploaded, false otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">should_upload_keys</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">should_query_keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Check if the client should make a key query call to the server.</span>
+
+<span class="sd">        Returns True if a key query is necessary, false otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">should_query_keys</span>
+
+<div class="viewcode-block" id="Client.room_contains_unverified"><a class="viewcode-back" href="../../nio.html#nio.Client.room_contains_unverified">[docs]</a>    <span class="k">def</span> <span class="nf">room_contains_unverified</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="c1"># type: (str) -&gt; bool</span>
+        <span class="sd">&quot;&quot;&quot;Check if a room contains unverified devices.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            room_id (str): Room id of the room that should be checked.</span>
+
+<span class="sd">        Returns True if the room contains unverified devices, false otherwise.</span>
+<span class="sd">        Returns False if no Olm session is loaded or if the room isn&#39;t</span>
+<span class="sd">        encrypted.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">room</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">room</span><span class="o">.</span><span class="n">encrypted</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">room</span><span class="o">.</span><span class="n">users</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">user_fully_verified</span><span class="p">(</span><span class="n">user</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="Client.invalidate_outbound_session"><a class="viewcode-back" href="../../nio.html#nio.Client.invalidate_outbound_session">[docs]</a>    <span class="k">def</span> <span class="nf">invalidate_outbound_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Explicitely remove encryption keys for a room.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            room_id (str): Room id for the room the encryption keys should be</span>
+<span class="sd">                removed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">outbound_group_sessions</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span>
+            <span class="n">room_id</span><span class="p">,</span>
+            <span class="kc">None</span>
+        <span class="p">)</span>
+
+        <span class="c1"># There is no need to invalidate the session if it was never</span>
+        <span class="c1"># shared, put it back where it was.</span>
+        <span class="k">if</span> <span class="n">session</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">session</span><span class="o">.</span><span class="n">shared</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">outbound_group_sessions</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">session</span></div>
+
+    <span class="k">def</span> <span class="nf">_invalidate_outbound_sessions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+        <span class="c1"># type: (OlmDevice) -&gt; None</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span>
+
+        <span class="k">for</span> <span class="n">room</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">user_id</span> <span class="ow">in</span> <span class="n">room</span><span class="o">.</span><span class="n">users</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">invalidate_outbound_session</span><span class="p">(</span><span class="n">room</span><span class="o">.</span><span class="n">room_id</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Client.verify_device"><a class="viewcode-back" href="../../nio.html#nio.Client.verify_device">[docs]</a>    <span class="k">def</span> <span class="nf">verify_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+        <span class="c1"># type: (OlmDevice) -&gt; bool</span>
+        <span class="sd">&quot;&quot;&quot;Mark a device as verified.</span>
+
+<span class="sd">        A device needs to be either trusted or blacklisted to either share room</span>
+<span class="sd">        encryption keys with it or not.</span>
+<span class="sd">        This method adds the device to the trusted devices and enables sharing</span>
+<span class="sd">        room encryption keys with it.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            device (Device): The device which should be added to the trust</span>
+<span class="sd">                list.</span>
+
+<span class="sd">        Returns true if the device was verified, false if it was already</span>
+<span class="sd">        verified.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;Olm account isn&#39;t loaded&quot;</span><span class="p">)</span>
+
+        <span class="n">changed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">verify_device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">changed</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_invalidate_outbound_sessions</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">changed</span></div>
+
+<div class="viewcode-block" id="Client.unverify_device"><a class="viewcode-back" href="../../nio.html#nio.Client.unverify_device">[docs]</a>    <span class="k">def</span> <span class="nf">unverify_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+        <span class="c1"># type: (OlmDevice) -&gt; bool</span>
+        <span class="sd">&quot;&quot;&quot;Unmark a device as verified.</span>
+
+<span class="sd">        This method removes the device from the trusted devices and disables</span>
+<span class="sd">        sharing room encryption keys with it. It also invalidates any</span>
+<span class="sd">        encryption keys for rooms that the device takes part of.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            device (Device): The device which should be added to the trust</span>
+<span class="sd">                list.</span>
+
+<span class="sd">        Returns true if the device was unverified, false if it was already</span>
+<span class="sd">        unverified.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;Olm account isn&#39;t loaded&quot;</span><span class="p">)</span>
+
+        <span class="n">changed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">unverify_device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">changed</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_invalidate_outbound_sessions</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">changed</span></div>
+
+<div class="viewcode-block" id="Client.blacklist_device"><a class="viewcode-back" href="../../nio.html#nio.Client.blacklist_device">[docs]</a>    <span class="k">def</span> <span class="nf">blacklist_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+        <span class="c1"># type: (OlmDevice) -&gt; bool</span>
+        <span class="sd">&quot;&quot;&quot;Mark a device as blacklisted.</span>
+
+<span class="sd">        Devices on the blacklist will not receive room encryption keys and</span>
+<span class="sd">        therefore won&#39;t be able to decrypt messages coming from this client.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            device (Device): The device which should be added to the</span>
+<span class="sd">                blacklist.</span>
+
+<span class="sd">        Returns true if the device was added, false if it was on the blacklist</span>
+<span class="sd">        already.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;Olm account isn&#39;t loaded&quot;</span><span class="p">)</span>
+        <span class="n">changed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">blacklist_device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">changed</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_invalidate_outbound_sessions</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">changed</span></div>
+
+<div class="viewcode-block" id="Client.unblacklist_device"><a class="viewcode-back" href="../../nio.html#nio.Client.unblacklist_device">[docs]</a>    <span class="k">def</span> <span class="nf">unblacklist_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+        <span class="c1"># type: (OlmDevice) -&gt; bool</span>
+        <span class="sd">&quot;&quot;&quot;Unmark a device as blacklisted.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            device (Device): The device which should be removed from the</span>
+<span class="sd">                blacklist.</span>
+
+<span class="sd">        Returns true if the device was removed, false if it wasn&#39;t on the</span>
+<span class="sd">        blacklist and no removal happened.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;Olm account isn&#39;t loaded&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">unblacklist_device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_handle_login</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="c1"># type: (Union[LoginResponse, ErrorResponse]) -&gt; None</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">ErrorResponse</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">access_token</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">user_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device_id</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">device_id</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_dir</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">olm</span> <span class="o">=</span> <span class="n">Olm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_dir</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Client.decrypt_event"><a class="viewcode-back" href="../../nio.html#nio.Client.decrypt_event">[docs]</a>    <span class="k">def</span> <span class="nf">decrypt_event</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">event</span>  <span class="c1"># type: MegolmEvent</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Union[Event, BadEventType]</span>
+        <span class="sd">&quot;&quot;&quot;Decrypt a undecrypted megolm event.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event (MegolmEvent): Event that should be decrypted.</span>
+
+<span class="sd">        Returns the decrypted event, raises EncryptionError if there was an</span>
+<span class="sd">        error while decrypting.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;Olm account isn&#39;t loaded&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">MegolmEvent</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid event, this function can only decrypt &quot;</span>
+                             <span class="s2">&quot;MegolmEvents&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">decrypt_megolm_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_handle_sync</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="c1"># type: (SyncType) -&gt; None</span>
+        <span class="c1"># We already recieved such a sync response, do nothing in that case.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">next_batch</span> <span class="o">==</span> <span class="n">response</span><span class="o">.</span><span class="n">next_batch</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">SyncResponse</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">next_batch</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">next_batch</span>
+
+        <span class="n">decrypted_to_device</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># type: ignore</span>
+
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">to_device_event</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">to_device_events</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">to_device_event</span><span class="p">,</span> <span class="n">RoomEncryptedEvent</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">decrypt_event</span><span class="p">(</span><span class="n">to_device_event</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">event</span><span class="p">:</span>
+                    <span class="n">decrypted_to_device</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">index</span><span class="p">,</span> <span class="n">event</span><span class="p">))</span>
+
+        <span class="c1"># Replace the encrypted to_device events with decrypted ones</span>
+        <span class="k">for</span> <span class="n">decrypted_event</span> <span class="ow">in</span> <span class="n">decrypted_to_device</span><span class="p">:</span>
+            <span class="n">index</span><span class="p">,</span> <span class="n">event</span> <span class="o">=</span> <span class="n">decrypted_event</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">to_device_events</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">event</span>
+
+        <span class="k">for</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">rooms</span><span class="o">.</span><span class="n">invite</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">room_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">invited_rooms</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;New invited room </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">room_id</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">invited_rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">MatrixInvitedRoom</span><span class="p">(</span>
+                    <span class="n">room_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span>
+                <span class="p">)</span>
+
+            <span class="n">room</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">invited_rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">info</span><span class="o">.</span><span class="n">invite_state</span><span class="p">:</span>
+                <span class="n">room</span><span class="o">.</span><span class="n">handle_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">join_info</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">rooms</span><span class="o">.</span><span class="n">join</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">room_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">invited_rooms</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">invited_rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">room_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;New joined room </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">room_id</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">MatrixRoom</span><span class="p">(</span><span class="n">room_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span>
+
+            <span class="n">room</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">join_info</span><span class="o">.</span><span class="n">state</span><span class="p">:</span>
+                <span class="n">room</span><span class="o">.</span><span class="n">handle_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">join_info</span><span class="o">.</span><span class="n">summary</span><span class="p">:</span>
+                <span class="n">room</span><span class="o">.</span><span class="n">update_summary</span><span class="p">(</span><span class="n">join_info</span><span class="o">.</span><span class="n">summary</span><span class="p">)</span>
+
+            <span class="n">decrypted_events</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">event</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">join_info</span><span class="o">.</span><span class="n">timeline</span><span class="o">.</span><span class="n">events</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">MegolmEvent</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+                    <span class="n">event</span><span class="o">.</span><span class="n">room_id</span> <span class="o">=</span> <span class="n">room_id</span>
+                    <span class="n">new_event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">decrypt_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">new_event</span><span class="p">:</span>
+                        <span class="n">event</span> <span class="o">=</span> <span class="n">new_event</span>
+                        <span class="n">decrypted_events</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">index</span><span class="p">,</span> <span class="n">new_event</span><span class="p">))</span>
+                <span class="n">room</span><span class="o">.</span><span class="n">handle_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+            <span class="c1"># Replace the Megolm events with decrypted ones</span>
+            <span class="k">for</span> <span class="n">decrypted_event</span> <span class="ow">in</span> <span class="n">decrypted_events</span><span class="p">:</span>
+                <span class="n">index</span><span class="p">,</span> <span class="n">event</span> <span class="o">=</span> <span class="n">decrypted_event</span>
+                <span class="n">join_info</span><span class="o">.</span><span class="n">timeline</span><span class="o">.</span><span class="n">events</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">event</span>
+
+            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">join_info</span><span class="o">.</span><span class="n">ephemeral</span><span class="p">:</span>
+                <span class="n">room</span><span class="o">.</span><span class="n">handle_ephemeral_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">room</span><span class="o">.</span><span class="n">encrypted</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">update_tracked_users</span><span class="p">(</span><span class="n">room</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="n">changed_users</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">uploaded_key_count</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">device_key_count</span><span class="o">.</span><span class="n">signed_curve25519</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">device_list</span><span class="o">.</span><span class="n">changed</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">room</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">room</span><span class="o">.</span><span class="n">encrypted</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="k">if</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">room</span><span class="o">.</span><span class="n">users</span><span class="p">:</span>
+                        <span class="n">changed_users</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">device_list</span><span class="o">.</span><span class="n">left</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">room</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">room</span><span class="o">.</span><span class="n">encrypted</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="k">if</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">room</span><span class="o">.</span><span class="n">users</span><span class="p">:</span>
+                        <span class="n">changed_users</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">users_for_key_query</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">changed_users</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handle_messages_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="n">decrypted_events</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">event</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">chunk</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">MegolmEvent</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+                <span class="n">new_event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">decrypt_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">new_event</span><span class="p">:</span>
+                    <span class="n">decrypted_events</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">index</span><span class="p">,</span> <span class="n">new_event</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">decrypted_event</span> <span class="ow">in</span> <span class="n">decrypted_events</span><span class="p">:</span>
+            <span class="n">index</span><span class="p">,</span> <span class="n">event</span> <span class="o">=</span> <span class="n">decrypted_event</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">chunk</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">event</span>
+
+    <span class="k">def</span> <span class="nf">_handle_olm_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;Olm account isn&#39;t loaded&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">handle_response</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">KeysQueryResponse</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">user_id</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">changed</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">room</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">room</span><span class="o">.</span><span class="n">encrypted</span> <span class="ow">and</span> <span class="n">user_id</span> <span class="ow">in</span> <span class="n">room</span><span class="o">.</span><span class="n">users</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">invalidate_outbound_session</span><span class="p">(</span><span class="n">room</span><span class="o">.</span><span class="n">room_id</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handle_joined_members</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="n">room</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="p">[</span><span class="n">response</span><span class="o">.</span><span class="n">room_id</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">members</span><span class="p">:</span>
+            <span class="n">room</span><span class="o">.</span><span class="n">add_member</span><span class="p">(</span><span class="n">member</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span> <span class="n">member</span><span class="o">.</span><span class="n">display_name</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Client.receive_response"><a class="viewcode-back" href="../../nio.html#nio.Client.receive_response">[docs]</a>    <span class="k">def</span> <span class="nf">receive_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Receive a Matrix Response and change the client state accordingly.</span>
+<span class="sd">        Some responses will get edited for the callers convenience e.g. sync</span>
+<span class="sd">        responses that contain encrypted messages. The encrypted messages will</span>
+<span class="sd">        be replaced by decrypted ones if decryption is possible.</span>
+<span class="sd">        Args:</span>
+<span class="sd">            response (Response): the response that we wish the client to handle</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">LoginResponse</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_login</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="p">(</span><span class="n">SyncResponse</span><span class="p">,</span> <span class="n">PartialSyncResponse</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_sync</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">RoomMessagesResponse</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_messages_response</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">KeysUploadResponse</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_olm_response</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">KeysQueryResponse</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_olm_response</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">KeysClaimResponse</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_olm_response</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">ShareGroupSessionResponse</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_olm_response</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">JoinedMembersResponse</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_joined_members</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span></div></div>
+
+
+<span class="k">def</span> <span class="nf">connected</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;Not connected.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+
+
+<span class="k">def</span> <span class="nf">logged_in</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">logged_in</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;Not logged in.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+
+
+<div class="viewcode-block" id="HttpClient"><a class="viewcode-back" href="../../nio.html#nio.HttpClient">[docs]</a><span class="k">class</span> <span class="nc">HttpClient</span><span class="p">(</span><span class="n">Client</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">host</span><span class="p">,</span>  <span class="c1"># type: str</span>
+        <span class="n">user</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>  <span class="c1"># type: str</span>
+        <span class="n">device_id</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>  <span class="c1"># type: Optional[str]</span>
+        <span class="n">session_dir</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>  <span class="c1"># type: Optional[str]</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">host</span> <span class="o">=</span> <span class="n">host</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">requests_made</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># type: Dict[UUID, RequestInfo]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parse_queue</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>  \
+            <span class="c1"># type: Deque[Tuple[RequestInfo, TransportResponse]]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">partial_sync</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># type: Optional[PartialSyncResponse]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="kc">None</span> \
+            <span class="c1"># type: Optional[Union[HttpConnection, Http2Connection]]</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">device_id</span><span class="p">,</span> <span class="n">session_dir</span><span class="p">)</span>
+
+    <span class="nd">@connected</span>
+    <span class="k">def</span> <span class="nf">_send</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">request</span><span class="p">,</span>       <span class="c1"># type: TransportRequest</span>
+        <span class="n">request_info</span><span class="p">,</span>  <span class="c1"># type: RequestInfo</span>
+        <span class="n">uuid</span><span class="o">=</span><span class="kc">None</span>      <span class="c1"># type: Optional[UUID]</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Tuple[UUID, bytes]</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span>
+
+        <span class="n">ret_uuid</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">uuid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">requests_made</span><span class="p">[</span><span class="n">ret_uuid</span><span class="p">]</span> <span class="o">=</span> <span class="n">request_info</span>
+        <span class="k">return</span> <span class="n">ret_uuid</span><span class="p">,</span> <span class="n">data</span>
+
+    <span class="k">def</span> <span class="nf">_build_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api_response</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">unpack_api_call</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">method</span><span class="p">,</span> <span class="n">rest</span>
+
+        <span class="n">method</span><span class="p">,</span> <span class="n">api_data</span> <span class="o">=</span> <span class="n">unpack_api_call</span><span class="p">(</span><span class="o">*</span><span class="n">api_response</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="n">HttpConnection</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;GET&quot;</span><span class="p">:</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="n">api_data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">return</span> <span class="n">HttpRequest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;POST&quot;</span><span class="p">:</span>
+                <span class="n">path</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="n">api_data</span>
+                <span class="k">return</span> <span class="n">HttpRequest</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;PUT&quot;</span><span class="p">:</span>
+                <span class="n">path</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="n">api_data</span>
+                <span class="k">return</span> <span class="n">HttpRequest</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="n">Http2Connection</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;GET&quot;</span><span class="p">:</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="n">api_data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">return</span> <span class="n">Http2Request</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;POST&quot;</span><span class="p">:</span>
+                <span class="n">path</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="n">api_data</span>
+                <span class="k">return</span> <span class="n">Http2Request</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;PUT&quot;</span><span class="p">:</span>
+                <span class="n">path</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="n">api_data</span>
+                <span class="k">return</span> <span class="n">Http2Request</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+
+        <span class="k">assert</span><span class="p">(</span><span class="s2">&quot;Invalid connection type&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">lag</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># type: () -&gt; float</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">elapsed</span>
+
+<div class="viewcode-block" id="HttpClient.connect"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.connect">[docs]</a>    <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transport_type</span><span class="o">=</span><span class="n">TransportType</span><span class="o">.</span><span class="n">HTTP</span><span class="p">):</span>
+        <span class="c1"># type: (Optional[TransportType]) -&gt; bytes</span>
+        <span class="k">if</span> <span class="n">transport_type</span> <span class="o">==</span> <span class="n">TransportType</span><span class="o">.</span><span class="n">HTTP</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="n">HttpConnection</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">transport_type</span> <span class="o">==</span> <span class="n">TransportType</span><span class="o">.</span><span class="n">HTTP2</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="n">Http2Connection</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_clear_queues</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">requests_made</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parse_queue</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+<div class="viewcode-block" id="HttpClient.disconnect"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.disconnect">[docs]</a>    <span class="nd">@connected</span>
+    <span class="k">def</span> <span class="nf">disconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># type: () -&gt; bytes</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear_queues</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+<div class="viewcode-block" id="HttpClient.data_to_send"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.data_to_send">[docs]</a>    <span class="nd">@connected</span>
+    <span class="k">def</span> <span class="nf">data_to_send</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># type: () -&gt; bytes</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">data_to_send</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="HttpClient.login"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.login">[docs]</a>    <span class="nd">@connected</span>
+    <span class="k">def</span> <span class="nf">login</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">device_name</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="c1"># type: (str, Optional[str]) -&gt; Tuple[UUID, bytes]</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">login</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">user</span><span class="p">,</span>
+                <span class="n">password</span><span class="p">,</span>
+                <span class="n">device_name</span><span class="o">=</span><span class="n">device_name</span><span class="p">,</span>
+                <span class="n">device_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device_id</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">login</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="HttpClient.room_send"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.room_send">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">room_send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">message_type</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">tx_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># TODO this can fail if we&#39;re not synced</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="n">room</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">room</span><span class="o">.</span><span class="n">encrypted</span><span class="p">:</span>
+                <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">group_encrypt</span><span class="p">(</span>
+                    <span class="n">room_id</span><span class="p">,</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">content</span><span class="p">,</span>
+                        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">message_type</span>
+                    <span class="p">},</span>
+                <span class="p">)</span>
+                <span class="n">message_type</span> <span class="o">=</span> <span class="s2">&quot;m.room.encrypted&quot;</span>
+
+        <span class="n">uuid</span> <span class="o">=</span> <span class="n">tx_id</span> <span class="ow">or</span> <span class="n">uuid4</span><span class="p">()</span>
+
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">room_send</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">room_id</span><span class="p">,</span>
+                <span class="n">message_type</span><span class="p">,</span>
+                <span class="n">content</span><span class="p">,</span>
+                <span class="n">uuid</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span>
+            <span class="n">request</span><span class="p">,</span>
+            <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">room_send</span><span class="p">,</span> <span class="n">room_id</span><span class="p">),</span>
+            <span class="n">uuid</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="HttpClient.room_put_state"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.room_put_state">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">room_put_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">event_type</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">room_put_state</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">room_id</span><span class="p">,</span>
+                <span class="n">event_type</span><span class="p">,</span>
+                <span class="n">body</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span>
+            <span class="n">request</span><span class="p">,</span>
+            <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">room_put_state</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="HttpClient.room_redact"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.room_redact">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">room_redact</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">event_id</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tx_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">uuid</span> <span class="o">=</span> <span class="n">tx_id</span> <span class="ow">or</span> <span class="n">uuid4</span><span class="p">()</span>
+
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">room_redact</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">room_id</span><span class="p">,</span>
+                <span class="n">event_id</span><span class="p">,</span>
+                <span class="n">tx_id</span><span class="p">,</span>
+                <span class="n">reason</span><span class="o">=</span><span class="n">reason</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span>
+            <span class="n">request</span><span class="p">,</span>
+            <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">room_redact</span><span class="p">,</span> <span class="n">room_id</span><span class="p">),</span>
+            <span class="n">uuid</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="HttpClient.room_kick"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.room_kick">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">room_kick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">room_kick</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">room_id</span><span class="p">,</span>
+                <span class="n">user_id</span><span class="p">,</span>
+                <span class="n">reason</span><span class="o">=</span><span class="n">reason</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span>
+            <span class="n">request</span><span class="p">,</span>
+            <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">room_kick</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="HttpClient.room_invite"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.room_invite">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">room_invite</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">room_invite</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">room_id</span><span class="p">,</span>
+                <span class="n">user_id</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">room_invite</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="HttpClient.join"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.join">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span><span class="n">Api</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span> <span class="n">room_id</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">join</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="HttpClient.room_leave"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.room_leave">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">room_leave</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">room_leave</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">room_id</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">room_leave</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="HttpClient.room_messages"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.room_messages">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">room_messages</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">room_id</span><span class="p">,</span>
+        <span class="n">start</span><span class="p">,</span>
+        <span class="n">end</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">direction</span><span class="o">=</span><span class="n">MessageDirection</span><span class="o">.</span><span class="n">back</span><span class="p">,</span>
+        <span class="n">limit</span><span class="o">=</span><span class="mi">10</span>
+    <span class="p">):</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">room_messages</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">room_id</span><span class="p">,</span>
+                <span class="n">start</span><span class="p">,</span>
+                <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">,</span>
+                <span class="n">direction</span><span class="o">=</span><span class="n">direction</span><span class="p">,</span>
+                <span class="n">limit</span><span class="o">=</span><span class="n">limit</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">room_messages</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="HttpClient.room_typing"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.room_typing">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">room_typing</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">room_id</span><span class="p">,</span>            <span class="c1"># type: str</span>
+        <span class="n">typing_state</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># type: bool</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="mi">30000</span>       <span class="c1"># type: int</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Tuple[UUID, bytes]</span>
+        <span class="sd">&quot;&quot;&quot;Send a typing notice to the server.</span>
+
+<span class="sd">        This tells the server that the user is typing for the next N</span>
+<span class="sd">        milliseconds or that the user has stopped typing.</span>
+
+<span class="sd">        Returns a unique uuid that identifies the request and the bytes that</span>
+<span class="sd">        should be sent to the socket.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            room_id (str): Room id of the room where the user is typing.</span>
+<span class="sd">            typign_state (bool): A flag representing whether the user started</span>
+<span class="sd">                or stopped typing</span>
+<span class="sd">            timeout (int): For how long should the new typing notice be</span>
+<span class="sd">                valid for in milliseconds.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">room_typing</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">room_id</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span>
+                <span class="n">typing_state</span><span class="p">,</span>
+                <span class="n">timeout</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">RequestInfo</span><span class="p">(</span>
+            <span class="n">RequestType</span><span class="o">.</span><span class="n">room_typing</span><span class="p">,</span>
+            <span class="n">room_id</span>
+        <span class="p">))</span></div>
+
+<div class="viewcode-block" id="HttpClient.room_read_markers"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.room_read_markers">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">room_read_markers</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">room_id</span><span class="p">,</span>            <span class="c1"># type: str</span>
+        <span class="n">fully_read_event</span><span class="p">,</span>   <span class="c1"># type: str</span>
+        <span class="n">read_event</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>    <span class="c1"># type: Optional[str]</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (...) -&gt; Tuple[UUID, bytes]</span>
+        <span class="sd">&quot;&quot;&quot;Update read markers for a room.</span>
+
+<span class="sd">        This sets the position of the read marker for a given room,</span>
+<span class="sd">        and optionally the read receipt&#39;s location.</span>
+
+<span class="sd">        Returns the HTTP method, HTTP path and data for the request.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            room_id (str): Room id of the room of the room where the read</span>
+<span class="sd">                markers should be updated</span>
+<span class="sd">            fully_read_event (str): The event ID the read marker should be</span>
+<span class="sd">                located at.</span>
+<span class="sd">            read_event (Optiona[str]): The event ID to set the read</span>
+<span class="sd">                receipt location at.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">room_read_markers</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">room_id</span><span class="p">,</span>
+                <span class="n">fully_read_event</span><span class="p">,</span>
+                <span class="n">read_event</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">RequestInfo</span><span class="p">(</span>
+            <span class="n">RequestType</span><span class="o">.</span><span class="n">room_read_markers</span><span class="p">,</span>
+            <span class="n">room_id</span>
+        <span class="p">))</span></div>
+
+<div class="viewcode-block" id="HttpClient.keys_upload"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.keys_upload">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">keys_upload</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">keys_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">share_keys</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="n">keys_dict</span><span class="p">))</span>
+
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">keys_upload</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">keys_dict</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">keys_upload</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="HttpClient.keys_query"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.keys_query">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">keys_query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">full</span><span class="p">:</span>
+            <span class="n">user_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">users_for_key_query</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">user_list</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">user_id</span> <span class="k">for</span> <span class="n">room</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">room</span><span class="o">.</span><span class="n">encrypted</span> <span class="k">for</span> <span class="n">user_id</span> <span class="ow">in</span> <span class="n">room</span><span class="o">.</span><span class="n">users</span>
+            <span class="p">]</span>
+
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">keys_query</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">user_list</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">keys_query</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="HttpClient.keys_claim"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.keys_claim">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">keys_claim</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;Olm session is not loaded&quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">room</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;No such room with id </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">room_id</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">room</span><span class="o">.</span><span class="n">encrypted</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;Room with id </span><span class="si">{}</span><span class="s2"> is not encrypted&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                     <span class="n">room_id</span><span class="p">))</span>
+
+        <span class="n">user_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">get_missing_sessions</span><span class="p">(</span>
+            <span class="nb">list</span><span class="p">(</span><span class="n">room</span><span class="o">.</span><span class="n">users</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="p">)</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">keys_claim</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">user_list</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span>
+            <span class="n">request</span><span class="p">,</span>
+            <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">keys_claim</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="HttpClient.share_group_session"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.share_group_session">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">share_group_session</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">room_id</span><span class="p">,</span>
+        <span class="n">ignore_missing_sessions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">tx_id</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="c1"># type: (str, bool, str) -&gt; Tuple[UUID, bytes]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;Olm session is not loaded&quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">room</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rooms</span><span class="p">[</span><span class="n">room_id</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;No such room with id </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">room_id</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">room</span><span class="o">.</span><span class="n">encrypted</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">LocalProtocolError</span><span class="p">(</span><span class="s2">&quot;Room with id </span><span class="si">{}</span><span class="s2"> is not encrypted&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">room_id</span><span class="p">))</span>
+
+        <span class="n">to_device_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">share_group_session</span><span class="p">(</span>
+            <span class="n">room_id</span><span class="p">,</span>
+            <span class="nb">list</span><span class="p">(</span><span class="n">room</span><span class="o">.</span><span class="n">users</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span>
+            <span class="n">ignore_missing_sessions</span>
+        <span class="p">)</span>
+
+        <span class="n">uuid</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">tx_id</span><span class="p">)</span> <span class="ow">or</span> <span class="n">uuid4</span><span class="p">()</span>
+
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">to_device</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="s2">&quot;m.room.encrypted&quot;</span><span class="p">,</span>
+                <span class="n">to_device_dict</span><span class="p">,</span>
+                <span class="n">uuid</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span>
+            <span class="n">request</span><span class="p">,</span>
+            <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">share_group_session</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="HttpClient.devices"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.devices">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">devices</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># type: () -&gt; Tuple[UUID, bytes]</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span><span class="n">Api</span><span class="o">.</span><span class="n">devices</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">devices</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="HttpClient.update_device"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.update_device">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">update_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device_id</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
+        <span class="c1"># type: (str, Dict[str, str]) -&gt; Tuple[UUID, bytes]</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">update_device</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">device_id</span><span class="p">,</span>
+                <span class="n">content</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">update_device</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="HttpClient.delete_devices"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.delete_devices">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">delete_devices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">devices</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># type: (List[str], Optional[Dict[str, str]]) -&gt; Tuple[UUID, bytes]</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">delete_devices</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">devices</span><span class="p">,</span>
+                <span class="n">auth_dict</span><span class="o">=</span><span class="n">auth</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">delete_devices</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="HttpClient.joined_members"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.joined_members">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">joined_members</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">room_id</span><span class="p">):</span>
+        <span class="c1"># type: (str) -&gt; Tuple[UUID, bytes]</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">joined_members</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">room_id</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span>
+            <span class="n">request</span><span class="p">,</span>
+            <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">joined_members</span><span class="p">,</span> <span class="n">room_id</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="HttpClient.sync"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.sync">[docs]</a>    <span class="nd">@connected</span>
+    <span class="nd">@logged_in</span>
+    <span class="k">def</span> <span class="nf">sync</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># type: (Optional[int], Optional[Dict[Any, Any]]) -&gt; Tuple[UUID, bytes]</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_request</span><span class="p">(</span>
+            <span class="n">Api</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">access_token</span><span class="p">,</span>
+                <span class="n">since</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">next_batch</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
+                <span class="nb">filter</span><span class="o">=</span><span class="nb">filter</span>
+            <span class="p">),</span>
+            <span class="n">timeout</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">RequestInfo</span><span class="p">(</span><span class="n">RequestType</span><span class="o">.</span><span class="n">sync</span><span class="p">))</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_create_response</span><span class="p">(</span><span class="n">request_info</span><span class="p">,</span> <span class="n">transport_response</span><span class="p">,</span> <span class="n">max_events</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="n">request_type</span> <span class="o">=</span> <span class="n">request_info</span><span class="o">.</span><span class="n">type</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">parsed_dict</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">transport_response</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">JSONDecodeError</span><span class="p">:</span>
+            <span class="n">parsed_dict</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">login</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">LoginResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">sync</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">SyncResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">,</span> <span class="n">max_events</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">room_send</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">RoomSendResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
+                <span class="n">parsed_dict</span><span class="p">,</span>
+                <span class="n">request_info</span><span class="o">.</span><span class="n">extra_data</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">room_put_state</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">RoomPutStateResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
+                <span class="n">parsed_dict</span><span class="p">,</span>
+                <span class="n">request_info</span><span class="o">.</span><span class="n">extra_data</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">room_redact</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">RoomRedactResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
+                <span class="n">parsed_dict</span><span class="p">,</span>
+                <span class="n">request_info</span><span class="o">.</span><span class="n">extra_data</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">room_kick</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">RoomKickResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">room_invite</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">RoomInviteResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">join</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">JoinResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">room_leave</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">RoomLeaveResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">room_messages</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">RoomMessagesResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">room_typing</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">RoomTypingResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
+                <span class="n">parsed_dict</span><span class="p">,</span>
+                <span class="n">request_info</span><span class="o">.</span><span class="n">extra_data</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">room_read_markers</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">RoomReadMarkersResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
+                <span class="n">parsed_dict</span><span class="p">,</span>
+                <span class="n">request_info</span><span class="o">.</span><span class="n">extra_data</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">keys_upload</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">KeysUploadResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">keys_query</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">KeysQueryResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">keys_claim</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">KeysClaimResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
+                <span class="n">parsed_dict</span><span class="p">,</span>
+                <span class="n">request_info</span><span class="o">.</span><span class="n">extra_data</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">share_group_session</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">ShareGroupSessionResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
+                <span class="n">parsed_dict</span><span class="p">,</span>
+                <span class="n">request_info</span><span class="o">.</span><span class="n">extra_data</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">devices</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">DevicesResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">update_device</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">UpdateDeviceResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">joined_members</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">JoinedMembersResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
+                <span class="n">parsed_dict</span><span class="p">,</span>
+                <span class="n">request_info</span><span class="o">.</span><span class="n">extra_data</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">request_type</span> <span class="ow">is</span> <span class="n">RequestType</span><span class="o">.</span><span class="n">delete_devices</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">transport_response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">401</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">DeleteDevicesAuthResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">DeleteDevicesResponse</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">parsed_dict</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">response</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Received new response of type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">response</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="p">))</span>
+
+        <span class="n">response</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">transport_response</span><span class="o">.</span><span class="n">send_time</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="n">transport_response</span><span class="o">.</span><span class="n">receive_time</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">timeout</span> <span class="o">=</span> <span class="n">transport_response</span><span class="o">.</span><span class="n">timeout</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">transport_response</span><span class="o">.</span><span class="n">status_code</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">uuid</span> <span class="o">=</span> <span class="n">transport_response</span><span class="o">.</span><span class="n">uuid</span>
+
+        <span class="k">return</span> <span class="n">response</span>
+
+<div class="viewcode-block" id="HttpClient.handle_key_upload_error"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.handle_key_upload_error">[docs]</a>    <span class="k">def</span> <span class="nf">handle_key_upload_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">400</span><span class="p">,</span> <span class="mi">500</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">mark_keys_as_published</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">olm</span><span class="o">.</span><span class="n">save_account</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="HttpClient.receive"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.receive">[docs]</a>    <span class="nd">@connected</span>
+    <span class="k">def</span> <span class="nf">receive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="c1"># type: (bytes) -&gt; None</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">receive</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">h11</span><span class="o">.</span><span class="n">RemoteProtocolError</span><span class="p">,</span> <span class="n">h2</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">ProtocolError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">RemoteTransportError</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">response</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">request_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">requests_made</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">uuid</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">requests_made</span><span class="p">)))</span>
+                <span class="k">raise</span>
+
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">is_ok</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">&quot;Received response of type: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">request_info</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="p">(</span>
+                        <span class="s2">&quot;Error with response of type type: </span><span class="si">{}</span><span class="s2">, &quot;</span>
+                        <span class="s2">&quot;error code </span><span class="si">{}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">request_info</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">)</span>
+                <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">parse_queue</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">request_info</span><span class="p">,</span> <span class="n">response</span><span class="p">))</span>
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="HttpClient.next_response"><a class="viewcode-back" href="../../nio.html#nio.HttpClient.next_response">[docs]</a>    <span class="k">def</span> <span class="nf">next_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_events</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="c1"># type: (int) -&gt; Optional[Union[TransportResponse, Response]]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_queue</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">partial_sync</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">partial_sync</span><span class="p">:</span>
+            <span class="n">sync_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">partial_sync</span><span class="o">.</span><span class="n">next_part</span><span class="p">(</span><span class="n">max_events</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">receive_response</span><span class="p">(</span><span class="n">sync_response</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sync_response</span><span class="p">,</span> <span class="n">PartialSyncResponse</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">partial_sync</span> <span class="o">=</span> <span class="n">sync_response</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">partial_sync</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="k">return</span> <span class="n">sync_response</span>
+
+        <span class="n">request_info</span><span class="p">,</span> <span class="n">transport_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_queue</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_response</span><span class="p">(</span>
+            <span class="n">request_info</span><span class="p">,</span>
+            <span class="n">transport_response</span><span class="p">,</span>
+            <span class="n">max_events</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">PartialSyncResponse</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">partial_sync</span> <span class="o">=</span> <span class="n">response</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">KeysUploadError</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">handle_key_upload_error</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">receive_response</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">response</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Damir Jelić
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

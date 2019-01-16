@@ -1,0 +1,484 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>nio.rooms &mdash; nio 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> nio
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../nio.html">nio API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">nio</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>nio.rooms</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for nio.rooms</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="c1"># Copyright © 2018 Damir Jelić &lt;poljar@termina.org.uk&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># Permission to use, copy, modify, and/or distribute this software for</span>
+<span class="c1"># any purpose with or without fee is hereby granted, provided that the</span>
+<span class="c1"># above copyright notice and this permission notice appear in all copies.</span>
+<span class="c1">#</span>
+<span class="c1"># THE SOFTWARE IS PROVIDED &quot;AS IS&quot; AND THE AUTHOR DISCLAIMS ALL WARRANTIES</span>
+<span class="c1"># WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF</span>
+<span class="c1"># MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY</span>
+<span class="c1"># SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER</span>
+<span class="c1"># RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF</span>
+<span class="c1"># CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN</span>
+<span class="c1"># CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">unicode_literals</span>
+
+<span class="kn">from</span> <span class="nn">builtins</span> <span class="k">import</span> <span class="nb">super</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">NamedTuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span>
+
+<span class="kn">from</span> <span class="nn">jsonschema.exceptions</span> <span class="k">import</span> <span class="n">SchemaError</span><span class="p">,</span> <span class="n">ValidationError</span>
+<span class="kn">from</span> <span class="nn">logbook</span> <span class="k">import</span> <span class="n">Logger</span>
+
+<span class="kn">from</span> <span class="nn">.events</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">Event</span><span class="p">,</span>
+    <span class="n">InviteAliasEvent</span><span class="p">,</span>
+    <span class="n">InviteMemberEvent</span><span class="p">,</span>
+    <span class="n">InviteNameEvent</span><span class="p">,</span>
+    <span class="n">PowerLevels</span><span class="p">,</span>
+    <span class="n">PowerLevelsEvent</span><span class="p">,</span>
+    <span class="n">RoomAliasEvent</span><span class="p">,</span>
+    <span class="n">RoomEncryptionEvent</span><span class="p">,</span>
+    <span class="n">RoomMemberEvent</span><span class="p">,</span>
+    <span class="n">RoomNameEvent</span><span class="p">,</span>
+    <span class="n">RoomTopicEvent</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">.responses</span> <span class="k">import</span> <span class="n">TypingNoticeEvent</span><span class="p">,</span> <span class="n">RoomSummary</span>
+<span class="kn">from</span> <span class="nn">.log</span> <span class="k">import</span> <span class="n">logger_group</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">(</span><span class="s2">&quot;nio.rooms&quot;</span><span class="p">)</span>
+<span class="n">logger_group</span><span class="o">.</span><span class="n">add_logger</span><span class="p">(</span><span class="n">logger</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="MatrixRoom"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixRoom">[docs]</a><span class="k">class</span> <span class="nc">MatrixRoom</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">own_user_id</span><span class="p">):</span>
+        <span class="c1"># type: (str, str) -&gt; None</span>
+        <span class="c1"># yapf: disable</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">room_id</span> <span class="o">=</span> <span class="n">room_id</span>        <span class="c1"># type: str</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">own_user_id</span> <span class="o">=</span> <span class="n">own_user_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canonical_alias</span> <span class="o">=</span> <span class="kc">None</span>   <span class="c1"># type: Optional[str]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="kc">None</span>              <span class="c1"># type: Optional[str]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">users</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>           <span class="c1"># type: Dict[str, MatrixUser]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">encrypted</span> <span class="o">=</span> <span class="kc">False</span>        <span class="c1"># type: bool</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">power_levels</span> <span class="o">=</span> <span class="n">PowerLevels</span><span class="p">()</span>  <span class="c1"># type: PowerLevels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">typing_users</span> <span class="o">=</span> <span class="p">[]</span>        <span class="c1"># type: List[str]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">summary</span> <span class="o">=</span> <span class="kc">None</span>           <span class="c1"># type: Optional[RoomSummary]</span>
+        <span class="c1"># yapf: enable</span>
+
+<div class="viewcode-block" id="MatrixRoom.display_name"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixRoom.display_name">[docs]</a>    <span class="k">def</span> <span class="nf">display_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate display name for a room.</span>
+
+<span class="sd">        Prefer returning the room name if it exists, falling back to</span>
+<span class="sd">        a group-style name if not.</span>
+
+<span class="sd">        Mostly follows:</span>
+<span class="sd">        https://matrix.org/docs/spec/client_server/r0.3.0.html#id268</span>
+
+<span class="sd">        An exception is that we prepend &#39;#&#39; before the room name to make it</span>
+<span class="sd">        visually distinct from private messages and unnamed groups of users</span>
+<span class="sd">        (&quot;direct chats&quot;) in weechat&#39;s buffer list.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_named</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">named_room_name</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_name</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MatrixRoom.named_room_name"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixRoom.named_room_name">[docs]</a>    <span class="k">def</span> <span class="nf">named_room_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the name of the room, if it&#39;s a named room. Otherwise return</span>
+<span class="sd">        None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;#&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">canonical_alias</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">canonical_alias</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="MatrixRoom.group_name"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixRoom.group_name">[docs]</a>    <span class="k">def</span> <span class="nf">group_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the group-style name of the room, i.e. a name based on the room</span>
+<span class="sd">        members.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Sort user display names, excluding our own user and using the</span>
+        <span class="c1"># mxid as the sorting key.</span>
+        <span class="c1">#</span>
+        <span class="c1"># TODO: Hook the user display name disambiguation algorithm here.</span>
+        <span class="c1"># Currently, we use the user display names as is, which may not be</span>
+        <span class="c1"># unique.</span>
+        <span class="n">users</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">user</span><span class="o">.</span><span class="n">user_id</span>
+            <span class="k">for</span> <span class="n">mxid</span><span class="p">,</span> <span class="n">user</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">mxid</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">own_user_id</span>
+        <span class="p">]</span>
+
+        <span class="n">num_users</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">users</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">num_users</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">users</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">num_users</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot; and &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">users</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">num_users</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{first_user}</span><span class="s2"> and </span><span class="si">{num}</span><span class="s2"> others&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">first_user</span><span class="o">=</span><span class="n">users</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">num</span><span class="o">=</span><span class="n">num_users</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;Empty room?&quot;</span></div>
+
+<div class="viewcode-block" id="MatrixRoom.machine_name"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixRoom.machine_name">[docs]</a>    <span class="k">def</span> <span class="nf">machine_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate an unambiguous, unique machine name for a room.</span>
+
+<span class="sd">        Either use the more human-friendly canonical alias, if it exists, or</span>
+<span class="sd">        the internal room ID if not.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">canonical_alias</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">canonical_alias</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">room_id</span></div>
+
+<div class="viewcode-block" id="MatrixRoom.is_named"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixRoom.is_named">[docs]</a>    <span class="k">def</span> <span class="nf">is_named</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Is this a named room?</span>
+
+<span class="sd">        A named room is a room with either the name or a canonical alias set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">canonical_alias</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span></div>
+
+<div class="viewcode-block" id="MatrixRoom.is_group"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixRoom.is_group">[docs]</a>    <span class="k">def</span> <span class="nf">is_group</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Is this an ad hoc group of users?</span>
+
+<span class="sd">        A group is an unnamed room with no canonical alias.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_named</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MatrixRoom.add_member"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixRoom.add_member">[docs]</a>    <span class="k">def</span> <span class="nf">add_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">display_name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">user_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_levels</span><span class="o">.</span><span class="n">users</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">user_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">power_levels</span><span class="o">.</span><span class="n">defaults</span><span class="o">.</span><span class="n">users_default</span>
+        <span class="p">)</span>
+
+        <span class="n">user</span> <span class="o">=</span> <span class="n">MatrixUser</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">display_name</span><span class="p">,</span> <span class="n">level</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">[</span><span class="n">user_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">user</span></div>
+
+    <span class="k">def</span> <span class="nf">_handle_membership</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="c1"># type: (Any) -&gt; None</span>
+        <span class="k">def</span> <span class="nf">join</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+            <span class="n">display_name</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;displayname&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_member</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">state_key</span><span class="p">,</span> <span class="n">display_name</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">content</span><span class="p">[</span><span class="s2">&quot;membership&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;join&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">state_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">:</span>
+                <span class="n">join</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Handle profile changes</span>
+                <span class="n">user</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">[</span><span class="n">event</span><span class="o">.</span><span class="n">sender</span><span class="p">]</span>
+                <span class="k">if</span> <span class="s2">&quot;displayname&quot;</span> <span class="ow">in</span> <span class="n">event</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
+                    <span class="n">user</span><span class="o">.</span><span class="n">display_name</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">content</span><span class="p">[</span><span class="s2">&quot;displayname&quot;</span><span class="p">]</span>
+
+        <span class="k">elif</span> <span class="n">event</span><span class="o">.</span><span class="n">content</span><span class="p">[</span><span class="s2">&quot;membership&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;leave&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">state_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">[</span><span class="n">event</span><span class="o">.</span><span class="n">state_key</span><span class="p">]</span>
+                <span class="k">return</span>
+
+        <span class="k">elif</span> <span class="n">event</span><span class="o">.</span><span class="n">content</span><span class="p">[</span><span class="s2">&quot;membership&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;invite&quot;</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+<div class="viewcode-block" id="MatrixRoom.handle_ephemeral_event"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixRoom.handle_ephemeral_event">[docs]</a>    <span class="k">def</span> <span class="nf">handle_ephemeral_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">TypingNoticeEvent</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">typing_users</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">users</span></div>
+
+<div class="viewcode-block" id="MatrixRoom.handle_event"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixRoom.handle_event">[docs]</a>    <span class="k">def</span> <span class="nf">handle_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="c1"># type: (Event) -&gt; None</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">&quot;Room </span><span class="si">{}</span><span class="s2"> handling event of type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">room_id</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">RoomMemberEvent</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_membership</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">RoomNameEvent</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">RoomAliasEvent</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">canonical_alias</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">canonical_alias</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">RoomTopicEvent</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">topic</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">topic</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">RoomEncryptionEvent</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">encrypted</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">PowerLevelsEvent</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">power_levels</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">power_levels</span><span class="p">)</span>
+
+            <span class="c1"># Update the power levels of the joined users</span>
+            <span class="k">for</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">level</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_levels</span><span class="o">.</span><span class="n">users</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">user_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                        <span class="s2">&quot;Changing power level for user </span><span class="si">{}</span><span class="s2"> from </span><span class="si">{}</span><span class="s2"> to &quot;</span>
+                        <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="n">user_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">[</span><span class="n">user_id</span><span class="p">]</span><span class="o">.</span><span class="n">power_level</span><span class="p">,</span> <span class="n">level</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">[</span><span class="n">user_id</span><span class="p">]</span><span class="o">.</span><span class="n">power_level</span> <span class="o">=</span> <span class="n">level</span></div>
+
+<div class="viewcode-block" id="MatrixRoom.update_summary"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixRoom.update_summary">[docs]</a>    <span class="k">def</span> <span class="nf">update_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">summary</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">summary</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">summary</span> <span class="o">=</span> <span class="n">summary</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">summary</span><span class="o">.</span><span class="n">joined_member_count</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">joined_member_count</span> <span class="o">=</span> <span class="n">summary</span><span class="o">.</span><span class="n">joined_member_count</span>
+
+        <span class="k">if</span> <span class="n">summary</span><span class="o">.</span><span class="n">invited_member_count</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">invited_member_count</span> <span class="o">=</span> <span class="n">summary</span><span class="o">.</span><span class="n">joined_member_count</span>
+
+        <span class="k">if</span> <span class="n">summary</span><span class="o">.</span><span class="n">heroes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">heroes</span> <span class="o">=</span> <span class="n">summary</span><span class="o">.</span><span class="n">heroes</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">member_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">summary</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">joined_member_count</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MatrixInvitedRoom"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixInvitedRoom">[docs]</a><span class="k">class</span> <span class="nc">MatrixInvitedRoom</span><span class="p">(</span><span class="n">MatrixRoom</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">room_id</span><span class="p">,</span> <span class="n">own_user_id</span><span class="p">):</span>
+        <span class="c1"># type: (str, str) -&gt; None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inviter</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># type: Optional[str]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">room_id</span><span class="p">,</span> <span class="n">own_user_id</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handle_membership</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="c1"># type: (Any) -&gt; None</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">event</span><span class="o">.</span><span class="n">content</span><span class="p">[</span><span class="s2">&quot;membership&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;invite&quot;</span>
+            <span class="ow">and</span> <span class="n">event</span><span class="o">.</span><span class="n">state_key</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">own_user_id</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inviter</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">sender</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_handle_membership</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MatrixInvitedRoom.handle_event"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixInvitedRoom.handle_event">[docs]</a>    <span class="k">def</span> <span class="nf">handle_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="c1"># type: (Event) -&gt; None</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">&quot;Room </span><span class="si">{}</span><span class="s2"> handling event of type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">room_id</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">event</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">InviteMemberEvent</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_membership</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">InviteNameEvent</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">InviteAliasEvent</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">canonical_alias</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">canonical_alias</span></div></div>
+
+
+<div class="viewcode-block" id="MatrixUser"><a class="viewcode-back" href="../../nio.html#nio.rooms.MatrixUser">[docs]</a><span class="k">class</span> <span class="nc">MatrixUser</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">display_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">power_level</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="c1"># yapf: disable</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">user_id</span>            <span class="c1"># type: str</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_name</span> <span class="o">=</span> <span class="n">display_name</span>  <span class="c1"># type: str</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">power_level</span> <span class="o">=</span> <span class="n">power_level</span>    <span class="c1"># type: int</span></div>
+        <span class="c1"># yapf: enable</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Damir Jelić
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

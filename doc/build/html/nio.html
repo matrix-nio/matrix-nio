@@ -1,0 +1,2167 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>nio API &mdash; nio 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Welcome to nio’s documentation!" href="index.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> nio
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">nio API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#api">Api</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#client">Client</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#httpclient">HttpClient</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-nio.events">nio.events module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-nio.exceptions">nio.exceptions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-nio.responses">nio.responses module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-nio.rooms">nio.rooms module</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">nio</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>nio API</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/nio.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="nio-api">
+<h1>nio API<a class="headerlink" href="#nio-api" title="Permalink to this headline">¶</a></h1>
+<p>This document details the API of nio.</p>
+<div class="section" id="api">
+<h2>Api<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="nio.Api">
+<em class="property">class </em><code class="descclassname">nio.</code><code class="descname">Api</code><a class="reference internal" href="_modules/nio/api.html#Api"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api" title="Permalink to this definition">¶</a></dt>
+<dd><p>Matrix API class.</p>
+<p>Static methods reflecting the Matrix REST API.</p>
+<dl class="staticmethod">
+<dt id="nio.Api.delete_devices">
+<em class="property">static </em><code class="descname">delete_devices</code><span class="sig-paren">(</span><em>access_token</em>, <em>devices</em>, <em>auth_dict=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.delete_devices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.delete_devices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete a device.</p>
+<p>This API endpoint uses the User-Interactive Authentication API.</p>
+<p>This tells the server to delete the given devices and invalidate their
+associated access tokens.</p>
+<p>Should first be called with no additional authentication information.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>devices</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – A list of devices which will be deleted.</li>
+<li><strong>auth_dict</strong> (<em>Dict</em>) – Additional authentication information for
+the user-interactive authentication API.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.devices">
+<em class="property">static </em><code class="descname">devices</code><span class="sig-paren">(</span><em>access_token</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.devices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.devices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the list of devices for the current user.</p>
+<p>Returns the HTTP method and HTTP path for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.encrypted_mxc_to_plumb">
+<em class="property">static </em><code class="descname">encrypted_mxc_to_plumb</code><span class="sig-paren">(</span><em>mxc</em>, <em>key</em>, <em>hash</em>, <em>iv</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.encrypted_mxc_to_plumb"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.encrypted_mxc_to_plumb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a matrix content URI to a encrypted mxc URI.</p>
+<p>The return value of this function will have a URI schema of emxc://.
+The path of the URI will be converted just like the mxc_to_http()
+function does, but it will also contain query parameters that are
+necessary to decrypt the payload the URI is pointing to.</p>
+<p>This function is useful to present a clickable URI that can be passed
+to a plumber program that will download and decrypt the content that
+the matrix content URI is pointing to.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>mxc</strong> (<em>str</em>) – The matrix content URI.</li>
+<li><strong>key</strong> (<em>str</em>) – The encryption key that can be used to decrypt the
+payload the URI is pointing to.</li>
+<li><strong>hash</strong> (<em>str</em>) – The hash of the payload.</li>
+<li><strong>iv</strong> (<em>str</em>) – The initial value needed to decrypt the payload.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.join">
+<em class="property">static </em><code class="descname">join</code><span class="sig-paren">(</span><em>access_token</em>, <em>room_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.join"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.join" title="Permalink to this definition">¶</a></dt>
+<dd><p>Join a room.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>room_id</strong> (<em>str</em>) – The room identifier or alias to join.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.joined_members">
+<em class="property">static </em><code class="descname">joined_members</code><span class="sig-paren">(</span><em>access_token</em>, <em>room_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.joined_members"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.joined_members" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the list of joined members for a room.</p>
+<p>This tells the server that the user is typing for the next N
+milliseconds or that the user has stopped typing.</p>
+<p>Returns the HTTP method and HTTP path for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>room_id</strong> (<em>str</em>) – Room id of the room where the user is typing.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.keys_claim">
+<em class="property">static </em><code class="descname">keys_claim</code><span class="sig-paren">(</span><em>access_token</em>, <em>user_set</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.keys_claim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.keys_claim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Claim one-time keys for use in Olm pre-key messages.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>user_set</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em>) – The users and devices for which to
+claim one-time keys to be claimed. A map from user ID, to a
+list of device IDs.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.keys_query">
+<em class="property">static </em><code class="descname">keys_query</code><span class="sig-paren">(</span><em>access_token</em>, <em>user_set</em>, <em>token=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.keys_query"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.keys_query" title="Permalink to this definition">¶</a></dt>
+<dd><p>Query the current devices and identity keys for the given users.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>user_set</strong> (<em>Set</em><em>[</em><em>str</em><em>]</em>) – The users for which the keys should be
+downloaded.</li>
+<li><strong>token</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – If the client is fetching keys as a result
+of a device update received in a sync request, this should be
+the ‘since’ token of that sync request, or any later sync
+token.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.keys_upload">
+<em class="property">static </em><code class="descname">keys_upload</code><span class="sig-paren">(</span><em>access_token</em>, <em>key_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.keys_upload"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.keys_upload" title="Permalink to this definition">¶</a></dt>
+<dd><p>Publish end-to-end encryption keys.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>key_dict</strong> (<em>Dict</em>) – The dictionary containing device and one-time
+keys that will be published to the server.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.login">
+<em class="property">static </em><code class="descname">login</code><span class="sig-paren">(</span><em>user</em>, <em>password</em>, <em>device_name=''</em>, <em>device_id=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.login"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.login" title="Permalink to this definition">¶</a></dt>
+<dd><p>Authenticate the user.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>user</strong> (<em>str</em>) – The fully qualified user ID or just local part of the
+user ID, to log in.</li>
+<li><strong>password</strong> (<em>str</em>) – The user’s password.</li>
+<li><strong>device_name</strong> (<em>str</em>) – A display name to assign to a newly-created
+device. Ignored if device_id corresponds to a known device</li>
+<li><strong>device_id</strong> (<em>str</em>) – ID of the client device. If this does not
+correspond to a known client device, a new device will be
+created.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.mimetype_to_msgtype">
+<em class="property">static </em><code class="descname">mimetype_to_msgtype</code><span class="sig-paren">(</span><em>mimetype</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.mimetype_to_msgtype"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.mimetype_to_msgtype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Turn a mimetype into a matrix message type.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.mxc_to_http">
+<em class="property">static </em><code class="descname">mxc_to_http</code><span class="sig-paren">(</span><em>mxc</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.mxc_to_http"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.mxc_to_http" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a matrix content URI to a HTTP URI.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.room_invite">
+<em class="property">static </em><code class="descname">room_invite</code><span class="sig-paren">(</span><em>access_token</em>, <em>room_id</em>, <em>user_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.room_invite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.room_invite" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invite a user to a room.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>room_id</strong> (<em>str</em>) – The room id of the room that the user will be
+invited to.</li>
+<li><strong>user_id</strong> (<em>str</em>) – The user_id of the user that should be invited.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.room_kick">
+<em class="property">static </em><code class="descname">room_kick</code><span class="sig-paren">(</span><em>access_token</em>, <em>room_id</em>, <em>user_id</em>, <em>reason=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.room_kick"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.room_kick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Kick a user from a room.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>room_id</strong> (<em>str</em>) – The room id of the room that the user will be
+kicked from.</li>
+<li><strong>user_id</strong> (<em>str</em>) – The user_id of the user that should be kicked.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.room_leave">
+<em class="property">static </em><code class="descname">room_leave</code><span class="sig-paren">(</span><em>access_token</em>, <em>room_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.room_leave"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.room_leave" title="Permalink to this definition">¶</a></dt>
+<dd><p>Leave a room.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>room_id</strong> (<em>str</em>) – The room id of the room that will left.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.room_messages">
+<em class="property">static </em><code class="descname">room_messages</code><span class="sig-paren">(</span><em>access_token</em>, <em>room_id</em>, <em>start</em>, <em>end=None</em>, <em>direction=&lt;MessageDirection.back: 0&gt;</em>, <em>limit=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.room_messages"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.room_messages" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get room messages.</p>
+<p>Returns the HTTP method and HTTP path for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>room_id</strong> (<em>str</em>) – room id of the room for which to download the
+messages</li>
+<li><strong>start</strong> (<em>str</em>) – The token to start returning events from.</li>
+<li><strong>end</strong> (<em>str</em>) – The token to stop returning events at.</li>
+<li><strong>direction</strong> (<em>MessageDirection</em>) – The direction to return events from.</li>
+<li><strong>limit</strong> (<em>int</em>) – The maximum number of events to return.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.room_put_state">
+<em class="property">static </em><code class="descname">room_put_state</code><span class="sig-paren">(</span><em>access_token</em>, <em>room_id</em>, <em>event_type</em>, <em>body</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.room_put_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.room_put_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a state event.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>room_id</strong> (<em>str</em>) – The room id of the room where the event will be sent
+to.</li>
+<li><strong>event_type</strong> (<em>str</em>) – The type of the event that will be sent.</li>
+<li><strong>body</strong> (<em>Dict</em>) – The body of the event. The fields in this
+object will vary depending on the type of event.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.room_read_markers">
+<em class="property">static </em><code class="descname">room_read_markers</code><span class="sig-paren">(</span><em>access_token</em>, <em>room_id</em>, <em>fully_read_event</em>, <em>read_event=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.room_read_markers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.room_read_markers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update read markers for a room.</p>
+<p>This sets the position of the read marker for a given room,
+and optionally the read receipt’s location.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>room_id</strong> (<em>str</em>) – Room id of the room of the room where the read
+markers should be updated</li>
+<li><strong>fully_read_event</strong> (<em>str</em>) – The event ID the read marker should be
+located at.</li>
+<li><strong>read_event</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – The event ID to set the read receipt
+location at.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.room_redact">
+<em class="property">static </em><code class="descname">room_redact</code><span class="sig-paren">(</span><em>access_token</em>, <em>room_id</em>, <em>event_id</em>, <em>tx_id</em>, <em>reason=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.room_redact"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.room_redact" title="Permalink to this definition">¶</a></dt>
+<dd><p>Strip information out of an event.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>room_id</strong> (<em>str</em>) – The room id of the room that contains the event that
+will be redacted.</li>
+<li><strong>event_id</strong> (<em>str</em>) – The ID of the event that will be redacted.</li>
+<li><strong>tx_id</strong> (<em>str</em>) – The transaction ID for this event.</li>
+<li><strong>reason</strong> (<em>str</em>) – A description explaining why the event was redacted.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.room_send">
+<em class="property">static </em><code class="descname">room_send</code><span class="sig-paren">(</span><em>access_token</em>, <em>room_id</em>, <em>event_type</em>, <em>body</em>, <em>tx_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.room_send"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.room_send" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a message event to a room.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>room_id</strong> (<em>str</em>) – The room id of the room where the event will be sent
+to.</li>
+<li><strong>event_type</strong> (<em>str</em>) – The type of the message that will be sent.</li>
+<li><strong>body</strong> (<em>Dict</em>) – The body of the event. The fields in this
+object will vary depending on the type of event.</li>
+<li><strong>tx_id</strong> (<em>str</em>) – The transaction ID for this event.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.room_typing">
+<em class="property">static </em><code class="descname">room_typing</code><span class="sig-paren">(</span><em>access_token</em>, <em>room_id</em>, <em>user_id</em>, <em>typing_state=True</em>, <em>timeout=30000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.room_typing"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.room_typing" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a typing notice to the server.</p>
+<p>This tells the server that the user is typing for the next N
+milliseconds or that the user has stopped typing.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>room_id</strong> (<em>str</em>) – Room id of the room where the user is typing.</li>
+<li><strong>user_id</strong> (<em>str</em>) – The user who has started to type.</li>
+<li><strong>typign_state</strong> (<em>bool</em>) – A flag representing whether the user started
+or stopped typing</li>
+<li><strong>timeout</strong> (<em>int</em>) – For how long should the new typing notice be
+valid for in milliseconds.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.sync">
+<em class="property">static </em><code class="descname">sync</code><span class="sig-paren">(</span><em>access_token</em>, <em>since=None</em>, <em>timeout=None</em>, <em>filter=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.sync"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.sync" title="Permalink to this definition">¶</a></dt>
+<dd><p>Synchronise the client’s state with the latest state on the server.</p>
+<p>Returns the HTTP method and HTTP path for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>since</strong> (<em>str</em>) – The room id of the room where the event will be sent
+to.</li>
+<li><strong>timeout</strong> (<em>int</em>) – The maximum time to wait, in milliseconds, before
+returning this request.</li>
+<li><strong>filter</strong> (<em>Dict</em>) – A dictionary containing a filter configuration for
+the request.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.to_canonical_json">
+<em class="property">static </em><code class="descname">to_canonical_json</code><span class="sig-paren">(</span><em>content_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.to_canonical_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.to_canonical_json" title="Permalink to this definition">¶</a></dt>
+<dd><p>Turn a dictionary into a canonical json string.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.to_device">
+<em class="property">static </em><code class="descname">to_device</code><span class="sig-paren">(</span><em>access_token</em>, <em>event_type</em>, <em>content</em>, <em>tx_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.to_device"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.to_device" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send to-device events to a set of client devices.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>event_type</strong> (<em>str</em>) – The type of the event which will be sent.</li>
+<li><strong>content</strong> (<em>Dict</em>) – The messages to send. A map from user ID, to a map
+from device ID to message body. The device ID may also be *,
+meaning all known devices for the user.</li>
+<li><strong>tx_id</strong> (<em>str</em>) – The transaction ID for this event.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.to_json">
+<em class="property">static </em><code class="descname">to_json</code><span class="sig-paren">(</span><em>content_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.to_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.to_json" title="Permalink to this definition">¶</a></dt>
+<dd><p>Turn a dictionary into a json string.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.update_device">
+<em class="property">static </em><code class="descname">update_device</code><span class="sig-paren">(</span><em>access_token</em>, <em>device_id</em>, <em>content</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.update_device"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.update_device" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the metadata of the given device.</p>
+<p>Returns the HTTP method, HTTP path and data for the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>device_id</strong> (<em>str</em>) – The device for which the metadata will be updated.</li>
+<li><strong>content</strong> (<em>Dict</em>) – A dictionary of metadata values that will be
+updated for the device.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="nio.Api.upload">
+<em class="property">static </em><code class="descname">upload</code><span class="sig-paren">(</span><em>access_token</em>, <em>filename=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/api.html#Api.upload"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Api.upload" title="Permalink to this definition">¶</a></dt>
+<dd><p>Upload some content to the content repository.</p>
+<p>Returns the HTTP method, HTTP path and empty data for the request.
+The real data should be read from the file that should be uploaded.</p>
+<p>Note: This requests also requires the Content-Type http header to be
+set.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>access_token</strong> (<em>str</em>) – The access token to be used with the request.</li>
+<li><strong>filename</strong> (<em>str</em>) – The name of the file being uploaded</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="client">
+<h2>Client<a class="headerlink" href="#client" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="nio.Client">
+<em class="property">class </em><code class="descclassname">nio.</code><code class="descname">Client</code><span class="sig-paren">(</span><em>user</em>, <em>device_id=None</em>, <em>session_dir=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#Client"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Client" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new Matrix Client.</p>
+<dl class="method">
+<dt id="nio.Client.blacklist_device">
+<code class="descname">blacklist_device</code><span class="sig-paren">(</span><em>device</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#Client.blacklist_device"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Client.blacklist_device" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mark a device as blacklisted.</p>
+<p>Devices on the blacklist will not receive room encryption keys and
+therefore won’t be able to decrypt messages coming from this client.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>device</strong> (<a class="reference internal" href="#nio.responses.Device" title="nio.responses.Device"><em>Device</em></a>) – The device which should be added to the
+blacklist.</td>
+</tr>
+</tbody>
+</table>
+<p>Returns true if the device was added, false if it was on the blacklist
+already.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nio.Client.decrypt_event">
+<code class="descname">decrypt_event</code><span class="sig-paren">(</span><em>event</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#Client.decrypt_event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Client.decrypt_event" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decrypt a undecrypted megolm event.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> (<a class="reference internal" href="#nio.events.MegolmEvent" title="nio.events.MegolmEvent"><em>MegolmEvent</em></a>) – Event that should be decrypted.</td>
+</tr>
+</tbody>
+</table>
+<p>Returns the decrypted event, raises EncryptionError if there was an
+error while decrypting.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nio.Client.invalidate_outbound_session">
+<code class="descname">invalidate_outbound_session</code><span class="sig-paren">(</span><em>room_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#Client.invalidate_outbound_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Client.invalidate_outbound_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Explicitely remove encryption keys for a room.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>room_id</strong> (<em>str</em>) – Room id for the room the encryption keys should be
+removed.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nio.Client.logged_in">
+<code class="descname">logged_in</code><a class="headerlink" href="#nio.Client.logged_in" title="Permalink to this definition">¶</a></dt>
+<dd><p>A property that tracks the logged in status of the client.</p>
+<p>Returns True if the client is logged in to the server, False otherwise.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nio.Client.olm_account_shared">
+<code class="descname">olm_account_shared</code><a class="headerlink" href="#nio.Client.olm_account_shared" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if the clients Olm account is shared with the server.</p>
+<p>Returns True if the Olm account is shared, False otherwise.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nio.Client.receive_response">
+<code class="descname">receive_response</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#Client.receive_response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Client.receive_response" title="Permalink to this definition">¶</a></dt>
+<dd><p>Receive a Matrix Response and change the client state accordingly.
+Some responses will get edited for the callers convenience e.g. sync
+responses that contain encrypted messages. The encrypted messages will
+be replaced by decrypted ones if decryption is possible.
+:param response: the response that we wish the client to handle
+:type response: Response</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nio.Client.room_contains_unverified">
+<code class="descname">room_contains_unverified</code><span class="sig-paren">(</span><em>room_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#Client.room_contains_unverified"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Client.room_contains_unverified" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if a room contains unverified devices.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>room_id</strong> (<em>str</em>) – Room id of the room that should be checked.</td>
+</tr>
+</tbody>
+</table>
+<p>Returns True if the room contains unverified devices, false otherwise.
+Returns False if no Olm session is loaded or if the room isn’t
+encrypted.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nio.Client.should_query_keys">
+<code class="descname">should_query_keys</code><a class="headerlink" href="#nio.Client.should_query_keys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if the client should make a key query call to the server.</p>
+<p>Returns True if a key query is necessary, false otherwise.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nio.Client.should_upload_keys">
+<code class="descname">should_upload_keys</code><a class="headerlink" href="#nio.Client.should_upload_keys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if the client should upload encryption keys.</p>
+<p>Returns True if a keys need to be uploaded, false otherwise.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nio.Client.unblacklist_device">
+<code class="descname">unblacklist_device</code><span class="sig-paren">(</span><em>device</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#Client.unblacklist_device"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Client.unblacklist_device" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unmark a device as blacklisted.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>device</strong> (<a class="reference internal" href="#nio.responses.Device" title="nio.responses.Device"><em>Device</em></a>) – The device which should be removed from the
+blacklist.</td>
+</tr>
+</tbody>
+</table>
+<p>Returns true if the device was removed, false if it wasn’t on the
+blacklist and no removal happened.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nio.Client.unverify_device">
+<code class="descname">unverify_device</code><span class="sig-paren">(</span><em>device</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#Client.unverify_device"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Client.unverify_device" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unmark a device as verified.</p>
+<p>This method removes the device from the trusted devices and disables
+sharing room encryption keys with it. It also invalidates any
+encryption keys for rooms that the device takes part of.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>device</strong> (<a class="reference internal" href="#nio.responses.Device" title="nio.responses.Device"><em>Device</em></a>) – The device which should be added to the trust
+list.</td>
+</tr>
+</tbody>
+</table>
+<p>Returns true if the device was unverified, false if it was already
+unverified.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nio.Client.verify_device">
+<code class="descname">verify_device</code><span class="sig-paren">(</span><em>device</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#Client.verify_device"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.Client.verify_device" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mark a device as verified.</p>
+<p>A device needs to be either trusted or blacklisted to either share room
+encryption keys with it or not.
+This method adds the device to the trusted devices and enables sharing
+room encryption keys with it.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>device</strong> (<a class="reference internal" href="#nio.responses.Device" title="nio.responses.Device"><em>Device</em></a>) – The device which should be added to the trust
+list.</td>
+</tr>
+</tbody>
+</table>
+<p>Returns true if the device was verified, false if it was already
+verified.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="httpclient">
+<h2>HttpClient<a class="headerlink" href="#httpclient" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="nio.HttpClient">
+<em class="property">class </em><code class="descclassname">nio.</code><code class="descname">HttpClient</code><span class="sig-paren">(</span><em>host</em>, <em>user=''</em>, <em>device_id=''</em>, <em>session_dir=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">nio.client.Client</span></code></p>
+<dl class="method">
+<dt id="nio.HttpClient.connect">
+<code class="descname">connect</code><span class="sig-paren">(</span><em>transport_type=&lt;TransportType.HTTP: 0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.connect" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.data_to_send">
+<code class="descname">data_to_send</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.data_to_send"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.data_to_send" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.delete_devices">
+<code class="descname">delete_devices</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.delete_devices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.delete_devices" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.devices">
+<code class="descname">devices</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.devices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.devices" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.disconnect">
+<code class="descname">disconnect</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.disconnect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.disconnect" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.handle_key_upload_error">
+<code class="descname">handle_key_upload_error</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.handle_key_upload_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.handle_key_upload_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.join">
+<code class="descname">join</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.join"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.join" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.joined_members">
+<code class="descname">joined_members</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.joined_members"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.joined_members" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.keys_claim">
+<code class="descname">keys_claim</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.keys_claim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.keys_claim" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.keys_query">
+<code class="descname">keys_query</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.keys_query"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.keys_query" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.keys_upload">
+<code class="descname">keys_upload</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.keys_upload"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.keys_upload" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="nio.HttpClient.lag">
+<code class="descname">lag</code><a class="headerlink" href="#nio.HttpClient.lag" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.login">
+<code class="descname">login</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.login"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.login" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.next_response">
+<code class="descname">next_response</code><span class="sig-paren">(</span><em>max_events=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.next_response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.next_response" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.receive">
+<code class="descname">receive</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.receive"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.receive" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.room_invite">
+<code class="descname">room_invite</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.room_invite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.room_invite" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.room_kick">
+<code class="descname">room_kick</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.room_kick"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.room_kick" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.room_leave">
+<code class="descname">room_leave</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.room_leave"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.room_leave" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.room_messages">
+<code class="descname">room_messages</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.room_messages"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.room_messages" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.room_put_state">
+<code class="descname">room_put_state</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.room_put_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.room_put_state" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.room_read_markers">
+<code class="descname">room_read_markers</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.room_read_markers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.room_read_markers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.room_redact">
+<code class="descname">room_redact</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.room_redact"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.room_redact" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.room_send">
+<code class="descname">room_send</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.room_send"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.room_send" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.room_typing">
+<code class="descname">room_typing</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.room_typing"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.room_typing" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.share_group_session">
+<code class="descname">share_group_session</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.share_group_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.share_group_session" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.sync">
+<code class="descname">sync</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.sync"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.sync" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.HttpClient.update_device">
+<code class="descname">update_device</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/client.html#HttpClient.update_device"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.HttpClient.update_device" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-nio.events">
+<span id="nio-events-module"></span><h2>nio.events module<a class="headerlink" href="#module-nio.events" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="nio.events.AccountDataEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">AccountDataEvent</code><a class="reference internal" href="_modules/nio/events.html#AccountDataEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.AccountDataEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract class for account data events.</p>
+<dl class="classmethod">
+<dt id="nio.events.AccountDataEvent.parse_event">
+<em class="property">classmethod </em><code class="descname">parse_event</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#AccountDataEvent.parse_event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.AccountDataEvent.parse_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.BadEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">BadEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>type</em>, <em>source</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#BadEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.BadEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.BadEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#BadEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.BadEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.CallAnswerEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">CallAnswerEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>call_id</em>, <em>version</em>, <em>answer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#CallAnswerEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.CallAnswerEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.CallAnswerEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#CallAnswerEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.CallAnswerEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.CallCandidatesEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">CallCandidatesEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>call_id</em>, <em>version</em>, <em>candidates</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#CallCandidatesEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.CallCandidatesEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.CallCandidatesEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#CallCandidatesEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.CallCandidatesEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.CallEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">CallEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>call_id</em>, <em>version</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#CallEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.CallEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="staticmethod">
+<dt id="nio.events.CallEvent.parse_event">
+<em class="property">static </em><code class="descname">parse_event</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#CallEvent.parse_event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.CallEvent.parse_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.CallHangupEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">CallHangupEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>call_id</em>, <em>version</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#CallHangupEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.CallHangupEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.CallHangupEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#CallHangupEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.CallHangupEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.CallInviteEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">CallInviteEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>call_id</em>, <em>version</em>, <em>lifetime</em>, <em>offer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#CallInviteEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.CallInviteEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="nio.events.CallInviteEvent.expired">
+<code class="descname">expired</code><a class="headerlink" href="#nio.events.CallInviteEvent.expired" title="Permalink to this definition">¶</a></dt>
+<dd><p>Property marking if the invite event expired.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="nio.events.CallInviteEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#CallInviteEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.CallInviteEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.DefaultLevels">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">DefaultLevels</code><span class="sig-paren">(</span><em>ban: int = 50</em>, <em>invite: int = 50</em>, <em>kick: int = 50</em>, <em>redact: int = 50</em>, <em>state_default: int = 0</em>, <em>events_default: int = 0</em>, <em>users_default: int = 0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#DefaultLevels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.DefaultLevels" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.DefaultLevels.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#DefaultLevels.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.DefaultLevels.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.EncryptedEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">EncryptedEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#EncryptedEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.EncryptedEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.EncryptedEvent.parse_event">
+<em class="property">classmethod </em><code class="descname">parse_event</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#EncryptedEvent.parse_event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.EncryptedEvent.parse_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.Event">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">Event</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#Event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.Event" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.Event.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#Event.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.Event.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="nio.events.Event.parse_event">
+<em class="property">classmethod </em><code class="descname">parse_event</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#Event.parse_event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.Event.parse_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.FullyReadEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">FullyReadEvent</code><span class="sig-paren">(</span><em>event_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#FullyReadEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.FullyReadEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read marker location event.</p>
+<p>The current location of the user’s read marker in a room.
+This event appears in the user’s room account data for the room the marker
+is applicable for.</p>
+<dl class="attribute">
+<dt id="nio.events.FullyReadEvent.event_id">
+<code class="descname">event_id</code><a class="headerlink" href="#nio.events.FullyReadEvent.event_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>The event id the user’s read marker is located
+at in the room.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="nio.events.FullyReadEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#FullyReadEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.FullyReadEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a FullyReadEvent from a dictionary.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.InviteAliasEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">InviteAliasEvent</code><span class="sig-paren">(</span><em>sender</em>, <em>canonical_alias</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#InviteAliasEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.InviteAliasEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.InviteAliasEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#InviteAliasEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.InviteAliasEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.InviteEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">InviteEvent</code><span class="sig-paren">(</span><em>sender</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#InviteEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.InviteEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.InviteEvent.parse_event">
+<em class="property">classmethod </em><code class="descname">parse_event</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#InviteEvent.parse_event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.InviteEvent.parse_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.InviteMemberEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">InviteMemberEvent</code><span class="sig-paren">(</span><em>sender</em>, <em>state_key</em>, <em>content</em>, <em>prev_content=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#InviteMemberEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.InviteMemberEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.InviteMemberEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#InviteMemberEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.InviteMemberEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.InviteNameEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">InviteNameEvent</code><span class="sig-paren">(</span><em>sender</em>, <em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#InviteNameEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.InviteNameEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.InviteNameEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#InviteNameEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.InviteNameEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.MegolmEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">MegolmEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>sender_key</em>, <em>device_id</em>, <em>session_id</em>, <em>ciphertext</em>, <em>room_id=''</em>, <em>transaction_id=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#MegolmEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.MegolmEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.MegolmEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#MegolmEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.MegolmEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.OlmEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">OlmEvent</code><span class="sig-paren">(</span><em>sender</em>, <em>sender_key</em>, <em>ciphertext</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#OlmEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.OlmEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.OlmEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#OlmEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.OlmEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.PowerLevels">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">PowerLevels</code><span class="sig-paren">(</span><em>defaults=NOTHING</em>, <em>users: Dict[str</em>, <em>int] = NOTHING</em>, <em>events: Dict[str</em>, <em>int] = NOTHING</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#PowerLevels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.PowerLevels" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="nio.events.PowerLevels.get_user_level">
+<code class="descname">get_user_level</code><span class="sig-paren">(</span><em>user_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#PowerLevels.get_user_level"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.PowerLevels.get_user_level" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.events.PowerLevels.update">
+<code class="descname">update</code><span class="sig-paren">(</span><em>new_levels</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#PowerLevels.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.PowerLevels.update" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.PowerLevelsEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">PowerLevelsEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>power_levels</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#PowerLevelsEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.PowerLevelsEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.PowerLevelsEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#PowerLevelsEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.PowerLevelsEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RedactedEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RedactedEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>event_type</em>, <em>redacter</em>, <em>reason</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RedactedEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RedactedEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RedactedEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RedactedEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RedactedEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RedactionEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RedactionEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>redacts</em>, <em>reason=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RedactionEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RedactionEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RedactionEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RedactionEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RedactionEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomAliasEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomAliasEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>canonical_alias</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomAliasEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomAliasEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RoomAliasEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomAliasEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomAliasEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomEncryptedAudio">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomEncryptedAudio</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>url</em>, <em>body</em>, <em>key</em>, <em>hashes</em>, <em>iv</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomEncryptedAudio"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomEncryptedAudio" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomEncryptedEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomEncryptedEvent</code><a class="reference internal" href="_modules/nio/events.html#RoomEncryptedEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomEncryptedEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RoomEncryptedEvent.parse_event">
+<em class="property">classmethod </em><code class="descname">parse_event</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomEncryptedEvent.parse_event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomEncryptedEvent.parse_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomEncryptedFile">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomEncryptedFile</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>url</em>, <em>body</em>, <em>key</em>, <em>hashes</em>, <em>iv</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomEncryptedFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomEncryptedFile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomEncryptedImage">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomEncryptedImage</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>url</em>, <em>body</em>, <em>key</em>, <em>hashes</em>, <em>iv</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomEncryptedImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomEncryptedImage" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomEncryptedMedia">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomEncryptedMedia</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>url</em>, <em>body</em>, <em>key</em>, <em>hashes</em>, <em>iv</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomEncryptedMedia"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomEncryptedMedia" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RoomEncryptedMedia.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomEncryptedMedia.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomEncryptedMedia.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomEncryptedMessage">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomEncryptedMessage</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomEncryptedMessage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomEncryptedMessage" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RoomEncryptedMessage.parse_event">
+<em class="property">classmethod </em><code class="descname">parse_event</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomEncryptedMessage.parse_event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomEncryptedMessage.parse_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomEncryptedVideo">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomEncryptedVideo</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>url</em>, <em>body</em>, <em>key</em>, <em>hashes</em>, <em>iv</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomEncryptedVideo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomEncryptedVideo" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomEncryptionEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomEncryptionEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomEncryptionEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomEncryptionEvent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomKeyEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomKeyEvent</code><span class="sig-paren">(</span><em>sender: str</em>, <em>sender_key: str</em>, <em>room_id: str</em>, <em>session_id: str</em>, <em>algorithm: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomKeyEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomKeyEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RoomKeyEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>event_dict</em>, <em>sender</em>, <em>sender_key</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomKeyEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomKeyEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomMemberEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomMemberEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>state_key</em>, <em>content</em>, <em>prev_content=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMemberEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMemberEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RoomMemberEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMemberEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMemberEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomMessage">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomMessage</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessage" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RoomMessage.parse_event">
+<em class="property">classmethod </em><code class="descname">parse_event</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessage.parse_event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessage.parse_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomMessageAudio">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomMessageAudio</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>url</em>, <em>body</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessageAudio"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessageAudio" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomMessageEmote">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomMessageEmote</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>body</em>, <em>formatted_body</em>, <em>format</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessageEmote"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessageEmote" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomMessageFile">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomMessageFile</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>url</em>, <em>body</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessageFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessageFile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomMessageImage">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomMessageImage</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>url</em>, <em>body</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessageImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessageImage" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomMessageMedia">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomMessageMedia</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>url</em>, <em>body</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessageMedia"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessageMedia" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RoomMessageMedia.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessageMedia.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessageMedia.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomMessageNotice">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomMessageNotice</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>body</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessageNotice"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessageNotice" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RoomMessageNotice.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessageNotice.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessageNotice.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomMessageText">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomMessageText</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>body</em>, <em>formatted_body</em>, <em>format</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessageText"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessageText" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RoomMessageText.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessageText.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessageText.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomMessageUnknown">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomMessageUnknown</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>type</em>, <em>content</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessageUnknown"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessageUnknown" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RoomMessageUnknown.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessageUnknown.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessageUnknown.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomMessageVideo">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomMessageVideo</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>url</em>, <em>body</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomMessageVideo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomMessageVideo" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomNameEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomNameEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomNameEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomNameEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RoomNameEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomNameEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomNameEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.RoomTopicEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">RoomTopicEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>topic</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomTopicEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomTopicEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.RoomTopicEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#RoomTopicEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.RoomTopicEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.ToDeviceEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">ToDeviceEvent</code><span class="sig-paren">(</span><em>sender</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#ToDeviceEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.ToDeviceEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.ToDeviceEvent.parse_event">
+<em class="property">classmethod </em><code class="descname">parse_event</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#ToDeviceEvent.parse_event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.ToDeviceEvent.parse_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.UnknownAccountDataEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">UnknownAccountDataEvent</code><span class="sig-paren">(</span><em>type</em>, <em>content</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#UnknownAccountDataEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.UnknownAccountDataEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Account data event of an unknown type.</p>
+<dl class="attribute">
+<dt id="nio.events.UnknownAccountDataEvent.type">
+<code class="descname">type</code><a class="headerlink" href="#nio.events.UnknownAccountDataEvent.type" title="Permalink to this definition">¶</a></dt>
+<dd><p>The type of the event.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nio.events.UnknownAccountDataEvent.content">
+<code class="descname">content</code><a class="headerlink" href="#nio.events.UnknownAccountDataEvent.content" title="Permalink to this definition">¶</a></dt>
+<dd><p>The content of the event.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">Dict</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="nio.events.UnknownAccountDataEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#UnknownAccountDataEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.UnknownAccountDataEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct an UnknownAccountDataEvent from a dictionary.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.events.UnknownBadEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">UnknownBadEvent</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#UnknownBadEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.UnknownBadEvent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.events.UnknownEvent">
+<em class="property">class </em><code class="descclassname">nio.events.</code><code class="descname">UnknownEvent</code><span class="sig-paren">(</span><em>event_id</em>, <em>sender</em>, <em>server_timestamp</em>, <em>type</em>, <em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#UnknownEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.UnknownEvent" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.events.UnknownEvent.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#UnknownEvent.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.UnknownEvent.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="nio.events.validate_or_badevent">
+<code class="descclassname">nio.events.</code><code class="descname">validate_or_badevent</code><span class="sig-paren">(</span><em>parsed_dict</em>, <em>schema</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#validate_or_badevent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.validate_or_badevent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="nio.events.verify">
+<code class="descclassname">nio.events.</code><code class="descname">verify</code><span class="sig-paren">(</span><em>schema</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/events.html#verify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.events.verify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-nio.exceptions">
+<span id="nio-exceptions-module"></span><h2>nio.exceptions module<a class="headerlink" href="#module-nio.exceptions" title="Permalink to this headline">¶</a></h2>
+<dl class="exception">
+<dt id="nio.exceptions.EncryptionError">
+<em class="property">exception </em><code class="descclassname">nio.exceptions.</code><code class="descname">EncryptionError</code><a class="reference internal" href="_modules/nio/exceptions.html#EncryptionError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.exceptions.EncryptionError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="nio.exceptions.GroupEncryptionError">
+<em class="property">exception </em><code class="descclassname">nio.exceptions.</code><code class="descname">GroupEncryptionError</code><a class="reference internal" href="_modules/nio/exceptions.html#GroupEncryptionError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.exceptions.GroupEncryptionError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="nio.exceptions.LocalProtocolError">
+<em class="property">exception </em><code class="descclassname">nio.exceptions.</code><code class="descname">LocalProtocolError</code><a class="reference internal" href="_modules/nio/exceptions.html#LocalProtocolError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.exceptions.LocalProtocolError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#nio.exceptions.ProtocolError" title="nio.exceptions.ProtocolError"><code class="xref py py-class docutils literal notranslate"><span class="pre">nio.exceptions.ProtocolError</span></code></a></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="nio.exceptions.LocalTransportError">
+<em class="property">exception </em><code class="descclassname">nio.exceptions.</code><code class="descname">LocalTransportError</code><a class="reference internal" href="_modules/nio/exceptions.html#LocalTransportError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.exceptions.LocalTransportError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#nio.exceptions.ProtocolError" title="nio.exceptions.ProtocolError"><code class="xref py py-class docutils literal notranslate"><span class="pre">nio.exceptions.ProtocolError</span></code></a></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="nio.exceptions.OlmTrustError">
+<em class="property">exception </em><code class="descclassname">nio.exceptions.</code><code class="descname">OlmTrustError</code><a class="reference internal" href="_modules/nio/exceptions.html#OlmTrustError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.exceptions.OlmTrustError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="nio.exceptions.ProtocolError">
+<em class="property">exception </em><code class="descclassname">nio.exceptions.</code><code class="descname">ProtocolError</code><a class="reference internal" href="_modules/nio/exceptions.html#ProtocolError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.exceptions.ProtocolError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="nio.exceptions.RemoteProtocolError">
+<em class="property">exception </em><code class="descclassname">nio.exceptions.</code><code class="descname">RemoteProtocolError</code><a class="reference internal" href="_modules/nio/exceptions.html#RemoteProtocolError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.exceptions.RemoteProtocolError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#nio.exceptions.ProtocolError" title="nio.exceptions.ProtocolError"><code class="xref py py-class docutils literal notranslate"><span class="pre">nio.exceptions.ProtocolError</span></code></a></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="nio.exceptions.RemoteTransportError">
+<em class="property">exception </em><code class="descclassname">nio.exceptions.</code><code class="descname">RemoteTransportError</code><a class="reference internal" href="_modules/nio/exceptions.html#RemoteTransportError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.exceptions.RemoteTransportError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#nio.exceptions.ProtocolError" title="nio.exceptions.ProtocolError"><code class="xref py py-class docutils literal notranslate"><span class="pre">nio.exceptions.ProtocolError</span></code></a></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="nio.exceptions.VerificationError">
+<em class="property">exception </em><code class="descclassname">nio.exceptions.</code><code class="descname">VerificationError</code><a class="reference internal" href="_modules/nio/exceptions.html#VerificationError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.exceptions.VerificationError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-nio.responses">
+<span id="nio-responses-module"></span><h2>nio.responses module<a class="headerlink" href="#module-nio.responses" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="nio.responses.DeleteDevicesAuthResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">DeleteDevicesAuthResponse</code><span class="sig-paren">(</span><em>session: str, flows: Dict[KT, VT], params: Dict[KT, VT]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#DeleteDevicesAuthResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.DeleteDevicesAuthResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.responses.DeleteDevicesAuthResponse.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#DeleteDevicesAuthResponse.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.DeleteDevicesAuthResponse.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.DeleteDevicesResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">DeleteDevicesResponse</code><a class="reference internal" href="_modules/nio/responses.html#DeleteDevicesResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.DeleteDevicesResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="staticmethod">
+<dt id="nio.responses.DeleteDevicesResponse.create_error">
+<em class="property">static </em><code class="descname">create_error</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#DeleteDevicesResponse.create_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.DeleteDevicesResponse.create_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.DeleteDevicesError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">DeleteDevicesError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#DeleteDevicesError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.DeleteDevicesError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.Device">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">Device</code><span class="sig-paren">(</span><em>id: str</em>, <em>display_name: str</em>, <em>last_seen_ip: str</em>, <em>last_seen_date: datetime.datetime</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#Device"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.Device" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.responses.Device.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#Device.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.Device.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.DeviceList">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">DeviceList</code><span class="sig-paren">(</span><em>changed: List[str], left: List[str]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#DeviceList"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.DeviceList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.DevicesResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">DevicesResponse</code><span class="sig-paren">(</span><em>devices: List[nio.responses.Device]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#DevicesResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.DevicesResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.responses.DevicesResponse.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#DevicesResponse.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.DevicesResponse.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.DevicesError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">DevicesError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#DevicesError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.DevicesError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.DeviceOneTimeKeyCount">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">DeviceOneTimeKeyCount</code><span class="sig-paren">(</span><em>curve25519: int</em>, <em>signed_curve25519: int</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#DeviceOneTimeKeyCount"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.DeviceOneTimeKeyCount" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.ErrorResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">ErrorResponse</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#ErrorResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.ErrorResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.responses.ErrorResponse.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#ErrorResponse.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.ErrorResponse.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.InviteInfo">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">InviteInfo</code><span class="sig-paren">(</span><em>invite_state: List[T]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#InviteInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.InviteInfo" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.JoinResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">JoinResponse</code><span class="sig-paren">(</span><em>room_id: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#JoinResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.JoinResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="staticmethod">
+<dt id="nio.responses.JoinResponse.create_error">
+<em class="property">static </em><code class="descname">create_error</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#JoinResponse.create_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.JoinResponse.create_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.JoinError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">JoinError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#JoinError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.JoinError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.JoinedMembersResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">JoinedMembersResponse</code><span class="sig-paren">(</span><em>members: List[nio.responses.RoomMember], room_id: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#JoinedMembersResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.JoinedMembersResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.responses.JoinedMembersResponse.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em>, <em>room_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#JoinedMembersResponse.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.JoinedMembersResponse.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.JoinedMembersError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">JoinedMembersError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em>, <em>room_id: str = ''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#JoinedMembersError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.JoinedMembersError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.KeysClaimResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">KeysClaimResponse</code><span class="sig-paren">(</span><em>one_time_keys: Dict[Any, Any], failures: Dict[Any, Any], room_id: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#KeysClaimResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.KeysClaimResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.responses.KeysClaimResponse.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em>, <em>room_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#KeysClaimResponse.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.KeysClaimResponse.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.KeysClaimError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">KeysClaimError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#KeysClaimError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.KeysClaimError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.KeysQueryResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">KeysQueryResponse</code><span class="sig-paren">(</span><em>device_keys: Dict[KT, VT], failures: Dict[KT, VT]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#KeysQueryResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.KeysQueryResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.responses.KeysQueryResponse.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#KeysQueryResponse.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.KeysQueryResponse.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.KeysQueryError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">KeysQueryError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#KeysQueryError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.KeysQueryError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.KeysUploadResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">KeysUploadResponse</code><span class="sig-paren">(</span><em>curve25519_count: int</em>, <em>signed_curve25519_count: int</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#KeysUploadResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.KeysUploadResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.responses.KeysUploadResponse.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#KeysUploadResponse.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.KeysUploadResponse.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.KeysUploadError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">KeysUploadError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#KeysUploadError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.KeysUploadError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.LoginResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">LoginResponse</code><span class="sig-paren">(</span><em>user_id: str</em>, <em>device_id: str</em>, <em>access_token: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#LoginResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.LoginResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.responses.LoginResponse.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#LoginResponse.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.LoginResponse.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.LoginError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">LoginError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#LoginError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.LoginError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.Response">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">Response</code><a class="reference internal" href="_modules/nio/responses.html#Response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.Response" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="nio.responses.Response.elapsed">
+<code class="descname">elapsed</code><a class="headerlink" href="#nio.responses.Response.elapsed" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="nio.responses.Response.end_time">
+<code class="descname">end_time</code><em class="property"> = None</em><a class="headerlink" href="#nio.responses.Response.end_time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="nio.responses.Response.start_time">
+<code class="descname">start_time</code><em class="property"> = None</em><a class="headerlink" href="#nio.responses.Response.start_time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="nio.responses.Response.timeout">
+<code class="descname">timeout</code><em class="property"> = 0</em><a class="headerlink" href="#nio.responses.Response.timeout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="nio.responses.Response.uuid">
+<code class="descname">uuid</code><em class="property"> = ''</em><a class="headerlink" href="#nio.responses.Response.uuid" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomInfo">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomInfo</code><span class="sig-paren">(</span><em>timeline: nio.responses.Timeline, state: List[T], ephemeral: List[T], account_data: List[T], summary: Optional[nio.responses.RoomSummary] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomInfo" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="staticmethod">
+<dt id="nio.responses.RoomInfo.parse_account_data">
+<em class="property">static </em><code class="descname">parse_account_data</code><span class="sig-paren">(</span><em>event_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomInfo.parse_account_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomInfo.parse_account_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse the account data dictionary and produce a list of events.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomInviteResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomInviteResponse</code><a class="reference internal" href="_modules/nio/responses.html#RoomInviteResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomInviteResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="staticmethod">
+<dt id="nio.responses.RoomInviteResponse.create_error">
+<em class="property">static </em><code class="descname">create_error</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomInviteResponse.create_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomInviteResponse.create_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomInviteError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomInviteError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomInviteError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomInviteError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomKickResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomKickResponse</code><a class="reference internal" href="_modules/nio/responses.html#RoomKickResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomKickResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="staticmethod">
+<dt id="nio.responses.RoomKickResponse.create_error">
+<em class="property">static </em><code class="descname">create_error</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomKickResponse.create_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomKickResponse.create_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomKickResponse</code><a class="reference internal" href="_modules/nio/responses.html#RoomKickResponse"><span class="viewcode-link">[source]</span></a></dt>
+<dd><dl class="staticmethod">
+<dt>
+<em class="property">static </em><code class="descname">create_error</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomKickResponse.create_error"><span class="viewcode-link">[source]</span></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomLeaveResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomLeaveResponse</code><a class="reference internal" href="_modules/nio/responses.html#RoomLeaveResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomLeaveResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="staticmethod">
+<dt id="nio.responses.RoomLeaveResponse.create_error">
+<em class="property">static </em><code class="descname">create_error</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomLeaveResponse.create_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomLeaveResponse.create_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomLeaveError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomLeaveError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomLeaveError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomLeaveError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomMember">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomMember</code><span class="sig-paren">(</span><em>user_id: str</em>, <em>display_name: str</em>, <em>avatar_url: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomMember"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomMember" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomMessagesResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomMessagesResponse</code><span class="sig-paren">(</span><em>chunk: List[Union[nio.events.Event, nio.events.UnknownBadEvent]], start: str, end: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomMessagesResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomMessagesResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="classmethod">
+<dt id="nio.responses.RoomMessagesResponse.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomMessagesResponse.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomMessagesResponse.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomMessagesError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomMessagesError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomMessagesError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomMessagesError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomPutStateResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomPutStateResponse</code><span class="sig-paren">(</span><em>event_id: str</em>, <em>room_id: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomPutStateResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomPutStateResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="staticmethod">
+<dt id="nio.responses.RoomPutStateResponse.create_error">
+<em class="property">static </em><code class="descname">create_error</code><span class="sig-paren">(</span><em>parsed_dict</em>, <em>room_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomPutStateResponse.create_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomPutStateResponse.create_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomPutStateError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomPutStateError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em>, <em>room_id: str = ''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomPutStateError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomPutStateError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomRedactResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomRedactResponse</code><span class="sig-paren">(</span><em>event_id: str</em>, <em>room_id: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomRedactResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomRedactResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="staticmethod">
+<dt id="nio.responses.RoomRedactResponse.create_error">
+<em class="property">static </em><code class="descname">create_error</code><span class="sig-paren">(</span><em>parsed_dict</em>, <em>room_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomRedactResponse.create_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomRedactResponse.create_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomRedactError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomRedactError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em>, <em>room_id: str = ''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomRedactError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomRedactError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomSendResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomSendResponse</code><span class="sig-paren">(</span><em>event_id: str</em>, <em>room_id: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomSendResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomSendResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="staticmethod">
+<dt id="nio.responses.RoomSendResponse.create_error">
+<em class="property">static </em><code class="descname">create_error</code><span class="sig-paren">(</span><em>parsed_dict</em>, <em>room_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomSendResponse.create_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomSendResponse.create_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomSendError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomSendError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em>, <em>room_id: str = ''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomSendError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomSendError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomSummary">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomSummary</code><span class="sig-paren">(</span><em>invited_member_count: Optional[int] = None</em>, <em>joined_member_count: Optional[int] = None</em>, <em>heroes: List[str] = []</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomSummary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomSummary" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.Rooms">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">Rooms</code><span class="sig-paren">(</span><em>invite: Dict[KT, VT], join: Dict[KT, VT], leave: Dict[KT, VT]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#Rooms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.Rooms" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.ShareGroupSessionResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">ShareGroupSessionResponse</code><span class="sig-paren">(</span><em>room_id: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#ShareGroupSessionResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.ShareGroupSessionResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="staticmethod">
+<dt id="nio.responses.ShareGroupSessionResponse.create_error">
+<em class="property">static </em><code class="descname">create_error</code><span class="sig-paren">(</span><em>parsed_dict</em>, <em>room_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#ShareGroupSessionResponse.create_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.ShareGroupSessionResponse.create_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.ShareGroupSessionError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">ShareGroupSessionError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#ShareGroupSessionError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.ShareGroupSessionError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.SyncResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">SyncResponse</code><span class="sig-paren">(</span><em>next_batch: str, rooms: nio.responses.Rooms, device_key_count: nio.responses.DeviceOneTimeKeyCount, device_list: nio.responses.DeviceList, to_device_events: List[nio.events.ToDeviceEvent]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#SyncResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.SyncResponse" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.PartialSyncResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">PartialSyncResponse</code><span class="sig-paren">(</span><em>next_batch: str, rooms: nio.responses.Rooms, device_key_count: nio.responses.DeviceOneTimeKeyCount, device_list: nio.responses.DeviceList, to_device_events: List[nio.events.ToDeviceEvent], unhandled_rooms: Dict[str, nio.responses.RoomInfo]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#PartialSyncResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.PartialSyncResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="nio.responses.PartialSyncResponse.next_part">
+<code class="descname">next_part</code><span class="sig-paren">(</span><em>max_events=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#PartialSyncResponse.next_part"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.PartialSyncResponse.next_part" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.SyncError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">SyncError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#SyncError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.SyncError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.Timeline">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">Timeline</code><span class="sig-paren">(</span><em>events: List[T], limited: bool, prev_batch: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#Timeline"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.Timeline" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.TypingNoticeEvent">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">TypingNoticeEvent</code><span class="sig-paren">(</span><em>users: List[T]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#TypingNoticeEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.TypingNoticeEvent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.UpdateDeviceResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">UpdateDeviceResponse</code><a class="reference internal" href="_modules/nio/responses.html#UpdateDeviceResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.UpdateDeviceResponse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="staticmethod">
+<dt id="nio.responses.UpdateDeviceResponse.create_error">
+<em class="property">static </em><code class="descname">create_error</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#UpdateDeviceResponse.create_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.UpdateDeviceResponse.create_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.UpdateDeviceError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">UpdateDeviceError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#UpdateDeviceError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.UpdateDeviceError" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomTypingResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomTypingResponse</code><span class="sig-paren">(</span><em>room_id: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomTypingResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomTypingResponse" title="Permalink to this definition">¶</a></dt>
+<dd><p>A response representing a successful room typing request.</p>
+<dl class="staticmethod">
+<dt id="nio.responses.RoomTypingResponse.create_error">
+<em class="property">static </em><code class="descname">create_error</code><span class="sig-paren">(</span><em>parsed_dict</em>, <em>room_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomTypingResponse.create_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomTypingResponse.create_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomTypingError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomTypingError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em>, <em>room_id: str = ''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomTypingError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomTypingError" title="Permalink to this definition">¶</a></dt>
+<dd><p>A response representing a unsuccessful room typing request.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomReadMarkersResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomReadMarkersResponse</code><span class="sig-paren">(</span><em>room_id: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomReadMarkersResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomReadMarkersResponse" title="Permalink to this definition">¶</a></dt>
+<dd><p>A response representing a successful room read markers request.</p>
+<dl class="staticmethod">
+<dt id="nio.responses.RoomReadMarkersResponse.create_error">
+<em class="property">static </em><code class="descname">create_error</code><span class="sig-paren">(</span><em>parsed_dict</em>, <em>room_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomReadMarkersResponse.create_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomReadMarkersResponse.create_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.RoomReadMarkersError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">RoomReadMarkersError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em>, <em>room_id: str = ''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#RoomReadMarkersError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.RoomReadMarkersError" title="Permalink to this definition">¶</a></dt>
+<dd><p>A response representing a unsuccessful room read markers request.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.UploadResponse">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">UploadResponse</code><span class="sig-paren">(</span><em>content_uri: str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#UploadResponse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.UploadResponse" title="Permalink to this definition">¶</a></dt>
+<dd><p>A response representing a successful upload request.</p>
+<dl class="classmethod">
+<dt id="nio.responses.UploadResponse.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>parsed_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#UploadResponse.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.UploadResponse.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.responses.UploadError">
+<em class="property">class </em><code class="descclassname">nio.responses.</code><code class="descname">UploadError</code><span class="sig-paren">(</span><em>message: str</em>, <em>status_code: Optional[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/responses.html#UploadError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.responses.UploadError" title="Permalink to this definition">¶</a></dt>
+<dd><p>A response representing a unsuccessful upload request.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-nio.rooms">
+<span id="nio-rooms-module"></span><h2>nio.rooms module<a class="headerlink" href="#module-nio.rooms" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="nio.rooms.MatrixInvitedRoom">
+<em class="property">class </em><code class="descclassname">nio.rooms.</code><code class="descname">MatrixInvitedRoom</code><span class="sig-paren">(</span><em>room_id</em>, <em>own_user_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixInvitedRoom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixInvitedRoom" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="nio.rooms.MatrixInvitedRoom.handle_event">
+<code class="descname">handle_event</code><span class="sig-paren">(</span><em>event</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixInvitedRoom.handle_event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixInvitedRoom.handle_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.rooms.MatrixRoom">
+<em class="property">class </em><code class="descclassname">nio.rooms.</code><code class="descname">MatrixRoom</code><span class="sig-paren">(</span><em>room_id</em>, <em>own_user_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixRoom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixRoom" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="nio.rooms.MatrixRoom.add_member">
+<code class="descname">add_member</code><span class="sig-paren">(</span><em>user_id</em>, <em>display_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixRoom.add_member"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixRoom.add_member" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.rooms.MatrixRoom.display_name">
+<code class="descname">display_name</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixRoom.display_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixRoom.display_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate display name for a room.</p>
+<p>Prefer returning the room name if it exists, falling back to
+a group-style name if not.</p>
+<p>Mostly follows:
+<a class="reference external" href="https://matrix.org/docs/spec/client_server/r0.3.0.html#id268">https://matrix.org/docs/spec/client_server/r0.3.0.html#id268</a></p>
+<p>An exception is that we prepend ‘#’ before the room name to make it
+visually distinct from private messages and unnamed groups of users
+(“direct chats”) in weechat’s buffer list.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nio.rooms.MatrixRoom.group_name">
+<code class="descname">group_name</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixRoom.group_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixRoom.group_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the group-style name of the room, i.e. a name based on the room
+members.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nio.rooms.MatrixRoom.handle_ephemeral_event">
+<code class="descname">handle_ephemeral_event</code><span class="sig-paren">(</span><em>event</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixRoom.handle_ephemeral_event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixRoom.handle_ephemeral_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.rooms.MatrixRoom.handle_event">
+<code class="descname">handle_event</code><span class="sig-paren">(</span><em>event</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixRoom.handle_event"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixRoom.handle_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.rooms.MatrixRoom.is_group">
+<code class="descname">is_group</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixRoom.is_group"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixRoom.is_group" title="Permalink to this definition">¶</a></dt>
+<dd><p>Is this an ad hoc group of users?</p>
+<p>A group is an unnamed room with no canonical alias.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nio.rooms.MatrixRoom.is_named">
+<code class="descname">is_named</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixRoom.is_named"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixRoom.is_named" title="Permalink to this definition">¶</a></dt>
+<dd><p>Is this a named room?</p>
+<p>A named room is a room with either the name or a canonical alias set.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nio.rooms.MatrixRoom.machine_name">
+<code class="descname">machine_name</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixRoom.machine_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixRoom.machine_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate an unambiguous, unique machine name for a room.</p>
+<p>Either use the more human-friendly canonical alias, if it exists, or
+the internal room ID if not.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nio.rooms.MatrixRoom.member_count">
+<code class="descname">member_count</code><a class="headerlink" href="#nio.rooms.MatrixRoom.member_count" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nio.rooms.MatrixRoom.named_room_name">
+<code class="descname">named_room_name</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixRoom.named_room_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixRoom.named_room_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the name of the room, if it’s a named room. Otherwise return
+None.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nio.rooms.MatrixRoom.update_summary">
+<code class="descname">update_summary</code><span class="sig-paren">(</span><em>summary</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixRoom.update_summary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixRoom.update_summary" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nio.rooms.MatrixUser">
+<em class="property">class </em><code class="descclassname">nio.rooms.</code><code class="descname">MatrixUser</code><span class="sig-paren">(</span><em>user_id</em>, <em>display_name=None</em>, <em>power_level=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nio/rooms.html#MatrixUser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nio.rooms.MatrixUser" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="index.html" class="btn btn-neutral" title="Welcome to nio’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Damir Jelić
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
