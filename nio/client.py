@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -17,7 +17,7 @@
 import attr
 import json
 import pprint
-from builtins import bytes, str, super
+from builtins import str, super
 from enum import Enum, unique
 from collections import deque
 from typing import (
@@ -29,6 +29,7 @@ from typing import (
     Optional,
     Tuple,
     Union,
+    Callable
 )
 from uuid import UUID, uuid4
 
@@ -43,6 +44,7 @@ from .exceptions import (
     RemoteTransportError,
 )
 from .encryption import Olm
+from .crypto import DeviceStore
 from .http import HttpRequest, Http2Request
 
 from .http import (
@@ -90,6 +92,7 @@ from .events import (
     RoomKeyEvent
 )
 from .rooms import MatrixInvitedRoom, MatrixRoom
+from .store import MatrixStore, DefaultStore
 
 if False:
     from .crypto import OlmDevice
@@ -134,20 +137,65 @@ class RequestInfo(object):
     extra_data = attr.ib(default=None)
 
 
+@attr.s
+class ClientConfig(object):
+    """nio client configuration.
+
+    Attributes:
+        store (MatrixStore, optional): The store that should be used for state
+            storage.
+        store_name: (str, optional): Filename that should be used for the
+            store.
+        encryption_enabled(bool, optional): Should end to end encryption be
+            used.
+        pickle_key: (str, optional): A passphrase that will be used to encrypt
+            end to end encryption keys.
+
+    """
+
+    store = attr.ib(type=Callable, default=DefaultStore)
+    store_name = attr.ib(type=str, default="")
+    encryption_enabled = attr.ib(type=bool, default=True)
+    pickle_key = attr.ib(type=str, default="DEFAULT_KEY")
+
+
 class Client(object):
-    """Create a new Matrix Client."""
+    """Matrix no-IO client.
+
+    Attributes:
+       access_token (str): Token authorizing the user with the server. Is set
+           after logging in.
+       user_id (str): The full mxid of the current user. This is set after
+           logging in.
+       next_batch(str): The current sync token.
+       rooms(Dict[str, MatrixRoom)): A dictionary containing a mapping of room
+           ids to MatrixRoom objects. All the rooms a user is joined to will be
+           here after a sync.
+
+    Args:
+       user (str): User that will be used to log in.
+       device_id (str, optional): An unique identifier that distinguishes
+           this client instance. If not set the server will provide one after
+           log in.
+       store_dir (str, optional): The directory that should be used for state
+           storeage.
+       config (ClientConfig, optional): Configuration for the client.
+
+    """
 
     def __init__(
         self,
         user,            # type: str
         device_id=None,  # type: Optional[str]
-        session_dir="",  # type: Optional[str]
+        store_path="",  # type: Optional[str]
+        config=None,     # type: Optional[ClientConfig]
     ):
         # type: (...) -> None
         self.user = user
         self.device_id = device_id
-        self.session_dir = session_dir
+        self.store_path = store_path
         self.olm = None  # type: Optional[Olm]
+        self.config = config or ClientConfig()
 
         self.user_id = ""
         self.access_token = ""
@@ -159,7 +207,7 @@ class Client(object):
     @property
     def logged_in(self):
         # type: () -> bool
-        """A property that tracks the logged in status of the client.
+        """Check if we are logged in.
 
         Returns True if the client is logged in to the server, False otherwise.
         """
@@ -343,8 +391,14 @@ class Client(object):
         self.user_id = response.user_id
         self.device_id = response.device_id
 
-        if self.session_dir:
-            self.olm = Olm(self.user_id, self.device_id, self.session_dir)
+        if self.store_path:
+            self.store = self.config.store(
+                self.user_id,
+                self.device_id,
+                self.store_path,
+                self.config.pickle_key
+            )
+            self.olm = Olm(self.user_id, self.device_id, self.store)
 
     def decrypt_event(
         self,
@@ -498,9 +552,11 @@ class Client(object):
 
     def receive_response(self, response):
         """Receive a Matrix Response and change the client state accordingly.
+
         Some responses will get edited for the callers convenience e.g. sync
         responses that contain encrypted messages. The encrypted messages will
         be replaced by decrypted ones if decryption is possible.
+
         Args:
             response (Response): the response that we wish the client to handle
         """
@@ -548,7 +604,8 @@ class HttpClient(Client):
         host,  # type: str
         user="",  # type: str
         device_id="",  # type: Optional[str]
-        session_dir="",  # type: Optional[str]
+        store_path="",  # type: Optional[str]
+        config=None,  # type: Optional[ClientConfig]
     ):
         # type: (...) -> None
         self.host = host
@@ -560,7 +617,7 @@ class HttpClient(Client):
         self.connection = None \
             # type: Optional[Union[HttpConnection, Http2Connection]]
 
-        super().__init__(user, device_id, session_dir)
+        super().__init__(user, device_id, store_path, config)
 
     @connected
     def _send(
@@ -1146,6 +1203,7 @@ class HttpClient(Client):
     @connected
     def receive(self, data):
         # type: (bytes) -> None
+        """Pass received data to the client"""
         assert self.connection
 
         try:

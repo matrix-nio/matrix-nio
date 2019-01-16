@@ -17,7 +17,7 @@ from nio.crypto import (
     InboundGroupSession
 )
 
-ephermal_dir = os.path.join(os.curdir, "tests/data/encryption")
+ephemeral_dir = os.path.join(os.curdir, "tests/data/encryption")
 
 BOB_ID = "@bob:example.org"
 BOB_DEVICE = "AGMTSWVYML"
@@ -30,14 +30,14 @@ TEST_FORWARDING_CHAIN = [BOB_CURVE, BOB_ONETIME]
 faker = Faker()
 
 
-def ephermal(func):
+def ephemeral(func):
     def wrapper(*args, **kwargs):
         try:
             ret = func(*args, **kwargs)
         finally:
             os.remove(os.path.join(
-                ephermal_dir,
-                "ephermal_DEVICEID.db"
+                ephemeral_dir,
+                "ephemeral_DEVICEID.db"
             ))
         return ret
     return wrapper
@@ -74,8 +74,8 @@ class TestClass(object):
         pass
 
     @property
-    def ephermal_store(self):
-        return MatrixStore("ephermal", "DEVICEID", ephermal_dir)
+    def ephemeral_store(self):
+        return MatrixStore("ephemeral", "DEVICEID", ephemeral_dir)
 
     @property
     def example_devices(self):
@@ -96,36 +96,36 @@ class TestClass(object):
 
         return devices
 
-    def _create_ephermal_account(self):
-        store = self.ephermal_store
+    def _create_ephemeral_account(self):
+        store = self.ephemeral_store
         account = OlmAccount()
         store.save_account(account)
         return account
 
-    @ephermal
+    @ephemeral
     def test_store_opening(self):
-        store = self.ephermal_store
+        store = self.ephemeral_store
         account = store.load_account()
         assert not account
 
-    @ephermal
+    @ephemeral
     def test_store_account_saving(self):
-        account = self._create_ephermal_account()
+        account = self._create_ephemeral_account()
 
-        store2 = self.ephermal_store
+        store2 = self.ephemeral_store
         loaded_account = store2.load_account()
 
         assert account.identity_keys == loaded_account.identity_keys
 
-    @ephermal
+    @ephemeral
     def test_store_session(self):
-        account = self._create_ephermal_account()
-        store = self.ephermal_store
+        account = self._create_ephemeral_account()
+        store = self.ephemeral_store
 
         session = OutboundSession(account, BOB_CURVE, BOB_ONETIME)
         store.save_session(BOB_CURVE, session)
 
-        store2 = self.ephermal_store
+        store2 = self.ephemeral_store
         session_store = store2.load_sessions()
 
         loaded_session = session_store.get(BOB_CURVE)
@@ -133,10 +133,10 @@ class TestClass(object):
         assert loaded_session
         assert session.id == loaded_session.id
 
-    @ephermal
+    @ephemeral
     def test_store_group_session(self):
-        account = self._create_ephermal_account()
-        store = self.ephermal_store
+        account = self._create_ephemeral_account()
+        store = self.ephemeral_store
 
         out_group = OutboundGroupSession()
         in_group = InboundGroupSession(
@@ -150,7 +150,7 @@ class TestClass(object):
             in_group
         )
 
-        store2 = self.ephermal_store
+        store2 = self.ephemeral_store
         session_store = store2.load_inbound_group_sessions()
 
         loaded_session = session_store.get(
@@ -164,17 +164,17 @@ class TestClass(object):
         assert (sorted(loaded_session.forwarding_chain) ==
                 sorted(TEST_FORWARDING_CHAIN))
 
-    @ephermal
+    @ephemeral
     def test_store_device_keys(self):
-        account = self._create_ephermal_account()
-        store = self.ephermal_store
+        account = self._create_ephemeral_account()
+        store = self.ephemeral_store
 
         devices = self.example_devices
         assert len(devices) == 11
 
         store.save_device_keys(devices)
 
-        store2 = self.ephermal_store
+        store2 = self.ephemeral_store
         device_store = store2.load_device_keys()
 
         bob_device = device_store[BOB_ID][BOB_DEVICE]
@@ -186,15 +186,15 @@ class TestClass(object):
         assert not bob_device.deleted
         assert len(device_store.users) == 11
 
-    @ephermal
+    @ephemeral
     def test_two_stores(self):
         try:
-            account = self._create_ephermal_account()
-            store = self.ephermal_store
+            account = self._create_ephemeral_account()
+            store = self.ephemeral_store
             loaded_account = store.load_account()
             assert account.identity_keys == loaded_account.identity_keys
 
-            store2 = MatrixStore("ephermal2", "DEVICEID2", ephermal_dir)
+            store2 = MatrixStore("ephemeral2", "DEVICEID2", ephemeral_dir)
             assert not store2.load_account()
 
             loaded_account = store.load_account()
@@ -202,26 +202,26 @@ class TestClass(object):
 
         finally:
             os.remove(os.path.join(
-                ephermal_dir,
-                "ephermal2_DEVICEID2.db"
+                ephemeral_dir,
+                "ephemeral2_DEVICEID2.db"
             ))
 
-    @ephermal
+    @ephemeral
     def test_empty_device_keys(self):
-        account = self._create_ephermal_account()
-        store = self.ephermal_store
+        account = self._create_ephemeral_account()
+        store = self.ephemeral_store
         store.save_device_keys(dict())
 
-    @ephermal
+    @ephemeral
     def test_saving_account_twice(self):
-        account = self._create_ephermal_account()
-        store = self.ephermal_store
+        account = self._create_ephemeral_account()
+        store = self.ephemeral_store
 
         session = OutboundSession(account, BOB_CURVE, BOB_ONETIME)
         store.save_session(BOB_CURVE, session)
         store.save_account(account)
 
-        store2 = self.ephermal_store
+        store2 = self.ephemeral_store
         session_store = store2.load_sessions()
 
         loaded_session = session_store.get(BOB_CURVE)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -67,7 +67,7 @@ from .crypto import (
     GroupSessionStore,
     DeviceStore
 )
-from .store import DefaultStore
+from .store import MatrixStore
 
 from .responses import (
     KeysUploadResponse,
@@ -101,14 +101,13 @@ except ImportError:  # pragma: no cover
 class Olm(object):
     def __init__(
         self,
-        user_id,  # type: str
+        user_id,    # type: str
         device_id,  # type: str
-        session_path,  # type: str
+        store,      # type: MatrixStore
     ):
         # type: (...) -> None
         self.user_id = user_id
         self.device_id = device_id
-        self.session_path = session_path
         self.uploaded_key_count = None  # type: Optional[int]
         self.users_for_key_query = set()   # type: Set[str]
 
@@ -126,7 +125,7 @@ class Olm(object):
         self.outbound_group_sessions = {} \
             # type: Dict[str, OutboundGroupSession]
 
-        self.store = DefaultStore(user_id, device_id, session_path)
+        self.store = store
 
         self.account = self.store.load_account()
 

@@ -15,7 +15,7 @@ from nio.encryption import Olm
 from nio.crypto import OlmDevice, OutboundSession, SessionStore, DeviceStore
 from nio.exceptions import OlmTrustError
 from nio.responses import KeysQueryResponse
-from nio.store import KeyStore, Ed25519Key, Key
+from nio.store import KeyStore, Ed25519Key, Key, DefaultStore
 
 
 AliceId = "@alice:example.org"
@@ -27,6 +27,22 @@ Bob_device = "BOBDEVICE"
 MaloryId = "@malory:example.org"
 Malory_device = "MALORYDEVICE"
 
+PICKLE_KEY = "DEFAULT_KEY"
+
+ephemeral_dir = os.path.join(os.curdir, "tests/data/encryption")
+
+def ephemeral(func):
+    def wrapper(*args, **kwargs):
+        try:
+            ret = func(*args, **kwargs)
+        finally:
+            os.remove(os.path.join(
+                ephemeral_dir,
+                "ephemeral_DEVICEID.db"
+            ))
+        return ret
+    return wrapper
+
 class TestClass(object):
     @staticmethod
     def _load_response(filename):
@@ -34,20 +50,29 @@ class TestClass(object):
         with open(filename) as f:
             return json.loads(f.read(), encoding="utf-8")
 
+    def _get_store(self, user_id, device_id, pickle_key=""):
+        return DefaultStore(user_id, device_id, ephemeral_dir, pickle_key)
+
     @property
-    def _test_dir(self):
-        return os.path.join(os.curdir, "tests/data/encryption")
+    def ephemeral_olm(self):
+        user_id = "ephemeral"
+        device_id = "DEVICEID"
+        return Olm(user_id, device_id, self._get_store(user_id, device_id))
 
+    @ephemeral
     def test_new_account_creation(self):
-        olm = Olm("ephermal", "DEVICEID", self._test_dir)
+        olm = self.ephemeral_olm
         assert isinstance(olm.account, Account)
-        os.remove(os.path.join(self._test_dir, "ephermal_DEVICEID.db"))
 
-    def _load(self, user_id, device_id):
-        return Olm(user_id, device_id, self._test_dir)
+    def _load(self, user_id, device_id, pickle_key=""):
+        return Olm(
+            user_id,
+            device_id,
+            self._get_store(user_id, device_id, pickle_key)
+        )
 
     def test_account_loading(self):
-        olm = self._load("example", "DEVICEID")
+        olm = self._load("example", "DEVICEID", PICKLE_KEY)
         assert isinstance(olm.account, Account)
         assert (olm.account.identity_keys["curve25519"]
                 == "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM")
@@ -60,8 +85,8 @@ class TestClass(object):
 
         monkeypatch.setattr(KeyStore, '_save', mocksave)
         store = KeyStore(os.path.join(
-            self._test_dir,
-            "ephermal_devices"
+            ephemeral_dir,
+            "ephemeral_devices"
         ))
         account = Account()
         device = OlmDevice(
@@ -79,7 +104,7 @@ class TestClass(object):
         assert store.check(key) is False
 
     def test_fingerprint_store_loading(self):
-        store = KeyStore(os.path.join(self._test_dir, "known_devices"))
+        store = KeyStore(os.path.join(ephemeral_dir, "known_devices"))
         key = Ed25519Key(
             "example",
             "DEVICEID",
@@ -157,6 +182,7 @@ class TestClass(object):
         assert store.add(alice) is False
         assert alice in store
 
+    @ephemeral
     def test_olm_outbound_session_create(self):
         bob = Account()
         bob.generate_one_time_keys(1)
@@ -169,17 +195,16 @@ class TestClass(object):
             bob.identity_keys["curve25519"]
         )
 
-        olm = Olm("ephermal", "DEVICEID", self._test_dir)
+        olm = self.ephemeral_olm
         olm.device_store[bob_device.user_id][bob_device.id] = bob_device
         olm.create_session(one_time, bob_device.curve25519)
         assert isinstance(
             olm.session_store.get(bob.identity_keys["curve25519"]),
             OutboundSession
         )
-        os.remove(os.path.join(self._test_dir, "ephermal_DEVICEID.db"))
 
     def test_olm_session_load(self):
-        olm = self._load("example", "DEVICEID")
+        olm = self._load("example", "DEVICEID", PICKLE_KEY)
 
         bob_session = olm.session_store.get(
             "+Qs131S/odNdWG6VJ8hiy9YZW0us24wnsDjYQbaxLk4"
@@ -188,60 +213,54 @@ class TestClass(object):
         assert (bob_session.id
                 == "EeEiqT9LjCtECaN7WTqcBQ7D5Dwm4+/L9Uxr1IyPAts")
 
+    @ephemeral
     def test_olm_group_session_store(self):
-        try:
-            olm = Olm("ephermal", "DEVICEID", self._test_dir)
-            bob_account = Account()
-            outbound_session = OutboundGroupSession()
-            olm.create_group_session(
-                bob_account.identity_keys["curve25519"],
-                bob_account.identity_keys["ed25519"],
-                "!test_room",
-                outbound_session.id,
-                outbound_session.session_key)
+        olm = self.ephemeral_olm
+        bob_account = Account()
+        outbound_session = OutboundGroupSession()
+        olm.create_group_session(
+            bob_account.identity_keys["curve25519"],
+            bob_account.identity_keys["ed25519"],
+            "!test_room",
+            outbound_session.id,
+            outbound_session.session_key)
 
-            del olm
+        del olm
 
-            olm = self._load("ephermal", "DEVICEID")
+        olm = self.ephemeral_olm
 
-            bob_session = olm.inbound_group_store.get(
-                "!test_room",
-                bob_account.identity_keys["curve25519"],
-                outbound_session.id
-            )
+        bob_session = olm.inbound_group_store.get(
+            "!test_room",
+            bob_account.identity_keys["curve25519"],
+            outbound_session.id
+        )
 
-            assert bob_session
-            assert (bob_session.id
-                    == outbound_session.id)
+        assert bob_session
+        assert (bob_session.id
+                == outbound_session.id)
 
-        finally:
-            os.remove(os.path.join(self._test_dir, "ephermal_DEVICEID.db"))
-
+    @ephemeral
     def test_keys_query(self):
-        try:
-            olm = Olm("ephermal", "DEVICEID", self._test_dir)
-            parsed_dict = TestClass._load_response(
-                "tests/data/keys_query.json")
-            response = KeysQueryResponse.from_dict(parsed_dict)
+        olm = self.ephemeral_olm
+        parsed_dict = TestClass._load_response(
+            "tests/data/keys_query.json")
+        response = KeysQueryResponse.from_dict(parsed_dict)
 
-            assert isinstance(response, KeysQueryResponse)
+        assert isinstance(response, KeysQueryResponse)
 
-            olm.handle_response(response)
-            device = olm.device_store["@alice:example.org"]["JLAFKJWSCS"]
-            assert (
-                device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
-            )
+        olm.handle_response(response)
+        device = olm.device_store["@alice:example.org"]["JLAFKJWSCS"]
+        assert (
+            device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
+        )
 
-            del olm
+        del olm
 
-            olm = Olm("ephermal", "DEVICEID", self._test_dir)
-            device = olm.device_store["@alice:example.org"]["JLAFKJWSCS"]
-            assert (
-                device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
-            )
-        finally:
-            os.remove(os.path.join(
-                self._test_dir, "ephermal_DEVICEID.db"))
+        olm = self.ephemeral_olm
+        device = olm.device_store["@alice:example.org"]["JLAFKJWSCS"]
+        assert (
+            device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
+        )
 
     def test_olm_inbound_session(self, monkeypatch):
         def mocksave(self):
@@ -342,10 +361,10 @@ class TestClass(object):
             # remove the databases, the known devices store is handled by
             # monkeypatching
             os.remove(os.path.join(
-                self._test_dir,
+                ephemeral_dir,
                 "{}_{}.db".format(AliceId, Alice_device)
             ))
             os.remove(os.path.join(
-                self._test_dir,
+                ephemeral_dir,
                 "{}_{}.db".format(BobId, Bob_device)
             ))

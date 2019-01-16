@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright 2018 Zil0
-# Copyright © 2019 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -369,7 +369,7 @@ class MatrixStore(object):
     user_id = attr.ib(type=str)
     device_id = attr.ib(type=str)
     store_path = attr.ib(type=str)
-    pickle_key = attr.ib(type=str, default="DEFAULT_KEY")
+    pickle_key = attr.ib(type=str, default="")
     database_name = attr.ib(type=str, default="")
     database_path = attr.ib(type=str, init=False)
     database = attr.ib(type=SqliteDatabase, init=False)
@@ -589,6 +589,30 @@ class MatrixStore(object):
 
         # TODO this needs to be batched
         DeviceKeys.replace_many(rows).execute()
+
+    def blacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        raise NotImplementedError
+
+    def unblacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        raise NotImplementedError
+
+    def verify_device(self, device):
+        # type: (OlmDevice) -> bool
+        raise NotImplementedError
+
+    def is_device_verified(self, device):
+        # type: (OlmDevice) -> bool
+        raise NotImplementedError
+
+    def is_device_blacklisted(self, device):
+        # type: (OlmDevice) -> bool
+        raise NotImplementedError
+
+    def unverify_device(self, device):
+        # type: (OlmDevice) -> bool
+        raise NotImplementedError
 
 
 @attr.s
