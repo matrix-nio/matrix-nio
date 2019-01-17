@@ -582,6 +582,7 @@ class Client(object):
             room.add_member(member.user_id, member.display_name)
 
     def receive_response(self, response):
+        # type: (Response) -> None
         """Receive a Matrix Response and change the client state accordingly.
 
         Some responses will get edited for the callers convenience e.g. sync
@@ -591,6 +592,9 @@ class Client(object):
         Args:
             response (Response): the response that we wish the client to handle
         """
+        if not isinstance(response, Response):
+            raise ValueError("Invalid response received")
+
         if isinstance(response, LoginResponse):
             self._handle_login(response)
         elif isinstance(response, (SyncResponse, PartialSyncResponse)):

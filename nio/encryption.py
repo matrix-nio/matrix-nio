@@ -154,6 +154,9 @@ class Olm(object):
 
     @property
     def should_upload_keys(self):
+        if not self.account.shared:
+            return True
+
         if self.uploaded_key_count is None:
             return False
 
