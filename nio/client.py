@@ -20,6 +20,7 @@ import pprint
 from builtins import str, super
 from enum import Enum, unique
 from collections import deque
+from functools import wraps
 from typing import (
     Any,
     AnyStr,
@@ -105,6 +106,34 @@ except ImportError:
 
 logger = Logger("nio.client")
 logger_group.add_logger(logger)
+
+
+def connected(func):
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        if not self.connection:
+            raise LocalProtocolError("Not connected.")
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def logged_in(func):
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        if not self.logged_in:
+            raise LocalProtocolError("Not logged in.")
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def store_loaded(fn):
+    @wraps(fn)
+    def inner(self, *args, **kwargs):
+        if not self.store or not self.olm:
+            raise LocalProtocolError("Matrix store and olm account is not "
+                                     "loaded.")
+        return fn(self, *args, **kwargs)
+    return inner
 
 
 @unique
@@ -194,7 +223,8 @@ class Client(object):
         self.user = user
         self.device_id = device_id
         self.store_path = store_path
-        self.olm = None  # type: Optional[Olm]
+        self.olm = None    # type: Optional[Olm]
+        self.store = None  # type: Optional[MatrixStore]
         self.config = config or ClientConfig()
 
         self.user_id = ""
@@ -213,15 +243,19 @@ class Client(object):
         """
         return True if self.access_token else False
 
-    @property
+    @property  # type: ignore
+    @store_loaded
+    def device_store(self):
+        """Store containing known devices."""
+        return self.olm.device_store
+
+    @property  # type: ignore
+    @store_loaded
     def olm_account_shared(self):
         """Check if the clients Olm account is shared with the server.
 
         Returns True if the Olm account is shared, False otherwise.
         """
-        if not self.olm:
-            raise LocalProtocolError("Olm account isn't loaded")
-
         return self.olm.account.shared
 
     @property
@@ -296,6 +330,7 @@ class Client(object):
             if device.user_id in room.users:
                 self.invalidate_outbound_session(room.room_id)
 
+    @store_loaded
     def verify_device(self, device):
         # type: (OlmDevice) -> bool
         """Mark a device as verified.
@@ -312,8 +347,7 @@ class Client(object):
         Returns true if the device was verified, false if it was already
         verified.
         """
-        if not self.olm:
-            raise LocalProtocolError("Olm account isn't loaded")
+        assert self.olm
 
         changed = self.olm.verify_device(device)
         if changed:
@@ -321,6 +355,7 @@ class Client(object):
 
         return changed
 
+    @store_loaded
     def unverify_device(self, device):
         # type: (OlmDevice) -> bool
         """Unmark a device as verified.
@@ -336,15 +371,14 @@ class Client(object):
         Returns true if the device was unverified, false if it was already
         unverified.
         """
-        if not self.olm:
-            raise LocalProtocolError("Olm account isn't loaded")
-
+        assert self.olm
         changed = self.olm.unverify_device(device)
         if changed:
             self._invalidate_outbound_sessions(device)
 
         return changed
 
+    @store_loaded
     def blacklist_device(self, device):
         # type: (OlmDevice) -> bool
         """Mark a device as blacklisted.
@@ -359,14 +393,14 @@ class Client(object):
         Returns true if the device was added, false if it was on the blacklist
         already.
         """
-        if not self.olm:
-            raise LocalProtocolError("Olm account isn't loaded")
+        assert self.olm
         changed = self.olm.blacklist_device(device)
         if changed:
             self._invalidate_outbound_sessions(device)
 
         return changed
 
+    @store_loaded
     def unblacklist_device(self, device):
         # type: (OlmDevice) -> bool
         """Unmark a device as blacklisted.
@@ -378,8 +412,7 @@ class Client(object):
         Returns true if the device was removed, false if it wasn't on the
         blacklist and no removal happened.
         """
-        if not self.olm:
-            raise LocalProtocolError("Olm account isn't loaded")
+        assert self.olm
         return self.olm.unblacklist_device(device)
 
     def _handle_login(self, response):
@@ -398,8 +431,10 @@ class Client(object):
                 self.store_path,
                 self.config.pickle_key
             )
+            assert self.store
             self.olm = Olm(self.user_id, self.device_id, self.store)
 
+    @store_loaded
     def decrypt_event(
         self,
         event  # type: MegolmEvent
@@ -413,13 +448,11 @@ class Client(object):
         Returns the decrypted event, raises EncryptionError if there was an
         error while decrypting.
         """
-        if not self.olm:
-            raise LocalProtocolError("Olm account isn't loaded")
-
         if not isinstance(event, MegolmEvent):
             raise ValueError("Invalid event, this function can only decrypt "
                              "MegolmEvents")
 
+        assert self.olm
         return self.olm.decrypt_megolm_event(event)
 
     def _handle_sync(self, response):
@@ -532,10 +565,8 @@ class Client(object):
             index, event = decrypted_event
             response.chunk[index] = event
 
+    @store_loaded
     def _handle_olm_response(self, response):
-        if not self.olm:
-            raise LocalProtocolError("Olm account isn't loaded")
-
         self.olm.handle_response(response)
 
         if isinstance(response, KeysQueryResponse):
@@ -578,24 +609,6 @@ class Client(object):
             self._handle_joined_members(response)
         else:
             pass
-
-
-def connected(func):
-    def wrapper(*args, **kwargs):
-        self = args[0]
-        if not self.connection:
-            raise LocalProtocolError("Not connected.")
-        return func(*args, **kwargs)
-    return wrapper
-
-
-def logged_in(func):
-    def wrapper(*args, **kwargs):
-        self = args[0]
-        if not self.logged_in:
-            raise LocalProtocolError("Not logged in.")
-        return func(*args, **kwargs)
-    return wrapper
 
 
 class HttpClient(Client):
@@ -968,10 +981,8 @@ class HttpClient(Client):
 
     @connected
     @logged_in
+    @store_loaded
     def keys_claim(self, room_id):
-        if not self.olm:
-            raise LocalProtocolError("Olm session is not loaded")
-
         try:
             room = self.rooms[room_id]
         except KeyError:
@@ -997,6 +1008,7 @@ class HttpClient(Client):
 
     @connected
     @logged_in
+    @store_loaded
     def share_group_session(
         self,
         room_id,
@@ -1004,9 +1016,7 @@ class HttpClient(Client):
         tx_id=None
     ):
         # type: (str, bool, str) -> Tuple[UUID, bytes]
-        if not self.olm:
-            raise LocalProtocolError("Olm session is not loaded")
-
+        assert self.olm
         try:
             room = self.rooms[room_id]
         except KeyError:

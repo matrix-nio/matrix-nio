@@ -2,10 +2,7 @@
 
 import os
 from collections import defaultdict
-from faker import Faker
-from faker.providers import BaseProvider
-from random import choice
-from string import ascii_uppercase
+from helpers import faker, ephemeral, ephemeral_dir
 
 from nio.store import MatrixStore
 
@@ -17,8 +14,6 @@ from nio.crypto import (
     InboundGroupSession
 )
 
-ephemeral_dir = os.path.join(os.curdir, "tests/data/encryption")
-
 BOB_ID = "@bob:example.org"
 BOB_DEVICE = "AGMTSWVYML"
 BOB_CURVE = "T9tOKF+TShsn6mk1zisW2IBsBbTtzDNvw99RBFMJOgI"
@@ -26,47 +21,6 @@ BOB_ONETIME = "6QlQw3mGUveS735k/JDaviuoaih5eEi6S1J65iHjfgU"
 
 TEST_ROOM = "!test:example.org"
 TEST_FORWARDING_CHAIN = [BOB_CURVE, BOB_ONETIME]
-
-faker = Faker()
-
-
-def ephemeral(func):
-    def wrapper(*args, **kwargs):
-        try:
-            ret = func(*args, **kwargs)
-        finally:
-            os.remove(os.path.join(
-                ephemeral_dir,
-                "ephemeral_DEVICEID.db"
-            ))
-        return ret
-    return wrapper
-
-
-class Provider(BaseProvider):
-    def mx_id(self):
-        return "@{}:{}".format(faker.user_name(), faker.hostname())
-
-    def device_id(self):
-        return "".join(choice(ascii_uppercase) for i in range(10))
-
-    def olm_key_pair(self):
-        return OlmAccount().identity_keys
-
-    def olm_device(self):
-        user_id = faker.mx_id()
-        device_id = faker.device_id()
-        key_pair = faker.olm_key_pair()
-
-        return OlmDevice(
-            user_id,
-            device_id,
-            key_pair["ed25519"],
-            key_pair["curve25519"]
-        )
-
-
-faker.add_provider(Provider)
 
 
 class TestClass(object):

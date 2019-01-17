@@ -3,8 +3,10 @@
 helpers
 ~~~~~~~
 
-This module contains helpers for the h2 tests.
+This module contains helpers for the nio tests.
 """
+
+import os
 from hyperframe.frame import (
     HeadersFrame, DataFrame, SettingsFrame, WindowUpdateFrame, PingFrame,
     GoAwayFrame, RstStreamFrame, PushPromiseFrame, PriorityFrame,
@@ -12,12 +14,62 @@ from hyperframe.frame import (
 )
 from hpack.hpack import Encoder
 
+from faker import Faker
+from faker.providers import BaseProvider
+from random import choice
+from string import ascii_uppercase
+
+from nio.crypto import OlmAccount, OlmDevice
+
 
 SAMPLE_SETTINGS = {
     SettingsFrame.HEADER_TABLE_SIZE: 4096,
     SettingsFrame.ENABLE_PUSH: 1,
     SettingsFrame.MAX_CONCURRENT_STREAMS: 2,
 }
+
+
+faker = Faker()
+
+class Provider(BaseProvider):
+    def mx_id(self):
+        return "@{}:{}".format(faker.user_name(), faker.hostname())
+
+    def device_id(self):
+        return "".join(choice(ascii_uppercase) for i in range(10))
+
+    def olm_key_pair(self):
+        return OlmAccount().identity_keys
+
+    def olm_device(self):
+        user_id = faker.mx_id()
+        device_id = faker.device_id()
+        key_pair = faker.olm_key_pair()
+
+        return OlmDevice(
+            user_id,
+            device_id,
+            key_pair["ed25519"],
+            key_pair["curve25519"]
+        )
+
+
+faker.add_provider(Provider)
+
+
+ephemeral_dir = os.path.join(os.curdir, "tests/data/encryption")
+
+def ephemeral(func):
+    def wrapper(*args, **kwargs):
+        try:
+            ret = func(*args, **kwargs)
+        finally:
+            os.remove(os.path.join(
+                ephemeral_dir,
+                "ephemeral_DEVICEID.db"
+            ))
+        return ret
+    return wrapper
 
 
 class FrameFactory(object):
