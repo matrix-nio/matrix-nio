@@ -30,7 +30,8 @@ from typing import (
     Optional,
     Tuple,
     Union,
-    Callable
+    Callable,
+    Set
 )
 from uuid import UUID, uuid4
 
@@ -257,6 +258,15 @@ class Client(object):
         Returns True if the Olm account is shared, False otherwise.
         """
         return self.olm.account.shared
+
+    @property
+    def users_for_key_query(self):
+        # type: () -> Set[str]
+        """Users for whom we should make a key query."""
+        if not self.olm:
+            return set()
+
+        return self.olm.users_for_key_query
 
     @property
     def should_upload_keys(self):
@@ -975,7 +985,7 @@ class HttpClient(Client):
     @logged_in
     def keys_query(self, full=False):
         if not full:
-            user_list = self.olm.users_for_key_query
+            user_list = self.users_for_key_query
         else:
             user_list = [
                 user_id for room in self.rooms.values()
