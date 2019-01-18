@@ -594,6 +594,9 @@ class Client(object):
         for member in response.members:
             room.add_member(member.user_id, member.display_name)
 
+        if room.encrypted and self.olm is not None:
+            self.olm.update_tracked_users(room)
+
     def receive_response(self, response):
         # type: (Response) -> None
         """Receive a Matrix Response and change the client state accordingly.
