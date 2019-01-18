@@ -738,9 +738,13 @@ class HttpClient(Client):
     @connected
     @logged_in
     def room_send(self, room_id, message_type, content, tx_id=None):
-        # TODO this can fail if we're not synced
         if self.olm:
-            room = self.rooms[room_id]
+            try:
+                room = self.rooms[room_id]
+            except KeyError:
+                raise LocalProtocolError(
+                    "No such room with id {} found.".format(room_id)
+                )
 
             if room.encrypted:
                 content = self.olm.group_encrypt(
