@@ -74,7 +74,7 @@ class Key(object):
         user_id, device_id, key_type, key = fields[:4]
 
         if key_type == "matrix-ed25519":
-            return Ed25519Key(user_id, device_id, key)
+            return Ed25519Key(user_id.strip(), device_id.strip(), key.strip())
         else:
             return None
 
