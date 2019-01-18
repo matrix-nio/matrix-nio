@@ -84,7 +84,7 @@ class Key(object):
 
         if isinstance(self, Ed25519Key):
             key_type = "matrix-ed25519"
-        else:
+        else:  # pragma: no cover
             raise NotImplementedError(
                 "Invalid key type {}".format(type(self.key))
             )
@@ -133,7 +133,7 @@ class KeyStore(object):
 
     def __repr__(self):
         # type: () -> str
-        return "FingerprintStore object, store file: {}".format(self._filename)
+        return "KeyStore object, file: {}".format(self._filename)
 
     def _load(self, filename):
         # type: (str) -> None
@@ -220,13 +220,13 @@ class KeyStore(object):
 
 
 class ByteField(BlobField):
-    def python_value(self, value):
+    def python_value(self, value):  # pragma: no cover
         if isinstance(value, bytes):
             return value
 
         return bytes(value, "utf-8")
 
-    def db_value(self, value):
+    def db_value(self, value):  # pragma: no cover
         if isinstance(value, bytearray):
             return bytes(value)
 
@@ -236,14 +236,14 @@ class ByteField(BlobField):
 # Please don't remove this.
 # This is a workaround for this bug: https://bugs.python.org/issue27400
 class DateField(TextField):
-    def python_value(self, value):
+    def python_value(self, value):  # pragma: no cover
         format = "%Y-%m-%d %H:%M:%S.%f"
         try:
             return datetime.strptime(value, format)
         except TypeError:
             return datetime(*(time.strptime(value, format)[0:6]))
 
-    def db_value(self, value):
+    def db_value(self, value):  # pragma: no cover
         return value.strftime("%Y-%m-%d %H:%M:%S.%f")
 
 

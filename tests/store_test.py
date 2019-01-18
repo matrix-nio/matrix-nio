@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import os
+import copy
+import pytest
 from collections import defaultdict
 from helpers import faker, ephemeral, ephemeral_dir
 
-from nio.store import MatrixStore
+from nio.store import MatrixStore, Key, Ed25519Key, KeyStore
+from nio.exceptions import OlmTrustError
 
 from nio.crypto import (
     OlmAccount,
@@ -55,6 +58,65 @@ class TestClass(object):
         account = OlmAccount()
         store.save_account(account)
         return account
+
+    def test_key(self):
+        user_id = faker.mx_id()
+        device_id = faker.device_id()
+        fp_key = faker.olm_key_pair()["ed25519"]
+        key = Ed25519Key(user_id, device_id, fp_key)
+
+        assert (
+            key.to_line() == "{} {} matrix-ed25519 {}\n".format(
+                user_id,
+                device_id,
+                fp_key
+            )
+        )
+
+        loaded_key = Key.from_line(key.to_line())
+        assert isinstance(loaded_key, Ed25519Key)
+
+        assert key.user_id == loaded_key.user_id
+        assert key.device_id == loaded_key.device_id
+        assert key.key == loaded_key.key
+        assert key == loaded_key
+
+    def test_key_store(self, tempdir):
+        store_path = os.path.join(tempdir, "test_store")
+        store = KeyStore(os.path.join(tempdir, "test_store"))
+        assert repr(store) == "KeyStore object, file: {}".format(store_path)
+
+        key = faker.ed25519_key()
+
+        store.add(key)
+
+        assert key == store.get_key(key.user_id, key.device_id)
+
+    def test_key_store_add_invalid(self, tempdir):
+        store_path = os.path.join(tempdir, "test_store")
+        store = KeyStore(os.path.join(tempdir, "test_store"))
+
+        key = faker.ed25519_key()
+        store.add(key)
+
+        fake_key = copy.copy(key)
+        fake_key.key = "FAKE_KEY"
+
+        with pytest.raises(OlmTrustError):
+            store.add(fake_key)
+
+    def test_key_store_check_invalid(self, tempdir):
+        store_path = os.path.join(tempdir, "test_store")
+        store = KeyStore(os.path.join(tempdir, "test_store"))
+
+        key = faker.ed25519_key()
+        store.add(key)
+
+        fake_key = copy.copy(key)
+        fake_key.key = "FAKE_KEY"
+
+        assert fake_key not in store
+        assert key in store
 
     @ephemeral
     def test_store_opening(self):

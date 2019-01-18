@@ -20,6 +20,7 @@ from random import choice
 from string import ascii_uppercase
 
 from nio.crypto import OlmAccount, OlmDevice
+from nio.store import Ed25519Key
 
 
 SAMPLE_SETTINGS = {
@@ -51,6 +52,13 @@ class Provider(BaseProvider):
             device_id,
             key_pair["ed25519"],
             key_pair["curve25519"]
+        )
+
+    def ed25519_key(self):
+        return Ed25519Key(
+            faker.mx_id(),
+            faker.device_id(),
+            faker.olm_key_pair()["ed25519"]
         )
 
 
