@@ -239,6 +239,25 @@ class MatrixRoom(object):
             self.summary.heroes = summary.heroes
 
     @property
+    def members_synced(self):
+        # type: () -> bool
+        """Check if the room member state is fully synced.
+
+        Room members can be missing from the room if syncs are done using lazy
+        member loading, the room summary will contain the full member count but
+        member other member info will be missing.
+
+        A joined members request should be done for this room to populate the
+        member list. This is crucial for encrypted rooms before sending any
+        messages.
+        """
+        if self.summary:
+            if self.summary.joined_member_count is not None:
+                return self.summary.joined_member_count == len(self.users)
+
+        return True
+
+    @property
     def member_count(self):
         if self.summary:
             return self.summary.joined_member_count or len(self.users)
