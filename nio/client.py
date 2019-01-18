@@ -576,6 +576,9 @@ class Client(object):
                         self.invalidate_outbound_session(room.room_id)
 
     def _handle_joined_members(self, response):
+        if response.room_id not in self.rooms:
+            return
+
         room = self.rooms[response.room_id]
 
         for member in response.members:
