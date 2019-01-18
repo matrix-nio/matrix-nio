@@ -560,7 +560,7 @@ class Client(object):
                     if user in room.users:
                         changed_users.add(user)
 
-            self.olm.users_for_key_query.update(changed_users)
+            self.olm.add_changed_users(changed_users)
 
     def _handle_messages_response(self, response):
         decrypted_events = []

@@ -146,6 +146,11 @@ class Olm(object):
         if missing:
             self.users_for_key_query.update(missing)
 
+    def add_changed_users(self, users):
+        # type: (Set[str]) -> None
+        """Add users that have changed keys to the query set."""
+        self.users_for_key_query.update(users)
+
     @property
     def should_query_keys(self):
         if self.users_for_key_query:
