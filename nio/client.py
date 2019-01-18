@@ -331,6 +331,8 @@ class Client(object):
         # shared, put it back where it was.
         if session and not session.shared:
             self.olm.outbound_group_sessions[room_id] = session
+        elif session:
+            logger.info("Invalidating session for {}".format(room_id))
 
     def _invalidate_outbound_sessions(self, device):
         # type: (OlmDevice) -> None
