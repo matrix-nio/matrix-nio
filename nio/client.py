@@ -971,6 +971,7 @@ class HttpClient(Client):
 
     @connected
     @logged_in
+    @store_loaded
     def keys_upload(self):
         keys_dict = self.olm.share_keys()
 
@@ -986,6 +987,7 @@ class HttpClient(Client):
 
     @connected
     @logged_in
+    @store_loaded
     def keys_query(self, full=False):
         if not full:
             user_list = self.users_for_key_query
