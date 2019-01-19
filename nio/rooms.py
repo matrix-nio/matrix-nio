@@ -72,14 +72,14 @@ class MatrixRoom(object):
         visually distinct from private messages and unnamed groups of users
         ("direct chats") in weechat's buffer list.
         """
-        if self.is_named():
+        if self.is_named:
             return self.named_room_name()
         else:
             return self.group_name()
 
     def named_room_name(self):
         """
-        Returns the name of the room, if it's a named room. Otherwise return
+        Return the name of the room, if it's a named room. Otherwise return
         None.
         """
         if self.name:
@@ -119,6 +119,7 @@ class MatrixRoom(object):
         else:
             return "Empty room?"
 
+    @property
     def machine_name(self):
         """
         Calculate an unambiguous, unique machine name for a room.
@@ -131,6 +132,7 @@ class MatrixRoom(object):
         else:
             return self.room_id
 
+    @property
     def is_named(self):
         """
         Is this a named room?
@@ -139,13 +141,14 @@ class MatrixRoom(object):
         """
         return self.canonical_alias or self.name
 
+    @property
     def is_group(self):
         """
         Is this an ad hoc group of users?
 
         A group is an unnamed room with no canonical alias.
         """
-        return not self.is_named()
+        return not self.is_named
 
     def add_member(self, user_id, display_name):
         if user_id in self.users:
@@ -278,8 +281,8 @@ class MatrixInvitedRoom(MatrixRoom):
             and event.state_key == self.own_user_id
         ):
             self.inviter = event.sender
-        else:
-            super()._handle_membership(event)
+
+        super()._handle_membership(event)
 
     def handle_event(self, event):
         # type: (Event) -> None
