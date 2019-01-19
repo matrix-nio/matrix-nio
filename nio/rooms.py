@@ -58,6 +58,7 @@ class MatrixRoom(object):
         self.summary = None           # type: Optional[RoomSummary]
         # yapf: enable
 
+    @property
     def display_name(self):
         """
         Calculate display name for a room.
