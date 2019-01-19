@@ -2,7 +2,12 @@ import pytest
 from helpers import faker
 from nio.rooms import MatrixRoom, MatrixInvitedRoom
 from nio.responses import TypingNoticeEvent, RoomSummary
-from nio.events import InviteNameEvent, InviteAliasEvent, InviteMemberEvent
+from nio.events import (
+    InviteNameEvent,
+    InviteAliasEvent,
+    InviteMemberEvent,
+    RoomNameEvent
+)
 
 TEST_ROOM = "!test:example.org"
 BOB_ID = "@bob:example.org"
@@ -74,6 +79,12 @@ class TestClass(object):
 
         room.handle_ephemeral_event(TypingNoticeEvent([BOB_ID]))
         assert room.typing_users == [BOB_ID]
+
+    def test_name_event(self):
+        room = self.test_room
+        assert not room.name
+        room.handle_event(RoomNameEvent("event_id", BOB_ID, 0, "test name"))
+        assert room.name == "test name"
 
     def test_summary_update(self):
         room = self.test_room
