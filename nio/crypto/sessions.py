@@ -39,7 +39,7 @@ class OlmAccount(olm.Account):
         passphrase='',          # type: str
         shared=False            # type: bool
     ):
-        # type: (...) -> InboundGroupSession
+        # type: (...) -> OlmAccount
         account = super().from_pickle(pickle, passphrase)
         account.shared = shared
         return account
