@@ -45,8 +45,7 @@ from .exceptions import (
     RemoteProtocolError,
     RemoteTransportError,
 )
-from .encryption import Olm
-from .crypto import DeviceStore
+from .crypto import DeviceStore, Olm
 from .http import HttpRequest, Http2Request
 
 from .http import (

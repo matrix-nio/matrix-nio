@@ -47,15 +47,14 @@ from olm import (
     OlmSessionError,
 )
 
-from .log import logger_group
-from .schemas import Schemas, validate_json
-from .exceptions import (
+from ..schemas import Schemas, validate_json
+from ..exceptions import (
     EncryptionError,
     GroupEncryptionError,
     OlmTrustError,
     VerificationError
 )
-from .crypto import (
+from . import (
     OutboundGroupSession,
     InboundGroupSession,
     OlmDevice,
@@ -65,17 +64,18 @@ from .crypto import (
     InboundSession,
     SessionStore,
     GroupSessionStore,
-    DeviceStore
+    DeviceStore,
+    logger
 )
-from .store import MatrixStore
+from ..store import MatrixStore
 
-from .responses import (
+from ..responses import (
     KeysUploadResponse,
     KeysQueryResponse,
     KeysClaimResponse,
     ShareGroupSessionResponse
 )
-from .events import (
+from ..events import (
     Event,
     EncryptedEvent,
     MegolmEvent,
@@ -87,10 +87,7 @@ from .events import (
     UnknownBadEvent,
     validate_or_badevent
 )
-from .api import Api
-
-logger = Logger("nio.encryption")
-logger_group.add_logger(logger)
+from ..api import Api
 
 try:
     from json.decoder import JSONDecodeError

@@ -11,8 +11,13 @@ from olm import (
     OlmMessage
 )
 
-from nio.encryption import Olm
-from nio.crypto import OlmDevice, OutboundSession, SessionStore, DeviceStore
+from nio.crypto import (
+    Olm,
+    OlmDevice,
+    OutboundSession,
+    SessionStore,
+    DeviceStore
+)
 from nio.exceptions import OlmTrustError
 from nio.responses import KeysQueryResponse
 from nio.store import KeyStore, Ed25519Key, Key, DefaultStore
