@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import pytest
+import json
 from helpers import faker, ephemeral, ephemeral_dir
 
 from nio import (
@@ -37,6 +38,12 @@ class TestClass(object):
     @property
     def login_response(self):
         return LoginResponse("@ephemeral:example.org", "DEVICEID", "abc123")
+
+    @staticmethod
+    def _load_response(filename):
+        # type: (str) -> Dict[Any, Any]
+        with open(filename) as f:
+            return json.loads(f.read(), encoding="utf-8")
 
     @property
     def sync_response(self):
@@ -104,27 +111,9 @@ class TestClass(object):
 
     @property
     def keys_query_response(self):
-        return KeysQueryResponse(
-            {
-                "@alice:example.org": {
-                    "JLAFKJWSCS": {
-                        "algorithms": ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"],
-                        "device_id": "JLAFKJWSCS",
-                        "user_id": "@alice:example.org",
-                        "keys": {
-                            "curve25519:JLAFKJWSCS": "wjLpTLRqbqBzLs63aYaEv2Boi6cFEbbM/sSRQ2oAKk4",
-                            "ed25519:JLAFKJWSCS": "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
-                        },
-                        "signatures": {
-                            "@alice:example.org": {
-                                "ed25519:JLAFKJWSCS": "m53Wkbh2HXkc3vFApZvCrfXcX3AI51GsDHustMhKwlv3TuOJMj4wistcOTM8q2+e/Ro7rWFUb9ZfnNbwptSUBA"
-                            }
-                        }
-                    }
-                }
-            },
-            {},
-        )
+        parsed_dict = TestClass._load_response(
+            "tests/data/keys_query.json")
+        return KeysQueryResponse.from_dict(parsed_dict)
 
     @property
     def joined_members(self):
@@ -289,6 +278,7 @@ class TestClass(object):
         assert client.should_query_keys
         client.receive_response(self.keys_query_response)
         assert client.olm.tracked_users == set([ALICE_ID])
+        assert list(client.device_store.users) == [ALICE_ID]
         assert not client.should_query_keys
 
         del client
