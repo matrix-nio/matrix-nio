@@ -1139,6 +1139,7 @@ class HttpClient(Client):
     @connected
     @logged_in
     def set_displayname(self, displayname):
+        # type: (str) -> Tuple[UUID, bytes]
         """Set user's display name
 
         This tells the server to set display name of currently logged
@@ -1150,7 +1151,6 @@ class HttpClient(Client):
         Args:
             displayname (str): Display name to set.
         """
-        # type: (str) -> Tuple[UUID, bytes]
         request = self._build_request(Api.profile_set_displayname(
             self.access_token,
             self.user_id,
