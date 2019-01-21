@@ -1143,8 +1143,15 @@ class HttpClient(Client):
             displayname (str): Display name to set.
         """
         # type: (str) -> Tuple[UUID, bytes]
-        request = self._build_request(Api.profile_set_displayname(self.access_token, self.user_id, displayname))
-        return self._send(request, RequestInfo(RequestType.profile_set_displayname))
+        request = self._build_request(Api.profile_set_displayname(
+            self.access_token,
+            self.user_id,
+            displayname
+        ))
+        return self._send(
+            request,
+            RequestInfo(RequestType.profile_set_displayname)
+        )
 
     @connected
     @logged_in

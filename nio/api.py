@@ -812,7 +812,7 @@ class Api(object):
             display_name (str): Display name for user to set.
         """
         query_parameters = {"access_token": access_token}
-        content = { "displayname": display_name }
+        content = {"displayname": display_name}
         path = "profile/{user}/displayname".format(user=user_id)
 
         return (
@@ -820,4 +820,3 @@ class Api(object):
             Api._build_path(path, query_parameters),
             Api.to_json(content)
         )
-
