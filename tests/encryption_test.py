@@ -3,6 +3,7 @@
 import os
 import pytest
 import json
+import copy
 
 from olm import (
     Account,
@@ -266,6 +267,22 @@ class TestClass(object):
         assert (
             device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
         )
+
+    @ephemeral
+    def test_same_query_response_twice(self):
+        olm = self.ephemeral_olm
+        parsed_dict = TestClass._load_response(
+            "tests/data/keys_query.json")
+        response = KeysQueryResponse.from_dict(parsed_dict)
+        olm.handle_response(response)
+        assert response.changed
+
+        # TODO check out why this fails under python2 if we remove the copy()
+        # call.
+        response2 = copy.copy(response)
+        olm.handle_response(response)
+        assert response2.changed
+
 
     def test_olm_inbound_session(self, monkeypatch):
         def mocksave(self):
