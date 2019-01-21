@@ -798,3 +798,26 @@ class Api(object):
             Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH),
             ""
         )
+
+    @staticmethod
+    def profile_set_displayname(access_token, user_id, display_name):
+        # type (str, str, str) -> Tuple[str, str, str]
+        """Set display name.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            user_id (str): User id to set display name for.
+            display_name (str): Display name for user to set.
+        """
+        query_parameters = {"access_token": access_token}
+        content = { "displayname": display_name }
+        path = "profile/{user}/displayname".format(user=user_id)
+
+        return (
+            "PUT",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content)
+        )
+

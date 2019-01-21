@@ -108,6 +108,8 @@ __all__ = [
     "RoomReadMarkersError",
     "UploadResponse",
     "UploadError",
+    "ProfileSetDisplayNameResponse",
+    "ProfileSetDisplayNameError",
 ]
 
 
@@ -365,6 +367,10 @@ class UpdateDeviceError(ErrorResponse):
 
 
 class JoinedMembersError(_ErrorWithRoomId):
+    pass
+
+
+class ProfileSetDisplayNameError(ErrorResponse):
     pass
 
 
@@ -691,6 +697,12 @@ class UpdateDeviceResponse(EmptyResponse):
     @staticmethod
     def create_error(parsed_dict):
         return UpdateDeviceError.from_dict(parsed_dict)
+
+
+class ProfileSetDisplayNameResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict):
+        return ProfileSetDisplayNameError.from_dict(parsed_dict)
 
 
 @attr.s

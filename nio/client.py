@@ -82,7 +82,8 @@ from .responses import (
     JoinedMembersResponse,
     KeysUploadError,
     RoomTypingResponse,
-    RoomReadMarkersResponse
+    RoomReadMarkersResponse,
+    ProfileSetDisplayNameResponse
 )
 
 from .events import (
@@ -158,6 +159,7 @@ class RequestType(Enum):
     joined_members = 17
     room_typing = 18
     room_read_markers = 19
+    profile_set_displayname = 20
 
 
 @attr.s
@@ -1128,6 +1130,24 @@ class HttpClient(Client):
 
     @connected
     @logged_in
+    def set_displayname(self, displayname):
+        """Set user's display name
+
+        This tells the server to set display name of currently logged
+        in user to supplied string.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            displayname (str): Display name to set.
+        """
+        # type: (str) -> Tuple[UUID, bytes]
+        request = self._build_request(Api.profile_set_displayname(self.access_token, self.user_id, displayname))
+        return self._send(request, RequestInfo(RequestType.profile_set_displayname))
+
+    @connected
+    @logged_in
     def sync(self, timeout=None, filter=None):
         # type: (Optional[int], Optional[Dict[Any, Any]]) -> Tuple[UUID, bytes]
         request = self._build_request(
@@ -1217,6 +1237,8 @@ class HttpClient(Client):
                 response = DeleteDevicesAuthResponse.from_dict(parsed_dict)
             else:
                 response = DeleteDevicesResponse.from_dict(parsed_dict)
+        elif request_type is RequestType.profile_set_displayname:
+            response = ProfileSetDisplayNameResponse.from_dict(parsed_dict)
 
         assert response
 
