@@ -122,6 +122,8 @@ class Olm(object):
         self.outbound_group_sessions = {} \
             # type: Dict[str, OutboundGroupSession]
 
+        self.tracked_users = set()  # type: Set[str]
+
         self.store = store
 
         self.account = self.store.load_account()
@@ -135,7 +137,7 @@ class Olm(object):
             self.load()
 
     def update_tracked_users(self, room):
-        already_tracked = set(self.device_store.users)
+        already_tracked = self.tracked_users
         room_users = set(room.users.keys())
 
         missing = room_users - already_tracked
@@ -303,6 +305,8 @@ class Olm(object):
                 self.users_for_key_query.remove(user_id)
             except KeyError:
                 pass
+
+            self.tracked_users.add(user_id)
 
             for device_id, payload in device_dict.items():
                 if device_id == self.device_id:
