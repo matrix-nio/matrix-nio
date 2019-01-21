@@ -991,14 +991,22 @@ class HttpClient(Client):
     @connected
     @logged_in
     @store_loaded
-    def keys_query(self, full=False):
-        if not full:
-            user_list = self.users_for_key_query
-        else:
-            user_list = [
-                user_id for room in self.rooms.values()
-                if room.encrypted for user_id in room.users
-            ]
+    def keys_query(self):
+        """Query the server for user keys.
+
+        This queries the server for device keys of users with which we share an
+        encrypted room.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+        """
+        user_list = [
+            user_id for room in self.rooms.values()
+            if room.encrypted for user_id in room.users
+        ]
+
+        if not user_list:
+            raise LocalProtocolError("No key query required.")
 
         request = self._build_request(
             Api.keys_query(
