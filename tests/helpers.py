@@ -74,7 +74,7 @@ def ephemeral(func):
         finally:
             os.remove(os.path.join(
                 ephemeral_dir,
-                "ephemeral_DEVICEID.db"
+                "@ephemeral:example.org_DEVICEID.db"
             ))
         return ret
     return wrapper

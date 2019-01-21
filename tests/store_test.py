@@ -29,7 +29,7 @@ TEST_FORWARDING_CHAIN = [BOB_CURVE, BOB_ONETIME]
 class TestClass(object):
     @property
     def ephemeral_store(self):
-        return MatrixStore("ephemeral", "DEVICEID", ephemeral_dir)
+        return MatrixStore("@ephemeral:example.org", "DEVICEID", ephemeral_dir)
 
     @property
     def example_devices(self):

@@ -221,6 +221,26 @@ class TestClass(object):
         assert room.encrypted
         assert client.should_query_keys
 
+    def test_device_store(self, tempdir):
+        client = Client("ephemeral", "DEVICEID", tempdir)
+        client.receive_response(self.login_response)
+        client.receive_response(KeysUploadResponse(50, 50))
+
+        assert not client.should_query_keys
+
+        client.receive_response(self.sync_response)
+        client.receive_response(self.keys_query_response)
+
+        assert list(client.device_store.users) == [ALICE_ID]
+        alice_device = client.device_store[ALICE_ID][ALICE_DEVICE_ID]
+        assert alice_device
+
+        client = Client("ephemeral", "DEVICEID", tempdir)
+        client.receive_response(self.login_response)
+        assert list(client.device_store.users) == [ALICE_ID]
+        alice_device = client.device_store[ALICE_ID][ALICE_DEVICE_ID]
+        assert alice_device
+
     def test_client_key_query(self, client):
         assert not client.should_query_keys
 
@@ -229,6 +249,8 @@ class TestClass(object):
 
         assert not client.should_query_keys
         client.receive_response(self.sync_response)
+
+        assert not client.device_store.users
 
         assert client.rooms[TEST_ROOM_ID]
         room = client.rooms[TEST_ROOM_ID]
@@ -246,9 +268,6 @@ class TestClass(object):
         assert not client.should_query_keys
         assert client.device_store.users
 
-        alice_device = client.device_store[ALICE_ID][ALICE_DEVICE_ID]
-        assert alice_device
-
         assert not room.members_synced
 
         client.receive_response(self.joined_members)
@@ -258,9 +277,11 @@ class TestClass(object):
 
         assert client.users_for_key_query == set([BOB_ID])
 
-    def test_query_rule(self, tempdir):
-        client = Client("ephemeral", "DEVICEID", tempdir)
+    @ephemeral
+    def test_query_rule(self):
+        client = Client("ephemeral", "DEVICEID", ephemeral_dir)
         client.receive_response(self.login_response)
+        assert client.store is not None
         client.receive_response(KeysUploadResponse(50, 50))
         assert not client.should_query_keys
 
@@ -272,10 +293,13 @@ class TestClass(object):
 
         del client
 
-        client = Client("ephemeral", "DEVICEID", tempdir)
+        client = Client("ephemeral", "DEVICEID", ephemeral_dir)
         client.receive_response(self.login_response)
         assert not client.should_upload_keys
         assert not client.should_query_keys
+
+        assert list(client.device_store.users) == [ALICE_ID]
+        assert client.device_store.active_user_devices(ALICE_ID)
 
         alice_device = client.device_store[ALICE_ID][ALICE_DEVICE_ID]
         assert alice_device
