@@ -179,7 +179,7 @@ class MatrixRoom(object):
                 if "displayname" in event.content:
                     user.display_name = event.content["displayname"]
 
-        elif event.content["membership"] == "leave":
+        elif event.content["membership"] in ["leave", "ban"]:
             if event.state_key in self.users:
                 del self.users[event.state_key]
                 return
