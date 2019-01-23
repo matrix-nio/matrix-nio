@@ -22,10 +22,7 @@ setup(
         "logbook",
         "jsonschema",
         "atomicwrites",
-        "python-olm"
-    ],
-    dependency_links=[
-        "git+https://github.com/poljar/python-olm.git@master#egg=python-olm-0"
+        "python-olm @ git+https://github.com/poljar/python-olm.git@master#egg=python-olm-0"
     ],
     zip_safe=False
 )

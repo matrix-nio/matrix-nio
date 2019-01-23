@@ -1,4 +1,5 @@
 language: python
+dist: xenial
 sudo: false
 before_install:
     - wget https://matrix.org/git/olm/snapshot/olm-2.3.0.tar.bz2
@@ -14,13 +15,7 @@ matrix:
           env: TOXENV=py36
         - python: 3.7
           env: TOXENV=py37
-          dist: xenial
-          sudo: true
-        - python: pypy
-          env: TOXENV=pypy
         - python: 3.7
-          dist: xenial
-          sudo: true
           env: TOXENV=py2-cov,py3-cov,coverage
 
 install: pip install tox-travis
