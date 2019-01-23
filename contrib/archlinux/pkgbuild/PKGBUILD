@@ -11,8 +11,8 @@ url='https://github.com/poljar/matrix-nio'
 license=('ISC')
 makedepends=('python-setuptools' 'python2-setuptools')
 checkdepends=()
-source=("$pkgbase-$pkgver.tar.gz")
-sha512sums=('SKIP')
+source=("https://github.com/poljar/matrix-nio/archive/$pkgver.tar.gz")
+sha512sums=('0055eaea804dc770c07ecb82d8a9c56e963f77e8ed3a9e0708c40f27d950055db4fc048fec309ed1e78a4c71e6414c8493e8d33e3acdb051b401c1307cbea74f')
 
 prepare() {
   cd "$srcdir"
@@ -26,7 +26,8 @@ build() {
 
 package_python-nio() {
   depends=('python' 'python-olm' 'python-h11' 'python-h2'
-           'python-jsonschema' 'python-logbook')
+           'python-jsonschema' 'python-logbook' 'python-attrs'
+           'python-peewee' 'python-atomicwrites' 'python-future')
   cd "$srcdir"/$pkgbase-$pkgver
 
   make DESTDIR="$pkgdir" install
@@ -34,7 +35,9 @@ package_python-nio() {
 
 package_python2-nio() {
   depends=('python2' 'python2-olm' 'python2-h11' 'python2-h2'
-           'python2-jsonschema' 'python2-logbook')
+           'python2-jsonschema' 'python2-logbook' 'python2-attrs'
+           'python-peewee' 'python-atomicwrites' 'python2-typing'
+           'python2-future')
   cd "$srcdir"/$pkgbase-$pkgver-py2
 
   make PYTHON=python2 DESTDIR="$pkgdir" install
