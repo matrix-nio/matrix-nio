@@ -7,3 +7,8 @@ nio
 
 A no-IO matrix client library. Mainly developed to be used with weechat, other
 users are welcome.
+
+Documentation
+=============
+
+Documentation is in progress and can be found [here](https://poljar.github.io/matrix-nio/doc/build/html/nio.html)
