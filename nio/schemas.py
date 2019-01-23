@@ -901,9 +901,9 @@ class Schemas(object):
                     },
                     "required": ["display_name"]
                 }}
-            },
-            "required": ["joined"]
-        }
+            }
+        },
+        "required": ["joined"]
     }
 
     call_invite = {

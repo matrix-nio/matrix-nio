@@ -116,17 +116,15 @@ __all__ = [
 def verify(schema, error_class):
     def decorator(f):
         @wraps(f)
-        def wrapper(*args, **kwargs):
-            parsed_dict = args[1]
-
+        def wrapper(cls, parsed_dict, *args, **kwargs):
             try:
                 logger.info("Validating response schema")
                 validate_json(parsed_dict, schema)
             except (SchemaError, ValidationError) as e:
                 logger.error("Error validating response: " + str(e.message))
-                return error_class.from_dict(parsed_dict)
+                return error_class.from_dict(parsed_dict, *args, **kwargs)
 
-            return f(*args, **kwargs)
+            return f(cls, parsed_dict, *args, **kwargs)
         return wrapper
     return decorator
 
