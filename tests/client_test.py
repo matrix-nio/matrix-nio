@@ -307,3 +307,35 @@ class TestClass(object):
         assert client.olm.tracked_users == set([ALICE_ID])
         assert client.users_for_key_query == set([BOB_ID])
         assert client.should_query_keys
+
+    @ephemeral
+    def test_early_store_loading(self):
+        client = Client("ephemeral")
+
+        with pytest.raises(LocalProtocolError):
+            client.load_store()
+
+        client = Client("ephemeral", store_path=ephemeral_dir)
+        client.user_id = "@ephemeral:example.org"
+
+        with pytest.raises(LocalProtocolError):
+            client.load_store()
+
+        client.user_id = None
+        client.device_id = "DEVICEID"
+
+        with pytest.raises(LocalProtocolError):
+            client.load_store()
+
+        client.receive_response(self.login_response)
+
+        del client
+        client = Client("ephemeral", "DEVICEID", ephemeral_dir)
+        client.user_id = "@ephemeral:example.org"
+
+        assert not client.store
+        assert not client.olm
+
+        client.load_store()
+        assert client.store
+        assert client.olm

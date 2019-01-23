@@ -291,6 +291,31 @@ class Client(object):
 
         return self.olm.should_query_keys
 
+    def load_store(self):
+        # type: () -> None
+        """Load the session store and olm account.
+
+        Raises LocalProtocolError if the session_path, user_id and devic_id are
+            not set.
+        """
+        if not self.store_path:
+            raise LocalProtocolError("Store path is not defined.")
+
+        if not self.user_id:
+            raise LocalProtocolError("User id is not set")
+
+        if not self.device_id:
+            raise LocalProtocolError("Device id is not set")
+
+        self.store = self.config.store(
+            self.user_id,
+            self.device_id,
+            self.store_path,
+            self.config.pickle_key
+        )
+        assert self.store
+        self.olm = Olm(self.user_id, self.device_id, self.store)
+
     def room_contains_unverified(self, room_id):
         # type: (str) -> bool
         """Check if a room contains unverified devices.
@@ -437,15 +462,8 @@ class Client(object):
         self.user_id = response.user_id
         self.device_id = response.device_id
 
-        if self.store_path:
-            self.store = self.config.store(
-                self.user_id,
-                self.device_id,
-                self.store_path,
-                self.config.pickle_key
-            )
-            assert self.store
-            self.olm = Olm(self.user_id, self.device_id, self.store)
+        if self.store_path and (not self.store or not self.olm):
+            self.load_store()
 
     @store_loaded
     def decrypt_event(
