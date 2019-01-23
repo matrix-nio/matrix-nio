@@ -113,7 +113,7 @@ __all__ = [
 ]
 
 
-def verify(schema, error_class):
+def verify(schema, error_class, pass_arguments=True):
     def decorator(f):
         @wraps(f)
         def wrapper(cls, parsed_dict, *args, **kwargs):
@@ -122,7 +122,11 @@ def verify(schema, error_class):
                 validate_json(parsed_dict, schema)
             except (SchemaError, ValidationError) as e:
                 logger.error("Error validating response: " + str(e.message))
-                return error_class.from_dict(parsed_dict, *args, **kwargs)
+
+                if pass_arguments:
+                    return error_class.from_dict(parsed_dict, *args, **kwargs)
+                else:
+                    return error_class.from_dict(parsed_dict)
 
             return f(cls, parsed_dict, *args, **kwargs)
         return wrapper
@@ -939,7 +943,7 @@ class _SyncResponse(Response):
         return Rooms(invited_rooms, joined_rooms, left_rooms), unhandled_rooms
 
     @classmethod
-    @verify(Schemas.sync, SyncError)
+    @verify(Schemas.sync, SyncError, False)
     def from_dict(
         cls,
         parsed_dict,  # type: Dict[Any, Any]

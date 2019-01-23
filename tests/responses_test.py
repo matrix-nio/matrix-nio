@@ -18,6 +18,7 @@ from nio.responses import (
     JoinedMembersResponse,
     JoinedMembersError,
     LoginError,
+    SyncError,
     UploadResponse
 )
 
@@ -94,7 +95,7 @@ class TestClass(object):
         response = JoinedMembersResponse.from_dict(parsed_dict, "!testroom")
         assert isinstance(response, JoinedMembersResponse)
 
-    def test_joined_faile(self):
+    def test_joined_fail(self):
         parsed_dict = {}
         response = JoinedMembersResponse.from_dict(parsed_dict, "!testroom")
         assert isinstance(response, JoinedMembersError)
@@ -104,6 +105,11 @@ class TestClass(object):
             "tests/data/upload_response.json")
         response = UploadResponse.from_dict(parsed_dict)
         assert isinstance(response, UploadResponse)
+
+    def test_sync_fail(self):
+        parsed_dict = {}
+        response = SyncResponse.from_dict(parsed_dict, 0)
+        assert isinstance(response, SyncError)
 
     def test_sync_parse(self):
         parsed_dict = TestClass._load_response(
