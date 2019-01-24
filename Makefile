@@ -21,8 +21,15 @@ install:
 	$(PYTHON) setup.py install --skip-build -O1 --root=$(DESTDIR)
 
 archpkg:
+	-rm -r packages/
+	mkdir packages
+	cp contrib/archlinux/pkgbuild/PKGBUILD packages/
+	cd packages && makepkg -ci
+
+arch-git-pkg:
+	-rm -r packages/
 	umask 0022 && $(PYTHON) setup.py sdist --dist-dir packages
-	cp contrib/archlinux/pkgbuild/PKGBUILD packages
+	cp contrib/archlinux/pkgbuild/PKGBUILD.git packages/PKGBUILD
 	cd packages && makepkg -ci
 
 
