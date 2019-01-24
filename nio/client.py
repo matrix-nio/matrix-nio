@@ -110,20 +110,20 @@ logger_group.add_logger(logger)
 
 
 def connected(func):
-    def wrapper(*args, **kwargs):
-        self = args[0]
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
         if not self.connection:
             raise LocalProtocolError("Not connected.")
-        return func(*args, **kwargs)
+        return func(self, *args, **kwargs)
     return wrapper
 
 
 def logged_in(func):
-    def wrapper(*args, **kwargs):
-        self = args[0]
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
-        return func(*args, **kwargs)
+        return func(self, *args, **kwargs)
     return wrapper
 
 
