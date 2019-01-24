@@ -8,14 +8,14 @@ import tempfile
 from nio import Client
 
 
-@pytest.fixture()
+@pytest.fixture
 def tempdir():
     newpath = tempfile.mkdtemp()
     yield newpath
     shutil.rmtree(newpath)
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tempdir):
     return Client("ephemeral", "DEVICEID", tempdir)
 
