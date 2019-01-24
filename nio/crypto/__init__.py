@@ -17,3 +17,5 @@ from .memorystores import (
 from .log import logger
 
 from .olm_machine import Olm
+
+from .attachments import encrypt_attachment, decrypt_attachment
