@@ -52,13 +52,13 @@ def decrypt_attachment(ciphertext, key, hash, iv):
 
     try:
         key = unpaddedbase64.decode_base64(key)
-    except base64.binascii.Error:
+    except (base64.binascii.Error, TypeError):
         raise EncryptionError("Error decoding key.")
 
     try:
         # Drop last 8 bytes, which are 0
         iv = unpaddedbase64.decode_base64(iv)[:8]
-    except base64.binascii.Error:
+    except (base64.binascii.Error, TypeError):
         raise EncryptionError("Error decoding initial values.")
 
     ctr = Counter.new(64, prefix=iv, initial_value=0)
