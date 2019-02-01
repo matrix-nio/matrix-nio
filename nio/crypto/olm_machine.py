@@ -96,6 +96,10 @@ except ImportError:  # pragma: no cover
 
 
 class Olm(object):
+    _olm_algorithm = 'm.olm.v1.curve25519-aes-sha2'
+    _megolm_algorithm = 'm.megolm.v1.aes-sha2'
+    _algorithms = [_olm_algorithm, _megolm_algorithm]
+
     def __init__(
         self,
         user_id,    # type: str
@@ -194,10 +198,7 @@ class Olm(object):
 
         def device_keys():
             device_keys = {
-                "algorithms": [
-                    "m.olm.v1.curve25519-aes-sha2",
-                    "m.megolm.v1.aes-sha2"
-                ],
+                "algorithms": self._algorithms,
                 "device_id": self.device_id,
                 "user_id": self.user_id,
                 "keys": {
@@ -910,7 +911,7 @@ class Olm(object):
         ciphertext = session.encrypt(Api.to_json(plaintext_dict))
 
         payload_dict = {
-            "algorithm": "m.megolm.v1.aes-sha2",
+            "algorithm": self._megolm_algorithm,
             "sender_key": self.account.identity_keys["curve25519"],
             "ciphertext": ciphertext,
             "session_id": session.id,
@@ -944,7 +945,7 @@ class Olm(object):
         group_session = self.outbound_group_sessions[room_id]
 
         key_content = {
-            "algorithm": "m.megolm.v1.aes-sha2",
+            "algorithm": self._megolm_algorithm,
             "room_id": room_id,
             "session_id": group_session.id,
             "session_key": group_session.session_key,
@@ -1000,7 +1001,7 @@ class Olm(object):
                 self.store.save_session(device.curve25519, session)
 
                 olm_dict = {
-                    "algorithm": "m.olm.v1.curve25519-aes-sha2",
+                    "algorithm": self._olm_algorithm,
                     "sender_key": self.account.identity_keys["curve25519"],
                     "ciphertext": {
                         device.curve25519: {
