@@ -4,5 +4,6 @@ pytest-isort
 pytest-cov
 pytest-benchmark
 hyperframe
+hypothesis
 hpack
 faker
