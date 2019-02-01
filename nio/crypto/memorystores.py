@@ -62,8 +62,7 @@ class SessionStore(object):
 
 class GroupSessionStore(object):
     def __init__(self):
-        self._entries = defaultdict(lambda: defaultdict(dict))  \
-            # type: GroupStoreType
+        self._entries = defaultdict(lambda: defaultdict(dict))
 
     def __iter__(self):
         # type: () -> Iterator[InboundGroupSession]
