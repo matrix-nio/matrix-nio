@@ -84,9 +84,18 @@ class OutboundSession(olm.OutboundSession, Session):
 
 
 class InboundGroupSession(olm.InboundGroupSession):
-    def __init__(self, session_key, signing_key, forwarding_chains=None):
-        # type: (str, str, Optional[List[str]]) -> None
+    def __init__(
+        self,
+        session_key,  # type: str
+        signing_key,  # type: str
+        sender_key,   # type: str
+        room_id,      # type: str
+        forwarding_chains=None  # type: Optional[List[str]]
+    ):
+        # type: (...) -> None
         self.ed25519 = signing_key
+        self.sender_key = sender_key
+        self.room_id = room_id
         self.forwarding_chain = forwarding_chains or []  # type: List[str]
         super().__init__(session_key)
 
@@ -98,12 +107,16 @@ class InboundGroupSession(olm.InboundGroupSession):
         cls,
         pickle,                 # type: bytes
         signing_key,            # type: str
+        sender_key,             # type: str
+        room_id,                # type: str
         passphrase='',          # type: str
         forwarding_chain=None   # type: List[str]
     ):
         # type: (...) -> InboundGroupSession
         session = super().from_pickle(pickle, passphrase)
         session.ed25519 = signing_key
+        session.sender_key = sender_key
+        session.room_id = room_id
         session.forwarding_chain = forwarding_chain or []
         return session
 

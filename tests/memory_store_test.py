@@ -48,6 +48,8 @@ class TestClass(object):
         session = InboundGroupSession(
             out_group.session_key,
             account.identity_keys["ed25519"],
+            account.identity_keys["curve25519"],
+            TEST_ROOM
         )
 
         assert session not in store

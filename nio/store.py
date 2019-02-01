@@ -501,6 +501,8 @@ class MatrixStore(object):
             session = InboundGroupSession.from_pickle(
                 s.session,
                 s.ed_key,
+                s.curve_key,
+                s.room_id,
                 self.pickle_key,
                 [chain.curve_key for chain in s.forwarded_chains]
             )

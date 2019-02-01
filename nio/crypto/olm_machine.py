@@ -486,7 +486,12 @@ class Olm(object):
         )
 
         try:
-            session = InboundGroupSession(session_key, sender_fp_key)
+            session = InboundGroupSession(
+                session_key,
+                sender_fp_key,
+                sender_key,
+                room_id
+            )
             if session.id != session_id:
                 raise OlmSessionError(
                     "Mismatched session id while creating "

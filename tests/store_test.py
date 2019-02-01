@@ -155,6 +155,8 @@ class TestClass(object):
         in_group = InboundGroupSession(
             out_group.session_key,
             account.identity_keys["ed25519"],
+            account.identity_keys["curve25519"],
+            TEST_ROOM,
             TEST_FORWARDING_CHAIN
         )
         store.save_inbound_group_session(
