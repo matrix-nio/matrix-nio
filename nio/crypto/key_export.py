@@ -17,6 +17,7 @@ from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Util import Counter
 from unpaddedbase64 import decode_base64, encode_base64
 from atomicwrites import atomic_write
+from builtins import int, bytes
 
 HEADER = '-----BEGIN MEGOLM SESSION DATA-----'
 FOOTER = '-----END MEGOLM SESSION DATA-----'
@@ -106,6 +107,9 @@ def decrypt(encrypted_payload, passphrase):
     encrypted_payload = decode_base64(encrypted_payload)
 
     version = encrypted_payload[0]
+
+    if isinstance(version, str):
+        version = ord(version)
 
     if version != 1:
         raise ValueError('Unsupported export format version.')
