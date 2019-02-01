@@ -1189,8 +1189,8 @@ class Olm(object):
 
             # This could be improved by writing everything to db at once at
             # the end
-            self.inbound_group_store.add(session)
-            self.save_inbound_group_session(session)
+            if self.inbound_group_store.add(session):
+                self.save_inbound_group_session(session)
 
         logger.info(
             "Successfully imported encryption keys from {}".format(infile)
