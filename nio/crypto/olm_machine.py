@@ -1134,7 +1134,7 @@ class Olm(object):
             }
             session_list.append(payload)
 
-        data = json.dumps({"sessions": session_list}).encode()
+        data = json.dumps(session_list).encode()
         encrypt_and_save(data, outfile, passphrase, count=count)
 
         logger.info(
@@ -1158,17 +1158,15 @@ class Olm(object):
             raise EncryptionError(e)
 
         try:
-            parsed_payload = json.loads(data)
+            session_list = json.loads(data)
         except JSONDecodeError as e:
             raise EncryptionError("Error parsing key file: {}".format(str(e)))
 
         try:
-            validate_json(parsed_payload, Schemas.megolm_key_import)
+            validate_json(session_list, Schemas.megolm_key_import)
         except (ValidationError, SchemaError) as e:
             logger.warning(e)
             raise EncryptionError("Error parsing key file: {}".format(str(e)))
-
-        session_list = parsed_payload["sessions"]
 
         for session_dict in session_list:
             if session_dict["algorithm"] != self._megolm_algorithm:
