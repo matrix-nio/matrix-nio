@@ -159,11 +159,7 @@ class TestClass(object):
             TEST_ROOM,
             TEST_FORWARDING_CHAIN
         )
-        store.save_inbound_group_session(
-            TEST_ROOM,
-            account.identity_keys["curve25519"],
-            in_group
-        )
+        store.save_inbound_group_session(in_group)
 
         store2 = self.ephemeral_store
         session_store = store2.load_inbound_group_sessions()

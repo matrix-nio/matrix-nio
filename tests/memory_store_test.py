@@ -48,18 +48,18 @@ class TestClass(object):
         session = InboundGroupSession(
             out_group.session_key,
             account.identity_keys["ed25519"],
-            account.identity_keys["curve25519"],
+            BOB_CURVE,
             TEST_ROOM
         )
 
         assert session not in store
         assert not store.get(TEST_ROOM, BOB_CURVE, session.id)
 
-        assert store.add(session, TEST_ROOM, BOB_CURVE)
+        assert store.add(session)
 
         assert store.get(TEST_ROOM, BOB_CURVE, session.id)
         assert session in store
 
-        assert not store.add(session, TEST_ROOM, BOB_CURVE)
+        assert not store.add(session)
 
         assert store[TEST_ROOM] == {BOB_CURVE: {session.id: session}}

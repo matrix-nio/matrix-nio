@@ -506,24 +506,22 @@ class MatrixStore(object):
                 self.pickle_key,
                 [chain.curve_key for chain in s.forwarded_chains]
             )
-            store.add(session, s.room_id, s.curve_key)
+            store.add(session)
 
         return store
 
     @use_database
-    def save_inbound_group_session(self, room_id, curve_key, session):
+    def save_inbound_group_session(self, session):
         """Save the provided Megolm inbound group session to the database.
 
         Args:
-            room_id (str): The room corresponding to the session.
-            curve_key (str): The curve25519 key of the device.
             session (InboundGroupSession): The session to save.
         """
         MegolmInboundSessions.insert(
-            curve_key=curve_key,
+            curve_key=session.sender_key,
             device=self.device_id,
             ed_key=session.ed25519,
-            room_id=room_id,
+            room_id=session.room_id,
             session=session.pickle(self.pickle_key),
             session_id=session.id
         ).on_conflict_ignore().execute()

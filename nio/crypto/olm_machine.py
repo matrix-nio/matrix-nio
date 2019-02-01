@@ -502,8 +502,8 @@ class Olm(object):
             logger.warn(e)
             return
 
-        self.inbound_group_store.add(session, room_id, sender_key)
-        self.save_inbound_group_session(room_id, sender_key, session)
+        self.inbound_group_store.add(session)
+        self.save_inbound_group_session(session)
 
     def create_outbound_group_session(self, room_id):
         # type: (str) -> None
@@ -1035,9 +1035,9 @@ class Olm(object):
         # type: (str, Session) -> None
         self.store.save_session(curve_key, session)
 
-    def save_inbound_group_session(self, room_id, sender_key, session):
+    def save_inbound_group_session(self, session):
         # type: (str, str, InboundGroupSession) -> None
-        self.store.save_inbound_group_session(room_id, sender_key, session)
+        self.store.save_inbound_group_session(session)
 
     def save_account(self):
         # type: () -> None
