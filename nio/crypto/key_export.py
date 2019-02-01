@@ -19,8 +19,8 @@ from unpaddedbase64 import decode_base64, encode_base64
 from atomicwrites import atomic_write
 from builtins import int, bytes
 
-HEADER = '-----BEGIN MEGOLM SESSION DATA-----'
-FOOTER = '-----END MEGOLM SESSION DATA-----'
+HEADER = "-----BEGIN MEGOLM SESSION DATA-----"
+FOOTER = "-----END MEGOLM SESSION DATA-----"
 
 
 def encrypt_and_save(data, outfile, passphrase, count=100000):
@@ -40,7 +40,9 @@ def encrypt_and_save(data, outfile, passphrase, count=100000):
 
     with atomic_write(outfile) as f:
         f.write(HEADER)
+        f.write("\n")
         f.write(encrypted_data)
+        f.write("\n")
         f.write(FOOTER)
 
 
