@@ -120,6 +120,22 @@ class InboundGroupSession(olm.InboundGroupSession):
         session.forwarding_chain = forwarding_chain or []
         return session
 
+    @classmethod
+    def import_session(
+        cls,
+        session_key,  # type: str
+        signing_key,  # type: str
+        sender_key,   # type: str
+        room_id,      # type: str
+        forwarding_chain=None  # type: Optional[List[str]]
+    ):
+        session = super().import_session(session_key)
+        session.ed25519 = signing_key
+        session.sender_key = sender_key
+        session.room_id = room_id
+        session.forwarding_chain = forwarding_chain or []
+        return session
+
 
 class OutboundGroupSession(olm.OutboundGroupSession):
 

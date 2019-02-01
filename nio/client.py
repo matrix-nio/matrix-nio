@@ -651,6 +651,40 @@ class Client(object):
         else:
             pass
 
+    @store_loaded
+    def export_keys(self, outfile, passphrase, count=10000):
+        """Export all the Megolm decryption keys of this device.
+
+        The keys will be encrypted using the passphrase.
+        NOTE:
+            This does not save other information such as the private identity
+            keys of the device.
+        Args:
+            outfile (str): The file to write the keys to.
+            passphrase (str): The encryption passphrase.
+            count (int): Optional. Round count for the underlying key
+                derivation. It is not recommended to specify it unless
+                absolutely sure of the consequences.
+        """
+        return self.olm.export_keys(outfile, passphrase, count=count)
+
+    @store_loaded
+    def import_keys(self, infile, passphrase):
+        """Import Megolm decryption keys.
+
+        The keys will be added to the current instance as well as written to
+        database.
+
+        Args:
+            infile (str): The file containing the keys.
+            passphrase (str): The decryption passphrase.
+
+        Raises `EncryptionError` if the file is invalid or couldn't be
+            decrypted.
+        Raises the usual file errors if the file couldn't be opened.
+        """
+        return self.olm.import_keys(infile, passphrase)
+
 
 class HttpClient(Client):
     def __init__(

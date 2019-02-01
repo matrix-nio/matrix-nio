@@ -65,8 +65,10 @@ from . import (
     SessionStore,
     GroupSessionStore,
     DeviceStore,
-    logger
+    logger,
 )
+
+from .key_export import encrypt_and_save, decrypt_and_read
 from ..store import MatrixStore
 
 from ..responses import (
@@ -1097,3 +1099,99 @@ class Olm(object):
     def mark_keys_as_published(self):
         # type: () -> None
         self.account.mark_keys_as_published()
+
+    # This function is copyrighted under the Apache 2.0 license Zil0
+    def export_keys(self, outfile, passphrase, count=10000):
+        """Export all the Megolm decryption keys of this device.
+
+        The keys will be encrypted using the passphrase.
+        NOTE:
+            This does not save other information such as the private identity
+            keys of the device.
+        Args:
+            outfile (str): The file to write the keys to.
+            passphrase (str): The encryption passphrase.
+            count (int): Optional. Round count for the underlying key
+                derivation. It is not recommended to specify it unless
+                absolutely sure of the consequences.
+        """
+        session_list = []
+        inbound_group_store = self.store.load_inbound_group_sessions()
+
+        for session in inbound_group_store:
+            payload = {
+                "algorithm": self._megolm_algorithm,
+                "sender_key": session.sender_key,
+                "sender_claimed_keys": {
+                    "ed25519": session.ed25519
+                },
+                "forwarding_curve25519_key_chain": session.forwarding_chain,
+                "room_id": session.room_id,
+                "session_id": session.id,
+                "session_key": session.export_session(
+                    session.first_known_index
+                )
+            }
+            session_list.append(payload)
+
+        data = json.dumps({"sessions": session_list}).encode()
+        encrypt_and_save(data, outfile, passphrase, count=count)
+
+        logger.info(
+            "Succesfully exported encryption keys to {}".format(outfile)
+        )
+
+    # This function is copyrighted under the Apache 2.0 license Zil0
+    def import_keys(self, infile, passphrase):
+        """Import Megolm decryption keys.
+
+        The keys will be added to the current instance as well as written to
+        database.
+
+        Args:
+            infile (str): The file containing the keys.
+            passphrase (str): The decryption passphrase.
+        """
+        try:
+            data = decrypt_and_read(infile, passphrase)
+        except ValueError as e:
+            raise EncryptionError(e)
+
+        try:
+            parsed_payload = json.loads(data)
+        except JSONDecodeError as e:
+            raise EncryptionError("Error parsing key file: {}".format(str(e)))
+
+        try:
+            validate_json(parsed_payload, Schemas.megolm_key_import)
+        except (ValidationError, SchemaError) as e:
+            logger.warning(e)
+            raise EncryptionError("Error parsing key file: {}".format(str(e)))
+
+        session_list = parsed_payload["sessions"]
+
+        for session_dict in session_list:
+            if session_dict["algorithm"] != self._megolm_algorithm:
+                logger.warning("Ignoring session with unsupported algorithm.")
+                continue
+
+            try:
+                session = InboundGroupSession.import_session(
+                    session_dict["session_key"],
+                    session_dict["sender_claimed_keys"]["ed25519"],
+                    session_dict["sender_key"],
+                    session_dict["room_id"],
+                    session_dict["forwarding_curve25519_key_chain"],
+                )
+            except OlmSessionError as e:
+                logger.warn(e)
+                continue
+
+            # This could be improved by writing everything to db at once at
+            # the end
+            self.inbound_group_store.add(session)
+            self.save_inbound_group_session(session)
+
+        logger.info(
+            "Successfully imported encryption keys from {}".format(infile)
+        )

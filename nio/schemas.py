@@ -1056,4 +1056,42 @@ class Schemas(object):
         "additionalProperties": False,
     }
 
+    megolm_key_import = {
+        "type": "object",
+        "properties": {
+            "sessions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "algorithm": {"type": "string"},
+                        "session_key": {"type": "string"},
+                        "sender_key": {"type": "string"},
+                        "room_id": {"type": "string"},
+                        "sender_claimed_keys": {
+                            "type": "object",
+                            "properties": {
+                                "ed25519": {"type": "string"},
+                            },
+                            "required": ["ed25519"]
+                        },
+                        "forwarding_curve25519_key_chain": {
+                            "type": "array",
+                            "items": {"type": "string"}
+                        },
+                    },
+                    "required": [
+                        "algorithm",
+                        "session_key",
+                        "sender_key",
+                        "room_id",
+                        "sender_claimed_keys",
+                        "forwarding_curve25519_key_chain"
+                    ]
+                }
+            },
+        },
+        "required": ["sessions"],
+    }
+
     empty = {"type": "object", "properties": {}, "additionalProperties": False}
