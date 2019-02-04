@@ -694,9 +694,11 @@ class HttpClient(Client):
         device_id="",  # type: Optional[str]
         store_path="",  # type: Optional[str]
         config=None,  # type: Optional[ClientConfig]
+        extra_path=""
     ):
         # type: (...) -> None
         self.host = host
+        self.extra_path = extra_path.strip("/")
         self.requests_made = {}  # type: Dict[UUID, RequestInfo]
         self.parse_queue = deque()  \
             # type: Deque[Tuple[RequestInfo, TransportResponse]]
@@ -721,6 +723,11 @@ class HttpClient(Client):
         self.requests_made[ret_uuid] = request_info
         return ret_uuid, data
 
+    def _add_extra_path(self, path):
+        if self.extra_path:
+            return "/{}{}".format(self.extra_path, path)
+        return path
+
     def _build_request(self, api_response, timeout=0):
         def unpack_api_call(method, *rest):
             return method, rest
@@ -729,23 +736,28 @@ class HttpClient(Client):
 
         if isinstance(self.connection, HttpConnection):
             if method == "GET":
-                path = api_data[0]
+                path = self._add_extra_path(api_data[0])
                 return HttpRequest.get(self.host, path, timeout)
             elif method == "POST":
                 path, data = api_data
+                path = self._add_extra_path(path)
                 return HttpRequest.post(self.host, path, data, timeout)
             elif method == "PUT":
                 path, data = api_data
+                path = self._add_extra_path(path)
                 return HttpRequest.put(self.host, path, data, timeout)
         elif isinstance(self.connection, Http2Connection):
             if method == "GET":
                 path = api_data[0]
+                path = self._add_extra_path(path)
                 return Http2Request.get(self.host, path, timeout)
             elif method == "POST":
                 path, data = api_data
+                path = self._add_extra_path(path)
                 return Http2Request.post(self.host, path, data, timeout)
             elif method == "PUT":
                 path, data = api_data
+                path = self._add_extra_path(path)
                 return Http2Request.put(self.host, path, data, timeout)
 
         assert("Invalid connection type")
