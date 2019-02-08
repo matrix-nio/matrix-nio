@@ -51,21 +51,52 @@ class TestClass(object):
         assert room.display_name == "Empty room?"
         assert room.named_room_name() == None
 
-        room.add_member("@alice:example.org", "")
-        assert room.display_name == "@alice:example.org"
+        room.add_member("@alice:example.org", "Alice")
+        assert room.display_name == "Alice"
 
-        room.add_member("@malory:example.org", "")
+        room.add_member(BOB_ID, "Bob")
+        assert room.display_name == "Alice"
+
+        room.add_member("@malory:example.org", "Alice")
         assert (room.display_name ==
-                "@alice:example.org and @malory:example.org")
-        room.add_member("@steve:example.org", "")
+                "Alice (@alice:example.org) and Alice (@malory:example.org)")
+        room.add_member("@steve:example.org", "Steve")
         assert (room.display_name ==
-                "@alice:example.org and 2 others")
+                "Alice (@alice:example.org) and 2 others")
 
         room.canonical_alias = "Alias for test room"
         assert room.display_name == "Alias for test room"
 
         room.name = "Test room"
         assert room.display_name == "#Test room"
+
+    def test_user_name_calculation(self):
+        room = self.test_room
+
+        room.add_member("@alice:example.org", "Alice")
+        assert room.user_name("@alice:example.org") == "Alice"
+        assert room.user_name_clashes("Alice") == ["@alice:example.org"]
+
+        room.add_member("@bob:example.org", None)
+        assert room.user_name("@bob:example.org") == "@bob:example.org"
+
+        room.add_member("@malory:example.org", "Alice")
+        assert room.user_name("@alice:example.org") == "Alice (@alice:example.org)"
+        assert room.user_name("@malory:example.org") == "Alice (@malory:example.org)"
+        assert room.user_name_clashes("Alice") == ["@alice:example.org", "@malory:example.org"]
+
+        room.remove_member("@alice:example.org")
+        assert room.user_name("@malory:example.org") == "Alice"
+
+        room.remove_member("@malory:example.org")
+        room.add_member("@alice:example.org", None)
+        assert room.user_name("@alice:example.org") == "@alice:example.org"
+        assert room.user_name_clashes("@alice:example.org") == ["@alice:example.org"]
+
+        room.add_member("@malory:example.org", "@alice:example.org")
+        assert room.user_name("@alice:example.org") == "@alice:example.org"
+        assert room.user_name("@malory:example.org") == "@alice:example.org (@malory:example.org)"
+        assert room.user_name_clashes("@alice:example.org") == ["@alice:example.org", "@malory:example.org"]
 
     def test_machine_name(self):
         room = self.test_room

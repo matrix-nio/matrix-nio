@@ -17,7 +17,9 @@
 from __future__ import unicode_literals
 
 from builtins import super
-from typing import Any, Dict, NamedTuple, Optional, List
+from typing import Any, DefaultDict, Dict, NamedTuple, Optional, List
+
+from collections import defaultdict
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
@@ -52,6 +54,7 @@ class MatrixRoom(object):
         self.canonical_alias = None   # type: Optional[str]
         self.name = None              # type: Optional[str]
         self.users = dict()           # type: Dict[str, MatrixUser]
+        self.names = defaultdict(list)  # type: DefaultDict[str, List[str]]
         self.encrypted = encrypted    # type: bool
         self.power_levels = PowerLevels()  # type: PowerLevels
         self.typing_users = []        # type: List[str]
@@ -97,28 +100,47 @@ class MatrixRoom(object):
         """
         # Sort user display names, excluding our own user and using the
         # mxid as the sorting key.
-        #
-        # TODO: Hook the user display name disambiguation algorithm here.
-        # Currently, we use the user display names as is, which may not be
-        # unique.
-        users = [
-            user.user_id
-            for mxid, user in sorted(self.users.items(), key=lambda t: t[0])
-            if mxid != self.own_user_id
-        ]
 
-        num_users = len(users)
+        user_names = [
+            self.user_name(u)
+            for u in sorted(self.users.keys())
+            if u != self.own_user_id
+        ]
+        num_users = len(user_names)
 
         if num_users == 1:
-            return users[0]
+            return user_names[0]
         elif num_users == 2:
-            return " and ".join(users)
+            return " and ".join(user_names)
         elif num_users >= 3:
             return "{first_user} and {num} others".format(
-                first_user=users[0], num=num_users - 1
+                first_user=user_names[0], num=num_users - 1
             )
         else:
             return "Empty room?"
+
+    def user_name(self, user_id):
+        """
+        Get disambiguated display name for a user.
+
+        Returns display name of a user if display name is unique or returns
+        a display name in form "<display name> (<matrix id>)" if there is
+        more than one user with same display name.
+        """
+        if user_id not in self.users:
+            return None
+
+        user = self.users[user_id]
+        if len(self.names[user.name]) > 1:
+            return user.disambiguated_name
+        return user.name
+
+    def user_name_clashes(self, name):
+        """
+        Get a list of users that have same display name.
+        """
+
+        return self.names[name]
 
     @property
     def machine_name(self):
@@ -163,6 +185,15 @@ class MatrixRoom(object):
         user = MatrixUser(user_id, display_name, level)
         self.users[user_id] = user
 
+        name = display_name if display_name else user_id
+        self.names[name].append(user_id)
+
+    def remove_member(self, user_id):
+        if user_id in self.users:
+            user = self.users[user_id]
+            self.names[user.name].remove(user.user_id)
+            del self.users[user_id]
+
     def _handle_membership(self, event):
         # type: (Any) -> None
         def join(event):
@@ -177,12 +208,12 @@ class MatrixRoom(object):
                 # Handle profile changes
                 user = self.users[event.sender]
                 if "displayname" in event.content:
+                    self.names[user.name].remove(user.user_id)
                     user.display_name = event.content["displayname"]
+                    self.names[user.name].append(user.user_id)
 
         elif event.content["membership"] in ["leave", "ban"]:
-            if event.state_key in self.users:
-                del self.users[event.state_key]
-                return
+            self.remove_member(event.state_key)
 
         elif event.content["membership"] == "invite":
             pass
@@ -310,3 +341,17 @@ class MatrixUser(object):
         self.display_name = display_name  # type: str
         self.power_level = power_level    # type: int
         # yapf: enable
+
+    @property
+    def name(self):
+        if self.display_name:
+            return self.display_name
+        return self.user_id
+
+    @property
+    def disambiguated_name(self):
+        # as per https://matrix.org/docs/spec/client_server/r0.4.0.html#id346
+        if self.display_name:
+            return "{name} ({user_id})".format(name=self.display_name,
+                                               user_id=self.user_id)
+        return self.user_id
