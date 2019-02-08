@@ -405,6 +405,8 @@ class Http2Connection(Connection):
         self._connection = h2.connection.H2Connection()
         self._responses = OrderedDict()  \
             # type: OrderedDict[int, Http2Response]
+        self._data_to_send = OrderedDict() \
+            # type: OrderedDict[int, bytes]
 
     @property
     def elapsed(self):
@@ -413,6 +415,42 @@ class Http2Connection(Connection):
             return 0
 
         return max(response.elapsed for response in self._responses.values())
+
+    def _handle_window_update(self, event):
+        if not self._data_to_send:
+            return
+
+        if event.stream_id not in self._data_to_send:
+            return
+
+        self._send_data(event.stream_id, self._data_to_send[event.stream_id])
+
+    def _send_data(self, stream_id, data):
+        window_size = self._connection.local_flow_control_window(stream_id)
+        max_frame_size = self._connection.max_outbound_frame_size
+        request_size = len(data)
+
+        bytes_to_send = min(window_size, request_size)
+
+        while bytes_to_send > 0:
+            chunk_size = min(bytes_to_send, max_frame_size)
+
+            if chunk_size >= len(data):
+                chunk, data = data, ""
+            else:
+                chunk, data = (
+                    data[0:chunk_size],
+                    data[chunk_size:]
+                )
+
+            bytes_to_send -= chunk_size
+            self._connection.send_data(stream_id, chunk)
+
+        if not data:
+            self._connection.end_stream(stream_id)
+            self._data_to_send.pop(stream_id, None)
+        else:
+            self._data_to_send[stream_id] = data
 
     def send(self, request, uuid=None):
         # type: (TransportRequest, Optional[UUID]) -> Tuple[UUID, bytes]
@@ -427,14 +465,14 @@ class Http2Connection(Connection):
 
         stream_id = self._connection.get_next_available_stream_id()
         logger.debug("New stream id {}".format(stream_id))
+
         self._connection.send_headers(stream_id, request._request)
-        # TODO we need to split the data here according to window
-        # and frame size.
-        self._connection.send_data(stream_id, request._data)
-        self._connection.end_stream(stream_id)
+        self._send_data(stream_id, request._data)
         ret = self._connection.data_to_send()
+
         response = Http2Response(uuid, request.timeout)
         response.mark_as_sent()
+
         self._responses[stream_id] = response
 
         return response.uuid, ret
@@ -496,7 +534,7 @@ class Http2Connection(Connection):
             elif isinstance(event, h2.events.SettingsAcknowledged):
                 pass
             elif isinstance(event, h2.events.WindowUpdated):
-                pass
+                self._handle_window_update(event)
             elif isinstance(event, h2.events.StreamReset):
                 logger.error("Http2 stream reset")
                 return self._handle_reset(event.stream_id)
