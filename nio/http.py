@@ -417,13 +417,28 @@ class Http2Connection(Connection):
         return max(response.elapsed for response in self._responses.values())
 
     def _handle_window_update(self, event):
+        # We don't have any data to send, it doesn't matter that the window got
+        # updated.
         if not self._data_to_send:
             return
 
-        if event.stream_id not in self._data_to_send:
+        # The window changed for a single stream and the stream contains some
+        # data to send, send it out now.
+        if event.stream_id in self._data_to_send:
+            self._send_data(
+                event.stream_id,
+                self._data_to_send[event.stream_id]
+            )
             return
 
-        self._send_data(event.stream_id, self._data_to_send[event.stream_id])
+        # The window changed for the whole connection, try to send out data for
+        # every stream we have some data buffered.
+        if event.stream_id == 0:
+            for stream_id, data in self._data_to_send.items():
+                self._send_data(
+                    stream_id,
+                    data
+                )
 
     def _send_data(self, stream_id, data):
         window_size = self._connection.local_flow_control_window(stream_id)
