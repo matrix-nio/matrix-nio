@@ -446,6 +446,13 @@ class Http2Connection(Connection):
         request_size = len(data)
 
         bytes_to_send = min(window_size, request_size)
+        logger.debug("Sending data: stream id: {}; request size: {}; "
+                     "window size: {}; max frame size {}".format(
+                         stream_id,
+                         request_size,
+                         window_size,
+                         max_frame_size
+                     ))
 
         while bytes_to_send > 0:
             chunk_size = min(bytes_to_send, max_frame_size)
