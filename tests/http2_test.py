@@ -142,14 +142,18 @@ class TestClass(object):
         client = HttpClient("localhost", "example")
         data = client.connect(TransportType.HTTP2)
         client.connection._connection.outbound_flow_control_window = 5
-        print("HELLO")
         uuid, request = client.login("wordpass")
 
-        conf = h2.config.H2Configuration(client_side=False)
-        server = h2.connection.H2Connection(conf)
+        assert client.connection._data_to_send
 
-        server.initiate_connection()
-        server.receive_data(data)
-        data = server.data_to_send()
-        client.receive(data)
-        events = server.receive_data(request)
+        to_send = data + request
+
+        while to_send:
+            f = frame_factory.build_window_update_frame(
+                stream_id=0,
+                increment=5,
+            )
+            client.receive(f.serialize())
+            to_send = client.data_to_send()
+
+        assert not client.connection._data_to_send
