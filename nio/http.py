@@ -534,8 +534,12 @@ class Http2Connection(Connection):
         response.add_data(data)
 
     def _handle_reset(self, event):
-        # type: (h2.events.StreamReset) -> Http2Response
-        response = self._responses.pop(event.stream_id)
+        # type: (h2.events.StreamReset) -> Optional[Http2Response]
+        response = self._responses.pop(event.stream_id, None)
+
+        if not response:
+            return None
+
         response.was_reset = True
         response.error_code = event.error_code
         return response
@@ -559,7 +563,7 @@ class Http2Connection(Connection):
                 self._handle_window_update(event)
             elif isinstance(event, h2.events.StreamReset):
                 logger.error("Http2 stream reset")
-                return self._handle_reset(event.stream_id)
+                return self._handle_reset(event)
             elif isinstance(events, h2.events.ConnectionTerminated):
                 logger.error("Http2 connection terminated")
                 # TODO reset the client
