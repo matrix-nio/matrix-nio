@@ -1039,7 +1039,7 @@ class Olm(object):
         self.store.save_session(curve_key, session)
 
     def save_inbound_group_session(self, session):
-        # type: (str, str, InboundGroupSession) -> None
+        # type: (InboundGroupSession) -> None
         self.store.save_inbound_group_session(session)
 
     def save_account(self):

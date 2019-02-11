@@ -72,7 +72,7 @@ class GroupSessionStore(object):
                     yield session
 
     def add(self, session):
-        # type: (InboundGroupSession, str, str) -> bool
+        # type: (InboundGroupSession) -> bool
         room_id = session.room_id
         sender_key = session.sender_key
         if session in self._entries[room_id][sender_key].values():
