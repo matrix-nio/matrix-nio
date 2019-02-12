@@ -440,10 +440,6 @@ class TestClass(object):
         # alice creates an outbound olm session with bob
         alice.create_session(one_time, bob_device.curve25519)
 
-        # alice creates an group session
-        alice.create_outbound_group_session("!test:example.org")
-        group_session = alice.outbound_group_sessions["!test:example.org"]
-
         alice.verify_device(bob_device)
         alice.verify_device(malory_device)
 
@@ -453,6 +449,9 @@ class TestClass(object):
             "!test:example.org",
             [BobId, MaloryId]
         )
+        group_session = alice.outbound_group_sessions["!test:example.org"]
+
+        assert group_session
 
         assert len(sharing_with) == 1
         assert not group_session.users_shared_with
