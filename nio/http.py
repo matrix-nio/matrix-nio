@@ -511,6 +511,7 @@ class Http2Connection(Connection):
         # type: () -> bytes
         self._connection.close_connection()
         self._responses.clear()
+        self._data_to_send = OrderedDict()
         return self._connection.data_to_send()
 
     def _handle_response(self, event):
