@@ -938,6 +938,9 @@ class Olm(object):
     ):
         # type: (...) -> Tuple[Set[Tuple[str, str]], Dict[str, Any]]
         logger.info("Sharing group session for room {}".format(room_id))
+        if room_id not in self.outbound_group_sessions:
+            self.create_outbound_group_session(room_id)
+
         group_session = self.outbound_group_sessions[room_id]
 
         key_content = {
