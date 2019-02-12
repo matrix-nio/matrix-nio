@@ -555,7 +555,11 @@ class Http2Connection(Connection):
             elif isinstance(event, h2.events.DataReceived):
                 self._handle_data(event)
             elif isinstance(event, h2.events.StreamEnded):
-                response = self._responses.pop(event.stream_id)
+                response = self._responses.pop(event.stream_id, None)
+
+                if not response:
+                    return None
+
                 response.mark_as_received()
                 return response
             elif isinstance(event, h2.events.SettingsAcknowledged):
