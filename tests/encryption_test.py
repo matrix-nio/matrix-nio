@@ -336,20 +336,23 @@ class TestClass(object):
 
         # alice shares the group session with bob, but bob isn't verified
         with pytest.raises(OlmTrustError):
-            to_device = alice.share_group_session("!test:example.org", [BobId])
+            sharing_with, to_device = alice.share_group_session(
+                "!test:example.org",
+                [BobId]
+            )
 
         alice.verify_device(bob_device)
 
         # alice shares the group session with bob and malory, but malory isn't
         # blocked
         with pytest.raises(OlmTrustError):
-            to_device = alice.share_group_session(
+            sharing_with, to_device = alice.share_group_session(
                 "!test:example.org",
                 [BobId, MaloryId]
             )
 
         alice.blacklist_device(malory_device)
-        to_device = alice.share_group_session(
+        sharing_with, to_device = alice.share_group_session(
             "!test:example.org",
             [BobId, MaloryId]
         )

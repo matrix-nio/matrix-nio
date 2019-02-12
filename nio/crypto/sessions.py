@@ -18,7 +18,7 @@
 import olm
 from builtins import super
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import List, Optional, Set, Tuple
 
 from ..exceptions import EncryptionError
 
@@ -152,6 +152,7 @@ class OutboundGroupSession(olm.OutboundGroupSession):
         self.max_messages = 100
         self.creation_time = datetime.now()
         self.message_count = 0
+        self.users_shared_with = set()  # type: Set[Tuple[str, str]]
         self.shared = False
         super().__init__()
 

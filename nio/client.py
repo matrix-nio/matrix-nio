@@ -600,7 +600,28 @@ class Client(object):
     def _handle_olm_response(self, response):
         self.olm.handle_response(response)
 
-        if isinstance(response, KeysQueryResponse):
+        if isinstance(response, ShareGroupSessionResponse):
+            room_id = response.room_id
+            session = self.olm.outbound_group_sessions.get(room_id, None)
+            room = self.rooms.get(room_id, None)
+
+            session.users_shared_with.update(response.users_shared_with)
+
+            if not session and not room:
+                return
+
+            users = room.users
+
+            for user_id in users:
+                for device in self.device_store.active_user_devices(user_id):
+                    if (user_id, device.id) not in session.users_shared_with:
+                        return
+
+            logger.info("Marking outbound group session for room {} "
+                        "as shared".format(room_id))
+            session.shared = True
+
+        elif isinstance(response, KeysQueryResponse):
             for user_id in response.changed:
                 for room in self.rooms.values():
                     if room.encrypted and user_id in room.users:
@@ -1127,7 +1148,7 @@ class HttpClient(Client):
             raise LocalProtocolError("Room with id {} is not encrypted".format(
                 room_id))
 
-        to_device_dict = self.olm.share_group_session(
+        user_map, to_device_dict = self.olm.share_group_session(
             room_id,
             list(room.users.keys()),
             ignore_missing_sessions
@@ -1146,7 +1167,7 @@ class HttpClient(Client):
 
         return self._send(
             request,
-            RequestInfo(RequestType.share_group_session, room_id)
+            RequestInfo(RequestType.share_group_session, (room_id, user_map))
         )
 
     @connected
@@ -1300,7 +1321,7 @@ class HttpClient(Client):
         elif request_type is RequestType.share_group_session:
             response = ShareGroupSessionResponse.from_dict(
                 parsed_dict,
-                request_info.extra_data
+                *request_info.extra_data
             )
         elif request_type is RequestType.devices:
             response = DevicesResponse.from_dict(parsed_dict)

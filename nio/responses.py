@@ -27,7 +27,8 @@ from typing import (
     Union,
     Type,
     TypeVar,
-    Tuple
+    Tuple,
+    Set
 )
 
 from datetime import datetime
@@ -352,8 +353,21 @@ class UploadError(ErrorResponse):
     pass
 
 
-class ShareGroupSessionError(ErrorResponse):
-    pass
+@attr.s
+class ShareGroupSessionError(_ErrorWithRoomId):
+    """Response representing unsuccessful group sessions sharing request."""
+
+    users_shared_with = attr.ib(type=set, default=None)
+
+    @classmethod
+    def from_dict(cls, parsed_dict, room_id, users_shared_with):
+        try:
+            validate_json(parsed_dict, Schemas.error)
+        except (SchemaError, ValidationError):
+            return cls("unknown error")
+
+        return cls(parsed_dict["error"], parsed_dict["errcode"], room_id,
+                   users_shared_with)
 
 
 class DevicesError(ErrorResponse):
@@ -529,10 +543,41 @@ class RoomInviteResponse(EmptyResponse):
         return RoomInviteError.from_dict(parsed_dict)
 
 
-class ShareGroupSessionResponse(_EmptyResponseWithRoomId):
-    @staticmethod
-    def create_error(parsed_dict, room_id):
-        return ShareGroupSessionError.from_dict(parsed_dict)
+@attr.s
+class ShareGroupSessionResponse(Response):
+    """Response representing a successful group sessions sharing request.
+
+    Attributes:
+        room_id (str): The room id of the group session.
+        users_shared_with: (Set[Tuple[str, str]]): A set containing a tuple of
+            user id device id pairs with whom we shared the group session in
+            this request.
+
+    """
+
+    room_id = attr.ib(type=str)
+    users_shared_with = attr.ib(type=set)
+
+    @classmethod
+    @verify(Schemas.empty, ShareGroupSessionError)
+    def from_dict(
+        cls,
+        _,                 # type: Dict[Any, Any]
+        room_id,           # type: str
+        users_shared_with  # type: Set[Tuple[str, str]]
+    ):
+        # type: (...) -> Union[ShareGroupSessionResponse, ErrorResponse]
+        """Create a response from the json dict the server returns.
+
+        Args:
+           parsed_dict (Dict): The dict containing the raw json response.
+            room_id (str): The room id of the room to which the group session
+                belongs to.
+            users_shared_with: (Set[Tuple[str, str]]): A set containing a tuple
+                of user id device id pairs with whom we shared the group
+                session in this request.
+        """
+        return cls(room_id, users_shared_with)
 
 
 class RoomTypingResponse(_EmptyResponseWithRoomId):

@@ -101,6 +101,7 @@ class Olm(object):
     _olm_algorithm = 'm.olm.v1.curve25519-aes-sha2'
     _megolm_algorithm = 'm.megolm.v1.aes-sha2'
     _algorithms = [_olm_algorithm, _megolm_algorithm]
+    _maxToDeviceMessagesPerRequest = 20
 
     def __init__(
         self,
@@ -417,13 +418,6 @@ class Olm(object):
 
         elif isinstance(response, KeysClaimResponse):
             self._handle_key_claiming(response)
-
-        elif isinstance(response, ShareGroupSessionResponse):
-            room_id = response.room_id
-            session = self.outbound_group_sessions[room_id]
-            logger.info("Marking outbound group session for room {} "
-                        "as shared".format(room_id))
-            session.shared = True
 
     def _create_inbound_session(
         self,
@@ -942,7 +936,7 @@ class Olm(object):
         users,    # type: List[str]
         ignore_missing_sessions=False  # type: bool
     ):
-        # type: (...) -> Dict[str, Any]
+        # type: (...) -> Tuple[Set[Tuple[str, str]], Dict[str, Any]]
         logger.info("Sharing group session for room {}".format(room_id))
         group_session = self.outbound_group_sessions[room_id]
 
@@ -964,6 +958,10 @@ class Olm(object):
 
         to_device_dict = {"messages": {}}  # type: Dict[str, Any]
 
+        already_shared_set = group_session.users_shared_with
+
+        user_map = []
+
         for user_id in users:
             for device in self.device_store.active_user_devices(user_id):
                 # No need to share the session with our own device
@@ -971,6 +969,9 @@ class Olm(object):
                     continue
 
                 if self.is_device_blacklisted(device):
+                    continue
+
+                if (user_id, device.id) in already_shared_set:
                     continue
 
                 session = self.session_store.get(device.curve25519)
@@ -991,34 +992,48 @@ class Olm(object):
                                             device.user_id
                                         ))
 
-                device_payload_dict = payload_dict.copy()
-                device_payload_dict["recipient"] = user_id
-                device_payload_dict["recipient_keys"] = {
-                    "ed25519": device.ed25519
-                }
+                user_map.append((user_id, device, session))
 
-                olm_message = session.encrypt(
-                    Api.to_json(device_payload_dict)
-                )
-                self.store.save_session(device.curve25519, session)
+                if len(user_map) >= self._maxToDeviceMessagesPerRequest:
+                    break
 
-                olm_dict = {
-                    "algorithm": self._olm_algorithm,
-                    "sender_key": self.account.identity_keys["curve25519"],
-                    "ciphertext": {
-                        device.curve25519: {
-                            "type": olm_message.message_type,
-                            "body": olm_message.ciphertext,
-                        }
-                    },
-                }
+            if len(user_map) >= self._maxToDeviceMessagesPerRequest:
+                break
 
-                if user_id not in to_device_dict["messages"]:
-                    to_device_dict["messages"][user_id] = {}
+        sharing_with = set()
 
-                to_device_dict["messages"][user_id][device.id] = olm_dict
+        for user_id, device, session in user_map:
+            # No need to share the session with our own device
+            device_payload_dict = payload_dict.copy()
+            device_payload_dict["recipient"] = user_id
+            device_payload_dict["recipient_keys"] = {
+                "ed25519": device.ed25519
+            }
 
-        return to_device_dict
+            olm_message = session.encrypt(
+                Api.to_json(device_payload_dict)
+            )
+            self.store.save_session(device.curve25519, session)
+
+            olm_dict = {
+                "algorithm": self._olm_algorithm,
+                "sender_key": self.account.identity_keys["curve25519"],
+                "ciphertext": {
+                    device.curve25519: {
+                        "type": olm_message.message_type,
+                        "body": olm_message.ciphertext,
+                    }
+                },
+            }
+
+            sharing_with.add((user_id, device.id))
+
+            if user_id not in to_device_dict["messages"]:
+                to_device_dict["messages"][user_id] = {}
+
+            to_device_dict["messages"][user_id][device.id] = olm_dict
+
+        return sharing_with, to_device_dict
 
     def load(self):
         # type: () -> None
