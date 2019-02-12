@@ -20,7 +20,7 @@ from nio.crypto import (
     DeviceStore
 )
 from nio.exceptions import OlmTrustError
-from nio.responses import KeysQueryResponse
+from nio.responses import KeysQueryResponse, ShareGroupSessionResponse
 from nio.store import KeyStore, Ed25519Key, Key, DefaultStore
 
 
@@ -393,3 +393,84 @@ class TestClass(object):
                 ephemeral_dir,
                 "{}_{}.db".format(BobId, Bob_device)
             ))
+
+    def test_group_session_sharing(self, monkeypatch):
+        def mocksave(self):
+            return
+
+        monkeypatch.setattr(KeyStore, '_save', mocksave)
+
+        # create three new accounts
+        alice = self._load(AliceId, Alice_device)
+        bob = self._load(BobId, Bob_device)
+        malory = self._load(BobId, Bob_device)
+
+        # create olm devices for each others known devices list
+        alice_device = OlmDevice(
+            AliceId,
+            Alice_device,
+            alice.account.identity_keys["ed25519"],
+            alice.account.identity_keys["curve25519"],
+        )
+        bob_device = OlmDevice(
+            BobId,
+            Bob_device,
+            bob.account.identity_keys["ed25519"],
+            bob.account.identity_keys["curve25519"],
+        )
+
+        malory_device = OlmDevice(
+            MaloryId,
+            Malory_device,
+            malory.account.identity_keys["ed25519"],
+            malory.account.identity_keys["curve25519"],
+        )
+
+        # add the devices to the device list
+        alice.device_store.add(bob_device)
+        alice.device_store.add(malory_device)
+        bob.device_store.add(alice_device)
+
+        # bob creates one time keys
+        bob.account.generate_one_time_keys(1)
+        one_time = list(bob.account.one_time_keys["curve25519"].values())[0]
+        # Mark the keys as published
+        bob.account.mark_keys_as_published()
+
+        # alice creates an outbound olm session with bob
+        alice.create_session(one_time, bob_device.curve25519)
+
+        # alice creates an group session
+        alice.create_outbound_group_session("!test:example.org")
+        group_session = alice.outbound_group_sessions["!test:example.org"]
+
+        alice.verify_device(bob_device)
+        alice.verify_device(malory_device)
+
+        alice._maxToDeviceMessagesPerRequest = 1
+
+        sharing_with, to_device = alice.share_group_session(
+            "!test:example.org",
+            [BobId, MaloryId]
+        )
+
+        assert len(sharing_with) == 1
+        assert not group_session.users_shared_with
+
+        group_session.users_shared_with.update(sharing_with)
+
+        sharing_with, to_device = alice.share_group_session(
+            "!test:example.org",
+            [BobId, MaloryId]
+        )
+
+        assert len(sharing_with) == 1
+
+        os.remove(os.path.join(
+            ephemeral_dir,
+            "{}_{}.db".format(AliceId, Alice_device)
+        ))
+        os.remove(os.path.join(
+            ephemeral_dir,
+            "{}_{}.db".format(BobId, Bob_device)
+        ))
