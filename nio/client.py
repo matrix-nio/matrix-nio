@@ -614,7 +614,9 @@ class Client(object):
 
             for user_id in users:
                 for device in self.device_store.active_user_devices(user_id):
-                    if (user_id, device.id) not in session.users_shared_with:
+                    user = (user_id, device.id)
+                    if (user not in session.users_shared_with
+                            and user not in session.users_ignored):
                         return
 
             logger.info("Marking outbound group session for room {} "

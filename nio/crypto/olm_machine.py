@@ -962,6 +962,7 @@ class Olm(object):
         to_device_dict = {"messages": {}}  # type: Dict[str, Any]
 
         already_shared_set = group_session.users_shared_with
+        ignored_set = group_session.users_ignored
 
         user_map = []
 
@@ -969,18 +970,22 @@ class Olm(object):
             for device in self.device_store.active_user_devices(user_id):
                 # No need to share the session with our own device
                 if device.id == self.device_id:
+                    ignored_set.add((user_id, device.id))
                     continue
 
                 if self.is_device_blacklisted(device):
+                    ignored_set.add((user_id, device.id))
                     continue
 
-                if (user_id, device.id) in already_shared_set:
+                if ((user_id, device.id) in already_shared_set
+                        or (user_id, device.id) in ignored_set):
                     continue
 
                 session = self.session_store.get(device.curve25519)
 
                 if not session:
                     if ignore_missing_sessions:
+                        ignored_set.add((user_id, device.id))
                         continue
                     else:
                         raise EncryptionError("Missing Olm session for user {}"

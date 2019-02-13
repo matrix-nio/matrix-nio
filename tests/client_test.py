@@ -20,7 +20,9 @@ from nio import (
     RoomSummary,
     KeysQueryResponse,
     JoinedMembersResponse,
-    RoomMember
+    RoomMember,
+    EncryptionError,
+    ShareGroupSessionResponse
 )
 
 HOST = "example.org"
@@ -339,3 +341,33 @@ class TestClass(object):
         client.load_store()
         assert client.store
         assert client.olm
+
+    def test_makring_sessions_as_shared(self, client):
+        client.receive_response(self.login_response)
+        client.receive_response(self.sync_response)
+        client.receive_response(self.joined_members)
+        client.receive_response(self.keys_query_response)
+
+        room = client.rooms[TEST_ROOM_ID]
+
+        assert room.encrypted
+        assert len(room.users) == 2
+        assert ALICE_ID in client.device_store.users
+        assert BOB_ID not in client.device_store.users
+
+        with pytest.raises(EncryptionError):
+            client.olm.share_group_session(TEST_ROOM_ID, room.users)
+
+        shared_with, to_device = client.olm.share_group_session(
+            TEST_ROOM_ID,
+            room.users,
+            True
+        )
+
+        session = client.olm.outbound_group_sessions[TEST_ROOM_ID]
+        assert (ALICE_ID, ALICE_DEVICE_ID) in session.users_ignored
+
+        response = ShareGroupSessionResponse.from_dict({}, TEST_ROOM_ID, set())
+        client.receive_response(response)
+
+        assert session.shared
