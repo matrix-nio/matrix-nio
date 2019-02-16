@@ -1,0 +1,11 @@
+attrs
+future
+peewee
+h11
+h2
+logbook
+jsonschema
+atomicwrites
+unpaddedbase64
+pycrypto
+sphinx >= 1.8

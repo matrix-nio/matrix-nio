@@ -45,7 +45,13 @@ class OlmAccount(olm.Account):
         return account
 
 
-class Session(olm.Session):
+class _SessionExpirationMixin(object):
+    @property
+    def expired(self):
+        return False
+
+
+class Session(olm.Session, _SessionExpirationMixin):
     def __init__(self):
         super().__init__()
         self.creation_time = datetime.now()
@@ -60,12 +66,8 @@ class Session(olm.Session):
         session.creation_time = creation_time
         return session
 
-    @property
-    def expired(self):
-        return False
 
-
-class InboundSession(olm.InboundSession, Session):
+class InboundSession(olm.InboundSession, _SessionExpirationMixin):
     def __new__(cls, *args):
         return super().__new__(cls, *args)
 
@@ -74,7 +76,7 @@ class InboundSession(olm.InboundSession, Session):
         self.creation_time = datetime.now()
 
 
-class OutboundSession(olm.OutboundSession, Session):
+class OutboundSession(olm.OutboundSession, _SessionExpirationMixin):
     def __new__(cls, *args):
         return super().__new__(cls, *args)
 
