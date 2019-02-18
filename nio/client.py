@@ -270,7 +270,7 @@ class Client(object):
     def should_upload_keys(self):
         """Check if the client should upload encryption keys.
 
-        Returns True if a keys need to be uploaded, false otherwise.
+        Returns True if encryption keys need to be uploaded, false otherwise.
         """
         if not self.olm:
             return False
@@ -673,6 +673,7 @@ class Client(object):
 
     @store_loaded
     def export_keys(self, outfile, passphrase, count=10000):
+        # type: (str, str, int) -> None
         """Export all the Megolm decryption keys of this device.
 
         The keys will be encrypted using the passphrase.
@@ -686,10 +687,12 @@ class Client(object):
                 derivation. It is not recommended to specify it unless
                 absolutely sure of the consequences.
         """
-        return self.olm.export_keys(outfile, passphrase, count=count)
+        assert self.olm
+        self.olm.export_keys(outfile, passphrase, count=count)
 
     @store_loaded
     def import_keys(self, infile, passphrase):
+        # type: (str, str) -> None
         """Import Megolm decryption keys.
 
         The keys will be added to the current instance as well as written to
@@ -701,9 +704,11 @@ class Client(object):
 
         Raises `EncryptionError` if the file is invalid or couldn't be
             decrypted.
+
         Raises the usual file errors if the file couldn't be opened.
         """
-        return self.olm.import_keys(infile, passphrase)
+        assert self.olm
+        self.olm.import_keys(infile, passphrase)
 
     @store_loaded
     def get_missing_sessions(self, room_id):

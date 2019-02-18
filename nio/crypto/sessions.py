@@ -140,13 +140,15 @@ class InboundGroupSession(olm.InboundGroupSession):
 
 
 class OutboundGroupSession(olm.OutboundGroupSession):
-
     """Outbound group session aware of the users it is shared with.
+
     Also remembers the time it was created and the number of messages it has
     encrypted, in order to know if it needs to be rotated.
+
     Attributes:
         creation_time (datetime.datetime): Creation time of the session.
         message_count (int): Number of messages encrypted using the session.
+
     """
 
     def __init__(self):

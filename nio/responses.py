@@ -571,11 +571,11 @@ class ShareGroupSessionResponse(Response):
 
         Args:
            parsed_dict (Dict): The dict containing the raw json response.
-            room_id (str): The room id of the room to which the group session
-                belongs to.
-            users_shared_with: (Set[Tuple[str, str]]): A set containing a tuple
-                of user id device id pairs with whom we shared the group
-                session in this request.
+           room_id (str): The room id of the room to which the group session
+               belongs to.
+           users_shared_with: (Set[Tuple[str, str]]): A set containing a tuple
+               of user id device id pairs with whom we shared the group
+               session in this request.
         """
         return cls(room_id, users_shared_with)
 
