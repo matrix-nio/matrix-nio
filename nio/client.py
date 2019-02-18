@@ -708,6 +708,32 @@ class Client(object):
         """
         return self.olm.import_keys(infile, passphrase)
 
+    @store_loaded
+    def get_missing_sessions(self, room_id):
+        # type: (str) -> Dict[str, List[str]]
+        """Get users and devices for wich we don't have active Olm sessions.
+
+        Args:
+            room_id (str): The room id of the room for which we should get the
+                users with missing Olm sessions.
+
+        Raises `LocalProtocolError` if the room with the provided room id is
+            not found or the room is not encrypted.
+        """
+        assert self.olm
+
+        if room_id not in self.rooms:
+            raise LocalProtocolError("No room found with room id {}".format(
+                room_id
+            ))
+        room = self.rooms[room_id]
+
+        if not room.encrypted:
+            raise LocalProtocolError("Room with id {} is not encrypted".format(
+                                     room_id))
+
+        return self.olm.get_missing_sessions(list(room.users))
+
 
 class HttpClient(Client):
     def __init__(
@@ -1107,18 +1133,8 @@ class HttpClient(Client):
     @logged_in
     @store_loaded
     def keys_claim(self, room_id):
-        try:
-            room = self.rooms[room_id]
-        except KeyError:
-            raise LocalProtocolError("No such room with id {}".format(room_id))
+        user_list = self.get_missing_sessions(room_id)
 
-        if not room.encrypted:
-            raise LocalProtocolError("Room with id {} is not encrypted".format(
-                                     room_id))
-
-        user_list = self.olm.get_missing_sessions(
-            list(room.users.keys())
-        )
         request = self._build_request(
             Api.keys_claim(
                 self.access_token,
