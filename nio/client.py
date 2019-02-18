@@ -23,7 +23,6 @@ from collections import deque
 from functools import wraps
 from typing import (
     Any,
-    AnyStr,
     Deque,
     Dict,
     List,
@@ -42,10 +41,9 @@ from logbook import Logger
 from .api import Api, MessageDirection
 from .exceptions import (
     LocalProtocolError,
-    RemoteProtocolError,
     RemoteTransportError,
 )
-from .crypto import DeviceStore, Olm
+from .crypto import Olm
 from .http import HttpRequest, Http2Request
 
 from .http import (
@@ -91,7 +89,6 @@ from .events import (
     BadEventType,
     RoomEncryptedEvent,
     MegolmEvent,
-    RoomKeyEvent
 )
 from .rooms import MatrixInvitedRoom, MatrixRoom
 from .store import MatrixStore, DefaultStore
