@@ -585,7 +585,7 @@ class MatrixStore(object):
 
         return store
 
-    @use_database
+    @use_database_atomic
     def save_device_keys(self, device_keys):
         """Save the provided device keys to the database.
 
@@ -612,8 +612,9 @@ class MatrixStore(object):
         if not rows:
             return
 
-        # TODO this needs to be batched
-        DeviceKeys.replace_many(rows).execute()
+        for idx in range(0, len(rows), 100):
+            data = rows[idx:idx + 100]
+            DeviceKeys.replace_many(data).execute()
 
     @use_database
     def load_encrypted_rooms(self):
