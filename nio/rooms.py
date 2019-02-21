@@ -44,15 +44,15 @@ logger_group.add_logger(logger)
 
 
 class MatrixRoom(object):
-    def __init__(self, room_id, own_user_id):
-        # type: (str, str) -> None
+    def __init__(self, room_id, own_user_id, encrypted=False):
+        # type: (str, str, bool) -> None
         # yapf: disable
         self.room_id = room_id        # type: str
         self.own_user_id = own_user_id
         self.canonical_alias = None   # type: Optional[str]
         self.name = None              # type: Optional[str]
         self.users = dict()           # type: Dict[str, MatrixUser]
-        self.encrypted = False        # type: bool
+        self.encrypted = encrypted    # type: bool
         self.power_levels = PowerLevels()  # type: PowerLevels
         self.typing_users = []        # type: List[str]
         self.summary = None           # type: Optional[RoomSummary]

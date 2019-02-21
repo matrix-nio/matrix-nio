@@ -80,6 +80,38 @@ class TestClass(object):
         )
 
     @property
+    def downgrade_sync(self):
+        timeline = Timeline(
+            [
+                RoomMemberEvent(
+                    "event_id_1",
+                    ALICE_ID,
+                    1516809890615,
+                    ALICE_ID,
+                    {"membership": "join"}
+                ),
+            ],
+            False,
+            "prev_batch_token"
+        )
+        test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(1, 2, []))
+        rooms = Rooms(
+            {},
+            {
+                TEST_ROOM_ID: test_room_info
+            },
+            {}
+        )
+        return SyncResponse(
+            "token123",
+            rooms,
+            DeviceOneTimeKeyCount(49, 50),
+            DeviceList([ALICE_ID], []),
+            []
+        )
+
+
+    @property
     def second_sync(self):
         timeline = Timeline(
             [
@@ -371,3 +403,22 @@ class TestClass(object):
         client.receive_response(response)
 
         assert session.shared
+
+    def test_storing_room_encryption_state(self, client):
+        client.receive_response(self.login_response)
+        assert not client.encrypted_rooms
+
+        client.receive_response(self.sync_response)
+        assert TEST_ROOM_ID in client.encrypted_rooms
+
+        encrypted_rooms = client.store.load_encrypted_rooms()
+        assert TEST_ROOM_ID in encrypted_rooms
+
+        client2 = Client(client.user, client.device_id, client.store_path)
+        client2.receive_response(self.login_response)
+        assert TEST_ROOM_ID in client2.encrypted_rooms
+
+        client2.receive_response(self.downgrade_sync)
+        room = client2.rooms[TEST_ROOM_ID]
+
+        assert room.encrypted

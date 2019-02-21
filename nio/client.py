@@ -89,6 +89,7 @@ from .events import (
     BadEventType,
     RoomEncryptedEvent,
     MegolmEvent,
+    RoomEncryptionEvent
 )
 from .rooms import MatrixInvitedRoom, MatrixRoom
 from .store import MatrixStore, DefaultStore
@@ -232,6 +233,7 @@ class Client(object):
 
         self.rooms = dict()  # type: Dict[str, MatrixRoom]
         self.invited_rooms = dict()  # type: Dict[str, MatrixRoom]
+        self.encrypted_rooms = set()  # type: Set[str]
 
     @property
     def logged_in(self):
@@ -312,6 +314,7 @@ class Client(object):
         )
         assert self.store
         self.olm = Olm(self.user_id, self.device_id, self.store)
+        self.encrypted_rooms = self.store.load_encrypted_rooms()
 
     def room_contains_unverified(self, room_id):
         # type: (str) -> bool
@@ -492,6 +495,7 @@ class Client(object):
         if isinstance(response, SyncResponse):
             self.next_batch = response.next_batch
 
+        encrypted_rooms = set()
         decrypted_to_device = []  # type: ignore
 
         for index, to_device_event in enumerate(response.to_device_events):
@@ -525,11 +529,17 @@ class Client(object):
 
             if room_id not in self.rooms:
                 logger.info("New joined room {}".format(room_id))
-                self.rooms[room_id] = MatrixRoom(room_id, self.user_id)
+                self.rooms[room_id] = MatrixRoom(
+                    room_id,
+                    self.user_id,
+                    room_id in self.encrypted_rooms
+                )
 
             room = self.rooms[room_id]
 
             for event in join_info.state:
+                if isinstance(event, RoomEncryptionEvent):
+                    encrypted_rooms.add(room_id)
                 room.handle_event(event)
 
             if join_info.summary:
@@ -544,6 +554,10 @@ class Client(object):
                     if new_event:
                         event = new_event
                         decrypted_events.append((index, new_event))
+
+                elif isinstance(event, RoomEncryptionEvent):
+                    encrypted_rooms.add(room_id)
+
                 room.handle_event(event)
 
             # Replace the Megolm events with decrypted ones
@@ -556,6 +570,11 @@ class Client(object):
 
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)
+
+        self.encrypted_rooms.update(encrypted_rooms)
+
+        if self.store:
+            self.store.save_encrypted_rooms(encrypted_rooms)
 
         if self.olm:
             changed_users = set()
