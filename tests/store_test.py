@@ -239,3 +239,17 @@ class TestClass(object):
 
         assert loaded_session
         assert session.id == loaded_session.id
+
+    @ephemeral
+    def test_encrypted_room_saving(self):
+        self._create_ephemeral_account()
+        store = self.ephemeral_store
+        encrypted_rooms = store.load_encrypted_rooms()
+
+        assert not encrypted_rooms
+
+        store.save_encrypted_rooms([TEST_ROOM])
+
+        store = self.ephemeral_store
+        encrypted_rooms = store.load_encrypted_rooms()
+        assert TEST_ROOM in encrypted_rooms

@@ -304,6 +304,15 @@ class ForwardedChains(Model):
     )
 
 
+class EncryptedRooms(Model):
+    room_id = TextField()
+    account = ForeignKeyField(
+        Accounts,
+        backref="encrypted_rooms",
+        on_delete="CASCADE"
+    )
+
+
 class OlmSessions(Model):
     creation_time = DateField()
     curve_key = TextField()
@@ -354,6 +363,15 @@ def use_database(fn):
     return inner
 
 
+def use_database_atomic(fn):
+    @wraps(fn)
+    def inner(self, *args, **kwargs):
+        with self.database.bind_ctx(self.models):
+            with self.database.atomic():
+                return fn(self, *args, **kwargs)
+    return inner
+
+
 @attr.s
 class MatrixStore(object):
     """Storage class for matrix state."""
@@ -364,6 +382,7 @@ class MatrixStore(object):
         MegolmInboundSessions,
         ForwardedChains,
         DeviceKeys,
+        EncryptedRooms,
     ]
 
     user_id = attr.ib(type=str)
@@ -392,6 +411,15 @@ class MatrixStore(object):
             self.database.create_tables(self.models)
 
     @use_database
+    def _get_account(self):
+        try:
+            return Accounts.get(
+                Accounts.user_id == self.user_id,
+                Accounts.device_id == self.device_id
+            )
+        except DoesNotExist:
+            return None
+
     def load_account(self):
         # type: () -> Optional[OlmAccount]
         """Load the Olm account from the database.
@@ -401,12 +429,9 @@ class MatrixStore(object):
                 current device_id.
 
         """
-        try:
-            account = Accounts.get(
-                Accounts.user_id == self.user_id,
-                Accounts.device_id == self.device_id
-            )
-        except DoesNotExist:
+        account = self._get_account()
+
+        if not account:
             return None
 
         return OlmAccount.from_pickle(
@@ -589,6 +614,37 @@ class MatrixStore(object):
 
         # TODO this needs to be batched
         DeviceKeys.replace_many(rows).execute()
+
+    @use_database
+    def load_encrypted_rooms(self):
+        """Load the set of encrypted rooms for this account.
+
+        Returns:
+            ``Set`` containing room ids of encrypted rooms.
+
+        """
+        account = self._get_account()
+
+        if not account:
+            return set()
+
+        return {room.room_id for room in account.encrypted_rooms}
+
+    @use_database_atomic
+    def save_encrypted_rooms(self, rooms):
+        """Save the set of room ids for this account."""
+        account = self._get_account()
+
+        assert account
+
+        data = [(room_id, account) for room_id in rooms]
+
+        for idx in range(0, len(data), 400):
+            rows = data[idx:idx + 400]
+            EncryptedRooms.insert_many(rows, fields=[
+                EncryptedRooms.room_id,
+                EncryptedRooms.account
+            ]).on_conflict_ignore().execute()
 
     def blacklist_device(self, device):
         # type: (OlmDevice) -> bool
