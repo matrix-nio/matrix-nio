@@ -363,6 +363,7 @@ class RoomEncryptedEvent(object):
 class OlmEvent(ToDeviceEvent, RoomEncryptedEvent):
     sender_key = attr.ib()
     ciphertext = attr.ib()
+    transaction_id = attr.ib(default=None)
 
     @classmethod
     @verify(Schemas.room_olm_encrypted)
@@ -372,7 +373,10 @@ class OlmEvent(ToDeviceEvent, RoomEncryptedEvent):
         ciphertext = content["ciphertext"]
         sender_key = content["sender_key"]
 
-        return cls(event_dict["sender"], sender_key, ciphertext)
+        tx_id = (event_dict["unsigned"].get("transaction_id", None)
+                 if "unsigned" in event_dict else None)
+
+        return cls(event_dict["sender"], sender_key, ciphertext, tx_id)
 
 
 @attr.s
