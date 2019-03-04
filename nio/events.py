@@ -445,6 +445,7 @@ class MegolmEvent(RoomEncryptedEvent):
     device_id = attr.ib()
     session_id = attr.ib()
     ciphertext = attr.ib()
+    algorithm = attr.ib()
     room_id = attr.ib(default="")
     transaction_id = attr.ib(default=None)
 
@@ -460,6 +461,7 @@ class MegolmEvent(RoomEncryptedEvent):
         sender_key = content["sender_key"]
         session_id = content["session_id"]
         device_id = content["device_id"]
+        algorithm = content["algorithm"]
 
         room_id = event_dict.get("room_id", None)
         tx_id = (event_dict["unsigned"].get("transaction_id", None)
@@ -473,6 +475,7 @@ class MegolmEvent(RoomEncryptedEvent):
             device_id,
             session_id,
             ciphertext,
+            algorithm,
             room_id,
             tx_id
         )
