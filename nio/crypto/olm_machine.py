@@ -618,19 +618,11 @@ class Olm(object):
 
         return True
 
-    def _handle_olm_event(self, sender, sender_key, payload):
+    def _handle_room_key_event(self, sender, sender_key, payload):
         # type: (str, str, Dict[Any, Any]) -> Optional[RoomKeyEvent]
-        logger.info("Recieved Olm event of type: {}".format(payload["type"]))
-
-        if payload["type"] != "m.room_key":
-            logger.warn(
-                "Received unsuported Olm event of type {}".format(
-                    payload["type"]
-                )
-            )
-            return None
-
         event = RoomKeyEvent.from_dict(payload, sender, sender_key)
+
+        # TODO the event may be a BadEvent
         content = payload["content"]
 
         if event.algorithm != "m.megolm.v1.aes-sha2":
@@ -655,6 +647,20 @@ class Olm(object):
         )
 
         return event
+
+    def _handle_olm_event(self, sender, sender_key, payload):
+        # type: (str, str, Dict[Any, Any]) -> Optional[RoomKeyEvent]
+        logger.info("Recieved Olm event of type: {}".format(payload["type"]))
+
+        if payload["type"] != "m.room_key":
+            logger.warn(
+                "Received unsuported Olm event of type {}".format(
+                    payload["type"]
+                )
+            )
+            return None
+
+        return self._handle_room_key_event(sender, sender_key, payload)
 
     def decrypt_megolm_event(self, event):
         # type (MegolmEvent) -> Union[Event, BadEvent]
