@@ -137,15 +137,17 @@ class Olm(object):
 
         self.store = store
 
-        self.account = self.store.load_account()
+        account = self.store.load_account()  # type: ignore
 
-        if not self.account:
+        if not account:
             logger.info("Creating new Olm account for {} on device {}".format(
                         self.user_id, self.device_id))
-            self.account = OlmAccount()
-            self.save_account()
+            account = OlmAccount()
+            self.save_account(account)
         else:
             self.load()
+
+        self.account = account  # type: OlmAccount
 
     def update_tracked_users(self, room):
         already_tracked = self.tracked_users
@@ -1144,10 +1146,13 @@ class Olm(object):
         # type: (InboundGroupSession) -> None
         self.store.save_inbound_group_session(session)
 
-    def save_account(self):
-        # type: () -> None
+    def save_account(self, account=None):
+        # type: (Optional[OlmAccount]) -> None
+        if account:
+            self.store.save_account(account)
+        else:
+            self.store.save_account(self.account)
         logger.debug("Saving account")
-        self.store.save_account(self.account)
 
     def sign_json(self, json_dict):
         # type: (Dict[Any, Any]) -> str
