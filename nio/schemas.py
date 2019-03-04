@@ -552,6 +552,40 @@ class Schemas(object):
         "required": ["type", "sender", "sender_device", "content", "keys"],
     }
 
+    forwarded_room_key_event = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "sender_device": {"type": "string"},
+            "type": {"type": "string", "enum": ["m.forwarded_room_key"]},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "algorithm": {"type": "string"},
+                    "room_id": {"type": "string", "format": "room_id"},
+                    "sender_key": {"type": "string"},
+                    "sender_claimed_ed25519_key": {"type": "string"},
+                    "forwarding_curve25519_key_chain": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "session_id": {"type": "string"},
+                    "session_key": {"type": "string"},
+                },
+                "required": [
+                    "algorithm",
+                    "room_id",
+                    "session_id",
+                    "session_key",
+                    "sender_key",
+                    "sender_claimed_ed25519_key",
+                    "forwarding_curve25519_key_chain",
+                ],
+            },
+        },
+        "required": ["type", "sender", "sender_device", "content"],
+    }
+
     room_canonical_alias = {
         "type": "object",
         "properties": {

@@ -17,12 +17,13 @@ from nio.crypto import (
     OlmDevice,
     OutboundSession,
     SessionStore,
-    DeviceStore
+    DeviceStore,
+    InboundGroupSession
 )
 from nio.exceptions import OlmTrustError
-from nio.responses import KeysQueryResponse, ShareGroupSessionResponse
+from nio.responses import KeysQueryResponse
 from nio.store import KeyStore, Ed25519Key, Key, DefaultStore
-from nio.events import UnknownBadEvent, RoomKeyEvent
+from nio.events import UnknownBadEvent, RoomKeyEvent, ForwardedRoomKeyEvent
 
 
 AliceId = "@alice:example.org"
@@ -523,3 +524,57 @@ class TestClass(object):
         )
 
         assert isinstance(event, RoomKeyEvent)
+
+    @ephemeral
+    def test_forwarded_room_key_event(self):
+        olm = self.ephemeral_olm
+
+        session = OutboundGroupSession()
+        session = InboundGroupSession(
+            session.session_key,
+            "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4",
+            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
+            TEST_ROOM
+        )
+
+        payload = {
+            "sender": BobId,
+            "sender_device": Bob_device,
+            "type": "m.forwarded_room_key",
+            "content": {
+                "algorithm": "m.megolm.v1.aes-sha2",
+                "room_id": session.room_id,
+                "session_id": session.id,
+                "session_key": session.export_session(
+                    session.first_known_index
+                ),
+                "sender_key": session.sender_key,
+                "sender_claimed_ed25519_key": session.ed25519,
+                "forwarding_curve25519_key_chain": session.forwarding_chain,
+            },
+            "keys": {
+                "ed25519": session.ed25519
+            }
+        }
+
+        bad_event = olm._handle_room_key_event(
+            BobId,
+            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
+            {}
+        )
+        assert isinstance(bad_event, UnknownBadEvent)
+
+        event = olm._handle_forwarded_room_key_event(
+            BobId,
+            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
+            payload
+        )
+        assert not event
+
+        olm.outgoing_key_requests.add(session.id)
+        event = olm._handle_forwarded_room_key_event(
+            BobId,
+            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
+            payload
+        )
+        assert isinstance(event, ForwardedRoomKeyEvent)

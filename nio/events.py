@@ -402,6 +402,41 @@ class RoomKeyEvent(object):
 
 
 @attr.s
+class ForwardedRoomKeyEvent(RoomKeyEvent):
+    """Event containing a room key that got forwarded to us.
+
+    Attributes:
+        sender (str): The sender of the event.
+        sender_key (str): The key of the sender that sent the event.
+        room_id (str): The room ID of the room to which the session key
+            belongs to.
+        session_id (str): The session id of the session key.
+        algorithm: (str): The algorithm of the session key.
+
+    """
+
+    @classmethod
+    @verify(Schemas.forwarded_room_key_event)
+    def from_dict(cls, event_dict, sender, sender_key):
+        """Create a ForwardedRoomKeyEvent from a event dictionary.
+
+        Args:
+            event_dict (Dict): The dictionary containing the event.
+            sender (str): The sender of the event.
+            sender_key (str): The key of the sender that sent the event.
+        """
+        content = event_dict["content"]
+
+        return cls(
+            sender,
+            sender_key,
+            content["room_id"],
+            content["session_id"],
+            content["algorithm"]
+        )
+
+
+@attr.s
 class MegolmEvent(RoomEncryptedEvent):
     event_id = attr.ib()
     sender = attr.ib()
