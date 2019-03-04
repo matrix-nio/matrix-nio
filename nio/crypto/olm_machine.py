@@ -86,6 +86,7 @@ from ..events import (
     RoomEncryptedMessage,
     BadEventType,
     RoomKeyEvent,
+    BadEvent,
     UnknownBadEvent,
     validate_or_badevent
 )
@@ -622,7 +623,9 @@ class Olm(object):
         # type: (str, str, Dict[Any, Any]) -> Optional[RoomKeyEvent]
         event = RoomKeyEvent.from_dict(payload, sender, sender_key)
 
-        # TODO the event may be a BadEvent
+        if isinstance(event, (BadEvent, UnknownBadEvent)):
+            return event
+
         content = payload["content"]
 
         if event.algorithm != "m.megolm.v1.aes-sha2":
@@ -638,9 +641,15 @@ class Olm(object):
             "from {}".format(event.room_id, sender)
         )
 
+        sender_fp_key = payload["keys"].get("ed25519", None)
+
+        # TODO handle this better
+        if not sender_fp_key:
+            return None
+
         self.create_group_session(
             sender_key,
-            payload["keys"]["ed25519"],
+            sender_fp_key,
             content["room_id"],
             content["session_id"],
             content["session_key"],

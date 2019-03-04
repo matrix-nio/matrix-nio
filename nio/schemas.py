@@ -547,8 +547,9 @@ class Schemas(object):
                     "session_key",
                 ],
             },
+            "keys": {"type": "object"},
         },
-        "required": ["type", "sender", "sender_device", "content"],
+        "required": ["type", "sender", "sender_device", "content", "keys"],
     }
 
     room_canonical_alias = {

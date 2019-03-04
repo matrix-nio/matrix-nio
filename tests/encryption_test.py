@@ -22,6 +22,7 @@ from nio.crypto import (
 from nio.exceptions import OlmTrustError
 from nio.responses import KeysQueryResponse, ShareGroupSessionResponse
 from nio.store import KeyStore, Ed25519Key, Key, DefaultStore
+from nio.events import UnknownBadEvent, RoomKeyEvent
 
 
 AliceId = "@alice:example.org"
@@ -34,6 +35,7 @@ MaloryId = "@malory:example.org"
 Malory_device = "MALORYDEVICE"
 
 PICKLE_KEY = "DEFAULT_KEY"
+TEST_ROOM = "!test_room"
 
 ephemeral_dir = os.path.join(os.curdir, "tests/data/encryption")
 
@@ -473,3 +475,51 @@ class TestClass(object):
             ephemeral_dir,
             "{}_{}.db".format(BobId, Bob_device)
         ))
+
+    @ephemeral
+    def test_room_key_event(self):
+        olm = self.ephemeral_olm
+
+        session = OutboundGroupSession()
+
+        payload = {
+            "sender": BobId,
+            "sender_device": Bob_device,
+            "type": "m.room_key",
+            "content": {
+                "algorithm": "m.megolm.v1.aes-sha2",
+                "room_id": TEST_ROOM,
+                "session_id": session.id,
+                "session_key": session.session_key,
+            },
+            "keys": {
+            }
+        }
+
+        bad_event = olm._handle_room_key_event(
+            BobId,
+            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
+            {}
+        )
+
+        assert isinstance(bad_event, UnknownBadEvent)
+
+        event = olm._handle_room_key_event(
+            BobId,
+            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
+            payload
+        )
+
+        assert not event
+
+        payload["keys"] = {
+            "ed25519": "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4"
+        }
+
+        event = olm._handle_room_key_event(
+            BobId,
+            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
+            payload
+        )
+
+        assert isinstance(event, RoomKeyEvent)
