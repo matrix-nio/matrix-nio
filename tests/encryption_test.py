@@ -578,3 +578,41 @@ class TestClass(object):
             payload
         )
         assert isinstance(event, ForwardedRoomKeyEvent)
+
+    def test_user_verification_status(self, monkeypatch):
+        def mocksave(self):
+            return
+
+        monkeypatch.setattr(KeyStore, '_save', mocksave)
+
+        # create three new accounts
+        alice = self._load(AliceId, Alice_device)
+        bob = self._load(BobId, Bob_device)
+
+        # create olm devices for each others known devices list
+        bob_device = OlmDevice(
+            BobId,
+            Bob_device,
+            bob.account.identity_keys["ed25519"],
+            bob.account.identity_keys["curve25519"],
+        )
+
+        bob2_device = OlmDevice(
+            BobId,
+            Malory_device,
+            bob.account.identity_keys["ed25519"],
+            bob.account.identity_keys["curve25519"],
+        )
+
+        alice.device_store.add(bob_device)
+
+        assert not alice.user_fully_verified(BobId)
+
+        alice.verify_device(bob_device)
+        assert alice.user_fully_verified(BobId)
+
+        alice.device_store.add(bob2_device)
+        assert not alice.user_fully_verified(BobId)
+
+        alice.verify_device(bob2_device)
+        assert alice.user_fully_verified(BobId)
