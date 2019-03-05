@@ -996,20 +996,6 @@ class Olm(object):
 
         return payload_dict
 
-    def _group_decrypt(
-        self,
-        session,    # type: InboundGroupSession
-        ciphertext  # type: str
-    ):
-        # type: (...) -> Tuple[Optional[str], Optional[int]]
-
-        try:
-            plaintext, message_index = session.decrypt(ciphertext)
-            return plaintext, message_index
-        except OlmGroupSessionError as e:
-            logger.error("Error decrypting megolm event: {}".format(str(e)))
-            return None, None
-
     def share_group_session(
         self,
         room_id,  # type: str
