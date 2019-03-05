@@ -703,9 +703,19 @@ class TestClass(object):
         megolm_event = MegolmEvent.from_dict(megolm)
 
         assert isinstance(megolm_event, MegolmEvent)
+
+        with pytest.raises(EncryptionError):
+            event = olm.decrypt_megolm_event(megolm_event)
+
+        session_store = olm.inbound_group_store
+        olm.inbound_group_store = GroupSessionStore()
+
+        with pytest.raises(EncryptionError):
+            event = olm.decrypt_megolm_event(megolm_event)
+
+        olm.inbound_group_store = session_store
+
         megolm_event.room_id = TEST_ROOM
-
         event = olm.decrypt_event(megolm_event)
-
         assert isinstance(event, RoomMessageText)
         assert event.decrypted
