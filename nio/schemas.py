@@ -469,6 +469,9 @@ class Schemas(object):
         "type": "object",
         "properties": {
             "type": {"type": "string", "enum": ["m.room.encrypted"]},
+            "event_id": {"type": "string"},
+            "sender": {"type": "string", "format": "user_id"},
+            "origin_server_ts": {"type": "integer"},
             "room_id": {"type": "string"},
             "content": {
                 "type": "object",
@@ -494,6 +497,9 @@ class Schemas(object):
         "required": [
             "type",
             "content",
+            "event_id",
+            "sender",
+            "origin_server_ts"
         ],
     }
 
