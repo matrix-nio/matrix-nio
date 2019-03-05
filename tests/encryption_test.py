@@ -20,10 +20,16 @@ from nio.crypto import (
     DeviceStore,
     InboundGroupSession
 )
-from nio.exceptions import OlmTrustError
+from nio.exceptions import OlmTrustError, GroupEncryptionError
 from nio.responses import KeysQueryResponse
 from nio.store import KeyStore, Ed25519Key, Key, DefaultStore
-from nio.events import UnknownBadEvent, RoomKeyEvent, ForwardedRoomKeyEvent
+from nio.events import (
+    UnknownBadEvent,
+    RoomKeyEvent,
+    ForwardedRoomKeyEvent,
+    MegolmEvent,
+    RoomMessageText
+)
 
 
 AliceId = "@alice:example.org"
@@ -616,3 +622,46 @@ class TestClass(object):
 
         alice.verify_device(bob2_device)
         assert alice.user_fully_verified(BobId)
+
+    @ephemeral
+    def test_group_decryption(self):
+        olm = self.ephemeral_olm
+        olm.create_outbound_group_session(TEST_ROOM)
+
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "hello wordl",
+            },
+        }
+
+        with pytest.raises(GroupEncryptionError):
+            encrypted_dict = olm.group_encrypt(TEST_ROOM, message)
+
+        session = olm.outbound_group_sessions[TEST_ROOM]
+        session.shared = True
+
+        encrypted_dict = olm.group_encrypt(TEST_ROOM, message)
+
+        megolm = {
+            "type": "m.room.encrypted",
+            "content": encrypted_dict
+        }
+
+        megolm_event = MegolmEvent.from_dict(megolm)
+        assert isinstance(megolm_event, UnknownBadEvent)
+
+        megolm["event_id"] = "1"
+        megolm["sender"] = "@ephemeral:example.org"
+        megolm["origin_server_ts"] = 0
+
+        megolm_event = MegolmEvent.from_dict(megolm)
+
+        assert isinstance(megolm_event, MegolmEvent)
+        megolm_event.room_id = TEST_ROOM
+
+        event = olm.decrypt_event(megolm_event)
+
+        assert isinstance(event, RoomMessageText)
+        assert event.decrypted
