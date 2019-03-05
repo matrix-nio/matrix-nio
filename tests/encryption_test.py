@@ -625,7 +625,7 @@ class TestClass(object):
         assert not event
 
         olm.outgoing_key_requests.add(session.id)
-        event = olm._handle_forwarded_room_key_event(
+        event = olm._handle_olm_event(
             BobId,
             "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
             payload
