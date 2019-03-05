@@ -63,7 +63,6 @@ def ephemeral(func):
 class TestClass(object):
     @staticmethod
     def _load_response(filename):
-        # type: (str) -> Dict[Any, Any]
         with open(filename) as f:
             return json.loads(f.read(), encoding="utf-8")
 
@@ -729,12 +728,12 @@ class TestClass(object):
 
         assert "device_keys" in to_share
         assert "one_time_keys" in to_share
-        assert len(to_share["one_time_keys"]) == 50
+        assert len(to_share["one_time_keys"]) == olm.account.max_one_time_keys // 2
 
         response = KeysUploadResponse.from_dict({
             "one_time_key_counts": {
                 "curve25519": 0,
-                "signed_curve25519": 50
+                "signed_curve25519": olm.account.max_one_time_keys // 2
             }
         })
 
@@ -745,7 +744,7 @@ class TestClass(object):
         with pytest.raises(ValueError):
             to_share = olm.share_keys()
 
-        olm.uploaded_key_count = 49
+        olm.uploaded_key_count -= 1
 
         assert olm.should_upload_keys
         to_share = olm.share_keys()
