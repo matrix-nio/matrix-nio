@@ -343,7 +343,7 @@ class KeysQueryError(ErrorResponse):
     pass
 
 
-class KeysClaimError(ErrorResponse):
+class KeysClaimError(_ErrorWithRoomId):
     pass
 
 

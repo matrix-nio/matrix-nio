@@ -1153,7 +1153,7 @@ class Olm(object):
         """
         try:
             signatures = json.pop('signatures')
-        except KeyError:
+        except (KeyError, ValueError):
             return False
 
         key_id = 'ed25519:{}'.format(device_id)

@@ -22,7 +22,11 @@ from nio.crypto import (
     GroupSessionStore
 )
 from nio.exceptions import OlmTrustError, GroupEncryptionError, EncryptionError
-from nio.responses import KeysQueryResponse, KeysUploadResponse
+from nio.responses import (
+    KeysQueryResponse,
+    KeysUploadResponse,
+    KeysClaimResponse
+)
 from nio.store import KeyStore, Ed25519Key, Key, DefaultStore
 from nio.events import (
     UnknownBadEvent,
@@ -666,6 +670,15 @@ class TestClass(object):
         alice.verify_device(bob2_device)
         assert alice.user_fully_verified(BobId)
 
+        os.remove(os.path.join(
+            ephemeral_dir,
+            "{}_{}.db".format(AliceId, Alice_device)
+        ))
+        os.remove(os.path.join(
+            ephemeral_dir,
+            "{}_{}.db".format(BobId, Bob_device)
+        ))
+
     @ephemeral
     def test_group_decryption(self):
         olm = self.ephemeral_olm
@@ -752,3 +765,62 @@ class TestClass(object):
         assert "device_keys" not in to_share
         assert "one_time_keys" in to_share
         assert len(to_share["one_time_keys"]) == 1
+
+    def test_outbound_session_creation(self, monkeypatch):
+        def mocksave(self):
+            return
+
+        monkeypatch.setattr(KeyStore, '_save', mocksave)
+
+        alice = self._load(AliceId, Alice_device)
+        bob = self._load(BobId, Bob_device)
+
+        bob_device = OlmDevice(
+            BobId,
+            Bob_device,
+            bob.account.identity_keys["ed25519"],
+            bob.account.identity_keys["curve25519"],
+        )
+
+        assert not alice.get_missing_sessions([BobId])
+
+        alice.device_store.add(bob_device)
+
+        missing = alice.get_missing_sessions([BobId])
+        assert not alice.session_store.get(bob_device.curve25519)
+
+        assert BobId in missing
+        assert Bob_device in missing[BobId]
+
+        to_share = bob.share_keys()
+
+        one_time_key = list(to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                BobId: {
+                    Bob_device: {one_time_key[0]: one_time_key[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        response = KeysClaimResponse.from_dict(key_claim_dict, TEST_ROOM)
+
+        assert isinstance(response, KeysClaimResponse)
+
+        print(response)
+
+        alice.handle_response(response)
+
+        assert not alice.get_missing_sessions([BobId])
+        assert alice.session_store.get(bob_device.curve25519)
+
+        os.remove(os.path.join(
+            ephemeral_dir,
+            "{}_{}.db".format(AliceId, Alice_device)
+        ))
+        os.remove(os.path.join(
+            ephemeral_dir,
+            "{}_{}.db".format(BobId, Bob_device)
+        ))
