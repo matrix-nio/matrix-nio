@@ -18,15 +18,17 @@ from nio.crypto import (
     OutboundSession,
     SessionStore,
     DeviceStore,
-    InboundGroupSession
+    InboundGroupSession,
+    GroupSessionStore
 )
-from nio.exceptions import OlmTrustError, GroupEncryptionError
+from nio.exceptions import OlmTrustError, GroupEncryptionError, EncryptionError
 from nio.responses import KeysQueryResponse
 from nio.store import KeyStore, Ed25519Key, Key, DefaultStore
 from nio.events import (
     UnknownBadEvent,
     RoomKeyEvent,
     ForwardedRoomKeyEvent,
+    OlmEvent,
     MegolmEvent,
     RoomMessageText
 )
@@ -371,22 +373,64 @@ class TestClass(object):
             to_device["messages"][MaloryId][malory_device.id]["ciphertext"]
 
         ciphertext = to_device["messages"][BobId][bob_device.id]["ciphertext"]
-        bob_ciphertext = ciphertext[bob_device.curve25519]
 
-        message = (OlmPreKeyMessage(bob_ciphertext["body"])
-                   if bob_ciphertext["type"] == 0
-                   else OlmMessage(bob_ciphertext["body"]))
+        olm_event_dict = {
+            "sender": AliceId,
+            "type": "m.room.encrypted",
+            "content": {
+                "algorithm": Olm._olm_algorithm,
+                "sender_key": alice_device.curve25519,
+                "ciphertext": ciphertext
+            }
+        }
+
+        olm_event = OlmEvent.from_dict(olm_event_dict)
+
+        assert isinstance(olm_event, OlmEvent)
 
         # bob decrypts the message and creates a new inbound session with alice
         try:
             # pdb.set_trace()
-            bob.decrypt(AliceId, alice_device.curve25519, message)
+            bob.decrypt_event(olm_event)
 
             # we check that the session is there
             assert bob.session_store.get(alice_device.curve25519)
             # we check that the group session is there
             assert bob.inbound_group_store.get(
                 "!test:example.org",
+                alice_device.curve25519,
+                group_session.id,
+            )
+
+            # Test another round of sharing, this time with an existing session
+            alice.create_outbound_group_session(TEST_ROOM)
+            group_session = alice.outbound_group_sessions[TEST_ROOM]
+
+            sharing_with, to_device = alice.share_group_session(
+                TEST_ROOM,
+                [BobId, MaloryId]
+            )
+
+            ciphertext = to_device["messages"][BobId][bob_device.id]["ciphertext"]
+
+            olm_event_dict = {
+                "sender": AliceId,
+                "type": "m.room.encrypted",
+                "content": {
+                    "algorithm": Olm._olm_algorithm,
+                    "sender_key": alice_device.curve25519,
+                    "ciphertext": ciphertext
+                }
+            }
+
+            olm_event = OlmEvent.from_dict(olm_event_dict)
+            assert isinstance(olm_event, OlmEvent)
+
+            event = bob.decrypt_event(olm_event)
+            assert event
+
+            assert bob.inbound_group_store.get(
+                TEST_ROOM,
                 alice_device.curve25519,
                 group_session.id,
             )
