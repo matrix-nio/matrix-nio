@@ -1130,14 +1130,6 @@ class Olm(object):
         self.device_store = self.store.load_device_keys()
         # self.outgoing_key_requests = self.store.load_outgoing_key_requests()
 
-    def save(self):
-        # type: () -> None
-        self.save_account()
-
-        for curve_key, session_list in self.session_store.items():
-            for session in session_list:
-                self.save_session(curve_key, session)
-
     def save_session(self, curve_key, session):
         # type: (str, Session) -> None
         self.store.save_session(curve_key, session)
