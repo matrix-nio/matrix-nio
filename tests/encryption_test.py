@@ -22,7 +22,7 @@ from nio.crypto import (
     GroupSessionStore
 )
 from nio.exceptions import OlmTrustError, GroupEncryptionError, EncryptionError
-from nio.responses import KeysQueryResponse
+from nio.responses import KeysQueryResponse, KeysUploadResponse
 from nio.store import KeyStore, Ed25519Key, Key, DefaultStore
 from nio.events import (
     UnknownBadEvent,
@@ -719,3 +719,37 @@ class TestClass(object):
         event = olm.decrypt_event(megolm_event)
         assert isinstance(event, RoomMessageText)
         assert event.decrypted
+
+    @ephemeral
+    def test_key_sharing(self):
+        olm = self.ephemeral_olm
+
+        assert olm.should_upload_keys
+        to_share = olm.share_keys()
+
+        assert "device_keys" in to_share
+        assert "one_time_keys" in to_share
+        assert len(to_share["one_time_keys"]) == 50
+
+        response = KeysUploadResponse.from_dict({
+            "one_time_key_counts": {
+                "curve25519": 0,
+                "signed_curve25519": 50
+            }
+        })
+
+        olm.handle_response(response)
+
+        assert not olm.should_upload_keys
+
+        with pytest.raises(ValueError):
+            to_share = olm.share_keys()
+
+        olm.uploaded_key_count = 49
+
+        assert olm.should_upload_keys
+        to_share = olm.share_keys()
+
+        assert "device_keys" not in to_share
+        assert "one_time_keys" in to_share
+        assert len(to_share["one_time_keys"]) == 1
