@@ -75,7 +75,7 @@ from ..responses import (
     KeysUploadResponse,
     KeysQueryResponse,
     KeysClaimResponse,
-    ShareGroupSessionResponse
+    RoomKeyRequestResponse
 )
 from ..events import (
     Event,
@@ -424,6 +424,10 @@ class Olm(object):
 
         elif isinstance(response, KeysClaimResponse):
             self._handle_key_claiming(response)
+
+        elif isinstance(response, RoomKeyRequestResponse):
+            self.outgoing_key_requests.add(response.request_id)
+            self.store.add_outgoing_key_request(response.request_id)
 
     def _create_inbound_session(
         self,

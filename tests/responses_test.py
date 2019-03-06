@@ -19,7 +19,9 @@ from nio.responses import (
     JoinedMembersError,
     LoginError,
     SyncError,
-    UploadResponse
+    UploadResponse,
+    RoomKeyRequestResponse,
+    RoomKeyRequestError
 )
 
 
@@ -116,6 +118,17 @@ class TestClass(object):
             "tests/data/sync.json")
         response = SyncResponse.from_dict(parsed_dict)
         assert type(response) == SyncResponse
+
+    def test_keyshare_request(self):
+        parsed_dict = {
+            "errcode": "M_LIMIT_EXCEEDED",
+            "error": "Too many requests",
+            "retry_after_ms": 2000
+        }
+        response = RoomKeyRequestResponse.from_dict(parsed_dict, "1")
+        assert isinstance(response, RoomKeyRequestError)
+        response = RoomKeyRequestResponse.from_dict({}, "1")
+        assert isinstance(response, RoomKeyRequestResponse)
 
     def test_partial_sync(self):
         parsed_dict = TestClass._load_response(

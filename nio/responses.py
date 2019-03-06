@@ -22,11 +22,8 @@ from typing import (
     Any,
     Dict,
     List,
-    NamedTuple,
     Optional,
     Union,
-    Type,
-    TypeVar,
     Tuple,
     Set
 )
@@ -111,6 +108,8 @@ __all__ = [
     "UploadError",
     "ProfileSetDisplayNameResponse",
     "ProfileSetDisplayNameError",
+    "RoomKeyRequestResponse",
+    "RoomKeyRequestError",
 ]
 
 
@@ -738,6 +737,40 @@ class DevicesResponse(Response):
             devices.append(device)
 
         return cls(devices)
+
+
+@attr.s
+class RoomKeyRequestError(ErrorResponse):
+    """Response representing a failed room key request."""
+
+    pass
+
+
+@attr.s
+class RoomKeyRequestResponse(Response):
+    """Response representing a successful room key request.
+
+    Attributes:
+        request_id (str): The id of the that uniquely identifies this key
+            request that was requested, if we receive a to_device event it will
+            contain the same request id.
+
+    """
+
+    request_id = attr.ib(type=str)
+
+    @classmethod
+    @verify(Schemas.empty, RoomKeyRequestError, False)
+    def from_dict(cls, _, request_id):
+        """Create a RoomKeyRequestResponse from a json response.
+
+        Args:
+            parsed_dict (Dict): The dictionary containing the json response.
+            request_id (str): The id of the that uniquely identifies this key
+                request that was requested, if we receive a to_device event
+                it will contain the same request id.
+        """
+        return cls(request_id)
 
 
 class UpdateDeviceResponse(EmptyResponse):
