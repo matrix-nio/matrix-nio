@@ -95,7 +95,7 @@ class MatrixRoom(object):
 
     def group_name(self):
         """
-        Returns the group-style name of the room, i.e. a name based on the room
+        Return the group-style name of the room, i.e. a name based on the room
         members.
         """
         # Sort user display names, excluding our own user and using the
