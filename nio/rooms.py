@@ -87,7 +87,7 @@ class MatrixRoom(object):
         None.
         """
         if self.name:
-            return "#" + self.name
+            return self.name if self.name.startswith('#') else '#' + self.name
         elif self.canonical_alias:
             return self.canonical_alias
         else:
