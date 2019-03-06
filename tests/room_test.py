@@ -46,11 +46,13 @@ class TestClass(object):
         assert room.is_named
         assert not room.is_group
 
-    def test_name_calculation(self):
+    def test_name_calculation_when_unnamed_with_no_members(self):
         room = self.test_room
         assert room.display_name == "Empty room?"
         assert room.named_room_name() == None
 
+    def test_name_calculation_when_unnamed_with_members(self):
+        room = self.test_room
         room.add_member("@alice:example.org", "Alice")
         assert room.display_name == "Alice"
 
@@ -64,11 +66,39 @@ class TestClass(object):
         assert (room.display_name ==
                 "Alice (@alice:example.org) and 2 others")
 
-        room.canonical_alias = "Alias for test room"
-        assert room.display_name == "Alias for test room"
+    def test_name_calculation_with_canonical_alias(self):
+        room = self.test_room
+        room.canonical_alias = "#test:termina.org.uk"
+        assert room.display_name == "#test:termina.org.uk"
 
+    def test_name_calculation_prefer_name_over_alias(self):
+        room = self.test_room
+        room.canonical_alias = "#test:termina.org.uk"
         room.name = "Test room"
         assert room.display_name == "#Test room"
+
+    def test_name_calculation_when_hash_already_prefixed(self):
+        room = self.test_room
+
+        room.name = "#test"
+        assert room.display_name == "#test"
+
+    def test_name_calculation_when_name_equals_hash(self):
+        """If the room name is set to '#', prefer using the canonical alias, if
+           it exists. This is because we always prefix named rooms by '#' to
+           distinguish them from non-named group-like rooms which are named
+           after its members.
+
+           Otherwise, in the unlikely case that the room name is '#' and there
+           is no canonical alias, display it as '##'.
+        """
+        room = self.test_room
+
+        room.name = "#"
+        assert room.display_name == "##"
+
+        room.canonical_alias = "#test:example.org"
+        assert room.display_name == "#test:example.org"
 
     def test_user_name_calculation(self):
         room = self.test_room
