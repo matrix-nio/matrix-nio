@@ -86,10 +86,12 @@ class MatrixRoom(object):
         Return the name of the room, if it's a named room. Otherwise return
         None.
         """
-        if self.name:
+        if self.name and self.name != '#':
             return self.name if self.name.startswith('#') else '#' + self.name
         elif self.canonical_alias:
             return self.canonical_alias
+        elif self.name == '#':
+            return '##'
         else:
             return None
 
