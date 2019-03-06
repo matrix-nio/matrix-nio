@@ -601,9 +601,9 @@ class RoomNameEvent(Event):
         sender = parsed_dict["sender"]
         timestamp = parsed_dict["origin_server_ts"]
 
-        canonical_alias = parsed_dict["content"]["name"]
+        room_name = parsed_dict["content"]["name"]
 
-        return cls(event_id, sender, timestamp, canonical_alias)
+        return cls(event_id, sender, timestamp, room_name)
 
 
 @attr.s
