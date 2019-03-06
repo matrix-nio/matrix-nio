@@ -86,16 +86,18 @@ class MatrixRoom(object):
         Return the name of the room, if it's a named room. Otherwise return
         None.
         """
-        if self.name:
-            return "#" + self.name
+        if self.name and self.name != '#':
+            return self.name if self.name.startswith('#') else '#' + self.name
         elif self.canonical_alias:
             return self.canonical_alias
+        elif self.name == '#':
+            return '##'
         else:
             return None
 
     def group_name(self):
         """
-        Returns the group-style name of the room, i.e. a name based on the room
+        Return the group-style name of the room, i.e. a name based on the room
         members.
         """
         # Sort user display names, excluding our own user and using the
