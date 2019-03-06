@@ -1118,7 +1118,7 @@ class Olm(object):
         self.session_store = self.store.load_sessions()
         self.inbound_group_store = self.store.load_inbound_group_sessions()
         self.device_store = self.store.load_device_keys()
-        # self.outgoing_key_requests = self.store.load_outgoing_key_requests()
+        self.outgoing_key_requests = self.store.load_outgoing_key_requests()
 
     def save_session(self, curve_key, session):
         # type: (str, Session) -> None

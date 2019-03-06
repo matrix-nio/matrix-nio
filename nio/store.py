@@ -330,10 +330,11 @@ class OlmSessions(Model):
 
 
 class OutgoingKeyRequests(Model):
-    session_id = TextField()
+    request_id = TextField()
     device = ForeignKeyField(
         Accounts,
         on_delete="CASCADE",
+        field="device_id",
         backref="key_requests",
     )
 
@@ -383,6 +384,7 @@ class MatrixStore(object):
         ForwardedChains,
         DeviceKeys,
         EncryptedRooms,
+        OutgoingKeyRequests,
     ]
 
     user_id = attr.ib(type=str)
@@ -630,6 +632,32 @@ class MatrixStore(object):
             return set()
 
         return {room.room_id for room in account.encrypted_rooms}
+
+    @use_database
+    def load_outgoing_key_requests(self):
+        """Load the set of outgoing key requests for this account.
+
+        Returns:
+            ``Set`` containing request ids of key requests.
+
+        """
+        account = self._get_account()
+
+        if not account:
+            return set()
+
+        return {request.request_id for request in account.key_requests}
+
+    @use_database
+    def add_outgoing_key_request(self, request_id):
+        """Add a key request to the store."""
+        account = self._get_account()
+        assert account
+
+        OutgoingKeyRequests.insert(
+            request_id=request_id,
+            device=account.device_id
+        ).on_conflict_ignore().execute()
 
     @use_database_atomic
     def save_encrypted_rooms(self, rooms):
