@@ -523,7 +523,6 @@ class Schemas(object):
         "required": [
             "type",
             "sender",
-            "sender_device",
             "keys",
             "recipient",
             "recipient_keys",
@@ -555,7 +554,7 @@ class Schemas(object):
             },
             "keys": {"type": "object"},
         },
-        "required": ["type", "sender", "sender_device", "content", "keys"],
+        "required": ["type", "sender", "content", "keys"],
     }
 
     forwarded_room_key_event = {
@@ -589,7 +588,7 @@ class Schemas(object):
                 ],
             },
         },
-        "required": ["type", "sender", "sender_device", "content"],
+        "required": ["type", "sender", "content"],
     }
 
     room_canonical_alias = {
