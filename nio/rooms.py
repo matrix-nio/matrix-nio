@@ -46,7 +46,10 @@ logger_group.add_logger(logger)
 
 
 class MatrixRoom(object):
+    """Represents a Matrix room."""
+
     def __init__(self, room_id, own_user_id, encrypted=False):
+        """Initialize a MatrixRoom object."""
         # type: (str, str, bool) -> None
         # yapf: disable
         self.room_id = room_id        # type: str
@@ -63,8 +66,7 @@ class MatrixRoom(object):
 
     @property
     def display_name(self):
-        """
-        Calculate display name for a room.
+        """Calculate display name for a room.
 
         Prefer returning the room name if it exists, falling back to
         a group-style name if not.
@@ -82,9 +84,9 @@ class MatrixRoom(object):
             return self.group_name()
 
     def named_room_name(self):
-        """
-        Return the name of the room, if it's a named room. Otherwise return
-        None.
+        """Return the name of the room, if it's a named room.
+
+        Otherwise, return None.
         """
         if self.name and self.name != '#':
             return self.name if self.name.startswith('#') else '#' + self.name
@@ -96,9 +98,10 @@ class MatrixRoom(object):
             return None
 
     def group_name(self):
-        """
-        Return the group-style name of the room, i.e. a name based on the room
-        members.
+        """Return the group-style name of the room.
+
+        In other words, a display name based on the names of room members. This
+        is used for ad-hoc groups of people (usually direct chats).
         """
         # Sort user display names, excluding our own user and using the
         # mxid as the sorting key.
@@ -122,8 +125,7 @@ class MatrixRoom(object):
             return "Empty room?"
 
     def user_name(self, user_id):
-        """
-        Get disambiguated display name for a user.
+        """Get disambiguated display name for a user.
 
         Returns display name of a user if display name is unique or returns
         a display name in form "<display name> (<matrix id>)" if there is
@@ -138,16 +140,12 @@ class MatrixRoom(object):
         return user.name
 
     def user_name_clashes(self, name):
-        """
-        Get a list of users that have same display name.
-        """
-
+        """Get a list of users that have same display name."""
         return self.names[name]
 
     @property
     def machine_name(self):
-        """
-        Calculate an unambiguous, unique machine name for a room.
+        """Calculate an unambiguous, unique machine name for a room.
 
         Either use the more human-friendly canonical alias, if it exists, or
         the internal room ID if not.
@@ -159,8 +157,7 @@ class MatrixRoom(object):
 
     @property
     def is_named(self):
-        """
-        Is this a named room?
+        """Determine whether a room is name.
 
         A named room is a room with either the name or a canonical alias set.
         """
@@ -168,8 +165,7 @@ class MatrixRoom(object):
 
     @property
     def is_group(self):
-        """
-        Is this an ad hoc group of users?
+        """Determine whether a room is an ad-hoc group (often a direct chat).
 
         A group is an unnamed room with no canonical alias.
         """
