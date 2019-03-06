@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 import json
-from helpers import faker, ephemeral, ephemeral_dir
+from helpers import faker, ephemeral, ephemeral_dir, FrameFactory
 
 from nio import (
     Client,
@@ -22,7 +22,10 @@ from nio import (
     JoinedMembersResponse,
     RoomMember,
     EncryptionError,
-    ShareGroupSessionResponse
+    ShareGroupSessionResponse,
+    TransportType,
+    MegolmEvent,
+    RoomKeyRequestResponse
 )
 
 HOST = "example.org"
@@ -37,15 +40,81 @@ ALICE_DEVICE_ID = "JLAFKJWSCS"
 
 
 class TestClass(object):
+    example_response_headers = [
+        (':status', '200'),
+        ('server', 'fake-serv/0.1.0')
+    ]
+
     @property
     def login_response(self):
         return LoginResponse("@ephemeral:example.org", "DEVICEID", "abc123")
 
     @staticmethod
     def _load_response(filename):
-        # type: (str) -> Dict[Any, Any]
         with open(filename) as f:
             return json.loads(f.read(), encoding="utf-8")
+
+    @staticmethod
+    def _load_byte_response(filename):
+        with open(filename, "rb") as f:
+            return f.read()
+
+    @property
+    def login_byte_response(self):
+        frame_factory = FrameFactory()
+
+        f = frame_factory.build_headers_frame(
+            headers=self.example_response_headers, stream_id=1
+        )
+
+        login_body = json.dumps({
+            "user_id": "@ephemeral:example.org",
+            "access_token": "ABCD",
+            "device_id": "DEVICEID",
+        }).encode("utf-8")
+
+        data = frame_factory.build_data_frame(
+            data=login_body,
+            stream_id=1,
+            flags=['END_STREAM']
+        )
+
+        return f.serialize() + data.serialize()
+
+    @property
+    def sync_byte_response(self):
+        frame_factory = FrameFactory()
+
+        f = frame_factory.build_headers_frame(
+            headers=self.example_response_headers, stream_id=3
+        )
+
+        body = self._load_byte_response("tests/data/sync.json")
+
+        data = frame_factory.build_data_frame(
+            data=body,
+            stream_id=3,
+            flags=['END_STREAM']
+        )
+
+        return f.serialize() + data.serialize()
+
+    def empty_response(self, stream_id=5):
+        frame_factory = FrameFactory()
+
+        f = frame_factory.build_headers_frame(
+            headers=self.example_response_headers, stream_id=stream_id
+        )
+
+        body = b"{}"
+
+        data = frame_factory.build_data_frame(
+            data=body,
+            stream_id=stream_id,
+            flags=['END_STREAM']
+        )
+
+        return f.serialize() + data.serialize()
 
     @property
     def sync_response(self):
@@ -422,3 +491,71 @@ class TestClass(object):
         room = client2.rooms[TEST_ROOM_ID]
 
         assert room.encrypted
+
+    def test_http_client_login(self, http_client):
+        http_client.connect(TransportType.HTTP2)
+
+        _, _ = http_client.login("1234")
+
+        http_client.receive(self.login_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, LoginResponse)
+        assert http_client.access_token == "ABCD"
+
+    def test_http_client_sync(self, http_client):
+        http_client.connect(TransportType.HTTP2)
+
+        _, _ = http_client.login("1234")
+
+        http_client.receive(self.login_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, LoginResponse)
+        assert http_client.access_token == "ABCD"
+
+        _, _ = http_client.sync()
+
+        http_client.receive(self.sync_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, SyncResponse)
+        assert http_client.access_token == "ABCD"
+
+    def test_http_client_keys_query(self, http_client):
+        http_client.connect(TransportType.HTTP2)
+
+        _, _ = http_client.login("1234")
+
+        http_client.receive(self.login_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, LoginResponse)
+        assert http_client.access_token == "ABCD"
+
+        _, _ = http_client.sync()
+
+        http_client.receive(self.sync_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, SyncResponse)
+        assert http_client.access_token == "ABCD"
+
+        event = MegolmEvent(
+            "1",
+            "@ephemeral:example.org.uk",
+            0,
+            "ABCD",
+            "IDDEVICE",
+            "test_session_id",
+            "",
+            http_client.olm._megolm_algorithm,
+            TEST_ROOM_ID,
+        )
+
+        http_client.request_room_key(event)
+        http_client.receive(self.empty_response(5))
+        response = http_client.next_response()
+
+        assert isinstance(response, RoomKeyRequestResponse)
+        assert "test_session_id" in http_client.outgoing_key_requests

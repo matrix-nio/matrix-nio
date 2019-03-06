@@ -5,7 +5,7 @@ import helpers
 import shutil
 import tempfile
 
-from nio import Client
+from nio import Client, HttpClient
 
 
 @pytest.fixture
@@ -18,6 +18,11 @@ def tempdir():
 @pytest.fixture
 def client(tempdir):
     return Client("ephemeral", "DEVICEID", tempdir)
+
+
+@pytest.fixture
+def http_client(tempdir):
+    return HttpClient("example.org", "ephemeral", "DEVICEID", tempdir)
 
 
 @pytest.fixture
