@@ -69,6 +69,7 @@ from . import (
 )
 
 from .key_export import encrypt_and_save, decrypt_and_read
+from .sessions import OutgoingKeyRequest
 from ..store import MatrixStore
 
 from ..responses import (
@@ -132,8 +133,10 @@ class Olm(object):
             # type: Dict[str, OutboundGroupSession]
 
         self.tracked_users = set()  # type: Set[str]
-        self.outgoing_key_requests = set()  # type: Set[str]
-        self.key_request_cancelations = set()  # type: Set[str]
+        self.outgoing_key_requests = dict()  \
+            # type: Dict[str, OutgoingKeyRequest]
+        self.key_request_cancelations = dict()  \
+            # type: Dict[str, OutgoingKeyRequest]
 
         self.store = store
 
@@ -426,8 +429,9 @@ class Olm(object):
             self._handle_key_claiming(response)
 
         elif isinstance(response, RoomKeyRequestResponse):
-            self.outgoing_key_requests.add(response.request_id)
-            self.store.add_outgoing_key_request(response.request_id)
+            key_request = OutgoingKeyRequest.from_response(response)
+            self.outgoing_key_requests[response.request_id] = key_request
+            self.store.add_outgoing_key_request(key_request)
 
     def _create_inbound_session(
         self,
@@ -689,6 +693,10 @@ class Olm(object):
             )
             return None
 
+        key_request = self.outgoing_key_requests[event.session_id]
+
+        # TODO check that the algorithm, room_id and session id match
+
         content = payload["content"]
 
         session_sender_key = content["sender_key"]
@@ -710,11 +718,12 @@ class Olm(object):
         if self.inbound_group_store.add(session):
             self.save_inbound_group_session(session)
 
-        self.outgoing_key_requests.discard(event.session_id)
-        self.key_request_cancelations.add(event.session_id)
+        key_request = self.outgoing_key_requests.pop(key_request.request_id)
+        self.key_request_cancelations[key_request.request_id] = key_request
 
-        # TODO the store needs to remember our key requests.
+        # TODO remove our key request from the store
         # self.store.remove_outgoing_key_request(event.session_id)
+        # TODO save our cancelation to the store
 
         return event
 

@@ -19,7 +19,8 @@ from nio.crypto import (
     SessionStore,
     DeviceStore,
     InboundGroupSession,
-    GroupSessionStore
+    GroupSessionStore,
+    OutgoingKeyRequest
 )
 from nio.exceptions import OlmTrustError, GroupEncryptionError, EncryptionError
 from nio.responses import (
@@ -624,7 +625,14 @@ class TestClass(object):
         )
         assert not event
 
-        olm.outgoing_key_requests.add(session.id)
+        key_request = OutgoingKeyRequest(
+            session.id,
+            session.id,
+            session.room_id,
+            "megolm.v1"
+        )
+
+        olm.outgoing_key_requests[session.id] = key_request
         event = olm._handle_olm_event(
             BobId,
             "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",

@@ -24,11 +24,12 @@ from nio.responses import (
     RoomKeyRequestError
 )
 
+TEST_ROOM_ID = "!test:example.org"
+
 
 class TestClass(object):
     @staticmethod
     def _load_response(filename):
-        # type: (str) -> Dict[Any, Any]
         with open(filename) as f:
             return json.loads(f.read(), encoding="utf-8")
 
@@ -125,9 +126,13 @@ class TestClass(object):
             "error": "Too many requests",
             "retry_after_ms": 2000
         }
-        response = RoomKeyRequestResponse.from_dict(parsed_dict, "1")
+        response = RoomKeyRequestResponse.from_dict(
+            parsed_dict, "1", "1", TEST_ROOM_ID, "megolm.v1"
+        )
         assert isinstance(response, RoomKeyRequestError)
-        response = RoomKeyRequestResponse.from_dict({}, "1")
+        response = RoomKeyRequestResponse.from_dict(
+                {}, "1", "1", TEST_ROOM_ID, "megolm.v1"
+        )
         assert isinstance(response, RoomKeyRequestResponse)
 
     def test_partial_sync(self):

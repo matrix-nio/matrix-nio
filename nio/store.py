@@ -31,7 +31,8 @@ from .crypto import (
     OlmDevice,
     SessionStore,
     GroupSessionStore,
-    DeviceStore
+    DeviceStore,
+    OutgoingKeyRequest
 )
 
 from peewee import (
@@ -331,6 +332,9 @@ class OlmSessions(Model):
 
 class OutgoingKeyRequests(Model):
     request_id = TextField()
+    session_id = TextField()
+    room_id = TextField()
+    algorithm = TextField()
     device = ForeignKeyField(
         Accounts,
         on_delete="CASCADE",
@@ -644,18 +648,23 @@ class MatrixStore(object):
         account = self._get_account()
 
         if not account:
-            return set()
+            return dict()
 
-        return {request.request_id for request in account.key_requests}
+        return {request.request_id: OutgoingKeyRequest.from_response(request)
+                for request in account.key_requests}
 
     @use_database
-    def add_outgoing_key_request(self, request_id):
+    def add_outgoing_key_request(self, key_request):
+        # type: (OutgoingKeyRequest) -> None
         """Add a key request to the store."""
         account = self._get_account()
         assert account
 
         OutgoingKeyRequests.insert(
-            request_id=request_id,
+            request_id=key_request.request_id,
+            session_id=key_request.session_id,
+            room_id=key_request.room_id,
+            algorithm=key_request.algorithm,
             device=account.device_id
         ).on_conflict_ignore().execute()
 

@@ -5,7 +5,8 @@ from .sessions import (
     InboundSession,
     OutboundGroupSession,
     InboundGroupSession,
-    OlmDevice
+    OlmDevice,
+    OutgoingKeyRequest
 )
 
 from .memorystores import (

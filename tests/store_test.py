@@ -14,7 +14,8 @@ from nio.crypto import (
     OlmDevice,
     OutboundSession,
     OutboundGroupSession,
-    InboundGroupSession
+    InboundGroupSession,
+    OutgoingKeyRequest
 )
 
 BOB_ID = "@bob:example.org"
@@ -262,8 +263,10 @@ class TestClass(object):
 
         assert not key_requests
 
-        store.add_outgoing_key_request("ABCDF")
+        request = OutgoingKeyRequest("ABCDF", "ABCDF", TEST_ROOM, "megolm.v1")
+        store.add_outgoing_key_request(request)
 
         store = self.ephemeral_store
         key_requests = store.load_outgoing_key_requests()
-        assert "ABCDF" in key_requests
+        assert "ABCDF" in key_requests.keys()
+        assert request == key_requests["ABCDF"]

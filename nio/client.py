@@ -96,7 +96,7 @@ from .rooms import MatrixInvitedRoom, MatrixRoom
 from .store import MatrixStore, DefaultStore
 
 if False:
-    from .crypto import OlmDevice
+    from .crypto import OlmDevice, OutgoingKeyRequest
 
 try:
     from json.decoder import JSONDecodeError
@@ -294,9 +294,9 @@ class Client(object):
 
     @property
     def outgoing_key_requests(self):
-        # type: () -> Set[str]
-        """Set of request ids of our active key requests that we made."""
-        return self.olm.outgoing_key_requests if self.olm else set()
+        # type: () -> Dict[str, OutgoingKeyRequest]
+        """Our active key requests that we made."""
+        return self.olm.outgoing_key_requests if self.olm else dict()
 
     def load_store(self):
         # type: () -> None
@@ -1346,7 +1346,15 @@ class HttpClient(Client):
         ))
         return self._send(
             request,
-            RequestInfo(RequestType.request_room_key, event.session_id)
+            RequestInfo(
+                RequestType.request_room_key,
+                (
+                    event.session_id,
+                    event.session_id,
+                    event.room_id,
+                    event.algorithm
+                )
+            )
         )
 
     @connected
@@ -1446,7 +1454,7 @@ class HttpClient(Client):
         elif request_type is RequestType.request_room_key:
             response = RoomKeyRequestResponse.from_dict(
                 parsed_dict,
-                request_info.extra_data
+                *request_info.extra_data
             )
 
         assert response
