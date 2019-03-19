@@ -377,6 +377,7 @@ class Schemas(object):
             "event_id": {"type": "string"},
             "sender": {"type": "string", "format": "user_id"},
             "type": {"type": "string"},
+            "origin_server_ts": {"type": "integer", "minimum": 0},
             "unsigned": {
                 "type": "object",
                 "properties": {
@@ -384,7 +385,7 @@ class Schemas(object):
                 }
             },
         },
-        "required": ["event_id", "sender", "type"],
+        "required": ["event_id", "sender", "type", "origin_server_ts"],
     }
 
     room_state = {
@@ -471,7 +472,7 @@ class Schemas(object):
             "type": {"type": "string", "enum": ["m.room.encrypted"]},
             "event_id": {"type": "string"},
             "sender": {"type": "string", "format": "user_id"},
-            "origin_server_ts": {"type": "integer"},
+            "origin_server_ts": {"type": "integer", "minimum": 0},
             "room_id": {"type": "string"},
             "content": {
                 "type": "object",
