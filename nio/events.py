@@ -814,7 +814,7 @@ class RoomMessageUnknown(RoomMessage):
             parsed_dict["event_id"],
             parsed_dict["sender"],
             parsed_dict["origin_server_ts"],
-            parsed_dict["type"],
+            parsed_dict["content"]["type"],
             parsed_dict.pop("content"),
         )
 
