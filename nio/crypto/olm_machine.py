@@ -17,20 +17,15 @@
 from __future__ import unicode_literals
 
 import json
-import os
 
 # pylint: disable=redefined-builtin
 from builtins import str
 from collections import defaultdict
-from functools import wraps
 from typing import (
     Any,
     DefaultDict,
-    Deque,
     Dict,
-    Iterator,
     List,
-    NamedTuple,
     Optional,
     Tuple,
     Union,
@@ -38,7 +33,6 @@ from typing import (
 )
 
 from jsonschema import SchemaError, ValidationError
-from logbook import Logger
 import olm
 from olm import (
     OlmGroupSessionError,
@@ -84,7 +78,6 @@ from ..events import (
     MegolmEvent,
     OlmEvent,
     RoomEncryptedEvent,
-    RoomEncryptedMessage,
     BadEventType,
     RoomKeyEvent,
     ForwardedRoomKeyEvent,
