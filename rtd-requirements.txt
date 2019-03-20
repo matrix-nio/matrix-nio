@@ -1,6 +1,7 @@
 attrs
 future
 peewee
+aiohttp
 h11
 h2
 logbook
