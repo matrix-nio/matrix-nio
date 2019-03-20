@@ -60,6 +60,7 @@ from .log import logger_group
 from .responses import (
     JoinResponse,
     LoginResponse,
+    LoginError,
     Response,
     RoomInviteResponse,
     RoomKickResponse,
@@ -760,7 +761,24 @@ class Client(object):
 
 
 class AsyncClient(Client):
-    """An async IO matrix client."""
+    """An async IO matrix client.
+
+    Attributes:
+        homeserver (str): The URL of the homeserver which we want to connect
+            to.
+        user (str, optional): The user which will be used when we log in to the
+            homeserver.
+        device_id (str, optional): An unique identifier that distinguishes
+            this client instance. If not set the server will provide one after
+            log in.
+       store_path (str, optional): The directory that should be used for state
+           storeage.
+       config (ClientConfig, optional): Configuration for the client.
+
+    Example:
+            >>> client = AsyncClient("https://example.org", "example")
+
+    """
 
     def __init__(
         self,
@@ -772,7 +790,7 @@ class AsyncClient(Client):
     ):
         # type: (...) -> None
         self.homeserver = homeserver
-        self.client_session = None
+        self.client_session = None  # type: Optional[ClientSession]
         self.ssl = False
         self.proxy = "http://localhost:8080"
         super().__init__(user, device_id, store_path, config)
@@ -788,6 +806,15 @@ class AsyncClient(Client):
         return response
 
     async def login(self, password, device_name=""):
+        # type: (str, str) -> Union[LoginResponse, LoginError]
+        """Login to the homeserver.
+
+        Args:
+            password (str): The user's password.
+            device_name (str): A display name to assign to a newly-created
+                device. Ignored if the logged in device corresponds to a
+                known device.
+        """
         if not self.client_session:
             self.client_session = ClientSession()
 
