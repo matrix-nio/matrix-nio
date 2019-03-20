@@ -17,6 +17,9 @@
 import attr
 import json
 import pprint
+
+from aiohttp import ClientSession, ContentTypeError
+
 from builtins import str, super
 from enum import Enum, unique
 from collections import deque
@@ -754,6 +757,57 @@ class Client(object):
                                      room_id))
 
         return self.olm.get_missing_sessions(list(room.users))
+
+
+class AsyncClient(Client):
+    """An async IO matrix client."""
+
+    def __init__(
+        self,
+        homeserver,  # type: str
+        user="",  # type: str
+        device_id="",  # type: Optional[str]
+        store_path="",  # type: Optional[str]
+        config=None,  # type: Optional[ClientConfig]
+    ):
+        # type: (...) -> None
+        self.homeserver = homeserver
+        self.client_session = None
+        self.ssl = False
+        self.proxy = "http://localhost:8080"
+        super().__init__(user, device_id, store_path, config)
+
+    async def _create_response(self, response_class, transport_response):
+        try:
+            parsed_dict = await transport_response.json()
+        except (JSONDecodeError, ContentTypeError):
+            parsed_dict = {}
+
+        response = response_class.from_dict(parsed_dict)
+        response.transport_response = transport_response
+        return response
+
+    async def login(self, password, device_name=""):
+        if not self.client_session:
+            self.client_session = ClientSession()
+
+        method, path, data = Api.login(
+            self.user,
+            password,
+            device_name=device_name,
+            device_id=self.device_id
+        )
+
+        async with self.client_session.request(
+            method,
+            self.homeserver + path,
+            data=data,
+            ssl=self.ssl,
+            proxy=self.proxy
+        ) as resp:
+            response = await self._create_response(LoginResponse, resp)
+            self.receive_response(response)
+            return response
 
 
 class HttpClient(Client):

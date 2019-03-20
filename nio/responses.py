@@ -231,6 +231,7 @@ class Response(object):
     start_time = None  # type : Optional[float]
     end_time = None    # type : Optional[float]
     timeout = 0        # type : int
+    transport_response = attr.ib(init=False, default=None)
 
     @property
     def elapsed(self):
