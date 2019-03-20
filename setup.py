@@ -16,6 +16,7 @@ setup(
         "attrs",
         "future",
         "peewee",
+        "aiohttp"
         "typing;python_version<'3.5'",
         "h11",
         "h2",
