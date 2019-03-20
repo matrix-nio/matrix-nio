@@ -771,9 +771,9 @@ class AsyncClient(Client):
         device_id (str, optional): An unique identifier that distinguishes
             this client instance. If not set the server will provide one after
             log in.
-       store_path (str, optional): The directory that should be used for state
-           storeage.
-       config (ClientConfig, optional): Configuration for the client.
+        store_path (str, optional): The directory that should be used for state
+            storeage.
+        config (ClientConfig, optional): Configuration for the client.
 
     Example:
             >>> client = AsyncClient("https://example.org", "example")
