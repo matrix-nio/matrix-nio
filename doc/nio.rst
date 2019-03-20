@@ -16,6 +16,15 @@ Client
 .. autoclass:: nio.Client
     :members:
 
+AsyncClient
+-----------
+
+.. autoclass:: nio.AsyncClient
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
 HttpClient
 -----------------
 
