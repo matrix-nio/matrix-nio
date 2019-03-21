@@ -69,6 +69,7 @@ from .responses import (
     RoomRedactResponse,
     RoomSendResponse,
     SyncResponse,
+    SyncError,
     SyncType,
     PartialSyncResponse,
     RoomMessagesResponse,
@@ -833,6 +834,42 @@ class AsyncClient(Client):
             proxy=self.proxy
         ) as resp:
             response = await self._create_response(LoginResponse, resp)
+            self.receive_response(response)
+            return response
+
+    async def sync(
+        self,
+        timeout=None,  # type: Optional[int],
+        filter=None    # type: Optional[Dict[Any, Any]]
+    ):
+        # type: (...) -> Tuple[SyncResponse, SyncError]
+        """Synchronise the client's state with the latest state on the server.
+
+        Args:
+            timeout(int, optional): The maximum time that the server should
+                wait for new events before it should return the request
+                anyways, in milliseconds.
+            filter (Dict[Any, Any], optional): A filter that should be used for
+                this sync request.
+
+        Returns either a `SyncResponse` if the request was successful or
+        a `SyncError` if there was an error with the request.
+        """
+        method, path = Api.sync(
+            self.access_token,
+            since=self.next_batch,
+            timeout=timeout,
+            filter=filter
+        )
+
+        async with self.client_session.request(
+            method,
+            self.homeserver + path,
+            data=None,
+            ssl=self.ssl,
+            proxy=self.proxy
+        ) as resp:
+            response = await self._create_response(SyncResponse, resp)
             self.receive_response(response)
             return response
 
