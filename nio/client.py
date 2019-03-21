@@ -764,7 +764,7 @@ class Client(object):
 class AsyncClient(Client):
     """An async IO matrix client.
 
-    Attributes:
+    Args:
         homeserver (str): The URL of the homeserver which we want to connect
             to.
         user (str, optional): The user which will be used when we log in to the
@@ -775,9 +775,15 @@ class AsyncClient(Client):
         store_path (str, optional): The directory that should be used for state
             storeage.
         config (ClientConfig, optional): Configuration for the client.
+        ssl (bool/ssl.SSLContext, optional): SSL validation mode. None for
+            default SSL check (ssl.create_default_context() is used), False
+            for skip SSL certificate validation connection.
+        proxy (str, optional): The proxy that should be used for the HTTP
+            connection.
 
     Example:
             >>> client = AsyncClient("https://example.org", "example")
+            >>> login_response = client.login("hunter1")
 
     """
 
@@ -819,6 +825,9 @@ class AsyncClient(Client):
             device_name (str): A display name to assign to a newly-created
                 device. Ignored if the logged in device corresponds to a
                 known device.
+
+        Returns either a `LoginResponse` if the request was successful or
+        a `LoginError` if there was an error with the request.
         """
         if not self.client_session:
             self.client_session = ClientSession()
