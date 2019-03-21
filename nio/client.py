@@ -886,6 +886,11 @@ class AsyncClient(Client):
             self.receive_response(response)
             return response
 
+    async def close(self):
+        """Close the underlying http session."""
+        await self.client_session.close()
+        self.client_session = None
+
 
 class HttpClient(Client):
     def __init__(
