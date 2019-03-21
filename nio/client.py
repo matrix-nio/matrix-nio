@@ -783,17 +783,21 @@ class AsyncClient(Client):
 
     def __init__(
         self,
-        homeserver,  # type: str
-        user="",  # type: str
-        device_id="",  # type: Optional[str]
+        homeserver,     # type: str
+        user="",        # type: str
+        device_id="",   # type: Optional[str]
         store_path="",  # type: Optional[str]
-        config=None,  # type: Optional[ClientConfig]
+        config=None,    # type: Optional[ClientConfig]
+        ssl=None,       # type: Optional[bool]
+        proxy=None,     # type: Optional[str]
     ):
         # type: (...) -> None
         self.homeserver = homeserver
         self.client_session = None  # type: Optional[ClientSession]
-        self.ssl = False
-        self.proxy = "http://localhost:8080"
+
+        self.ssl = ssl
+        self.proxy = proxy
+
         super().__init__(user, device_id, store_path, config)
 
     async def _create_response(self, response_class, transport_response):
