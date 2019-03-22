@@ -5,7 +5,7 @@ import helpers
 import shutil
 import tempfile
 
-from nio import Client
+from nio import Client, HttpClient
 
 
 @pytest.fixture
@@ -37,6 +37,11 @@ if sys.version_info >= (3, 5):
     def aioresponse():
         with aioresponses() as m:
             yield m
+
+
+@pytest.fixture
+def http_client(tempdir):
+    return HttpClient("example.org", "ephemeral", "DEVICEID", tempdir)
 
 
 @pytest.fixture

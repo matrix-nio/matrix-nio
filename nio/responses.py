@@ -22,11 +22,8 @@ from typing import (
     Any,
     Dict,
     List,
-    NamedTuple,
     Optional,
     Union,
-    Type,
-    TypeVar,
     Tuple,
     Set
 )
@@ -111,6 +108,8 @@ __all__ = [
     "UploadError",
     "ProfileSetDisplayNameResponse",
     "ProfileSetDisplayNameError",
+    "RoomKeyRequestResponse",
+    "RoomKeyRequestError",
 ]
 
 
@@ -344,7 +343,7 @@ class KeysQueryError(ErrorResponse):
     pass
 
 
-class KeysClaimError(ErrorResponse):
+class KeysClaimError(_ErrorWithRoomId):
     pass
 
 
@@ -739,6 +738,49 @@ class DevicesResponse(Response):
             devices.append(device)
 
         return cls(devices)
+
+
+@attr.s
+class RoomKeyRequestError(ErrorResponse):
+    """Response representing a failed room key request."""
+
+    pass
+
+
+@attr.s
+class RoomKeyRequestResponse(Response):
+    """Response representing a successful room key request.
+
+    Attributes:
+        request_id (str): The id of the that uniquely identifies this key
+            request that was requested, if we receive a to_device event it will
+            contain the same request id.
+        session_id (str): The id of the session that we requested.
+        room_id (str): The id of the room that the session belongs to.
+        algorithm (str): The encryption algorithm of the session.
+
+    """
+
+    request_id = attr.ib(type=str)
+    session_id = attr.ib(type=str)
+    room_id = attr.ib(type=str)
+    algorithm = attr.ib(type=str)
+
+    @classmethod
+    @verify(Schemas.empty, RoomKeyRequestError, False)
+    def from_dict(cls, _, request_id, session_id, room_id, algorithm):
+        """Create a RoomKeyRequestResponse from a json response.
+
+        Args:
+            parsed_dict (Dict): The dictionary containing the json response.
+            request_id (str): The id of that uniquely identifies this key
+                request that was requested, if we receive a to_device event
+                it will contain the same request id.
+            session_id (str): The id of the session that we requested.
+            room_id (str): The id of the room that the session belongs to.
+            algorithm (str): The encryption algorithm of the session.
+        """
+        return cls(request_id, session_id, room_id, algorithm)
 
 
 class UpdateDeviceResponse(EmptyResponse):

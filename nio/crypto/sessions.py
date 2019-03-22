@@ -16,11 +16,15 @@
 
 
 import olm
+import attr
 from builtins import super
 from datetime import datetime, timedelta
 from typing import List, Optional, Set, Tuple
 
 from ..exceptions import EncryptionError
+
+if False:
+    from ..responses import RoomKeyRequestResponse
 
 
 class OlmAccount(olm.Account):
@@ -207,3 +211,24 @@ class OlmDevice(object):
         self.ed25519 = ed25519_key
         self.curve25519 = curve25519_key
         self.deleted = deleted
+
+
+@attr.s
+class OutgoingKeyRequest(object):
+    """Key request that we sent out."""
+
+    request_id = attr.ib(type=str)
+    session_id = attr.ib(type=str)
+    room_id = attr.ib(type=str)
+    algorithm = attr.ib(type=str)
+
+    @classmethod
+    def from_response(cls, response):
+        # type: (RoomKeyRequestResponse) -> OutgoingKeyRequest
+        """Create an key request object from a RoomKeyRequestResponse."""
+        return cls(
+            response.request_id,
+            response.session_id,
+            response.room_id,
+            response.algorithm
+        )

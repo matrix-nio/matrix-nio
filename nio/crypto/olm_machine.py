@@ -17,20 +17,15 @@
 from __future__ import unicode_literals
 
 import json
-import os
 
 # pylint: disable=redefined-builtin
 from builtins import str
 from collections import defaultdict
-from functools import wraps
 from typing import (
     Any,
     DefaultDict,
-    Deque,
     Dict,
-    Iterator,
     List,
-    NamedTuple,
     Optional,
     Tuple,
     Union,
@@ -38,7 +33,6 @@ from typing import (
 )
 
 from jsonschema import SchemaError, ValidationError
-from logbook import Logger
 import olm
 from olm import (
     OlmGroupSessionError,
@@ -69,13 +63,14 @@ from . import (
 )
 
 from .key_export import encrypt_and_save, decrypt_and_read
+from .sessions import OutgoingKeyRequest
 from ..store import MatrixStore
 
 from ..responses import (
     KeysUploadResponse,
     KeysQueryResponse,
     KeysClaimResponse,
-    ShareGroupSessionResponse
+    RoomKeyRequestResponse
 )
 from ..events import (
     Event,
@@ -83,9 +78,9 @@ from ..events import (
     MegolmEvent,
     OlmEvent,
     RoomEncryptedEvent,
-    RoomEncryptedMessage,
     BadEventType,
     RoomKeyEvent,
+    ForwardedRoomKeyEvent,
     BadEvent,
     UnknownBadEvent,
     validate_or_badevent
@@ -131,18 +126,24 @@ class Olm(object):
             # type: Dict[str, OutboundGroupSession]
 
         self.tracked_users = set()  # type: Set[str]
+        self.outgoing_key_requests = dict()  \
+            # type: Dict[str, OutgoingKeyRequest]
+        self.key_request_cancelations = dict()  \
+            # type: Dict[str, OutgoingKeyRequest]
 
         self.store = store
 
-        self.account = self.store.load_account()
+        account = self.store.load_account()  # type: ignore
 
-        if not self.account:
+        if not account:
             logger.info("Creating new Olm account for {} on device {}".format(
                         self.user_id, self.device_id))
-            self.account = OlmAccount()
-            self.save_account()
+            account = OlmAccount()
+            self.save_account(account)
         else:
             self.load()
+
+        self.account = account  # type: OlmAccount
 
     def update_tracked_users(self, room):
         already_tracked = self.tracked_users
@@ -420,6 +421,11 @@ class Olm(object):
         elif isinstance(response, KeysClaimResponse):
             self._handle_key_claiming(response)
 
+        elif isinstance(response, RoomKeyRequestResponse):
+            key_request = OutgoingKeyRequest.from_response(response)
+            self.outgoing_key_requests[response.request_id] = key_request
+            self.store.add_outgoing_key_request(key_request)
+
     def _create_inbound_session(
         self,
         sender,  # type: str
@@ -657,19 +663,84 @@ class Olm(object):
 
         return event
 
+    # This function is copyrighted under the Apache 2.0 license Zil0
+    def _handle_forwarded_room_key_event(self, sender, sender_key, payload):
+        # type: (str, str, Dict[Any, Any]) -> Optional[ForwardedRoomKeyEvent]
+        event = ForwardedRoomKeyEvent.from_dict(payload, sender, sender_key)
+
+        if isinstance(event, (BadEvent, UnknownBadEvent)):
+            return event
+
+        if event.algorithm != "m.megolm.v1.aes-sha2":
+            logger.error(
+                "Error: unsuported forwarded room key of type {}".format(
+                    event.algorithm
+                )
+            )
+            return None
+
+        if event.session_id not in self.outgoing_key_requests:
+            logger.info(
+                "Ignoring session key we have not requested from device {}.",
+                sender_key
+            )
+            return None
+
+        key_request = self.outgoing_key_requests[event.session_id]
+
+        # TODO check that the algorithm, room_id and session id match
+
+        content = payload["content"]
+
+        session_sender_key = content["sender_key"]
+        signing_key = content["sender_claimed_ed25519_key"]
+        chain = content["forwarding_curve25519_key_chain"]
+        chain.append(session_sender_key)
+
+        session = self._import_group_session(
+            content["session_key"],
+            signing_key,
+            session_sender_key,
+            event.room_id,
+            chain
+        )
+
+        if not session:
+            return None
+
+        if self.inbound_group_store.add(session):
+            self.save_inbound_group_session(session)
+
+        key_request = self.outgoing_key_requests.pop(key_request.request_id)
+        self.key_request_cancelations[key_request.request_id] = key_request
+
+        # TODO remove our key request from the store
+        # self.store.remove_outgoing_key_request(event.session_id)
+        # TODO save our cancelation to the store
+
+        return event
+
     def _handle_olm_event(self, sender, sender_key, payload):
         # type: (str, str, Dict[Any, Any]) -> Optional[RoomKeyEvent]
         logger.info("Recieved Olm event of type: {}".format(payload["type"]))
 
-        if payload["type"] != "m.room_key":
+        if payload["type"] == "m.room_key":
+            return self._handle_room_key_event(sender, sender_key, payload)
+
+        elif payload["type"] == "m.forwarded_room_key":
+            return self._handle_forwarded_room_key_event(
+                sender,
+                sender_key,
+                payload
+            )
+
+        else:
             logger.warn(
                 "Received unsuported Olm event of type {}".format(
                     payload["type"]
                 )
             )
             return None
-
-        return self._handle_room_key_event(sender, sender_key, payload)
 
     def decrypt_megolm_event(self, event):
         # type (MegolmEvent) -> Union[Event, BadEvent]
@@ -931,20 +1002,6 @@ class Olm(object):
 
         return payload_dict
 
-    def _group_decrypt(
-        self,
-        session,    # type: InboundGroupSession
-        ciphertext  # type: str
-    ):
-        # type: (...) -> Tuple[Optional[str], Optional[int]]
-
-        try:
-            plaintext, message_index = session.decrypt(ciphertext)
-            return plaintext, message_index
-        except OlmGroupSessionError as e:
-            logger.error("Error decrypting megolm event: {}".format(str(e)))
-            return None, None
-
     def share_group_session(
         self,
         room_id,  # type: str
@@ -1063,14 +1120,7 @@ class Olm(object):
         self.session_store = self.store.load_sessions()
         self.inbound_group_store = self.store.load_inbound_group_sessions()
         self.device_store = self.store.load_device_keys()
-
-    def save(self):
-        # type: () -> None
-        self.save_account()
-
-        for curve_key, session_list in self.session_store.items():
-            for session in session_list:
-                self.save_session(curve_key, session)
+        self.outgoing_key_requests = self.store.load_outgoing_key_requests()
 
     def save_session(self, curve_key, session):
         # type: (str, Session) -> None
@@ -1080,10 +1130,13 @@ class Olm(object):
         # type: (InboundGroupSession) -> None
         self.store.save_inbound_group_session(session)
 
-    def save_account(self):
-        # type: () -> None
+    def save_account(self, account=None):
+        # type: (Optional[OlmAccount]) -> None
+        if account:
+            self.store.save_account(account)
+        else:
+            self.store.save_account(self.account)
         logger.debug("Saving account")
-        self.store.save_account(self.account)
 
     def sign_json(self, json_dict):
         # type: (Dict[Any, Any]) -> str
@@ -1106,7 +1159,7 @@ class Olm(object):
         """
         try:
             signatures = json.pop('signatures')
-        except KeyError:
+        except (KeyError, ValueError):
             return False
 
         key_id = 'ed25519:{}'.format(device_id)
@@ -1179,6 +1232,26 @@ class Olm(object):
             "Succesfully exported encryption keys to {}".format(outfile)
         )
 
+    def _import_group_session(
+        self,
+        session_key,
+        sender_fp_key,
+        sender_key,
+        room_id,
+        forwarding_chain
+    ):
+        try:
+            return InboundGroupSession.import_session(
+                session_key,
+                sender_fp_key,
+                sender_key,
+                room_id,
+                forwarding_chain,
+            )
+        except OlmSessionError as e:
+            logger.warn("Error importing inbound group session: {}".format(e))
+            return None
+
     # This function is copyrighted under the Apache 2.0 license Zil0
     def import_keys(self, infile, passphrase):
         """Import Megolm decryption keys.
@@ -1211,16 +1284,15 @@ class Olm(object):
                 logger.warning("Ignoring session with unsupported algorithm.")
                 continue
 
-            try:
-                session = InboundGroupSession.import_session(
-                    session_dict["session_key"],
-                    session_dict["sender_claimed_keys"]["ed25519"],
-                    session_dict["sender_key"],
-                    session_dict["room_id"],
-                    session_dict["forwarding_curve25519_key_chain"],
-                )
-            except OlmSessionError as e:
-                logger.warn(e)
+            session = self._import_group_session(
+                session_dict["session_key"],
+                session_dict["sender_claimed_keys"]["ed25519"],
+                session_dict["sender_key"],
+                session_dict["room_id"],
+                session_dict["forwarding_curve25519_key_chain"],
+            )
+
+            if not session:
                 continue
 
             # This could be improved by writing everything to db at once at

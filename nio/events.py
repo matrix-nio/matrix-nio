@@ -402,6 +402,41 @@ class RoomKeyEvent(object):
 
 
 @attr.s
+class ForwardedRoomKeyEvent(RoomKeyEvent):
+    """Event containing a room key that got forwarded to us.
+
+    Attributes:
+        sender (str): The sender of the event.
+        sender_key (str): The key of the sender that sent the event.
+        room_id (str): The room ID of the room to which the session key
+            belongs to.
+        session_id (str): The session id of the session key.
+        algorithm: (str): The algorithm of the session key.
+
+    """
+
+    @classmethod
+    @verify(Schemas.forwarded_room_key_event)
+    def from_dict(cls, event_dict, sender, sender_key):
+        """Create a ForwardedRoomKeyEvent from a event dictionary.
+
+        Args:
+            event_dict (Dict): The dictionary containing the event.
+            sender (str): The sender of the event.
+            sender_key (str): The key of the sender that sent the event.
+        """
+        content = event_dict["content"]
+
+        return cls(
+            sender,
+            sender_key,
+            content["room_id"],
+            content["session_id"],
+            content["algorithm"]
+        )
+
+
+@attr.s
 class MegolmEvent(RoomEncryptedEvent):
     event_id = attr.ib()
     sender = attr.ib()
@@ -410,6 +445,7 @@ class MegolmEvent(RoomEncryptedEvent):
     device_id = attr.ib()
     session_id = attr.ib()
     ciphertext = attr.ib()
+    algorithm = attr.ib()
     room_id = attr.ib(default="")
     transaction_id = attr.ib(default=None)
 
@@ -425,6 +461,7 @@ class MegolmEvent(RoomEncryptedEvent):
         sender_key = content["sender_key"]
         session_id = content["session_id"]
         device_id = content["device_id"]
+        algorithm = content["algorithm"]
 
         room_id = event_dict.get("room_id", None)
         tx_id = (event_dict["unsigned"].get("transaction_id", None)
@@ -438,6 +475,7 @@ class MegolmEvent(RoomEncryptedEvent):
             device_id,
             session_id,
             ciphertext,
+            algorithm,
             room_id,
             tx_id
         )
@@ -525,10 +563,13 @@ class BadEvent(Event):
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> BadEvent
+        timestamp = parsed_dict["origin_server_ts"]
+
+        timestamp = timestamp if timestamp > 0 else 0
         return cls(
             parsed_dict["event_id"],
             parsed_dict["sender"],
-            parsed_dict["origin_server_ts"],
+            timestamp,
             parsed_dict["type"],
             Api.to_json(parsed_dict),
         )
@@ -773,7 +814,7 @@ class RoomMessageUnknown(RoomMessage):
             parsed_dict["event_id"],
             parsed_dict["sender"],
             parsed_dict["origin_server_ts"],
-            parsed_dict["type"],
+            parsed_dict["content"]["type"],
             parsed_dict.pop("content"),
         )
 

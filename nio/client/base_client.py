@@ -47,6 +47,7 @@ from ..responses import (
     ShareGroupSessionResponse,
     KeysClaimResponse,
     JoinedMembersResponse,
+    RoomKeyRequestResponse
 )
 
 from ..events import (
@@ -60,7 +61,7 @@ from ..rooms import MatrixInvitedRoom, MatrixRoom
 from ..store import MatrixStore, DefaultStore
 
 if False:
-    from ..crypto import OlmDevice
+    from ..crypto import OlmDevice, OutgoingKeyRequest
 
 try:
     from json.decoder import JSONDecodeError
@@ -214,6 +215,12 @@ class Client(object):
             return False
 
         return self.olm.should_query_keys
+
+    @property
+    def outgoing_key_requests(self):
+        # type: () -> Dict[str, OutgoingKeyRequest]
+        """Our active key requests that we made."""
+        return self.olm.outgoing_key_requests if self.olm else dict()
 
     def load_store(self):
         # type: () -> None
@@ -612,6 +619,8 @@ class Client(object):
             self._handle_olm_response(response)
         elif isinstance(response, JoinedMembersResponse):
             self._handle_joined_members(response)
+        elif isinstance(response, RoomKeyRequestResponse):
+            self._handle_olm_response(response)
         else:
             pass
 

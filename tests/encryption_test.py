@@ -17,12 +17,26 @@ from nio.crypto import (
     OlmDevice,
     OutboundSession,
     SessionStore,
-    DeviceStore
+    DeviceStore,
+    InboundGroupSession,
+    GroupSessionStore,
+    OutgoingKeyRequest
 )
-from nio.exceptions import OlmTrustError
-from nio.responses import KeysQueryResponse, ShareGroupSessionResponse
+from nio.exceptions import OlmTrustError, GroupEncryptionError, EncryptionError
+from nio.responses import (
+    KeysQueryResponse,
+    KeysUploadResponse,
+    KeysClaimResponse
+)
 from nio.store import KeyStore, Ed25519Key, Key, DefaultStore
-from nio.events import UnknownBadEvent, RoomKeyEvent
+from nio.events import (
+    UnknownBadEvent,
+    RoomKeyEvent,
+    ForwardedRoomKeyEvent,
+    OlmEvent,
+    MegolmEvent,
+    RoomMessageText
+)
 
 
 AliceId = "@alice:example.org"
@@ -54,7 +68,6 @@ def ephemeral(func):
 class TestClass(object):
     @staticmethod
     def _load_response(filename):
-        # type: (str) -> Dict[Any, Any]
         with open(filename) as f:
             return json.loads(f.read(), encoding="utf-8")
 
@@ -364,22 +377,64 @@ class TestClass(object):
             to_device["messages"][MaloryId][malory_device.id]["ciphertext"]
 
         ciphertext = to_device["messages"][BobId][bob_device.id]["ciphertext"]
-        bob_ciphertext = ciphertext[bob_device.curve25519]
 
-        message = (OlmPreKeyMessage(bob_ciphertext["body"])
-                   if bob_ciphertext["type"] == 0
-                   else OlmMessage(bob_ciphertext["body"]))
+        olm_event_dict = {
+            "sender": AliceId,
+            "type": "m.room.encrypted",
+            "content": {
+                "algorithm": Olm._olm_algorithm,
+                "sender_key": alice_device.curve25519,
+                "ciphertext": ciphertext
+            }
+        }
+
+        olm_event = OlmEvent.from_dict(olm_event_dict)
+
+        assert isinstance(olm_event, OlmEvent)
 
         # bob decrypts the message and creates a new inbound session with alice
         try:
             # pdb.set_trace()
-            bob.decrypt(AliceId, alice_device.curve25519, message)
+            bob.decrypt_event(olm_event)
 
             # we check that the session is there
             assert bob.session_store.get(alice_device.curve25519)
             # we check that the group session is there
             assert bob.inbound_group_store.get(
                 "!test:example.org",
+                alice_device.curve25519,
+                group_session.id,
+            )
+
+            # Test another round of sharing, this time with an existing session
+            alice.create_outbound_group_session(TEST_ROOM)
+            group_session = alice.outbound_group_sessions[TEST_ROOM]
+
+            sharing_with, to_device = alice.share_group_session(
+                TEST_ROOM,
+                [BobId, MaloryId]
+            )
+
+            ciphertext = to_device["messages"][BobId][bob_device.id]["ciphertext"]
+
+            olm_event_dict = {
+                "sender": AliceId,
+                "type": "m.room.encrypted",
+                "content": {
+                    "algorithm": Olm._olm_algorithm,
+                    "sender_key": alice_device.curve25519,
+                    "ciphertext": ciphertext
+                }
+            }
+
+            olm_event = OlmEvent.from_dict(olm_event_dict)
+            assert isinstance(olm_event, OlmEvent)
+
+            event = bob.decrypt_event(olm_event)
+            assert event
+
+            assert bob.inbound_group_store.get(
+                TEST_ROOM,
                 alice_device.curve25519,
                 group_session.id,
             )
@@ -523,3 +578,257 @@ class TestClass(object):
         )
 
         assert isinstance(event, RoomKeyEvent)
+
+    @ephemeral
+    def test_forwarded_room_key_event(self):
+        olm = self.ephemeral_olm
+
+        session = OutboundGroupSession()
+        session = InboundGroupSession(
+            session.session_key,
+            "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4",
+            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
+            TEST_ROOM
+        )
+
+        payload = {
+            "sender": BobId,
+            "sender_device": Bob_device,
+            "type": "m.forwarded_room_key",
+            "content": {
+                "algorithm": "m.megolm.v1.aes-sha2",
+                "room_id": session.room_id,
+                "session_id": session.id,
+                "session_key": session.export_session(
+                    session.first_known_index
+                ),
+                "sender_key": session.sender_key,
+                "sender_claimed_ed25519_key": session.ed25519,
+                "forwarding_curve25519_key_chain": session.forwarding_chain,
+            },
+            "keys": {
+                "ed25519": session.ed25519
+            }
+        }
+
+        bad_event = olm._handle_room_key_event(
+            BobId,
+            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
+            {}
+        )
+        assert isinstance(bad_event, UnknownBadEvent)
+
+        event = olm._handle_forwarded_room_key_event(
+            BobId,
+            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
+            payload
+        )
+        assert not event
+
+        key_request = OutgoingKeyRequest(
+            session.id,
+            session.id,
+            session.room_id,
+            "megolm.v1"
+        )
+
+        olm.outgoing_key_requests[session.id] = key_request
+        event = olm._handle_olm_event(
+            BobId,
+            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
+            payload
+        )
+        assert isinstance(event, ForwardedRoomKeyEvent)
+
+    def test_user_verification_status(self, monkeypatch):
+        def mocksave(self):
+            return
+
+        monkeypatch.setattr(KeyStore, '_save', mocksave)
+
+        # create three new accounts
+        alice = self._load(AliceId, Alice_device)
+        bob = self._load(BobId, Bob_device)
+
+        # create olm devices for each others known devices list
+        bob_device = OlmDevice(
+            BobId,
+            Bob_device,
+            bob.account.identity_keys["ed25519"],
+            bob.account.identity_keys["curve25519"],
+        )
+
+        bob2_device = OlmDevice(
+            BobId,
+            Malory_device,
+            bob.account.identity_keys["ed25519"],
+            bob.account.identity_keys["curve25519"],
+        )
+
+        alice.device_store.add(bob_device)
+
+        assert not alice.user_fully_verified(BobId)
+
+        alice.verify_device(bob_device)
+        assert alice.user_fully_verified(BobId)
+
+        alice.device_store.add(bob2_device)
+        assert not alice.user_fully_verified(BobId)
+
+        alice.verify_device(bob2_device)
+        assert alice.user_fully_verified(BobId)
+
+        os.remove(os.path.join(
+            ephemeral_dir,
+            "{}_{}.db".format(AliceId, Alice_device)
+        ))
+        os.remove(os.path.join(
+            ephemeral_dir,
+            "{}_{}.db".format(BobId, Bob_device)
+        ))
+
+    @ephemeral
+    def test_group_decryption(self):
+        olm = self.ephemeral_olm
+        olm.create_outbound_group_session(TEST_ROOM)
+
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "hello wordl",
+            },
+        }
+
+        with pytest.raises(GroupEncryptionError):
+            encrypted_dict = olm.group_encrypt(TEST_ROOM, message)
+
+        session = olm.outbound_group_sessions[TEST_ROOM]
+        session.shared = True
+
+        encrypted_dict = olm.group_encrypt(TEST_ROOM, message)
+
+        megolm = {
+            "type": "m.room.encrypted",
+            "content": encrypted_dict
+        }
+
+        megolm_event = MegolmEvent.from_dict(megolm)
+        assert isinstance(megolm_event, UnknownBadEvent)
+
+        megolm["event_id"] = "1"
+        megolm["sender"] = "@ephemeral:example.org"
+        megolm["origin_server_ts"] = 0
+
+        megolm_event = MegolmEvent.from_dict(megolm)
+
+        assert isinstance(megolm_event, MegolmEvent)
+
+        with pytest.raises(EncryptionError):
+            event = olm.decrypt_megolm_event(megolm_event)
+
+        session_store = olm.inbound_group_store
+        olm.inbound_group_store = GroupSessionStore()
+
+        with pytest.raises(EncryptionError):
+            event = olm.decrypt_megolm_event(megolm_event)
+
+        olm.inbound_group_store = session_store
+
+        megolm_event.room_id = TEST_ROOM
+        event = olm.decrypt_event(megolm_event)
+        assert isinstance(event, RoomMessageText)
+        assert event.decrypted
+
+    @ephemeral
+    def test_key_sharing(self):
+        olm = self.ephemeral_olm
+
+        assert olm.should_upload_keys
+        to_share = olm.share_keys()
+
+        assert "device_keys" in to_share
+        assert "one_time_keys" in to_share
+        assert len(to_share["one_time_keys"]) == olm.account.max_one_time_keys // 2
+
+        response = KeysUploadResponse.from_dict({
+            "one_time_key_counts": {
+                "curve25519": 0,
+                "signed_curve25519": olm.account.max_one_time_keys // 2
+            }
+        })
+
+        olm.handle_response(response)
+
+        assert not olm.should_upload_keys
+
+        with pytest.raises(ValueError):
+            to_share = olm.share_keys()
+
+        olm.uploaded_key_count -= 1
+
+        assert olm.should_upload_keys
+        to_share = olm.share_keys()
+
+        assert "device_keys" not in to_share
+        assert "one_time_keys" in to_share
+        assert len(to_share["one_time_keys"]) == 1
+
+    def test_outbound_session_creation(self, monkeypatch):
+        def mocksave(self):
+            return
+
+        monkeypatch.setattr(KeyStore, '_save', mocksave)
+
+        alice = self._load(AliceId, Alice_device)
+        bob = self._load(BobId, Bob_device)
+
+        bob_device = OlmDevice(
+            BobId,
+            Bob_device,
+            bob.account.identity_keys["ed25519"],
+            bob.account.identity_keys["curve25519"],
+        )
+
+        assert not alice.get_missing_sessions([BobId])
+
+        alice.device_store.add(bob_device)
+
+        missing = alice.get_missing_sessions([BobId])
+        assert not alice.session_store.get(bob_device.curve25519)
+
+        assert BobId in missing
+        assert Bob_device in missing[BobId]
+
+        to_share = bob.share_keys()
+
+        one_time_key = list(to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                BobId: {
+                    Bob_device: {one_time_key[0]: one_time_key[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        response = KeysClaimResponse.from_dict(key_claim_dict, TEST_ROOM)
+
+        assert isinstance(response, KeysClaimResponse)
+
+        print(response)
+
+        alice.handle_response(response)
+
+        assert not alice.get_missing_sessions([BobId])
+        assert alice.session_store.get(bob_device.curve25519)
+
+        os.remove(os.path.join(
+            ephemeral_dir,
+            "{}_{}.db".format(AliceId, Alice_device)
+        ))
+        os.remove(os.path.join(
+            ephemeral_dir,
+            "{}_{}.db".format(BobId, Bob_device)
+        ))

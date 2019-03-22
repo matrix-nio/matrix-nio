@@ -43,9 +43,14 @@ from ..exceptions import (
     LocalProtocolError,
     RemoteTransportError,
 )
-from ..http import HttpRequest, Http2Request
+
+from ..events import (
+    MegolmEvent,
+)
 
 from ..http import (
+    HttpRequest,
+    Http2Request,
     Http2Connection,
     HttpConnection,
     TransportType,
@@ -78,7 +83,8 @@ from ..responses import (
     KeysUploadError,
     RoomTypingResponse,
     RoomReadMarkersResponse,
-    ProfileSetDisplayNameResponse
+    ProfileSetDisplayNameResponse,
+    RoomKeyRequestResponse
 )
 
 try:
@@ -123,6 +129,7 @@ class RequestType(Enum):
     room_typing = 18
     room_read_markers = 19
     profile_set_displayname = 20
+    request_room_key = 21
 
 
 @attr.s
@@ -639,7 +646,7 @@ class HttpClient(Client):
     @logged_in
     def set_displayname(self, displayname):
         # type: (str) -> Tuple[UUID, bytes]
-        """Set user's display name
+        """Set user's display name.
 
         This tells the server to set display name of currently logged
         in user to supplied string.
@@ -658,6 +665,68 @@ class HttpClient(Client):
         return self._send(
             request,
             RequestInfo(RequestType.profile_set_displayname)
+        )
+
+    @connected
+    @logged_in
+    @store_loaded
+    def request_room_key(self, event, tx_id=None):
+        # type: (MegolmEvent, Optional[str]) -> Tuple[UUID, bytes]
+        """Request a missing room key.
+
+        This sends out a message to other devices requesting a room key from
+        them.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            event (str): An undecrypted MegolmEvent for which we would like to
+                request the decryption key.
+        """
+        uuid = tx_id or uuid4()
+
+        if event.session_id in self.outgoing_key_requests:
+            raise LocalProtocolError("A key sharing request is already sent"
+                                     " out for this session id.")
+
+        content = {
+            "action": "request",
+            "body": {
+                "algorithm": event.algorithm,
+                "session_id": event.session_id,
+                "room_id": event.room_id,
+                "sender_key": event.sender_key
+            },
+            "request_id": event.session_id,
+            "requesting_device_id": self.device_id,
+        }
+
+        to_device = {
+            "messages": {
+                self.user_id: {
+                    "*": content
+                }
+            }
+        }
+
+        request = self._build_request(Api.to_device(
+            self.access_token,
+            "m.room_key_request",
+            to_device,
+            uuid
+        ))
+        return self._send(
+            request,
+            RequestInfo(
+                RequestType.request_room_key,
+                (
+                    event.session_id,
+                    event.session_id,
+                    event.room_id,
+                    event.algorithm
+                )
+            )
         )
 
     @connected
@@ -753,6 +822,12 @@ class HttpClient(Client):
                 response = DeleteDevicesResponse.from_dict(parsed_dict)
         elif request_type is RequestType.profile_set_displayname:
             response = ProfileSetDisplayNameResponse.from_dict(parsed_dict)
+
+        elif request_type is RequestType.request_room_key:
+            response = RoomKeyRequestResponse.from_dict(
+                parsed_dict,
+                *request_info.extra_data
+            )
 
         assert response
 

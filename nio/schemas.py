@@ -377,6 +377,7 @@ class Schemas(object):
             "event_id": {"type": "string"},
             "sender": {"type": "string", "format": "user_id"},
             "type": {"type": "string"},
+            "origin_server_ts": {"type": "integer", "minimum": 0},
             "unsigned": {
                 "type": "object",
                 "properties": {
@@ -384,7 +385,7 @@ class Schemas(object):
                 }
             },
         },
-        "required": ["event_id", "sender", "type"],
+        "required": ["event_id", "sender", "type", "origin_server_ts"],
     }
 
     room_state = {
@@ -469,6 +470,9 @@ class Schemas(object):
         "type": "object",
         "properties": {
             "type": {"type": "string", "enum": ["m.room.encrypted"]},
+            "event_id": {"type": "string"},
+            "sender": {"type": "string", "format": "user_id"},
+            "origin_server_ts": {"type": "integer", "minimum": 0},
             "room_id": {"type": "string"},
             "content": {
                 "type": "object",
@@ -494,6 +498,9 @@ class Schemas(object):
         "required": [
             "type",
             "content",
+            "event_id",
+            "sender",
+            "origin_server_ts"
         ],
     }
 
@@ -517,7 +524,6 @@ class Schemas(object):
         "required": [
             "type",
             "sender",
-            "sender_device",
             "keys",
             "recipient",
             "recipient_keys",
@@ -549,7 +555,41 @@ class Schemas(object):
             },
             "keys": {"type": "object"},
         },
-        "required": ["type", "sender", "sender_device", "content", "keys"],
+        "required": ["type", "sender", "content", "keys"],
+    }
+
+    forwarded_room_key_event = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "sender_device": {"type": "string"},
+            "type": {"type": "string", "enum": ["m.forwarded_room_key"]},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "algorithm": {"type": "string"},
+                    "room_id": {"type": "string", "format": "room_id"},
+                    "sender_key": {"type": "string"},
+                    "sender_claimed_ed25519_key": {"type": "string"},
+                    "forwarding_curve25519_key_chain": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "session_id": {"type": "string"},
+                    "session_key": {"type": "string"},
+                },
+                "required": [
+                    "algorithm",
+                    "room_id",
+                    "session_id",
+                    "session_key",
+                    "sender_key",
+                    "sender_claimed_ed25519_key",
+                    "forwarding_curve25519_key_chain",
+                ],
+            },
+        },
+        "required": ["type", "sender", "content"],
     }
 
     room_canonical_alias = {
