@@ -23,6 +23,8 @@ from typing import (
     Union,
 )
 
+from functools import wraps
+
 from json.decoder import JSONDecodeError
 from aiohttp import ClientSession, ContentTypeError
 
@@ -33,7 +35,17 @@ from ..responses import (
     SyncResponse,
     SyncError,
 )
-from . import Client, ClientConfig
+from . import Client, ClientConfig, logged_in
+
+
+def client_session(func):
+    """Ensure that the Async client has a valid client session."""
+    @wraps(func)
+    async def wrapper(self, *args, **kwargs):
+        if not self.client_session:
+            self.client_session = ClientSession()
+        return await func(self, *args, **kwargs)
+    return wrapper
 
 
 class AsyncClient(Client):
@@ -91,6 +103,7 @@ class AsyncClient(Client):
         response.transport_response = transport_response
         return response
 
+    @client_session
     async def login(self, password, device_name=""):
         # type: (str, str) -> Union[LoginResponse, LoginError]
         """Login to the homeserver.
@@ -104,9 +117,6 @@ class AsyncClient(Client):
         Returns either a `LoginResponse` if the request was successful or
         a `LoginError` if there was an error with the request.
         """
-        if not self.client_session:
-            self.client_session = ClientSession()
-
         method, path, data = Api.login(
             self.user,
             password,
@@ -125,6 +135,8 @@ class AsyncClient(Client):
             self.receive_response(response)
             return response
 
+    @logged_in
+    @client_session
     async def sync(
             self,
             timeout=None,  # type: Optional[int],
@@ -163,5 +175,6 @@ class AsyncClient(Client):
 
     async def close(self):
         """Close the underlying http session."""
-        await self.client_session.close()
-        self.client_session = None
+        if self.client_session:
+            await self.client_session.close()
+            self.client_session = None
