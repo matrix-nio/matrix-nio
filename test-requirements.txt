@@ -7,3 +7,5 @@ hyperframe
 hypothesis
 hpack
 faker
+aiohttp; python_version >= '3.5'
+aioresponses; python_version >= '3.5'
