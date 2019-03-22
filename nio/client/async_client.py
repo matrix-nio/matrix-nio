@@ -34,8 +34,11 @@ from ..responses import (
     LoginError,
     SyncResponse,
     SyncError,
+    KeysUploadResponse
 )
-from . import Client, ClientConfig, logged_in
+from ..exceptions import LocalProtocolError
+
+from . import Client, ClientConfig, logged_in, store_loaded
 
 
 def client_session(func):
@@ -170,6 +173,38 @@ class AsyncClient(Client):
                 proxy=self.proxy
         ) as resp:
             response = await self._create_response(SyncResponse, resp)
+            self.receive_response(response)
+            return response
+
+    @logged_in
+    @store_loaded
+    async def keys_upload(self):
+        """Upload the E2E encryption keys.
+
+        This uploads the long lived session keys as well as the required amount
+        of one-time keys.
+
+        Raises LocalProtocolError if the client isn't logged in, if the session
+        store isn't loaded or if no encryption keys need to be uploaded.
+        """
+        if not self.should_upload_keys:
+            raise LocalProtocolError("No key upload needed.")
+
+        keys_dict = self.olm.share_keys()
+
+        method, path, data = Api.keys_upload(
+            self.access_token,
+            keys_dict
+        )
+
+        async with self.client_session.request(
+                method,
+                self.homeserver + path,
+                data=data,
+                ssl=self.ssl,
+                proxy=self.proxy
+        ) as resp:
+            response = await self._create_response(KeysUploadResponse, resp)
             self.receive_response(response)
             return response
 
