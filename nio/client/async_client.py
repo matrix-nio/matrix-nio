@@ -34,7 +34,8 @@ from ..responses import (
     LoginError,
     SyncResponse,
     SyncError,
-    KeysUploadResponse
+    KeysUploadResponse,
+    KeysQueryResponse
 )
 from ..exceptions import LocalProtocolError
 
@@ -206,6 +207,46 @@ class AsyncClient(Client):
                 proxy=self.proxy
         ) as resp:
             response = await self._create_response(KeysUploadResponse, resp)
+            self.receive_response(response)
+            return response
+
+    @logged_in
+    @store_loaded
+    @client_session
+    async def keys_query(self):
+        """Query the server for user keys.
+
+        This queries the server for device keys of users with which we share an
+        encrypted room.
+
+        Raises LocalProtocolError if the client isn't logged in, if the session
+        store isn't loaded or if no key query needs to be performed.
+        """
+        # TODO refactor that out into the base client, and use our knowledge of
+        # already queried users to limit the user list.
+        user_list = [
+            user_id for room in self.rooms.values()
+            if room.encrypted for user_id in room.users
+        ]
+
+        if not user_list:
+            raise LocalProtocolError("No key query required.")
+
+        # TODO pass the sync token here if it's a device update that triggered
+        # our need for a key query.
+        method, path, data = Api.keys_query(
+            self.access_token,
+            user_list
+        )
+
+        async with self.client_session.request(
+                method,
+                self.homeserver + path,
+                data=data,
+                ssl=self.ssl,
+                proxy=self.proxy
+        ) as resp:
+            response = await self._create_response(KeysQueryResponse, resp)
             self.receive_response(response)
             return response
 
