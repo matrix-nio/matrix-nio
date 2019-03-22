@@ -2,7 +2,13 @@ import sys
 import json
 import pytest
 
-from nio import LoginResponse, SyncResponse, LoginError, LocalProtocolError
+from nio import (
+    LoginResponse,
+    SyncResponse,
+    LoginError,
+    LocalProtocolError,
+    KeysUploadResponse
+)
 
 if sys.version_info >= (3, 5):
     import asyncio
@@ -18,6 +24,10 @@ class TestClass(object):
     @property
     def login_response(self):
         return self._load_response("tests/data/login_response.json")
+
+    @property
+    def keys_upload_response(self):
+        return self._load_response("tests/data/keys_upload.json")
 
     @property
     def sync_response(self):
@@ -81,3 +91,32 @@ class TestClass(object):
 
         assert isinstance(resp, LoginResponse)
         assert isinstance(resp2, SyncResponse)
+
+    def test_keys_upload(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+
+        with pytest.raises(LocalProtocolError):
+            resp2 = loop.run_until_complete(async_client.keys_upload())
+
+        assert not async_client.should_upload_keys
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/login",
+            status=200,
+            payload=self.login_response
+        )
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/upload?access_token=abc123",
+            status=200,
+            payload=self.keys_upload_response
+        )
+
+        resp = loop.run_until_complete(async_client.login("wordpass"))
+        assert async_client.should_upload_keys
+        assert not async_client.olm_account_shared
+
+        resp2 = loop.run_until_complete(async_client.keys_upload())
+
+        assert isinstance(resp2, KeysUploadResponse)
+        assert async_client.olm_account_shared
+        assert async_client.should_upload_keys
