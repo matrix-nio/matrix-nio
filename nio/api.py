@@ -23,7 +23,17 @@ This module contains primitives to build Matrix API http requests.
 from __future__ import unicode_literals
 
 import json
-from typing import Any, Dict, Optional, Tuple, List, Set, DefaultDict, Union
+from typing import (
+    Any,
+    Dict,
+    Optional,
+    Tuple,
+    List,
+    Set,
+    DefaultDict,
+    Union,
+    Iterable
+)
 from enum import Enum, unique
 from collections import defaultdict
 
@@ -499,7 +509,7 @@ class Api(object):
 
     @staticmethod
     def keys_query(access_token, user_set, token=None):
-        # type: (str, Set[str], Optional[str]) -> Tuple[str, str, str]
+        # type: (str, Iterable[str], Optional[str]) -> Tuple[str, str, str]
         """Query the current devices and identity keys for the given users.
 
         Returns the HTTP method, HTTP path and data for the request.
