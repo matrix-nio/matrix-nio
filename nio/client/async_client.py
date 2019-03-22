@@ -178,6 +178,7 @@ class AsyncClient(Client):
 
     @logged_in
     @store_loaded
+    @client_session
     async def keys_upload(self):
         """Upload the E2E encryption keys.
 
