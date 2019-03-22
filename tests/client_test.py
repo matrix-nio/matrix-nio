@@ -43,7 +43,6 @@ class TestClass(object):
 
     @staticmethod
     def _load_response(filename):
-        # type: (str) -> Dict[Any, Any]
         with open(filename) as f:
             return json.loads(f.read(), encoding="utf-8")
 
