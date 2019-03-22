@@ -37,7 +37,7 @@ import h2
 import h11
 from logbook import Logger
 
-from . import Client, ClientConfig
+from . import Client, ClientConfig, logged_in, store_loaded
 from ..api import Api, MessageDirection
 from ..exceptions import (
     LocalProtocolError,
@@ -98,25 +98,6 @@ def connected(func):
             raise LocalProtocolError("Not connected.")
         return func(self, *args, **kwargs)
     return wrapper
-
-
-def logged_in(func):
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        if not self.logged_in:
-            raise LocalProtocolError("Not logged in.")
-        return func(self, *args, **kwargs)
-    return wrapper
-
-
-def store_loaded(fn):
-    @wraps(fn)
-    def inner(self, *args, **kwargs):
-        if not self.store or not self.olm:
-            raise LocalProtocolError("Matrix store and olm account is not "
-                                     "loaded.")
-        return fn(self, *args, **kwargs)
-    return inner
 
 
 @unique
