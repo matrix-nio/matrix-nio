@@ -49,8 +49,8 @@ class MatrixRoom(object):
     """Represents a Matrix room."""
 
     def __init__(self, room_id, own_user_id, encrypted=False):
-        """Initialize a MatrixRoom object."""
         # type: (str, str, bool) -> None
+        """Initialize a MatrixRoom object."""
         # yapf: disable
         self.room_id = room_id        # type: str
         self.own_user_id = own_user_id

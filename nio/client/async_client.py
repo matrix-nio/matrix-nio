@@ -121,6 +121,7 @@ class AsyncClient(Client):
         Returns either a `LoginResponse` if the request was successful or
         a `LoginError` if there was an error with the request.
         """
+        assert self.client_session
         method, path, data = Api.login(
             self.user,
             password,
@@ -143,8 +144,8 @@ class AsyncClient(Client):
     @client_session
     async def sync(
             self,
-            timeout=None,  # type: Optional[int],
-            sync_filter=None    # type: Optional[Dict[Any, Any]]
+            timeout=None,     # type: Optional[int]
+            sync_filter=None  # type: Optional[Dict[Any, Any]]
     ):
         # type: (...) -> Tuple[SyncResponse, SyncError]
         """Synchronise the client's state with the latest state on the server.
@@ -159,6 +160,7 @@ class AsyncClient(Client):
         Returns either a `SyncResponse` if the request was successful or
         a `SyncError` if there was an error with the request.
         """
+        assert self.client_session
         method, path = Api.sync(
             self.access_token,
             since=self.next_batch,
@@ -189,6 +191,7 @@ class AsyncClient(Client):
         Raises LocalProtocolError if the client isn't logged in, if the session
         store isn't loaded or if no encryption keys need to be uploaded.
         """
+        assert self.client_session
         if not self.should_upload_keys:
             raise LocalProtocolError("No key upload needed.")
 
@@ -214,6 +217,7 @@ class AsyncClient(Client):
     @store_loaded
     @client_session
     async def keys_query(self):
+        # type: () -> Union[KeysQueryResponse]
         """Query the server for user keys.
 
         This queries the server for device keys of users with which we share an
@@ -224,6 +228,7 @@ class AsyncClient(Client):
         """
         # TODO refactor that out into the base client, and use our knowledge of
         # already queried users to limit the user list.
+        assert self.client_session
         user_list = [
             user_id for room in self.rooms.values()
             if room.encrypted for user_id in room.users
