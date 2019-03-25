@@ -24,7 +24,7 @@ setup(
         "jsonschema",
         "atomicwrites",
         "unpaddedbase64",
-        "pycrypto",
+        "pycryptodome",
         "python-olm @ git+https://github.com/poljar/python-olm.git@master#egg=python-olm-0"
     ],
     zip_safe=False
