@@ -14,7 +14,6 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-
 from typing import (
     Any,
     Dict,
@@ -23,6 +22,7 @@ from typing import (
     Union,
 )
 
+from uuid import uuid4
 from functools import wraps
 
 from json.decoder import JSONDecodeError
@@ -35,9 +35,12 @@ from ..responses import (
     SyncResponse,
     SyncError,
     KeysUploadResponse,
-    KeysQueryResponse
+    KeysQueryResponse,
+    RoomSendResponse,
+    ShareGroupSessionResponse,
+    ShareGroupSessionError,
 )
-from ..exceptions import LocalProtocolError
+from ..exceptions import LocalProtocolError, EncryptionError
 
 from . import Client, ClientConfig, logged_in, store_loaded
 
@@ -97,13 +100,22 @@ class AsyncClient(Client):
 
         super().__init__(user, device_id, store_path, config)
 
-    async def _create_response(self, response_class, transport_response):
+    async def _create_response(
+            self,
+            response_class,
+            transport_response,
+            data=None
+    ):
         try:
             parsed_dict = await transport_response.json()
         except (JSONDecodeError, ContentTypeError):
             parsed_dict = {}
 
-        response = response_class.from_dict(parsed_dict)
+        if data:
+            response = response_class.from_dict(parsed_dict, *data)
+        else:
+            response = response_class.from_dict(parsed_dict)
+
         response.transport_response = transport_response
         return response
 
@@ -254,6 +266,144 @@ class AsyncClient(Client):
             response = await self._create_response(KeysQueryResponse, resp)
             self.receive_response(response)
             return response
+
+    @logged_in
+    @client_session
+    async def room_send(self, room_id, message_type, content, tx_id=None):
+        """Send a message to a room.
+
+        Args:
+            room_id(str): The room id of the room where the message should be
+                sent to.
+            message_type(str): A string identifying the type of the message.
+            content(Dict[Any, Any]): A dictionary containing the content of the
+                message.
+            tx_id(str, optional): The transaction ID of this event used to
+                uniquely identify this message.
+
+        If the room where the message should be sent is encrypted the message
+        will be encrypted before sending.
+
+        Raises GroupEncryptionError if the room is encrypted but the group
+        session wasn't shared yet.
+
+        Raises LocalProtocolError if the client isn't logged in.
+        """
+        if self.olm:
+            try:
+                room = self.rooms[room_id]
+            except KeyError:
+                raise LocalProtocolError(
+                    "No such room with id {} found.".format(room_id)
+                )
+
+            if room.encrypted:
+                print("ENCRYPTING")
+                content = self.olm.group_encrypt(
+                    room_id,
+                    {
+                        "content": content,
+                        "type": message_type
+                    },
+                )
+                print("HELLO")
+                message_type = "m.room.encrypted"
+
+        uuid = tx_id or uuid4()
+
+        method, path, data = Api.room_send(
+            self.access_token,
+            room_id,
+            message_type,
+            content,
+            uuid
+        )
+
+        async with self.client_session.request(
+                method,
+                self.homeserver + path,
+                data=data,
+                ssl=self.ssl,
+                proxy=self.proxy
+        ) as resp:
+            response = await self._create_response(
+                RoomSendResponse,
+                resp,
+                (room_id,)
+            )
+            self.receive_response(response)
+            return response
+
+    @logged_in
+    @store_loaded
+    @client_session
+    async def share_group_session(
+            self,
+            room_id,                        # type: str
+            tx_id=None                      # type: Optional[str]
+    ):
+        # type: (...) -> Union[ShareGroupSessionResponse]
+        """Send a message to a room.
+
+        Args:
+            room_id(str): The room id of the room where the message should be
+                sent to.
+            message_type(str): A string identifying the type of the message.
+            content(Dict[Any, Any]): A dictionary containing the content of the
+                message.
+            tx_id(str, optional): The transaction ID of this event used to
+                uniquely identify this message.
+        """
+        assert self.olm
+        try:
+            room = self.rooms[room_id]
+        except KeyError:
+            raise LocalProtocolError("No such room with id {}".format(room_id))
+
+        if not room.encrypted:
+            raise LocalProtocolError("Room with id {} is not encrypted".format(
+                room_id))
+
+        shared_with = set()
+
+        try:
+            while True:
+                # TODO claim keys and create olm sessions here if they are
+                # missing
+                user_set, to_device_dict = self.olm.share_group_session(
+                    room_id,
+                    list(room.users.keys()),
+                    True
+                )
+
+                uuid = tx_id or uuid4()
+
+                method, path, data = Api.to_device(
+                    self.access_token,
+                    "m.room.encrypted",
+                    to_device_dict,
+                    uuid
+                )
+
+                async with self.client_session.request(
+                        method,
+                        self.homeserver + path,
+                        data=data,
+                        ssl=self.ssl,
+                        proxy=self.proxy
+                ) as resp:
+                    response = await self._create_response(
+                        ShareGroupSessionResponse,
+                        resp,
+                        (room_id, user_set)
+                    )
+                    self.receive_response(response)
+
+                    if isinstance(response, ShareGroupSessionResponse):
+                        shared_with.update(response.users_shared_with)
+
+        except LocalProtocolError:
+            return ShareGroupSessionResponse(room_id, shared_with)
 
     async def close(self):
         """Close the underlying http session."""
