@@ -15,7 +15,11 @@ from nio import (
     RoomEncryptionEvent,
     RoomSummary,
     DeviceOneTimeKeyCount,
-    DeviceList
+    DeviceList,
+    KeysQueryResponse,
+    GroupEncryptionError,
+    OlmTrustError,
+    RoomSendResponse
 )
 
 TEST_ROOM_ID = "!testroom:example.org"
@@ -117,7 +121,6 @@ class TestClass(object):
         assert not async_client.logged_in
 
         assert async_client.client_session
-        async_client.close()
         loop.run_until_complete(async_client.close())
         assert not async_client.client_session
 
@@ -193,3 +196,43 @@ class TestClass(object):
 
         loop.run_until_complete(async_client.keys_query())
         assert not async_client.should_query_keys
+
+    def tests_message_sending(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/login",
+            status=200,
+            payload=self.login_response
+        )
+        aioresponse.put(
+                "https://example.org/_matrix/client/r0/rooms/!testroom:example.org/send/m.room.encrypted/1?access_token=abc123",
+            status=200,
+            payload={"event_id": "$1555:example.org"}
+        )
+        loop.run_until_complete(async_client.login("wordpass"))
+
+        async_client.receive_response(self.encryption_sync_response)
+        async_client.receive_response(
+            KeysQueryResponse.from_dict(self.keys_query_response)
+        )
+
+        with pytest.raises(GroupEncryptionError):
+            loop.run_until_complete(
+                async_client.room_send(
+                    TEST_ROOM_ID,
+                    "m.room.message",
+                    {"body": "hello"}
+                )
+            )
+        async_client.olm.outbound_group_sessions[TEST_ROOM_ID].shared = True
+
+        response = loop.run_until_complete(
+            async_client.room_send(
+                TEST_ROOM_ID,
+                "m.room.message",
+                {"body": "hello"},
+                "1"
+            )
+        )
+
+        assert isinstance(response, RoomSendResponse)
