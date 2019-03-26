@@ -46,7 +46,8 @@ from ..exceptions import (
     EncryptionError,
     GroupEncryptionError,
     OlmTrustError,
-    VerificationError
+    VerificationError,
+    LocalProtocolError,
 )
 from . import (
     OutboundGroupSession,
@@ -1014,6 +1015,9 @@ class Olm(object):
             self.create_outbound_group_session(room_id)
 
         group_session = self.outbound_group_sessions[room_id]
+
+        if group_session.shared:
+            raise LocalProtocolError("Group session already shared")
 
         key_content = {
             "algorithm": self._megolm_algorithm,
