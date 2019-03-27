@@ -541,7 +541,7 @@ class Api(object):
 
     @staticmethod
     def keys_claim(access_token, user_set):
-        # type: (str, Dict[str, List[str]]) -> Tuple[str, str, str]
+        # type: (str, Dict[str, Iterable[str]]) -> Tuple[str, str, str]
         """Claim one-time keys for use in Olm pre-key messages.
 
         Returns the HTTP method, HTTP path and data for the request.
