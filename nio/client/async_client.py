@@ -386,18 +386,23 @@ class AsyncClient(Client):
             tx_id=None                      # type: Optional[str]
     ):
         # type: (...) -> Union[ShareGroupSessionResponse]
-        """Send a message to a room.
+        """Share a group session with a room.
+
+        This method sends a group session to members of a room.
 
         Args:
             room_id(str): The room id of the room where the message should be
                 sent to.
-            message_type(str): A string identifying the type of the message.
-            content(Dict[Any, Any]): A dictionary containing the content of the
-                message.
             tx_id(str, optional): The transaction ID of this event used to
                 uniquely identify this message.
+
+        Raises LocalProtocolError if the client isn't logged in, if the session
+        store isn't loaded, no room with the given room id exists or the room
+        isn't an encrypted room.
         """
+        assert self.client_session
         assert self.olm
+
         try:
             room = self.rooms[room_id]
         except KeyError:
