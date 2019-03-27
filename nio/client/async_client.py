@@ -20,6 +20,7 @@ from typing import (
     Optional,
     Tuple,
     Union,
+    Iterable
 )
 
 from uuid import uuid4
@@ -39,8 +40,10 @@ from ..responses import (
     RoomSendResponse,
     ShareGroupSessionResponse,
     ShareGroupSessionError,
+    KeysClaimResponse,
+    KeysClaimError
 )
-from ..exceptions import LocalProtocolError, EncryptionError
+from ..exceptions import LocalProtocolError
 
 from . import Client, ClientConfig, logged_in, store_loaded
 
@@ -330,6 +333,46 @@ class AsyncClient(Client):
                 RoomSendResponse,
                 resp,
                 (room_id,)
+            )
+            self.receive_response(response)
+            return response
+
+    @logged_in
+    @store_loaded
+    @client_session
+    async def keys_claim(
+            self,
+            user_set  # type: Dict[str, Iterable[str]]
+    ):
+        # type: (...) -> Union[KeysClaimResponse, KeysClaimError]
+        """Claim one-time keys for a set of user and device pairs.
+
+        Args:
+            user_set(Dict[str, Iterator[str]]): A dictionary maping from a user
+                id to a iterator of device ids. If a user set for a specific
+                room is required it can be obtained using the
+                `get_missing_sessions()` method.
+
+        Raises LocalProtocolError if the client isn't logged in, if the session
+        store isn't loaded, no room with the given room id exists or the room
+        isn't an encrypted room.
+        """
+        assert self.client_session
+        method, path, data = Api.keys_claim(
+            self.access_token,
+            user_set
+        )
+
+        async with self.client_session.request(
+                method,
+                self.homeserver + path,
+                data=data,
+                ssl=self.ssl,
+                proxy=self.proxy
+        ) as resp:
+            response = await self._create_response(
+                KeysClaimResponse,
+                resp
             )
             self.receive_response(response)
             return response

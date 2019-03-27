@@ -705,14 +705,14 @@ class KeysQueryResponse(Response):
 class KeysClaimResponse(Response):
     one_time_keys = attr.ib(type=Dict[Any, Any])
     failures = attr.ib(type=Dict[Any, Any])
-    room_id = attr.ib(type=str)
+    room_id = attr.ib(type=str, default="")
 
     @classmethod
     @verify(Schemas.keys_claim, KeysClaimError)
     def from_dict(
         cls,
         parsed_dict,  # type: Dict[Any, Any]
-        room_id       # type: str
+        room_id=""    # type: str
     ):
         # type: (...) -> Union[KeysClaimResponse, ErrorResponse]
         one_time_keys = parsed_dict["one_time_keys"]
