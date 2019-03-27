@@ -413,10 +413,13 @@ class AsyncClient(Client):
 
         shared_with = set()
 
+        missing_sessions = self.get_missing_sessions(room_id)
+
+        if missing_sessions:
+            await self.keys_claim(missing_sessions)
+
         try:
             while True:
-                # TODO claim keys and create olm sessions here if they are
-                # missing
                 user_set, to_device_dict = self.olm.share_group_session(
                     room_id,
                     list(room.users.keys()),
