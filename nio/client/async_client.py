@@ -292,6 +292,7 @@ class AsyncClient(Client):
 
         Raises LocalProtocolError if the client isn't logged in.
         """
+        assert self.client_session
         if self.olm:
             try:
                 room = self.rooms[room_id]
@@ -301,7 +302,6 @@ class AsyncClient(Client):
                 )
 
             if room.encrypted:
-                print("ENCRYPTING")
                 content = self.olm.group_encrypt(
                     room_id,
                     {
@@ -309,7 +309,6 @@ class AsyncClient(Client):
                         "type": message_type
                     },
                 )
-                print("HELLO")
                 message_type = "m.room.encrypted"
 
         uuid = tx_id or uuid4()
