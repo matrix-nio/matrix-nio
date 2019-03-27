@@ -27,7 +27,7 @@ from uuid import uuid4
 from functools import wraps
 
 from json.decoder import JSONDecodeError
-from aiohttp import ClientSession, ContentTypeError
+from aiohttp import ClientSession, ContentTypeError, ClientResponse
 
 from ..api import Api
 from ..responses import (
@@ -103,16 +103,23 @@ class AsyncClient(Client):
 
         super().__init__(user, device_id, store_path, config)
 
-    async def _create_response(
+    async def parse_body(self, transport_response):
+        # type: (ClientResponse) -> Dict[Any, Any]
+        """Parse the body of the response."""
+        try:
+            parsed_dict = await transport_response.json()
+        except (JSONDecodeError, ContentTypeError):
+            parsed_dict = {}
+
+        return parsed_dict
+
+    async def create_matrix_response(
             self,
             response_class,
             transport_response,
             data=None
     ):
-        try:
-            parsed_dict = await transport_response.json()
-        except (JSONDecodeError, ContentTypeError):
-            parsed_dict = {}
+        parsed_dict = await self.parse_body(transport_response)
 
         if data:
             response = response_class.from_dict(parsed_dict, *data)
@@ -122,7 +129,39 @@ class AsyncClient(Client):
         response.transport_response = transport_response
         return response
 
+    async def _send(
+            self,
+            response_class,
+            method,
+            path,
+            data=None,
+            response_data=None
+    ):
+        transport_response = await self.send(method, path, data)
+
+        response = await self.create_matrix_response(
+            response_class,
+            transport_response,
+            response_data
+        )
+        self.receive_response(response)
+
+        return response
+
     @client_session
+    async def send(self, method, path, data=None):
+        # type: (str, str, str) -> ClientResponse
+        """Send a request."""
+        assert self.client_session
+
+        return await self.client_session.request(
+            method,
+            self.homeserver + path,
+            data=data,
+            ssl=self.ssl,
+            proxy=self.proxy
+        )
+
     async def login(self, password, device_name=""):
         # type: (str, str) -> Union[LoginResponse, LoginError]
         """Login to the homeserver.
@@ -136,7 +175,6 @@ class AsyncClient(Client):
         Returns either a `LoginResponse` if the request was successful or
         a `LoginError` if there was an error with the request.
         """
-        assert self.client_session
         method, path, data = Api.login(
             self.user,
             password,
@@ -144,19 +182,9 @@ class AsyncClient(Client):
             device_id=self.device_id
         )
 
-        async with self.client_session.request(
-                method,
-                self.homeserver + path,
-                data=data,
-                ssl=self.ssl,
-                proxy=self.proxy
-        ) as resp:
-            response = await self._create_response(LoginResponse, resp)
-            self.receive_response(response)
-            return response
+        return await self._send(LoginResponse, method, path, data)
 
     @logged_in
-    @client_session
     async def sync(
             self,
             timeout=None,     # type: Optional[int]
@@ -175,7 +203,6 @@ class AsyncClient(Client):
         Returns either a `SyncResponse` if the request was successful or
         a `SyncError` if there was an error with the request.
         """
-        assert self.client_session
         method, path = Api.sync(
             self.access_token,
             since=self.next_batch,
@@ -183,20 +210,10 @@ class AsyncClient(Client):
             filter=sync_filter
         )
 
-        async with self.client_session.request(
-                method,
-                self.homeserver + path,
-                data=None,
-                ssl=self.ssl,
-                proxy=self.proxy
-        ) as resp:
-            response = await self._create_response(SyncResponse, resp)
-            self.receive_response(response)
-            return response
+        return await self._send(SyncResponse, method, path)
 
     @logged_in
     @store_loaded
-    @client_session
     async def keys_upload(self):
         """Upload the E2E encryption keys.
 
@@ -206,7 +223,6 @@ class AsyncClient(Client):
         Raises LocalProtocolError if the client isn't logged in, if the session
         store isn't loaded or if no encryption keys need to be uploaded.
         """
-        assert self.client_session
         if not self.should_upload_keys:
             raise LocalProtocolError("No key upload needed.")
 
@@ -217,20 +233,10 @@ class AsyncClient(Client):
             keys_dict
         )
 
-        async with self.client_session.request(
-                method,
-                self.homeserver + path,
-                data=data,
-                ssl=self.ssl,
-                proxy=self.proxy
-        ) as resp:
-            response = await self._create_response(KeysUploadResponse, resp)
-            self.receive_response(response)
-            return response
+        return await self._send(KeysUploadResponse, method, path, data)
 
     @logged_in
     @store_loaded
-    @client_session
     async def keys_query(self):
         # type: () -> Union[KeysQueryResponse]
         """Query the server for user keys.
@@ -243,7 +249,6 @@ class AsyncClient(Client):
         """
         # TODO refactor that out into the base client, and use our knowledge of
         # already queried users to limit the user list.
-        assert self.client_session
         user_list = [
             user_id for room in self.rooms.values()
             if room.encrypted for user_id in room.users
@@ -259,19 +264,9 @@ class AsyncClient(Client):
             user_list
         )
 
-        async with self.client_session.request(
-                method,
-                self.homeserver + path,
-                data=data,
-                ssl=self.ssl,
-                proxy=self.proxy
-        ) as resp:
-            response = await self._create_response(KeysQueryResponse, resp)
-            self.receive_response(response)
-            return response
+        return await self._send(KeysQueryResponse, method, path, data)
 
     @logged_in
-    @client_session
     async def room_send(self, room_id, message_type, content, tx_id=None):
         """Send a message to a room.
 
@@ -292,7 +287,6 @@ class AsyncClient(Client):
 
         Raises LocalProtocolError if the client isn't logged in.
         """
-        assert self.client_session
         if self.olm:
             try:
                 room = self.rooms[room_id]
@@ -321,24 +315,16 @@ class AsyncClient(Client):
             uuid
         )
 
-        async with self.client_session.request(
-                method,
-                self.homeserver + path,
-                data=data,
-                ssl=self.ssl,
-                proxy=self.proxy
-        ) as resp:
-            response = await self._create_response(
-                RoomSendResponse,
-                resp,
-                (room_id,)
-            )
-            self.receive_response(response)
-            return response
+        return await self._send(
+            RoomSendResponse,
+            method,
+            path,
+            data,
+            (room_id, )
+        )
 
     @logged_in
     @store_loaded
-    @client_session
     async def keys_claim(
             self,
             user_set  # type: Dict[str, Iterable[str]]
@@ -356,29 +342,15 @@ class AsyncClient(Client):
         store isn't loaded, no room with the given room id exists or the room
         isn't an encrypted room.
         """
-        assert self.client_session
         method, path, data = Api.keys_claim(
             self.access_token,
             user_set
         )
 
-        async with self.client_session.request(
-                method,
-                self.homeserver + path,
-                data=data,
-                ssl=self.ssl,
-                proxy=self.proxy
-        ) as resp:
-            response = await self._create_response(
-                KeysClaimResponse,
-                resp
-            )
-            self.receive_response(response)
-            return response
+        return await self._send(KeysClaimResponse, method, path, data)
 
     @logged_in
     @store_loaded
-    @client_session
     async def share_group_session(
             self,
             room_id,                        # type: str
@@ -399,7 +371,6 @@ class AsyncClient(Client):
         store isn't loaded, no room with the given room id exists or the room
         isn't an encrypted room.
         """
-        assert self.client_session
         assert self.olm
 
         try:
@@ -435,22 +406,16 @@ class AsyncClient(Client):
                     uuid
                 )
 
-                async with self.client_session.request(
-                        method,
-                        self.homeserver + path,
-                        data=data,
-                        ssl=self.ssl,
-                        proxy=self.proxy
-                ) as resp:
-                    response = await self._create_response(
-                        ShareGroupSessionResponse,
-                        resp,
-                        (room_id, user_set)
-                    )
-                    self.receive_response(response)
+                response = await self._send(
+                    ShareGroupSessionResponse,
+                    method,
+                    path,
+                    data,
+                    (room_id, user_set)
+                )
 
-                    if isinstance(response, ShareGroupSessionResponse):
-                        shared_with.update(response.users_shared_with)
+                if isinstance(response, ShareGroupSessionResponse):
+                    shared_with.update(response.users_shared_with)
 
         except LocalProtocolError:
             return ShareGroupSessionResponse(room_id, shared_with)
