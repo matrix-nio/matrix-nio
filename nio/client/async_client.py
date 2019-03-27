@@ -20,7 +20,8 @@ from typing import (
     Optional,
     Tuple,
     Union,
-    Iterable
+    Iterable,
+    Type
 )
 
 from uuid import uuid4
@@ -31,6 +32,7 @@ from aiohttp import ClientSession, ContentTypeError, ClientResponse
 
 from ..api import Api
 from ..responses import (
+    Response,
     LoginResponse,
     LoginError,
     SyncResponse,
@@ -80,7 +82,8 @@ class AsyncClient(Client):
 
     Example:
             >>> client = AsyncClient("https://example.org", "example")
-            >>> login_response = client.login("hunter1")
+            >>> login_response = loop.run_until_complete(
+            >>>     client.login("hunter1"))
 
     """
 
@@ -105,7 +108,14 @@ class AsyncClient(Client):
 
     async def parse_body(self, transport_response):
         # type: (ClientResponse) -> Dict[Any, Any]
-        """Parse the body of the response."""
+        """Parse the body of the response.
+
+        Args:
+            transport_response(ClientResponse): The transport response that
+                contains the body of the response.
+
+        Returns a dictionary representing the response.
+        """
         try:
             parsed_dict = await transport_response.json()
         except (JSONDecodeError, ContentTypeError):
@@ -119,6 +129,19 @@ class AsyncClient(Client):
             transport_response,
             data=None
     ):
+        # type: (Type, ClientResponse, Tuple) -> Response
+        """Transform a transport response into a nio matrix response.
+
+        Args:
+            response_class (Type): The class that the requests belongs to.
+            transport_response (ClientResponse): The underlying transport
+                response that contains our response body.
+            data (Tuple, optional): Extra data that is required to instantiate
+                the response class.
+
+        Returns a subclass of `Response` depending on the type of the
+        response_class argument.
+        """
         parsed_dict = await self.parse_body(transport_response)
 
         if data:
@@ -149,9 +172,24 @@ class AsyncClient(Client):
         return response
 
     @client_session
-    async def send(self, method, path, data=None):
-        # type: (str, str, str) -> ClientResponse
-        """Send a request."""
+    async def send(
+            self,
+            method,       # type: str
+            path,         # type: str
+            data=None,    # type: Optional[str]
+            headers=None  # type: Optional[Dict[str, str]]
+    ):
+        # type: (...) -> ClientResponse
+        """Send a request to the homeserver.
+
+        Args:
+            method (str): The request method that should be used. One of get,
+                post, put, delete.
+            path (str): The URL path of the request.
+            data (str, optional): Data that will be posted with the request.
+            headers (Dict[str,str] , optional): Additional request headers that
+                should be used with the request.
+        """
         assert self.client_session
 
         return await self.client_session.request(
@@ -159,7 +197,8 @@ class AsyncClient(Client):
             self.homeserver + path,
             data=data,
             ssl=self.ssl,
-            proxy=self.proxy
+            proxy=self.proxy,
+            headers=headers
         )
 
     async def login(self, password, device_name=""):
