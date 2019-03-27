@@ -235,10 +235,10 @@ class Api(object):
         if since:
             query_parameters["since"] = since
 
-        if timeout:
+        if timeout is not None:
             query_parameters["timeout"] = str(timeout)
 
-        if filter:
+        if filter is not None:
             filter_json = json.dumps(filter, separators=(",", ":"))
             query_parameters["filter"] = filter_json
 
