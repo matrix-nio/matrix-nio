@@ -7,6 +7,8 @@ import tempfile
 
 from nio import Client, HttpClient
 
+ALICE_ID = "@alice:example.org"
+ALICE_DEVICE_ID = "JLAFKJWSCS"
 
 @pytest.fixture
 def tempdir():
@@ -18,6 +20,13 @@ def tempdir():
 @pytest.fixture
 def client(tempdir):
     return Client("ephemeral", "DEVICEID", tempdir)
+
+
+@pytest.fixture
+def alice_client(tempdir):
+    client = Client(ALICE_ID, ALICE_DEVICE_ID, tempdir)
+    client.user_id = ALICE_ID
+    return client
 
 
 if sys.version_info >= (3, 5):
