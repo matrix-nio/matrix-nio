@@ -20,7 +20,8 @@ from nio import (
     KeysClaimResponse,
     GroupEncryptionError,
     OlmTrustError,
-    RoomSendResponse
+    RoomSendResponse,
+    ShareGroupSessionResponse
 )
 from nio.crypto import OlmDevice
 
@@ -285,5 +286,68 @@ class TestClass(object):
         )
 
         assert isinstance(response, KeysClaimResponse)
+        assert not async_client.get_missing_sessions(TEST_ROOM_ID)
+        assert async_client.olm.session_store.get(alice_device.curve25519)
+
+    def test_session_sharing(self, alice_client, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+        async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        async_client.receive_response(self.encryption_sync_response)
+
+        alice_client.load_store()
+        alice_device = OlmDevice(
+            ALICE_ID,
+            ALICE_DEVICE_ID,
+            alice_client.olm.account.identity_keys["ed25519"],
+            alice_client.olm.account.identity_keys["curve25519"],
+        )
+
+        async_client.device_store.add(alice_device)
+        async_client.verify_device(alice_device)
+
+        missing = async_client.get_missing_sessions(TEST_ROOM_ID)
+        assert ALICE_ID in missing
+        assert ALICE_DEVICE_ID in missing[ALICE_ID]
+
+        to_share = alice_client.olm.share_keys()
+
+        one_time_key = list(to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                ALICE_ID: {
+                    ALICE_DEVICE_ID: {one_time_key[0]: one_time_key[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/claim?access_token=abc123",
+            status=200,
+            payload=key_claim_dict
+        )
+
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/sendToDevice/m.room.encrypted/1?access_token=abc123",
+            status=200,
+            payload={}
+        )
+
+        with pytest.raises(KeyError):
+            session = async_client.olm.outbound_group_sessions[TEST_ROOM_ID]
+
+        response = loop.run_until_complete(
+            async_client.share_group_session(TEST_ROOM_ID, "1")
+        )
+
+        session = async_client.olm.outbound_group_sessions[TEST_ROOM_ID]
+        assert session.shared
+
+        assert isinstance(response, ShareGroupSessionResponse)
         assert not async_client.get_missing_sessions(TEST_ROOM_ID)
         assert async_client.olm.session_store.get(alice_device.curve25519)
