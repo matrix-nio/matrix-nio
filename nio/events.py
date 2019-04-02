@@ -19,7 +19,7 @@ from __future__ import unicode_literals
 import attr
 import time
 
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, List
 
 from functools import wraps
 from builtins import super
@@ -325,7 +325,8 @@ class CallHangupEvent(CallEvent):
 
 @attr.s
 class ToDeviceEvent(object):
-    sender = attr.ib()
+    sender = attr.ib(type=str)
+    source = attr.ib(type=Dict[Any, Any])
 
     @classmethod
     @verify(Schemas.to_device)
@@ -340,8 +341,125 @@ class ToDeviceEvent(object):
 
         if event_dict["type"] == "m.room.encrypted":
             return RoomEncryptedEvent.parse_event(event_dict)
+        elif event_dict["type"] == "m.key.verification.start":
+            return KeyVerificationStart.from_dict(event_dict)
+        elif event_dict["type"] == "m.key.verification.accept":
+            return KeyVerificationAccept.from_dict(event_dict)
+        elif event_dict["type"] == "m.key.verification.key":
+            return KeyVerificationKey.from_dict(event_dict)
+        elif event_dict["type"] == "m.key.verification.mac":
+            return KeyVerificationMac.from_dict(event_dict)
+        elif event_dict["type"] == "m.key.verification.cancel":
+            return KeyVerificationCancel.from_dict(event_dict)
 
         return None
+
+
+@attr.s
+class KeyVerificationStart(ToDeviceEvent):
+    transaction_id = attr.ib(type=str)
+    from_device = attr.ib(type=str)
+    method = attr.ib(type=str)
+    key_agreement_protocols = attr.ib(type=List[str])
+    hashes = attr.ib(type=List[str])
+    message_authentication_codes = attr.ib(type=List[str])
+    short_authentication_string = attr.ib(type=List[str])
+
+    @classmethod
+    @verify(Schemas.key_verification_start)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+        return cls(
+            parsed_dict["sender"],
+            parsed_dict,
+            content["transaction_id"],
+            content["from_device"],
+            content["method"],
+            content["key_agreement_protocols"],
+            content["hashes"],
+            content["message_authentication_codes"],
+            content["short_authentication_string"],
+        )
+
+
+@attr.s
+class KeyVerificationAccept(ToDeviceEvent):
+    transaction_id = attr.ib(type=str)
+    commitment = attr.ib(type=str)
+    key_agreement_protocol = attr.ib(type=str)
+    hash = attr.ib(type=str)
+    message_authentication_code = attr.ib(type=str)
+    short_authentication_string = attr.ib(type=List[str])
+
+    @classmethod
+    @verify(Schemas.key_verification_accept)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+        return cls(
+            parsed_dict["sender"],
+            parsed_dict,
+            content["transaction_id"],
+            content["commitment"],
+            content["key_agreement_protocol"],
+            content["hashe"],
+            content["message_authentication_code"],
+            content["short_authentication_string"],
+        )
+
+
+@attr.s
+class KeyVerificationKey(ToDeviceEvent):
+    transaction_id = attr.ib(type=str)
+    key = attr.ib(type=str)
+
+    @classmethod
+    @verify(Schemas.key_verification_key)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+        return cls(
+            parsed_dict["sender"],
+            parsed_dict,
+            content["transaction_id"],
+            content["key"],
+        )
+
+
+@attr.s
+class KeyVerificationMac(ToDeviceEvent):
+    transaction_id = attr.ib(type=str)
+    mac = attr.ib(type=Dict[str, str])
+    keys = attr.ib(type=str)
+
+    @classmethod
+    @verify(Schemas.key_verification_mac)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+        return cls(
+            parsed_dict["sender"],
+            parsed_dict,
+            content["transaction_id"],
+            content["mac"],
+            content["keys"],
+        )
+
+
+@attr.s
+class KeyVerificationCancel(ToDeviceEvent):
+    transaction_id = attr.ib(type=str)
+    code = attr.ib(type=str)
+    reason = attr.ib(type=str)
+
+    @classmethod
+    @verify(Schemas.key_verification_cancel)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+        return cls(
+            parsed_dict["sender"],
+            parsed_dict,
+            content["transaction_id"],
+            content["code"],
+            content["reason"],
+        )
 
 
 @attr.s
@@ -376,7 +494,13 @@ class OlmEvent(ToDeviceEvent, RoomEncryptedEvent):
         tx_id = (event_dict["unsigned"].get("transaction_id", None)
                  if "unsigned" in event_dict else None)
 
-        return cls(event_dict["sender"], sender_key, ciphertext, tx_id)
+        return cls(
+            event_dict["sender"],
+            event_dict,
+            sender_key,
+            ciphertext,
+            tx_id
+        )
 
 
 @attr.s

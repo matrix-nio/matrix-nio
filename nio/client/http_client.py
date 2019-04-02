@@ -46,6 +46,7 @@ from ..exceptions import (
 
 from ..events import (
     MegolmEvent,
+    KeyVerificationStart
 )
 
 from ..http import (
@@ -84,7 +85,8 @@ from ..responses import (
     RoomTypingResponse,
     RoomReadMarkersResponse,
     ProfileSetDisplayNameResponse,
-    RoomKeyRequestResponse
+    RoomKeyRequestResponse,
+    ToDeviceResponse
 )
 
 try:
@@ -130,6 +132,7 @@ class RequestType(Enum):
     room_read_markers = 19
     profile_set_displayname = 20
     request_room_key = 21
+    to_device = 22
 
 
 @attr.s
@@ -731,6 +734,102 @@ class HttpClient(Client):
 
     @connected
     @logged_in
+    @store_loaded
+    def accept_key_verification(self, event, tx_id=None):
+        # type: (KeyVerificationStart, Optional[str]) -> Tuple[UUID, bytes]
+        """Accept a key verification start event.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            event (str): An `KeyVerificationStart` event which we would like to
+                accept.
+        """
+        uuid = tx_id or uuid4()
+
+        # if event.transaction_id not in self.key_verification_things:
+        #     raise LocalProtocolError("A key sharing request is already sent"
+        #                              " out for this session id.")
+
+        content = self.create_accept_key_verification(event)
+        print(content)
+
+        to_device = {
+            "messages": {
+                event.sender: {
+                    event.from_device: content
+                }
+            }
+        }
+
+        request = self._build_request(Api.to_device(
+            self.access_token,
+            "m.key.verification.accept",
+            to_device,
+            uuid
+        ))
+        return self._send(
+            request,
+            RequestInfo(
+                RequestType.to_device
+            )
+        )
+
+    @connected
+    @logged_in
+    @store_loaded
+    def to_device(
+        self,
+        message_type,
+        content,
+        recepient,
+        recepient_device="*",
+        tx_id=None
+    ):
+        # type: (KeyVerificationStart, Optional[str]) -> Tuple[UUID, bytes]
+        """Send a message to a specific device.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            message_type (str): The type of the message.
+            content (Dict[Any, Any]): The content that should be sent to the
+                device.
+            recepient (str): The user id of the user that should receive the
+                message.
+            recepient_device (str): The device id of the device that should
+                receive the message, can be `*` to send the message to every
+                device belonging to the user.
+            tx_id (str, optional): The transaction ID for this message. Should
+                be unique.
+        """
+        uuid = tx_id or uuid4()
+
+        to_device = {
+            "messages": {
+                recepient: {
+                    recepient_device: content
+                }
+            }
+        }
+
+        request = self._build_request(Api.to_device(
+            self.access_token,
+            message_type,
+            to_device,
+            uuid
+        ))
+        return self._send(
+            request,
+            RequestInfo(
+                RequestType.to_device,
+            )
+        )
+
+    @connected
+    @logged_in
     def sync(self, timeout=None, filter=None):
         # type: (Optional[int], Optional[Dict[Any, Any]]) -> Tuple[UUID, bytes]
         request = self._build_request(
@@ -828,6 +927,9 @@ class HttpClient(Client):
                 parsed_dict,
                 *request_info.extra_data
             )
+
+        elif request_type is RequestType.to_device:
+            response = ToDeviceResponse.from_dict(parsed_dict)
 
         assert response
 

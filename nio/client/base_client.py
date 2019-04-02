@@ -25,6 +25,7 @@ from typing import (
     Callable,
     Set
 )
+from olm import sha256
 
 from logbook import Logger
 
@@ -55,10 +56,16 @@ from ..events import (
     BadEventType,
     RoomEncryptedEvent,
     MegolmEvent,
-    RoomEncryptionEvent
+    RoomEncryptionEvent,
+    KeyVerificationStart,
+    KeyVerificationAccept,
+    KeyVerificationCancel,
+    KeyVerificationKey
 )
 from ..rooms import MatrixInvitedRoom, MatrixRoom
 from ..store import MatrixStore, DefaultStore
+from ..crypto.sessions import Sas
+from ..api import Api
 
 if False:
     from ..crypto import OlmDevice, OutgoingKeyRequest
@@ -160,6 +167,9 @@ class Client(object):
         self.rooms = dict()  # type: Dict[str, MatrixRoom]
         self.invited_rooms = dict()  # type: Dict[str, MatrixRoom]
         self.encrypted_rooms = set()  # type: Set[str]
+
+        self.active_key_verifications = dict()
+        self.key_verifications = dict()
 
     @property
     def logged_in(self):
@@ -418,6 +428,43 @@ class Client(object):
         assert self.olm
         return self.olm.decrypt_megolm_event(event)
 
+    @store_loaded
+    def create_accept_key_verification(self, event):
+        """Accept a key verification and produce a content."""
+
+        sas = self.active_key_verifications.get(event.transaction_id, None)
+
+        if not sas:
+            sas = Sas.from_key_verification_start(
+                self.user_id,
+                self.device_id,
+                self.olm.account.identity_keys["ed25519"],
+                event
+            )
+
+        # print(sas.pubkey)
+        # print(event.source)
+
+        string_content = Api.to_canonical_json(event.source["content"])
+        print("PUBKEY {}".format(sas.pubkey))
+        print("STRING CONTENT {}".format(string_content))
+
+        commitment = sha256(
+            sas.pubkey + string_content
+        )
+
+        content = {
+            "transaction_id": event.transaction_id,
+            "key_agreement_protocol": "curve25519",
+            "hash": "sha256",
+            "message_authentication_code": "hmac-sha256",
+            "short_authentication_string": ["decimal", "emoji"],
+            "commitment": commitment,
+        }
+        self.active_key_verifications[event.transaction_id] = sas
+
+        return content
+
     def _handle_sync(self, response):
         # type: (SyncType) -> None
         # We already recieved such a sync response, do nothing in that case.
@@ -437,6 +484,32 @@ class Client(object):
                 event = self.olm.decrypt_event(to_device_event)
                 if event:
                     decrypted_to_device.append((index, event))
+            elif isinstance(to_device_event, KeyVerificationStart):
+                self.key_verifications[to_device_event.transaction_id] = (
+                    to_device_event
+                )
+            elif isinstance(to_device_event, KeyVerificationKey):
+                self.key_verifications.pop(
+                    to_device_event.transaction_id,
+                    None
+                )
+                sas = self.active_key_verifications.get(
+                    to_device_event.transaction_id,
+                    None
+                )
+
+                if sas:
+                    sas.receive_key(to_device_event)
+
+            elif isinstance(to_device_event, KeyVerificationCancel):
+                self.key_verifications.pop(
+                    to_device_event.transaction_id,
+                    None
+                )
+                self.active_key_verifications.pop(
+                    to_device_event.transaction_id,
+                    None
+                )
 
         # Replace the encrypted to_device events with decrypted ones
         for decrypted_event in decrypted_to_device:

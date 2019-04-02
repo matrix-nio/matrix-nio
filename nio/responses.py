@@ -783,6 +783,25 @@ class RoomKeyRequestResponse(Response):
         return cls(request_id, session_id, room_id, algorithm)
 
 
+@attr.s
+class ToDeviceError(ErrorResponse):
+    pass
+
+
+@attr.s
+class ToDeviceResponse(Response):
+    """Response representing a successful room key request.
+    """
+
+    @classmethod
+    @verify(Schemas.empty, ToDeviceError)
+    def from_dict(cls, parsed_dict):
+        """Create a RoomKeyRequestResponse from a json response.
+
+        """
+        return cls()
+
+
 class UpdateDeviceResponse(EmptyResponse):
     @staticmethod
     def create_error(parsed_dict):

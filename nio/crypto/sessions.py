@@ -14,12 +14,16 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from __future__ import unicode_literals
+
 
 import olm
 import attr
-from builtins import super
+from builtins import super, bytes
 from datetime import datetime, timedelta
 from typing import List, Optional, Set, Tuple
+from future.moves.itertools import zip_longest
+
 
 from ..exceptions import EncryptionError
 
@@ -232,3 +236,120 @@ class OutgoingKeyRequest(object):
             response.room_id,
             response.algorithm
         )
+
+
+class Sas(olm.Sas):
+    emoji = ["🐶", "🐱", "🦁", "🐎", "🦄", "🐷", "🐘", "🐰", "🐼", "🐓",
+             "🐧", "🐢", "🐟", "🐙", "🦋", "🌷", "🌳", "🌵", "🍄", "🌏",
+             "🌙", "☁️ ", "🔥", "🍌", "🍎", "🍓", "🌽", "🍕", "🎂", "❤️ ",
+             "😀", "🤖", "🎩", "👓", "🔧", "🎅", "👍", "☂️ ", "⌛", "⏰",
+             "🎁", "💡", "📕", "✏️ ", "📎", "✂️ ", "🔒", "🔑", "🔨", "☎️ ",
+             "🏁", "🚂", "🚲", "✈️ ", "🚀", "🏆", "⚽", "🎸", "🎺", "🔔",
+             "⚓", "🎧", "📁", "📌"]
+
+    def __init__(
+        self,
+        own_user,
+        own_device,
+        own_fp_key,
+        transaction_id,
+        other_user,
+        other_device,
+        short_auth_string
+    ):
+        self.own_user = own_user
+        self.own_device = own_device
+        self.own_fp_key = own_fp_key
+
+        self.transaction_id = transaction_id
+        self.other_user = other_user
+
+        self.other_device = other_device
+        self.short_auth_string = short_auth_string
+        self.we_started_it = True
+        super().__init__()
+
+    @classmethod
+    def from_key_verification_start(
+        cls,
+        own_user,
+        own_device,
+        own_fp_key,
+        event
+    ):
+        obj = cls(
+            own_user,
+            own_device,
+            own_fp_key,
+            event.transaction_id,
+            event.sender,
+            event.from_device,
+            event.short_authentication_string
+        )
+        obj.we_started_it = False
+        return obj
+
+    def receive_key(self, event):
+        # TODO abort if the sender or transaciton id don't match
+        self.set_their_pubkey(event.key)
+
+
+    def _grouper(self, iterable, n, fillvalue=None):
+        """Collect data into fixed-length chunks or blocks."""
+        # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
+        args = [iter(iterable)] * n
+        return zip_longest(*args, fillvalue=fillvalue)
+
+    def get_emoji(self):
+        if self.we_started_it:
+            info = ("MATRIX_KEY_VERIFICATION_SAS"
+                    "{user_id}{device_id}{user_id}{transaction_id}".format(
+                        user_id=self.other_user, device_id=self.other_device,
+                        transaction_id=self.transaction_id))
+        else:
+            info = ("MATRIX_KEY_VERIFICATION_SAS"
+                    "{first_user}{first_device}"
+                    "{second_user}{second_device}{transaction_id}".format(
+                        first_user=self.other_user,
+                        first_device=self.other_device,
+                        second_user=self.own_user,
+                        second_device=self.own_device,
+                        transaction_id=self.transaction_id))
+
+        return self.generate_emoji(info)
+
+    def generate_emoji(self, extra_info):
+        generated_bytes = self.generate_bytes(extra_info, 6)
+        number = "".join([format(x, "08b") for x in bytes(generated_bytes)])
+        return [
+            self.emoji[int(x, 2)] for x in
+            map("".join, list(self._grouper(number[:42], 6)))
+        ]
+
+    def share_key(self):
+        return {
+            "transaction_id": self.transaction_id,
+            "key": self.pubkey
+        }
+
+    def get_mac(self):
+        key_id = "ed25519:{}".format(self.own_device)
+
+        info = ("MATRIX_KEY_VERIFICATION_MAC"
+                "{first_user}{first_device}"
+                "{second_user}{second_device}{transaction_id}".format(
+                    first_user=self.own_user,
+                    first_device=self.own_device,
+                    second_user=self.other_user,
+                    second_device=self.other_device,
+                    transaction_id=self.transaction_id))
+
+        mac = {
+            key_id: self.calculate_mac(self.own_fp_key, info + key_id)
+        }
+
+        return {
+            "mac": mac,
+            "keys": self.calculate_mac(key_id, info + "KEY_IDS"),
+            "transaction_id": self.transaction_id,
+        }
