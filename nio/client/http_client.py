@@ -30,6 +30,7 @@ from typing import (
     Optional,
     Tuple,
     Union,
+    Type,
 )
 from uuid import UUID, uuid4
 
@@ -106,36 +107,10 @@ def connected(func):
     return wrapper
 
 
-@unique
-class RequestType(Enum):
-    login = 0
-    sync = 1
-    room_send = 2
-    room_put_state = 3
-    room_redact = 4
-    room_kick = 5
-    room_invite = 6
-    join = 7
-    room_leave = 8
-    room_messages = 9
-    keys_upload = 10
-    keys_query = 11
-    keys_claim = 12
-    share_group_session = 13
-    devices = 14
-    delete_devices = 15
-    update_device = 16
-    joined_members = 17
-    room_typing = 18
-    room_read_markers = 19
-    profile_set_displayname = 20
-    request_room_key = 21
-
-
 @attr.s
 class RequestInfo(object):
-    type = attr.ib(type=RequestType)
-    extra_data = attr.ib(default=None)
+    request_class = attr.ib(type=Type[Response])
+    extra_data = attr.ib(default=None, type=Tuple)
 
 
 class HttpClient(Client):
@@ -265,7 +240,7 @@ class HttpClient(Client):
             )
         )
 
-        return self._send(request, RequestInfo(RequestType.login))
+        return self._send(request, RequestInfo(LoginResponse))
 
     @connected
     @logged_in
@@ -302,7 +277,7 @@ class HttpClient(Client):
 
         return self._send(
             request,
-            RequestInfo(RequestType.room_send, room_id),
+            RequestInfo(RoomSendResponse, (room_id, )),
             uuid
         )
 
@@ -320,7 +295,7 @@ class HttpClient(Client):
 
         return self._send(
             request,
-            RequestInfo(RequestType.room_put_state, room_id)
+            RequestInfo(RoomPutStateResponse, (room_id, ))
         )
 
     @connected
@@ -340,7 +315,7 @@ class HttpClient(Client):
 
         return self._send(
             request,
-            RequestInfo(RequestType.room_redact, room_id),
+            RequestInfo(RoomRedactResponse, (room_id, )),
             uuid
         )
 
@@ -358,7 +333,7 @@ class HttpClient(Client):
 
         return self._send(
             request,
-            RequestInfo(RequestType.room_kick)
+            RequestInfo(RoomKickResponse)
         )
 
     @connected
@@ -372,13 +347,13 @@ class HttpClient(Client):
             )
         )
 
-        return self._send(request, RequestInfo(RequestType.room_invite))
+        return self._send(request, RequestInfo(RoomInviteResponse))
 
     @connected
     @logged_in
     def join(self, room_id):
         request = self._build_request(Api.join(self.access_token, room_id))
-        return self._send(request, RequestInfo(RequestType.join))
+        return self._send(request, RequestInfo(JoinResponse))
 
     @connected
     @logged_in
@@ -389,7 +364,7 @@ class HttpClient(Client):
                 room_id
             )
         )
-        return self._send(request, RequestInfo(RequestType.room_leave))
+        return self._send(request, RequestInfo(RoomLeaveResponse))
 
     @connected
     @logged_in
@@ -411,7 +386,7 @@ class HttpClient(Client):
                 limit=limit
             )
         )
-        return self._send(request, RequestInfo(RequestType.room_messages))
+        return self._send(request, RequestInfo(RoomMessagesResponse))
 
     @connected
     @logged_in
@@ -447,8 +422,8 @@ class HttpClient(Client):
             )
         )
         return self._send(request, RequestInfo(
-            RequestType.room_typing,
-            room_id
+            RoomTypingResponse,
+            (room_id, )
         ))
 
     @connected
@@ -484,8 +459,8 @@ class HttpClient(Client):
             )
         )
         return self._send(request, RequestInfo(
-            RequestType.room_read_markers,
-            room_id
+            RoomReadMarkersResponse,
+            (room_id, )
         ))
 
     @connected
@@ -502,7 +477,7 @@ class HttpClient(Client):
                 keys_dict
             )
         )
-        return self._send(request, RequestInfo(RequestType.keys_upload))
+        return self._send(request, RequestInfo(KeysUploadResponse))
 
     @connected
     @logged_in
@@ -530,7 +505,7 @@ class HttpClient(Client):
                 user_list
             )
         )
-        return self._send(request, RequestInfo(RequestType.keys_query))
+        return self._send(request, RequestInfo(KeysQueryResponse))
 
     @connected
     @logged_in
@@ -546,7 +521,7 @@ class HttpClient(Client):
         )
         return self._send(
             request,
-            RequestInfo(RequestType.keys_claim, room_id)
+            RequestInfo(KeysClaimResponse, (room_id, ))
         )
 
     @connected
@@ -588,7 +563,7 @@ class HttpClient(Client):
 
         return self._send(
             request,
-            RequestInfo(RequestType.share_group_session, (room_id, user_map))
+            RequestInfo(ShareGroupSessionResponse, (room_id, user_map))
         )
 
     @connected
@@ -596,7 +571,7 @@ class HttpClient(Client):
     def devices(self):
         # type: () -> Tuple[UUID, bytes]
         request = self._build_request(Api.devices(self.access_token))
-        return self._send(request, RequestInfo(RequestType.devices))
+        return self._send(request, RequestInfo(DevicesResponse))
 
     @connected
     @logged_in
@@ -610,7 +585,7 @@ class HttpClient(Client):
             )
         )
 
-        return self._send(request, RequestInfo(RequestType.update_device))
+        return self._send(request, RequestInfo(UpdateDeviceResponse))
 
     @connected
     @logged_in
@@ -624,7 +599,7 @@ class HttpClient(Client):
             )
         )
 
-        return self._send(request, RequestInfo(RequestType.delete_devices))
+        return self._send(request, RequestInfo(DeleteDevicesResponse))
 
     @connected
     @logged_in
@@ -639,7 +614,7 @@ class HttpClient(Client):
 
         return self._send(
             request,
-            RequestInfo(RequestType.joined_members, room_id)
+            RequestInfo(JoinedMembersResponse, (room_id, ))
         )
 
     @connected
@@ -664,7 +639,7 @@ class HttpClient(Client):
         ))
         return self._send(
             request,
-            RequestInfo(RequestType.profile_set_displayname)
+            RequestInfo(ProfileSetDisplayNameResponse)
         )
 
     @connected
@@ -719,7 +694,7 @@ class HttpClient(Client):
         return self._send(
             request,
             RequestInfo(
-                RequestType.request_room_key,
+                RoomKeyRequestResponse,
                 (
                     event.session_id,
                     event.session_id,
@@ -743,91 +718,27 @@ class HttpClient(Client):
             timeout
         )
 
-        return self._send(request, RequestInfo(RequestType.sync))
+        return self._send(request, RequestInfo(SyncResponse))
 
     @staticmethod
     def _create_response(request_info, transport_response, max_events=0):
-        request_type = request_info.type
+        request_class = request_info.request_class
         try:
             parsed_dict = json.loads(transport_response.text, encoding="utf-8")
         except JSONDecodeError:
             parsed_dict = {}
 
-        if request_type is RequestType.login:
-            response = LoginResponse.from_dict(parsed_dict)
-        elif request_type is RequestType.sync:
-            response = SyncResponse.from_dict(parsed_dict, max_events)
-        elif request_type is RequestType.room_send:
-            response = RoomSendResponse.from_dict(
-                parsed_dict,
-                request_info.extra_data
-            )
-        elif request_type is RequestType.room_put_state:
-            response = RoomPutStateResponse.from_dict(
-                parsed_dict,
-                request_info.extra_data
-            )
-        elif request_type is RequestType.room_redact:
-            response = RoomRedactResponse.from_dict(
-                parsed_dict,
-                request_info.extra_data
-            )
-        elif request_type is RequestType.room_kick:
-            response = RoomKickResponse.from_dict(parsed_dict)
-        elif request_type is RequestType.room_invite:
-            response = RoomInviteResponse.from_dict(parsed_dict)
-        elif request_type is RequestType.join:
-            response = JoinResponse.from_dict(parsed_dict)
-        elif request_type is RequestType.room_leave:
-            response = RoomLeaveResponse.from_dict(parsed_dict)
-        elif request_type is RequestType.room_messages:
-            response = RoomMessagesResponse.from_dict(parsed_dict)
-        elif request_type is RequestType.room_typing:
-            response = RoomTypingResponse.from_dict(
-                parsed_dict,
-                request_info.extra_data
-            )
-        elif request_type is RequestType.room_read_markers:
-            response = RoomReadMarkersResponse.from_dict(
-                parsed_dict,
-                request_info.extra_data
-            )
-        elif request_type is RequestType.keys_upload:
-            response = KeysUploadResponse.from_dict(parsed_dict)
-        elif request_type is RequestType.keys_query:
-            response = KeysQueryResponse.from_dict(parsed_dict)
-        elif request_type is RequestType.keys_claim:
-            response = KeysClaimResponse.from_dict(
-                parsed_dict,
-                request_info.extra_data
-            )
-        elif request_type is RequestType.share_group_session:
-            response = ShareGroupSessionResponse.from_dict(
-                parsed_dict,
-                *request_info.extra_data
-            )
-        elif request_type is RequestType.devices:
-            response = DevicesResponse.from_dict(parsed_dict)
-        elif request_type is RequestType.update_device:
-            response = UpdateDeviceResponse.from_dict(parsed_dict)
-        elif request_type is RequestType.joined_members:
-            response = JoinedMembersResponse.from_dict(
-                parsed_dict,
-                request_info.extra_data
-            )
-        elif request_type is RequestType.delete_devices:
-            if transport_response.status_code == 401:
-                response = DeleteDevicesAuthResponse.from_dict(parsed_dict)
-            else:
-                response = DeleteDevicesResponse.from_dict(parsed_dict)
-        elif request_type is RequestType.profile_set_displayname:
-            response = ProfileSetDisplayNameResponse.from_dict(parsed_dict)
+        if (transport_response.status_code == 401
+                and request_class == DeleteDevicesResponse):
+            response = DeleteDevicesAuthResponse.from_dict(parsed_dict)
 
-        elif request_type is RequestType.request_room_key:
-            response = RoomKeyRequestResponse.from_dict(
+        elif request_info.extra_data:
+            response = request_class.from_dict(
                 parsed_dict,
                 *request_info.extra_data
             )
+        else:
+            response = request_class.from_dict(parsed_dict)
 
         assert response
 
@@ -868,14 +779,16 @@ class HttpClient(Client):
 
             if response.is_ok:
                 logger.info(
-                    "Received response of type: {}".format(request_info.type)
+                    "Received response of type: {}".format(
+                        request_info.request_class
+                    )
                 )
             else:
                 logger.info(
                     (
                         "Error with response of type type: {}, "
                         "error code {}"
-                    ).format(request_info.type, response.status_code)
+                    ).format(request_info.request_class, response.status_code)
                 )
 
             self.parse_queue.append((request_info, response))

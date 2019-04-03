@@ -5,16 +5,10 @@ from __future__ import unicode_literals
 import h2
 import pytest
 
-from nio.client import HttpClient, TransportType, RequestInfo, RequestType
-from nio.http import TransportResponse, Http2Response
+from nio.client import HttpClient, TransportType, RequestInfo
+from nio.http import Http2Response
 from nio.responses import LoginResponse, SyncResponse
 from nio.exceptions import LocalProtocolError
-from h2.events import (
-    ResponseReceived,
-    DataReceived,
-    StreamEnded,
-    RequestReceived
-)
 
 
 class TestClass(object):
