@@ -23,7 +23,9 @@ from typing import (
     Optional,
     Union,
     Callable,
-    Set
+    Set,
+    Any,
+    Tuple
 )
 
 from logbook import Logger
@@ -688,3 +690,32 @@ class Client(object):
                                      room_id))
 
         return self.olm.get_missing_sessions(list(room.users))
+
+    @store_loaded
+    def encrypt(self, room_id, message_type, content):
+        # type: (str, str, Dict[Any, Any]) -> Tuple[str, Dict[str, str]]
+        """Encrypt a message to be sent to the provided room.
+
+        Args:
+            room_id (str): The room id of the room where the message will be
+                sent.
+            message_type (str): The type of the message.
+            content (str): The dictionary containing the content of the
+                message.
+
+        Raises `GroupEncryptionError` if the group session for the provided
+        room isn't shared yet.
+
+        Returns a tuple containing the new message type and the new encrypted
+        content.
+        """
+        content = self.olm.group_encrypt(
+            room_id,
+            {
+                "content": content,
+                "type": message_type
+            },
+        )
+        message_type = "m.room.encrypted"
+
+        return message_type, content
