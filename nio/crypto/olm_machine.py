@@ -974,7 +974,7 @@ class Olm(object):
     def group_encrypt(
         self,
         room_id,  # type: str
-        plaintext_dict,  # type: Dict[str, str]
+        plaintext_dict,  # type: Dict[Any, Any]
     ):
         # type: (...) -> Dict[str, str]
         if room_id not in self.outbound_group_sessions:

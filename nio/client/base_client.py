@@ -709,6 +709,7 @@ class Client(object):
         Returns a tuple containing the new message type and the new encrypted
         content.
         """
+        assert self.olm
         content = self.olm.group_encrypt(
             room_id,
             {
