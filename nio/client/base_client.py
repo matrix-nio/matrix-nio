@@ -405,7 +405,7 @@ class Client(object):
         event  # type: MegolmEvent
     ):
         # type: (...) -> Union[Event, BadEventType]
-        """Decrypt a undecrypted megolm event.
+        """Try to decrypt an undecrypted megolm event.
 
         Args:
             event (MegolmEvent): Event that should be decrypted.
