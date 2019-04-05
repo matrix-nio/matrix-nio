@@ -398,8 +398,8 @@ class MatrixStore(object):
 
 @attr.s
 class DefaultStore(MatrixStore):
-    trust_db = attr.ib(type=SqliteDatabase, init=False)
-    blacklist_db = attr.ib(type=SqliteDatabase, init=False)
+    trust_db = attr.ib(type=KeyStore, init=False)
+    blacklist_db = attr.ib(type=KeyStore, init=False)
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
