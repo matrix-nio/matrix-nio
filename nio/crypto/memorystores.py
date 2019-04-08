@@ -109,6 +109,9 @@ class DeviceStore(object):
         # type: (str) -> Dict[str, OlmDevice]
         return self._entries[user_id]
 
+    def items(self):
+        return self._entries.items()
+
     def active_user_devices(self, user_id):
         # type: (str) -> Iterator[OlmDevice]
         for device in self._entries[user_id].values():
