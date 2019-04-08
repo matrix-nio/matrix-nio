@@ -191,6 +191,7 @@ class DeviceKeys(Model):
     deleted = BooleanField()
     account = ForeignKeyField(
         model=Accounts,
+        column_name="account",
         backref="device_keys",
         on_delete="CASCADE",
     )
@@ -199,7 +200,7 @@ class DeviceKeys(Model):
     user_id = TextField()
 
     class Meta:
-        primary_key = CompositeKey("account_id", "device_id", "user_id")
+        primary_key = CompositeKey("account", "device_id", "user_id")
 
 
 class MegolmInboundSessions(Model):
@@ -219,6 +220,7 @@ class ForwardedChains(Model):
     sender_key = TextField()
     session = ForeignKeyField(
         model=MegolmInboundSessions,
+        column_name="session_id",
         backref="forwarded_chains",
         on_delete="CASCADE"
     )
@@ -231,6 +233,7 @@ class EncryptedRooms(Model):
     room_id = TextField()
     account = ForeignKeyField(
         model=Accounts,
+        column_name="account_id",
         on_delete="CASCADE",
         backref="encrypted_rooms"
     )
@@ -246,6 +249,7 @@ class OutgoingKeyRequests(Model):
     algorithm = TextField()
     account = ForeignKeyField(
         model=Accounts,
+        column_name="account_id",
         on_delete="CASCADE",
         backref="out_key_requests",
     )
@@ -268,6 +272,7 @@ class TrackedUsers(Model):
     user_id = TextField()
     account = ForeignKeyField(
         model=Accounts,
+        column_name="account_id",
         on_delete="CASCADE",
         backref="tracked_users",
     )
