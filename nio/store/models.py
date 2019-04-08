@@ -191,7 +191,7 @@ class DeviceKeys(Model):
     deleted = BooleanField()
     account = ForeignKeyField(
         model=Accounts,
-        column_name="account",
+        column_name="account_id",
         backref="device_keys",
         on_delete="CASCADE",
     )
@@ -200,7 +200,7 @@ class DeviceKeys(Model):
     user_id = TextField()
 
     class Meta:
-        primary_key = CompositeKey("account", "device_id", "user_id")
+        constraints = [SQL("UNIQUE(account_id,user_id,device_id)")]
 
 
 class MegolmInboundSessions(Model):
