@@ -426,6 +426,7 @@ class MatrixStore(object):
         OutgoingKeyRequests,
         StoreVersion
     ]
+    store_version = 1
 
     user_id = attr.ib(type=str)
     device_id = attr.ib(type=str)
@@ -518,6 +519,30 @@ class MatrixStore(object):
 
         with self.database.bind_ctx(self.models):
             self.database.create_tables(self.models)
+
+        store_version = self._get_store_version()
+
+        # Update the store if it's an old version here.
+        if store_version == 1:
+            pass
+
+        self._save_store_version()
+
+    @use_database
+    def _get_store_version(self):
+        try:
+            v = StoreVersion.get()
+            return v.version
+        except DoesNotExist:
+            return None
+
+    @use_database
+    def _save_store_version(self):
+        try:
+            v = StoreVersion.get()
+            v.version = self.store_version
+        except DoesNotExist:
+            StoreVersion.create(version=self.store_version)
 
     @use_database
     def _get_account(self):

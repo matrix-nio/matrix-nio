@@ -508,3 +508,8 @@ class TestClass(object):
             "curve25519": "si7g1tFp4uhI+vzesW/zxss6Au/7Ufp+AKi7EGO+PHU",
             "ed25519": "JO4Q52p01yLoC9GuIYrded+heHBtI0ZxhZssvZ0xOt8"
         }
+
+    def test_store_versioning(self, store):
+        version = store._get_store_version()
+
+        assert version == 1
