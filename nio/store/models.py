@@ -23,6 +23,7 @@ from peewee import (
     BooleanField,
     ForeignKeyField,
     CompositeKey,
+    SQL
 )
 
 
@@ -164,9 +165,12 @@ class StoreVersion(Model):
 
 class Accounts(Model):
     account = ByteField()
+    user_id = TextField()
     device_id = TextField()
     shared = BooleanField()
-    user_id = TextField()
+
+    class Meta:
+        constraints = [SQL("UNIQUE(user_id,device_id)")]
 
 
 class OlmSessions(Model):
@@ -194,6 +198,9 @@ class DeviceKeys(Model):
     device_id = TextField()
     user_id = TextField()
 
+    class Meta:
+        primary_key = CompositeKey("account_id", "device_id", "user_id")
+
 
 class MegolmInboundSessions(Model):
     sender_key = TextField()
@@ -216,6 +223,9 @@ class ForwardedChains(Model):
         on_delete="CASCADE"
     )
 
+    class Meta:
+        constraints = [SQL("UNIQUE(sender_key,session_id)")]
+
 
 class EncryptedRooms(Model):
     room_id = TextField()
@@ -224,6 +234,9 @@ class EncryptedRooms(Model):
         on_delete="CASCADE",
         backref="encrypted_rooms"
     )
+
+    class Meta:
+        constraints = [SQL("UNIQUE(room_id,account_id)")]
 
 
 class OutgoingKeyRequests(Model):
@@ -236,6 +249,9 @@ class OutgoingKeyRequests(Model):
         on_delete="CASCADE",
         backref="out_key_requests",
     )
+
+    class Meta:
+        constraints = [SQL("UNIQUE(request_id,account_id)")]
 
 
 class SyncTokens(Model):
@@ -255,3 +271,6 @@ class TrackedUsers(Model):
         on_delete="CASCADE",
         backref="tracked_users",
     )
+
+    class Meta:
+        constraints = [SQL("UNIQUE(account_id,user_id)")]
