@@ -16,14 +16,13 @@ from datetime import datetime
 from builtins import bytes
 
 from peewee import (
-    SqliteDatabase,
     Model,
     TextField,
+    IntegerField,
     BlobField,
     BooleanField,
     ForeignKeyField,
     CompositeKey,
-    DoesNotExist
 )
 
 
@@ -55,7 +54,7 @@ class DateField(TextField):
         return value.strftime("%Y-%m-%d %H:%M:%S.%f")
 
 
-class Accounts(Model):
+class LegacyAccounts(Model):
     account = ByteField()
     device_id = TextField(unique=True)
     shared = BooleanField()
@@ -65,13 +64,13 @@ class Accounts(Model):
         table_name = "accounts"
 
 
-class DeviceKeys(Model):
+class LegacyDeviceKeys(Model):
     curve_key = TextField()
     deleted = BooleanField()
     device = ForeignKeyField(
         column_name="device_id",
         field="device_id",
-        model=Accounts,
+        model=LegacyAccounts,
         on_delete="CASCADE"
     )
     ed_key = TextField()
@@ -86,12 +85,12 @@ class DeviceKeys(Model):
         primary_key = CompositeKey("device", "user_device_id", "user_id")
 
 
-class MegolmInboundSessions(Model):
+class LegacyMegolmInboundSessions(Model):
     curve_key = TextField()
     device = ForeignKeyField(
         column_name="device_id",
         field="device_id",
-        model=Accounts,
+        model=LegacyAccounts,
         on_delete="CASCADE"
     )
     ed_key = TextField()
@@ -103,31 +102,37 @@ class MegolmInboundSessions(Model):
         table_name = "megolm_inbound_sessions"
 
 
-class ForwardedChains(Model):
+class LegacyForwardedChains(Model):
     curve_key = TextField()
     session = ForeignKeyField(
-        MegolmInboundSessions,
+        LegacyMegolmInboundSessions,
         backref="forwarded_chains",
         on_delete="CASCADE"
     )
 
+    class Meta:
+        table_name = "forwardedchains"
 
-class EncryptedRooms(Model):
+
+class LegacyEncryptedRooms(Model):
     room_id = TextField()
     account = ForeignKeyField(
-        Accounts,
+        LegacyAccounts,
         backref="encrypted_rooms",
         on_delete="CASCADE"
     )
 
+    class Meta:
+        table_name = "encrytpedrooms"
 
-class OlmSessions(Model):
+
+class LegacyOlmSessions(Model):
     creation_time = DateField()
     curve_key = TextField()
     device = ForeignKeyField(
         column_name="device_id",
         field="device_id",
-        model=Accounts,
+        model=LegacyAccounts,
         on_delete="CASCADE"
     )
     session = ByteField()
@@ -137,31 +142,116 @@ class OlmSessions(Model):
         table_name = "olm_sessions"
 
 
-class OutgoingKeyRequests(Model):
+class LegacyOutgoingKeyRequests(Model):
     request_id = TextField()
     session_id = TextField()
     room_id = TextField()
     algorithm = TextField()
     device = ForeignKeyField(
-        Accounts,
+        LegacyAccounts,
         on_delete="CASCADE",
         field="device_id",
         backref="key_requests",
     )
 
+    class Meta:
+        table_name = "outgoingkeyrequests"
+
+
+class StoreVersion(Model):
+    version = IntegerField()
+
+
+class Accounts(Model):
+    account = ByteField()
+    device_id = TextField()
+    shared = BooleanField()
+    user_id = TextField()
+
+
+class OlmSessions(Model):
+    creation_time = DateField()
+    last_usage_date = DateField()
+    sender_key = TextField()
+    account = ForeignKeyField(
+        model=Accounts,
+        backref="olm_sessions",
+        on_delete="CASCADE"
+    )
+    session = ByteField()
+    session_id = TextField(primary_key=True)
+
+
+class DeviceKeys(Model):
+    sender_key = TextField()
+    deleted = BooleanField()
+    account = ForeignKeyField(
+        model=Accounts,
+        backref="device_keys",
+        on_delete="CASCADE",
+    )
+    fp_key = TextField()
+    device_id = TextField()
+    user_id = TextField()
+
+
+class MegolmInboundSessions(Model):
+    sender_key = TextField()
+    account = ForeignKeyField(
+        model=Accounts,
+        backref="inbound_group_sessions",
+        on_delete="CASCADE",
+    )
+    fp_key = TextField()
+    room_id = TextField()
+    session = ByteField()
+    session_id = TextField(primary_key=True)
+
+
+class ForwardedChains(Model):
+    sender_key = TextField()
+    session = ForeignKeyField(
+        model=MegolmInboundSessions,
+        backref="forwarded_chains",
+        on_delete="CASCADE"
+    )
+
+
+class EncryptedRooms(Model):
+    room_id = TextField()
+    account = ForeignKeyField(
+        model=Accounts,
+        on_delete="CASCADE",
+        backref="encrypted_rooms"
+    )
+
+
+class OutgoingKeyRequests(Model):
+    request_id = TextField()
+    session_id = TextField()
+    room_id = TextField()
+    algorithm = TextField()
+    account = ForeignKeyField(
+        model=Accounts,
+        on_delete="CASCADE",
+        backref="out_key_requests",
+    )
+
 
 class SyncTokens(Model):
     token = TextField()
-    device = ForeignKeyField(
+    account = ForeignKeyField(
         model=Accounts,
         primary_key=True,
-        on_delete="CASCADE"
+        on_delete="CASCADE",
+        backref="sync_token",
     )
 
 
 class TrackedUsers(Model):
     user_id = TextField()
-    device = ForeignKeyField(
-        Accounts,
-        on_delete="CASCADE"
+    account = ForeignKeyField(
+        model=Accounts,
+        on_delete="CASCADE",
+        backref="tracked_users",
     )

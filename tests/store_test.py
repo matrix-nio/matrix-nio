@@ -3,10 +3,18 @@
 import os
 import copy
 import pytest
+import pdb
 from collections import defaultdict
 from helpers import faker, ephemeral, ephemeral_dir
+from shutil import copyfile
 
-from nio.store import MatrixStore, Key, Ed25519Key, KeyStore
+from nio.store import (
+    LegacyMatrixStore,
+    MatrixStore,
+    Key,
+    Ed25519Key,
+    KeyStore
+)
 from nio.exceptions import OlmTrustError
 
 from nio.crypto import (
@@ -27,10 +35,27 @@ TEST_ROOM = "!test:example.org"
 TEST_FORWARDING_CHAIN = [BOB_CURVE, BOB_ONETIME]
 
 
+@pytest.fixture
+def matrix_store(tempdir):
+    return MatrixStore("ephemeral", "DEVICEID", tempdir)
+
+
+@pytest.fixture
+def store(tempdir):
+    store = MatrixStore("ephemeral", "DEVICEID", tempdir)
+    account = OlmAccount()
+    store.save_account(account)
+    return store
+
+
 class TestClass(object):
     @property
     def ephemeral_store(self):
-        return MatrixStore("@ephemeral:example.org", "DEVICEID", ephemeral_dir)
+        return LegacyMatrixStore(
+            "@ephemeral:example.org",
+            "DEVICEID",
+            ephemeral_dir
+        )
 
     @property
     def example_devices(self):
@@ -50,6 +75,13 @@ class TestClass(object):
         devices[BOB_ID][BOB_DEVICE] = bob_device
 
         return devices
+
+    def copy_store(self, old_store):
+        return MatrixStore(
+            old_store.user_id,
+            old_store.device_id,
+            old_store.store_path
+        )
 
     def _create_ephemeral_account(self):
         store = self.ephemeral_store
@@ -206,7 +238,7 @@ class TestClass(object):
             loaded_account = store.load_account()
             assert account.identity_keys == loaded_account.identity_keys
 
-            store2 = MatrixStore("ephemeral2", "DEVICEID2", ephemeral_dir)
+            store2 = LegacyMatrixStore("ephemeral2", "DEVICEID2", ephemeral_dir)
             assert not store2.load_account()
 
             loaded_account = store.load_account()
@@ -270,3 +302,209 @@ class TestClass(object):
         key_requests = store.load_outgoing_key_requests()
         assert "ABCDF" in key_requests.keys()
         assert request == key_requests["ABCDF"]
+
+    def test_new_store_opening(self, matrix_store):
+        account = matrix_store.load_account()
+        assert not account
+
+    def test_new_store_account_saving(self, matrix_store):
+        account = OlmAccount()
+        matrix_store.save_account(account)
+
+        store2 = MatrixStore(
+            matrix_store.user_id,
+            matrix_store.device_id,
+            matrix_store.store_path
+        )
+        loaded_account = store2.load_account()
+
+        assert account.identity_keys == loaded_account.identity_keys
+
+    def test_new_store_session(self, store):
+        account = store.load_account()
+
+        session = OutboundSession(account, BOB_CURVE, BOB_ONETIME)
+        store.save_session(BOB_CURVE, session)
+
+        store2 = self.copy_store(store)
+        session_store = store2.load_sessions()
+
+        loaded_session = session_store.get(BOB_CURVE)
+
+        assert loaded_session
+        assert session.id == loaded_session.id
+
+    def test_new_store_group_session(self, store):
+        account = store.load_account()
+
+        out_group = OutboundGroupSession()
+        in_group = InboundGroupSession(
+            out_group.session_key,
+            account.identity_keys["ed25519"],
+            account.identity_keys["curve25519"],
+            TEST_ROOM,
+            TEST_FORWARDING_CHAIN
+        )
+        store.save_inbound_group_session(in_group)
+
+        store2 = self.copy_store(store)
+        session_store = store2.load_inbound_group_sessions()
+
+        loaded_session = session_store.get(
+            TEST_ROOM,
+            account.identity_keys["curve25519"],
+            in_group.id
+        )
+
+        assert loaded_session
+        assert in_group.id == loaded_session.id
+        assert (sorted(loaded_session.forwarding_chain) ==
+                sorted(TEST_FORWARDING_CHAIN))
+
+    def test_new_store_device_keys(self, store):
+        account = store.load_account()
+
+        devices = self.example_devices
+        assert len(devices) == 11
+
+        store.save_device_keys(devices)
+
+        store2 = self.copy_store(store)
+        device_store = store2.load_device_keys()
+
+        # pdb.set_trace()
+
+        bob_device = device_store[BOB_ID][BOB_DEVICE]
+        assert bob_device
+        assert bob_device.user_id == BOB_ID
+        assert bob_device.id == BOB_DEVICE
+        assert bob_device.ed25519 == BOB_ONETIME
+        assert bob_device.curve25519 == BOB_CURVE
+        assert not bob_device.deleted
+        assert len(device_store.users) == 11
+
+    def test_new_saving_account_twice(self, store):
+        account = store.load_account()
+
+        session = OutboundSession(account, BOB_CURVE, BOB_ONETIME)
+        store.save_session(BOB_CURVE, session)
+        store.save_account(account)
+
+        store2 = self.copy_store(store)
+        session_store = store2.load_sessions()
+
+        loaded_session = session_store.get(BOB_CURVE)
+
+        assert loaded_session
+        assert session.id == loaded_session.id
+
+    def test_new_encrypted_room_saving(self, store):
+        encrypted_rooms = store.load_encrypted_rooms()
+
+        assert not encrypted_rooms
+
+        store.save_encrypted_rooms([TEST_ROOM])
+
+        store2 =  self.copy_store(store)
+        encrypted_rooms = store2.load_encrypted_rooms()
+        assert TEST_ROOM in encrypted_rooms
+
+    def test_new_key_request_saving(self, store):
+        key_requests = store.load_outgoing_key_requests()
+
+        assert not key_requests
+
+        request = OutgoingKeyRequest("ABCDF", "ABCDF", TEST_ROOM, "megolm.v1")
+        store.add_outgoing_key_request(request)
+
+        store2 = self.copy_store(store)
+        key_requests = store2.load_outgoing_key_requests()
+        assert "ABCDF" in key_requests.keys()
+        assert request == key_requests["ABCDF"]
+
+    def test_db_upgrade(self, tempdir):
+        user = "ephemeral"
+        device_id = "DEVICE_ID"
+        user2 = "alice"
+        device_id2 = "ALICE_ID"
+
+        store = LegacyMatrixStore(user, device_id, tempdir,
+                                  database_name="test.db")
+        account = OlmAccount()
+        session = OutboundSession(account, BOB_CURVE, BOB_ONETIME)
+        out_group = OutboundGroupSession()
+        in_group = InboundGroupSession(
+            out_group.session_key,
+            account.identity_keys["ed25519"],
+            account.identity_keys["curve25519"],
+            TEST_ROOM,
+            TEST_FORWARDING_CHAIN
+        )
+        devices = self.example_devices
+        assert len(devices) == 11
+
+        store.save_account(account)
+        store.save_session(BOB_CURVE, session)
+        store.save_inbound_group_session(in_group)
+        store.save_device_keys(devices)
+
+        store2 = LegacyMatrixStore(user2, device_id2, tempdir,
+                                   database_name="test.db")
+        account2 = OlmAccount()
+        store2.save_account(account2)
+        del store
+
+        store = MatrixStore(user, device_id, tempdir, database_name="test.db")
+        loaded_account = store.load_account()
+
+        assert account.identity_keys == loaded_account.identity_keys
+        session_store = store.load_sessions()
+        loaded_session = session_store.get(BOB_CURVE)
+        session_store = store.load_inbound_group_sessions()
+
+        assert loaded_session
+        assert session.id == loaded_session.id
+
+        loaded_session = session_store.get(
+            TEST_ROOM,
+            account.identity_keys["curve25519"],
+            in_group.id
+        )
+        device_store = store.load_device_keys()
+
+        # pdb.set_trace()
+
+        assert loaded_session
+        assert in_group.id == loaded_session.id
+        assert (sorted(loaded_session.forwarding_chain) ==
+                sorted(TEST_FORWARDING_CHAIN))
+        bob_device = device_store[BOB_ID][BOB_DEVICE]
+        assert bob_device
+        assert bob_device.user_id == BOB_ID
+        assert bob_device.id == BOB_DEVICE
+        assert bob_device.ed25519 == BOB_ONETIME
+        assert bob_device.curve25519 == BOB_CURVE
+        assert not bob_device.deleted
+        assert len(device_store.users) == 11
+
+    def test_real_db_upgrade(self, tempdir):
+        path = os.path.abspath("tests/data/weechat_test.db")
+        copyfile(path, os.path.join(tempdir, "weechat_test.db"))
+        print(path)
+        store = MatrixStore(
+            "@pjtest:termina.org.uk",
+            "LHNALLSCNA",
+            tempdir,
+            "DEFAULT_KEY",
+            database_name="weechat_test.db"
+        )
+        store.save_encrypted_rooms([TEST_ROOM])
+
+        account = store.load_account()
+        encrypted_rooms = store.load_encrypted_rooms()
+
+        assert TEST_ROOM in encrypted_rooms
+        assert account.identity_keys == {
+            "curve25519": "si7g1tFp4uhI+vzesW/zxss6Au/7Ufp+AKi7EGO+PHU",
+            "ed25519": "JO4Q52p01yLoC9GuIYrded+heHBtI0ZxhZssvZ0xOt8"
+        }
