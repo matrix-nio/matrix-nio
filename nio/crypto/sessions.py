@@ -59,15 +59,17 @@ class Session(olm.Session, _SessionExpirationMixin):
     def __init__(self):
         super().__init__()
         self.creation_time = datetime.now()
+        self.use_time = datetime.now()
 
     def __new__(cls, *args):
         return super().__new__(cls, *args)
 
     @classmethod
-    def from_pickle(cls, pickle, creation_time, passphrase=""):
+    def from_pickle(cls, pickle, creation_time, passphrase="", use_time=None):
         # type: (str, datetime, str) -> Session
         session = super().from_pickle(pickle, passphrase)
         session.creation_time = creation_time
+        session.use_time = use_time or creation_time
         return session
 
 
@@ -78,6 +80,7 @@ class InboundSession(olm.InboundSession, _SessionExpirationMixin):
     def __init__(self, account, message, identity_key=None):
         super().__init__(account, message, identity_key)
         self.creation_time = datetime.now()
+        self.use_time = datetime.now()
 
 
 class OutboundSession(olm.OutboundSession, _SessionExpirationMixin):
@@ -87,6 +90,7 @@ class OutboundSession(olm.OutboundSession, _SessionExpirationMixin):
     def __init__(self, account, identity_key, one_time_key):
         super().__init__(account, identity_key, one_time_key)
         self.creation_time = datetime.now()
+        self.use_time = datetime.now()
 
 
 class InboundGroupSession(olm.InboundGroupSession):
