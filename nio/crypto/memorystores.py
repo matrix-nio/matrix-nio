@@ -27,13 +27,13 @@ class SessionStore(object):
         self._entries = defaultdict(list) \
             # type: DefaultDict[str, List[Session]]
 
-    def add(self, curve_key, session):
+    def add(self, sender_key, session):
         # type: (str, Session) -> bool
-        if session in self._entries[curve_key]:
+        if session in self._entries[sender_key]:
             return False
 
-        self._entries[curve_key].append(session)
-        self._entries[curve_key].sort(key=lambda x: x.id)
+        self._entries[sender_key].append(session)
+        self._entries[sender_key].sort(key=lambda x: x.id)
         return True
 
     def __iter__(self):
@@ -48,16 +48,16 @@ class SessionStore(object):
     def items(self):
         return self._entries.items()
 
-    def get(self, curve_key):
+    def get(self, sender_key):
         # type: (str) -> Optional[Session]
-        if self._entries[curve_key]:
-            return self._entries[curve_key][0]
+        if self._entries[sender_key]:
+            return self._entries[sender_key][0]
 
         return None
 
-    def __getitem__(self, curve_key):
+    def __getitem__(self, sender_key):
         # type: (str) -> List[Session]
-        return self._entries[curve_key]
+        return self._entries[sender_key]
 
 
 class GroupSessionStore(object):
