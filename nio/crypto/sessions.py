@@ -66,7 +66,7 @@ class Session(olm.Session, _SessionExpirationMixin):
 
     @classmethod
     def from_pickle(cls, pickle, creation_time, passphrase="", use_time=None):
-        # type: (str, datetime, str) -> Session
+        # type: (str, datetime, str, Optional[datetime]) -> Session
         session = super().from_pickle(pickle, passphrase)
         session.creation_time = creation_time
         session.use_time = use_time or creation_time
