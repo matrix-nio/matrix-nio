@@ -58,6 +58,9 @@ from ..crypto import (
 
 
 def use_database(fn):
+    """
+    Ensure that the correct database context is used for the wrapped function.
+    """
     @wraps(fn)
     def inner(self, *args, **kwargs):
         with self.database.bind_ctx(self.models):
@@ -66,6 +69,11 @@ def use_database(fn):
 
 
 def use_database_atomic(fn):
+    """
+    Ensure that the correct database context is used for the wrapped function.
+
+    This also ensures that the database transaction will be atomic.
+    """
     @wraps(fn)
     def inner(self, *args, **kwargs):
         with self.database.bind_ctx(self.models):
