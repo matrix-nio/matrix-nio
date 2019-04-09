@@ -625,7 +625,7 @@ class MatrixStore(object):
         account = self._get_account()
 
         if not account:
-            return session_store()
+            return session_store
 
         for s in account.olm_sessions:
             session = Session.from_pickle(
