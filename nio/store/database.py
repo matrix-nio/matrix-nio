@@ -499,13 +499,8 @@ class MatrixStore(object):
         self.user_id = original_user
         self.device_id = original_device
 
-    def __attrs_post_init__(self):
-        self.database_name = self.database_name or "{}_{}.db".format(
-            self.user_id,
-            self.device_id
-        )
-        self.database_path = os.path.join(self.store_path, self.database_name)
-        self.database = SqliteDatabase(
+    def _create_database(self):
+        return SqliteDatabase(
             self.database_path,
             pragmas={
                 "foreign_keys": 1,
@@ -513,6 +508,13 @@ class MatrixStore(object):
             }
         )
 
+    def __attrs_post_init__(self):
+        self.database_name = self.database_name or "{}_{}.db".format(
+            self.user_id,
+            self.device_id
+        )
+        self.database_path = os.path.join(self.store_path, self.database_name)
+        self.database = self._create_database()
         self.database.connect()
 
         if (not self.database.table_exists("storeversion")
@@ -1017,3 +1019,17 @@ class SqliteStore(MatrixStore):
             return False
 
         return trust_state == TrustState.blacklisted
+
+
+class SqliteMemoryStore(SqliteStore):
+    def __init__(self, user_id, device_id, pickle_key=""):
+        super().__init__(user_id, device_id, "", pickle_key=pickle_key)
+
+    def _create_database(self):
+        return SqliteDatabase(
+            ":memory:",
+            pragmas={
+                "foreign_keys": 1,
+                "secure_delete": 1,
+            }
+        )

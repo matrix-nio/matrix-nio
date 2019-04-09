@@ -14,7 +14,8 @@ from nio.store import (
     Key,
     Ed25519Key,
     KeyStore,
-    SqliteStore
+    SqliteStore,
+    SqliteMemoryStore
 )
 from nio.exceptions import OlmTrustError
 
@@ -52,6 +53,14 @@ def store(tempdir):
 @pytest.fixture
 def sqlstore(tempdir):
     store = SqliteStore("ephemeral", "DEVICEID", tempdir)
+    account = OlmAccount()
+    store.save_account(account)
+    return store
+
+
+@pytest.fixture
+def sqlmemorystore():
+    store = SqliteMemoryStore("ephemeral", "DEVICEID")
     account = OlmAccount()
     store.save_account(account)
     return store
@@ -558,3 +567,12 @@ class TestClass(object):
         assert sqlstore.verify_device(bob_device)
         assert not sqlstore.is_device_blacklisted(bob_device)
         assert sqlstore.is_device_verified(bob_device)
+
+    def test_sqlitememorystore(self, sqlmemorystore):
+        devices = self.example_devices
+        bob_device = devices[BOB_ID][BOB_DEVICE]
+        sqlmemorystore.save_device_keys(devices)
+
+        assert not sqlmemorystore.is_device_verified(bob_device)
+        assert sqlmemorystore.verify_device(bob_device)
+        assert sqlmemorystore.is_device_verified(bob_device)

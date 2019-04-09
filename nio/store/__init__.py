@@ -6,6 +6,7 @@ from .database import (
     MatrixStore,
     LegacyMatrixStore,
     SqliteStore,
+    SqliteMemoryStore,
     use_database,
     use_database_atomic
 )
