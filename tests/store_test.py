@@ -13,7 +13,8 @@ from nio.store import (
     MatrixStore,
     Key,
     Ed25519Key,
-    KeyStore
+    KeyStore,
+    SqliteStore
 )
 from nio.exceptions import OlmTrustError
 
@@ -43,6 +44,14 @@ def matrix_store(tempdir):
 @pytest.fixture
 def store(tempdir):
     store = MatrixStore("ephemeral", "DEVICEID", tempdir)
+    account = OlmAccount()
+    store.save_account(account)
+    return store
+
+
+@pytest.fixture
+def sqlstore(tempdir):
+    store = SqliteStore("ephemeral", "DEVICEID", tempdir)
     account = OlmAccount()
     store.save_account(account)
     return store
@@ -513,3 +522,39 @@ class TestClass(object):
         version = store._get_store_version()
 
         assert version == 1
+
+    def test_sqlitestore_verification(self, sqlstore):
+        devices = self.example_devices
+        bob_device = devices[BOB_ID][BOB_DEVICE]
+
+        sqlstore.save_device_keys(devices)
+
+        assert not sqlstore.is_device_verified(bob_device)
+        assert sqlstore.verify_device(bob_device)
+        assert sqlstore.is_device_verified(bob_device)
+        assert not sqlstore.verify_device(bob_device)
+        assert sqlstore.is_device_verified(bob_device)
+        assert sqlstore.unverify_device(bob_device)
+        assert not sqlstore.is_device_verified(bob_device)
+        assert not sqlstore.unverify_device(bob_device)
+
+    def test_sqlitestore_blacklisting(self, sqlstore):
+        devices = self.example_devices
+        bob_device = devices[BOB_ID][BOB_DEVICE]
+
+        sqlstore.save_device_keys(devices)
+
+        assert not sqlstore.is_device_blacklisted(bob_device)
+        assert sqlstore.blacklist_device(bob_device)
+        assert sqlstore.is_device_blacklisted(bob_device)
+        assert not sqlstore.is_device_verified(bob_device)
+        assert not sqlstore.blacklist_device(bob_device)
+        assert sqlstore.unblacklist_device(bob_device)
+        assert not sqlstore.is_device_blacklisted(bob_device)
+        assert not sqlstore.is_device_verified(bob_device)
+        assert not sqlstore.unblacklist_device(bob_device)
+        assert sqlstore.blacklist_device(bob_device)
+        assert sqlstore.is_device_blacklisted(bob_device)
+        assert sqlstore.verify_device(bob_device)
+        assert not sqlstore.is_device_blacklisted(bob_device)
+        assert sqlstore.is_device_verified(bob_device)

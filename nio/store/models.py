@@ -14,6 +14,7 @@
 import time
 from datetime import datetime
 from builtins import bytes
+from enum import Enum
 
 from peewee import (
     Model,
@@ -25,6 +26,13 @@ from peewee import (
     CompositeKey,
     SQL
 )
+
+
+class TrustState(Enum):
+    unset = 0
+    verified = 1
+    blacklisted = 2
+    ignored = 3
 
 
 class ByteField(BlobField):
@@ -39,6 +47,16 @@ class ByteField(BlobField):
             return bytes(value)
 
         return value
+
+
+class DeviceTrustField(IntegerField):
+    """Database field to hold a TrustState enum value."""
+
+    def python_value(self, value):  # pragma: no cover
+        return TrustState(value)
+
+    def db_value(self, value):  # pragma: no cover
+        return value.value
 
 
 # Please don't remove this.
@@ -201,6 +219,15 @@ class DeviceKeys(Model):
 
     class Meta:
         constraints = [SQL("UNIQUE(account_id,user_id,device_id)")]
+
+
+class DeviceTrustState(Model):
+    state = DeviceTrustField()
+    device = ForeignKeyField(
+        model=DeviceKeys,
+        primary_key=True,
+        backref="trust_state",
+    )
 
 
 class MegolmInboundSessions(Model):

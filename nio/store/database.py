@@ -40,7 +40,9 @@ from . import (
     EncryptedRooms,
     OutgoingKeyRequests,
     Key,
-    KeyStore
+    KeyStore,
+    DeviceTrustState,
+    TrustState
 )
 
 from ..crypto import (
@@ -906,3 +908,112 @@ class DefaultStore(MatrixStore):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
         return self.trust_db.remove(key)
+
+
+@attr.s
+class SqliteStore(MatrixStore):
+    models = MatrixStore.models + [DeviceTrustState]
+
+    @use_database
+    def _get_device(self, device):
+        acc = self._get_account()
+
+        if not acc:
+            return None
+
+        try:
+            return DeviceKeys.get(
+                DeviceKeys.user_id == device.user_id,
+                DeviceKeys.device_id == device.id,
+                DeviceKeys.account == acc
+            )
+        except DoesNotExist:
+            return None
+
+    def verify_device(self, device):
+        # type: (OlmDevice) -> bool
+        if self.is_device_verified(device):
+            return False
+
+        d = self._get_device(device)
+        assert d
+
+        DeviceTrustState.replace(
+            device=d,
+            state=TrustState.verified
+        ).execute()
+
+        return True
+
+    def unverify_device(self, device):
+        # type: (OlmDevice) -> bool
+        if not self.is_device_verified(device):
+            return False
+
+        d = self._get_device(device)
+        assert d
+
+        DeviceTrustState.replace(
+            device=d,
+            state=TrustState.unset
+        ).execute()
+
+        return True
+
+    def is_device_verified(self, device):
+        # type: (OlmDevice) -> bool
+        d = self._get_device(device)
+
+        if not d:
+            return False
+
+        try:
+            trust_state = d.trust_state[0].state
+        except IndexError:
+            return False
+
+        return trust_state == TrustState.verified
+
+    def blacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        if self.is_device_blacklisted(device):
+            return False
+
+        d = self._get_device(device)
+        assert d
+
+        DeviceTrustState.replace(
+            device=d,
+            state=TrustState.blacklisted
+        ).execute()
+
+        return True
+
+    def unblacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        if not self.is_device_blacklisted(device):
+            return False
+
+        d = self._get_device(device)
+        assert d
+
+        DeviceTrustState.replace(
+            device=d,
+            state=TrustState.unset
+        ).execute()
+
+        return True
+
+    def is_device_blacklisted(self, device):
+        # type: (OlmDevice) -> bool
+        d = self._get_device(device)
+
+        if not d:
+            return False
+
+        try:
+            trust_state = d.trust_state[0].state
+        except IndexError:
+            return False
+
+        return trust_state == TrustState.blacklisted
