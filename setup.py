@@ -25,7 +25,7 @@ setup(
         "atomicwrites",
         "unpaddedbase64",
         "pycryptodome",
-        "python-olm @ git+https://github.com/poljar/python-olm.git@master#egg=python-olm-0"
+        "python-olm-dev",
     ],
     zip_safe=False
 )
