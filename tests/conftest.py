@@ -10,6 +10,7 @@ from nio import Client, HttpClient
 ALICE_ID = "@alice:example.org"
 ALICE_DEVICE_ID = "JLAFKJWSCS"
 
+
 @pytest.fixture
 def tempdir():
     newpath = tempfile.mkdtemp()
