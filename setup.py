@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="matrix-nio",
-    version="0.1",
+    version="0.2",
     url="https://github.com/poljar/matrix-nio",
     author='Damir Jelić',
     author_email="poljar@termina.org.uk",
