@@ -576,3 +576,19 @@ class TestClass(object):
         assert not sqlmemorystore.is_device_verified(bob_device)
         assert sqlmemorystore.verify_device(bob_device)
         assert sqlmemorystore.is_device_verified(bob_device)
+
+    def test_device_deletion(self, store):
+        account = store.load_account()
+
+        devices = self.example_devices
+        assert len(devices) == 11
+
+        store.save_device_keys(devices)
+        device_store = store.load_device_keys()
+        bob_device = device_store[BOB_ID][BOB_DEVICE]
+        assert not bob_device.deleted
+        bob_device.deleted = True
+        store.save_device_keys(device_store)
+        device_store = store.load_device_keys()
+        bob_device = device_store[BOB_ID][BOB_DEVICE]
+        assert bob_device.deleted
