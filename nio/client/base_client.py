@@ -244,7 +244,8 @@ class Client(object):
             self.user_id,
             self.device_id,
             self.store_path,
-            self.config.pickle_key
+            self.config.pickle_key,
+            self.config.store_name
         )
         assert self.store
         self.olm = Olm(self.user_id, self.device_id, self.store)
