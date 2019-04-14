@@ -645,7 +645,7 @@ class RoomGuestAccessEvent(Event):
     @classmethod
     @verify(Schemas.room_guest_access)
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomCreateEvent, BadEventType]
+        # type: (Dict[Any, Any]) -> Union[RoomGuestAccessEvent, BadEventType]
         event_id = parsed_dict["event_id"]
         sender = parsed_dict["sender"]
         timestamp = parsed_dict["origin_server_ts"]
