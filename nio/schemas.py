@@ -630,6 +630,26 @@ class Schemas(object):
         "required": ["type", "sender", "content"],
     }
 
+    room_join_rules = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "join_rule": {
+                        "type": "string",
+                        "enum": ["public", "knock", "invite", "private"],
+                        "default": "invite",
+                    },
+                },
+                "required": ["join_rule"],
+            },
+        },
+        "required": ["type", "sender", "content"],
+    }
+
     room_canonical_alias = {
         "type": "object",
         "properties": {

@@ -11,6 +11,7 @@ from nio.events import (
     RedactedEvent,
     RoomCreateEvent,
     RoomGuestAccessEvent,
+    RoomJoinRulesEvent,
     RoomTopicEvent,
     RoomNameEvent,
     RoomAliasEvent,
@@ -55,6 +56,12 @@ class TestClass(object):
             "tests/data/events/guest_access.json")
         event = RoomGuestAccessEvent.from_dict(parsed_dict)
         assert isinstance(event, RoomGuestAccessEvent)
+
+    def test_join_rules_event(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/join_rules.json")
+        event = RoomJoinRulesEvent.from_dict(parsed_dict)
+        assert isinstance(event, RoomJoinRulesEvent)
 
     def test_topic_event(self):
         parsed_dict = TestClass._load_response(
