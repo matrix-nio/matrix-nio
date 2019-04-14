@@ -9,6 +9,7 @@ from nio.events import (
     RoomNameEvent,
     RoomCreateEvent,
     RoomGuestAccessEvent,
+    RoomHistoryVisibilityEvent,
     RoomJoinRulesEvent,
 )
 
@@ -157,6 +158,12 @@ class TestClass(object):
         assert room.guest_access == "forbidden"
         room.handle_event(RoomGuestAccessEvent("event_id", BOB_ID, 0, "can_join"))
         assert room.guest_access == "can_join"
+
+    def test_history_visibility_event(self):
+        room = self.test_room
+        assert room.history_visibility == "shared"
+        room.handle_event(RoomHistoryVisibilityEvent("event_id", BOB_ID, 0, "invited"))
+        assert room.history_visibility == "invited"
 
     def test_join_rules_event(self):
         room = self.test_room
