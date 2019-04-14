@@ -10,6 +10,7 @@ from nio.events import (
     UnknownBadEvent,
     RedactedEvent,
     RoomCreateEvent,
+    RoomGuestAccessEvent,
     RoomTopicEvent,
     RoomNameEvent,
     RoomAliasEvent,
@@ -48,6 +49,12 @@ class TestClass(object):
             "tests/data/events/create.json")
         event = RoomCreateEvent.from_dict(parsed_dict)
         assert isinstance(event, RoomCreateEvent)
+
+    def test_guest_access_event(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/guest_access.json")
+        event = RoomGuestAccessEvent.from_dict(parsed_dict)
+        assert isinstance(event, RoomGuestAccessEvent)
 
     def test_topic_event(self):
         parsed_dict = TestClass._load_response(

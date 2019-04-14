@@ -610,6 +610,26 @@ class Schemas(object):
         "required": ["type", "sender", "content"],
     }
 
+    room_guest_access = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "guest_access": {
+                        "type": "string",
+                        "enum": ["can_join", "forbidden"],
+                        "default": "forbidden"
+                    },
+                },
+                "required": ["guest_access"],
+            },
+        },
+        "required": ["type", "sender", "content"],
+    }
+
     room_canonical_alias = {
         "type": "object",
         "properties": {
