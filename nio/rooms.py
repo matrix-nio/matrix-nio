@@ -34,6 +34,7 @@ from .events import (
     RoomAliasEvent,
     RoomEncryptionEvent,
     RoomMemberEvent,
+    RoomCreateEvent,
     RoomNameEvent,
     RoomTopicEvent,
 )
@@ -54,6 +55,9 @@ class MatrixRoom(object):
         # yapf: disable
         self.room_id = room_id        # type: str
         self.own_user_id = own_user_id
+        self.creator = ""             # type: str
+        self.federate = True          # type: bool
+        self.room_version = "1"       # type: str
         self.canonical_alias = None   # type: Optional[str]
         self.name = None              # type: Optional[str]
         self.users = dict()           # type: Dict[str, MatrixUser]
@@ -230,6 +234,11 @@ class MatrixRoom(object):
 
         if isinstance(event, RoomMemberEvent):
             self._handle_membership(event)
+
+        elif isinstance(event, RoomCreateEvent):
+            self.creator = event.creator
+            self.federate = event.federate
+            self.room_version = event.room_version
 
         elif isinstance(event, RoomNameEvent):
             self.name = event.name

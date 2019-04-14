@@ -6,7 +6,8 @@ from nio.events import (
     InviteNameEvent,
     InviteAliasEvent,
     InviteMemberEvent,
-    RoomNameEvent
+    RoomNameEvent,
+    RoomCreateEvent
 )
 
 TEST_ROOM = "!test:example.org"
@@ -140,6 +141,15 @@ class TestClass(object):
 
         room.handle_ephemeral_event(TypingNoticeEvent([BOB_ID]))
         assert room.typing_users == [BOB_ID]
+
+    def test_create_event(self):
+        room = self.test_room
+        assert not room.creator
+        room.handle_event(RoomCreateEvent("event_id", BOB_ID, 0, BOB_ID, False))
+        assert room.creator == BOB_ID
+        assert room.federate is False
+        assert room.room_version == "1"
+
 
     def test_name_event(self):
         room = self.test_room
