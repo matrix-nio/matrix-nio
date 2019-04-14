@@ -36,6 +36,7 @@ from .events import (
     RoomMemberEvent,
     RoomCreateEvent,
     RoomGuestAccessEvent,
+    RoomJoinRulesEvent,
     RoomNameEvent,
     RoomTopicEvent,
 )
@@ -60,6 +61,7 @@ class MatrixRoom(object):
         self.federate = True          # type: bool
         self.room_version = "1"       # type: str
         self.guest_access = "forbidden"  # type: str
+        self.join_rule = "invite"     # type: str
         self.canonical_alias = None   # type: Optional[str]
         self.topic = None             # type: Optional[str]
         self.name = None              # type: Optional[str]
@@ -245,6 +247,9 @@ class MatrixRoom(object):
 
         elif isinstance(event, RoomGuestAccessEvent):
             self.guest_access = event.guest_access
+
+        elif isinstance(event, RoomJoinRulesEvent):
+            self.join_rule = event.join_rule
 
         elif isinstance(event, RoomNameEvent):
             self.name = event.name

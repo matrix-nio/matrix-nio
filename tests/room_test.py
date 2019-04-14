@@ -9,6 +9,7 @@ from nio.events import (
     RoomNameEvent,
     RoomCreateEvent,
     RoomGuestAccessEvent,
+    RoomJoinRulesEvent,
 )
 
 TEST_ROOM = "!test:example.org"
@@ -156,6 +157,12 @@ class TestClass(object):
         assert room.guest_access == "forbidden"
         room.handle_event(RoomGuestAccessEvent("event_id", BOB_ID, 0, "can_join"))
         assert room.guest_access == "can_join"
+
+    def test_join_rules_event(self):
+        room = self.test_room
+        assert room.join_rule == "invite"
+        room.handle_event(RoomJoinRulesEvent("event_id", BOB_ID, 0, "public"))
+        assert room.join_rule == "public"
 
     def test_name_event(self):
         room = self.test_room
