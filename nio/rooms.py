@@ -35,6 +35,7 @@ from .events import (
     RoomEncryptionEvent,
     RoomMemberEvent,
     RoomCreateEvent,
+    RoomGuestAccessEvent,
     RoomNameEvent,
     RoomTopicEvent,
 )
@@ -58,6 +59,7 @@ class MatrixRoom(object):
         self.creator = ""             # type: str
         self.federate = True          # type: bool
         self.room_version = "1"       # type: str
+        self.guest_access = "forbidden"  # type: str
         self.canonical_alias = None   # type: Optional[str]
         self.topic = None             # type: Optional[str]
         self.name = None              # type: Optional[str]
@@ -240,6 +242,9 @@ class MatrixRoom(object):
             self.creator = event.creator
             self.federate = event.federate
             self.room_version = event.room_version
+
+        elif isinstance(event, RoomGuestAccessEvent):
+            self.guest_access = event.guest_access
 
         elif isinstance(event, RoomNameEvent):
             self.name = event.name

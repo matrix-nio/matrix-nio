@@ -7,7 +7,8 @@ from nio.events import (
     InviteAliasEvent,
     InviteMemberEvent,
     RoomNameEvent,
-    RoomCreateEvent
+    RoomCreateEvent,
+    RoomGuestAccessEvent,
 )
 
 TEST_ROOM = "!test:example.org"
@@ -150,6 +151,11 @@ class TestClass(object):
         assert room.federate is False
         assert room.room_version == "1"
 
+    def test_guest_access_event(self):
+        room = self.test_room
+        assert room.guest_access == "forbidden"
+        room.handle_event(RoomGuestAccessEvent("event_id", BOB_ID, 0, "can_join"))
+        assert room.guest_access == "can_join"
 
     def test_name_event(self):
         room = self.test_room
