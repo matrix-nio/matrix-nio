@@ -650,6 +650,31 @@ class Schemas(object):
         "required": ["type", "sender", "content"],
     }
 
+    room_history_visibility = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "history_visibility": {
+                        "type": "string",
+                        "enum": [
+                            "invited",
+                            "joined",
+                            "shared",
+                            "world_readable",
+                        ],
+                        "default": "shared",
+                    },
+                },
+                "required": ["history_visibility"],
+            },
+        },
+        "required": ["type", "sender", "content"],
+    }
+
     room_canonical_alias = {
         "type": "object",
         "properties": {

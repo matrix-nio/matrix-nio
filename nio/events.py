@@ -110,6 +110,8 @@ class Event(object):
             return RoomGuestAccessEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.join_rules":
             return RoomJoinRulesEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.room.history_visibility":
+            return RoomHistoryVisibilityEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.member":
             return RoomMemberEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.canonical_alias":
@@ -672,6 +674,25 @@ class RoomJoinRulesEvent(Event):
         join_rule = parsed_dict["content"]["join_rule"]
 
         return cls(event_id, sender, timestamp, join_rule)
+
+
+@attr.s
+class RoomHistoryVisibilityEvent(Event):
+    history_visibility = attr.ib(default="shared")
+
+    @classmethod
+    @verify(Schemas.room_history_visibility)
+    def from_dict(cls,
+                  parsed_dict,  # type: Dict[Any, Any]
+                  ):
+        # type: (...) -> Union[RoomHistoryVisibilityEvent, BadEventType]
+        event_id = parsed_dict["event_id"]
+        sender = parsed_dict["sender"]
+        timestamp = parsed_dict["origin_server_ts"]
+
+        history_visibility = parsed_dict["content"]["history_visibility"]
+
+        return cls(event_id, sender, timestamp, history_visibility)
 
 
 @attr.s
