@@ -592,6 +592,24 @@ class Schemas(object):
         "required": ["type", "sender", "content"],
     }
 
+    room_create = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "creator": {"type": "string", "format": "user_id"},
+                    "m.federate": {"type": "boolean", "default": True},
+                    "room_version": {"type": "string", "default": "1"},
+                },
+                "required": ["creator"],
+            },
+        },
+        "required": ["type", "sender", "content"],
+    }
+
     room_canonical_alias = {
         "type": "object",
         "properties": {

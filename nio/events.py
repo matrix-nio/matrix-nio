@@ -104,6 +104,8 @@ class Event(object):
 
         if event_dict["type"] == "m.room.message":
             return RoomMessage.parse_event(event_dict)
+        elif event_dict["type"] == "m.room.create":
+            return RoomCreateEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.member":
             return RoomMemberEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.canonical_alias":
@@ -611,6 +613,27 @@ class RedactedEvent(Event):
 @attr.s
 class RoomEncryptionEvent(Event):
     pass
+
+
+@attr.s
+class RoomCreateEvent(Event):
+    creator = attr.ib()
+    federate = attr.ib(default=True)
+    room_version = attr.ib(default="1")
+
+    @classmethod
+    @verify(Schemas.room_create)
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[RoomCreateEvent, BadEventType]
+        event_id = parsed_dict["event_id"]
+        sender = parsed_dict["sender"]
+        timestamp = parsed_dict["origin_server_ts"]
+
+        creator = parsed_dict["content"]["creator"]
+        federate = parsed_dict["content"]["m.federate"]
+        version = parsed_dict["content"]["room_version"]
+
+        return cls(event_id, sender, timestamp, creator, federate, version)
 
 
 @attr.s
