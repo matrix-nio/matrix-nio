@@ -59,6 +59,7 @@ class MatrixRoom(object):
         self.federate = True          # type: bool
         self.room_version = "1"       # type: str
         self.canonical_alias = None   # type: Optional[str]
+        self.topic = None             # type: Optional[str]
         self.name = None              # type: Optional[str]
         self.users = dict()           # type: Dict[str, MatrixUser]
         self.names = defaultdict(list)  # type: DefaultDict[str, List[str]]
