@@ -21,7 +21,8 @@ from nio.responses import (
     SyncError,
     UploadResponse,
     RoomKeyRequestResponse,
-    RoomKeyRequestError
+    RoomKeyRequestError,
+    ProfileGetDisplayNameResponse
 )
 
 TEST_ROOM_ID = "!test:example.org"
@@ -168,3 +169,9 @@ class TestClass(object):
                 "!SVkFJHzfwvuaIEawgC:localhost"
             ].timeline.events
         ) == 1
+
+    def test_get_displayname(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/get_displayname_response.json")
+        response = ProfileGetDisplayNameResponse.from_dict(parsed_dict)
+        assert isinstance(response, ProfileGetDisplayNameResponse)

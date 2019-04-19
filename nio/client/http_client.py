@@ -84,6 +84,7 @@ from ..responses import (
     KeysUploadError,
     RoomTypingResponse,
     RoomReadMarkersResponse,
+    ProfileGetDisplayNameResponse,
     ProfileSetDisplayNameResponse,
     RoomKeyRequestResponse
 )
@@ -615,6 +616,30 @@ class HttpClient(Client):
         return self._send(
             request,
             RequestInfo(JoinedMembersResponse, (room_id, ))
+        )
+
+    @connected
+    @logged_in
+    def get_displayname(self, user_id=None):
+        # type: (str) -> Tuple[UUID, bytes]
+        """Get an user's display name.
+
+        This queries the display name of an user from the server.
+        The currently logged in user is queried if no user is specified.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            user_id (str): User id of the user to get the display name for.
+        """
+        request = self._build_request(Api.profile_get_displayname(
+            self.access_token,
+            user_id or self.user_id
+        ))
+        return self._send(
+            request,
+            RequestInfo(ProfileGetDisplayNameResponse)
         )
 
     @connected

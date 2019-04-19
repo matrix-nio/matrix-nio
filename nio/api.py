@@ -810,6 +810,26 @@ class Api(object):
         )
 
     @staticmethod
+    def profile_get_displayname(access_token, user_id):
+        # type (str, str) -> Tuple[str, str, str]
+        """Get display name.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            user_id (str): User id to get display name for.
+        """
+        query_parameters = {"access_token": access_token}
+        path = "profile/{user}/displayname".format(user=user_id)
+
+        return (
+            "GET",
+            Api._build_path(path, query_parameters),
+            ""
+        )
+
+    @staticmethod
     def profile_set_displayname(access_token, user_id, display_name):
         # type (str, str, str) -> Tuple[str, str, str]
         """Set display name.

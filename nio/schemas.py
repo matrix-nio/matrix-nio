@@ -1212,4 +1212,11 @@ class Schemas(object):
         }
     }
 
+    get_displayname = {
+        "type": "object",
+        "properties": {
+            "displayname": {"type": "string"},
+        },
+    }
+
     empty = {"type": "object", "properties": {}, "additionalProperties": False}

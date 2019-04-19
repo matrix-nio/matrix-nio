@@ -106,6 +106,8 @@ __all__ = [
     "RoomReadMarkersError",
     "UploadResponse",
     "UploadError",
+    "ProfileGetDisplayNameResponse",
+    "ProfileGetDisplayNameError",
     "ProfileSetDisplayNameResponse",
     "ProfileSetDisplayNameError",
     "RoomKeyRequestResponse",
@@ -383,6 +385,10 @@ class UpdateDeviceError(ErrorResponse):
 
 
 class JoinedMembersError(_ErrorWithRoomId):
+    pass
+
+
+class ProfileGetDisplayNameError(ErrorResponse):
     pass
 
 
@@ -787,6 +793,28 @@ class UpdateDeviceResponse(EmptyResponse):
     @staticmethod
     def create_error(parsed_dict):
         return UpdateDeviceError.from_dict(parsed_dict)
+
+
+@attr.s
+class ProfileGetDisplayNameResponse(Response):
+    displayname = attr.ib(type=Optional[str], default=None)
+
+    def __str__(self):
+        # type: () -> str
+        return "Display name: {}".format(self.displayname)
+
+    @classmethod
+    @verify(Schemas.get_displayname, ProfileGetDisplayNameError)
+    def from_dict(
+        cls,
+        parsed_dict  # type: (Dict[Any, Any])
+    ):
+        # type: (...) -> Union[ProfileGetDisplayNameResponse, ErrorResponse]
+        return cls(parsed_dict.get("displayname"))
+
+    @staticmethod
+    def create_error(parsed_dict):
+        return ProfileGetDisplayNameError.from_dict(parsed_dict)
 
 
 class ProfileSetDisplayNameResponse(EmptyResponse):
