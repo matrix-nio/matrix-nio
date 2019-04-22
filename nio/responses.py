@@ -797,6 +797,13 @@ class UpdateDeviceResponse(EmptyResponse):
 
 @attr.s
 class ProfileGetDisplayNameResponse(Response):
+    """Response representing a successful get display name request.
+
+    Attributes:
+        displayname (str, optional): The display name of the user.
+            None if the user doesn't have a display name.
+    """
+
     displayname = attr.ib(type=Optional[str], default=None)
 
     def __str__(self):
