@@ -812,10 +812,6 @@ class ProfileGetDisplayNameResponse(Response):
         # type: (...) -> Union[ProfileGetDisplayNameResponse, ErrorResponse]
         return cls(parsed_dict.get("displayname"))
 
-    @staticmethod
-    def create_error(parsed_dict):
-        return ProfileGetDisplayNameError.from_dict(parsed_dict)
-
 
 class ProfileSetDisplayNameResponse(EmptyResponse):
     @staticmethod
