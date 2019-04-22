@@ -1217,6 +1217,7 @@ class Schemas(object):
         "properties": {
             "displayname": {"type": "string"},
         },
+        "required": ["displayname"]
     }
 
     empty = {"type": "object", "properties": {}, "additionalProperties": False}
