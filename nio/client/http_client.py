@@ -86,7 +86,8 @@ from ..responses import (
     RoomReadMarkersResponse,
     ProfileGetDisplayNameResponse,
     ProfileSetDisplayNameResponse,
-    RoomKeyRequestResponse
+    RoomKeyRequestResponse,
+    RoomForgetResponse
 )
 
 try:
@@ -366,6 +367,20 @@ class HttpClient(Client):
             )
         )
         return self._send(request, RequestInfo(RoomLeaveResponse))
+
+    @connected
+    @logged_in
+    def room_forget(self, room_id):
+        request = self._build_request(
+            Api.room_forget(
+                self.access_token,
+                room_id
+            )
+        )
+        return self._send(request, RequestInfo(
+            RoomForgetResponse,
+            (room_id,)
+        ))
 
     @connected
     @logged_in

@@ -34,6 +34,7 @@ BOB_CURVE = "T9tOKF+TShsn6mk1zisW2IBsBbTtzDNvw99RBFMJOgI"
 BOB_ONETIME = "6QlQw3mGUveS735k/JDaviuoaih5eEi6S1J65iHjfgU"
 
 TEST_ROOM = "!test:example.org"
+TEST_ROOM_2 = "!test2:example.org"
 TEST_FORWARDING_CHAIN = [BOB_CURVE, BOB_ONETIME]
 
 
@@ -304,6 +305,27 @@ class TestClass(object):
         store = self.ephemeral_store
         encrypted_rooms = store.load_encrypted_rooms()
         assert TEST_ROOM in encrypted_rooms
+
+    @ephemeral
+    def test_encrypted_room_delete(self):
+        self._create_ephemeral_account()
+        store = self.ephemeral_store
+        encrypted_rooms = store.load_encrypted_rooms()
+
+        assert not encrypted_rooms
+
+        store.save_encrypted_rooms([TEST_ROOM, TEST_ROOM_2])
+
+        store = self.ephemeral_store
+        encrypted_rooms = store.load_encrypted_rooms()
+        assert TEST_ROOM in encrypted_rooms
+        assert TEST_ROOM_2 in encrypted_rooms
+
+        store.delete_encrypted_room(TEST_ROOM_2)
+        store = self.ephemeral_store
+        encrypted_rooms = store.load_encrypted_rooms()
+        assert TEST_ROOM in encrypted_rooms
+        assert TEST_ROOM_2 not in encrypted_rooms
 
     @ephemeral
     def test_key_request_saving(self):

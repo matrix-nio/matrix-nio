@@ -26,7 +26,8 @@ from nio import (
     TransportType,
     MegolmEvent,
     RoomKeyRequestResponse,
-    TypingNoticeEvent
+    TypingNoticeEvent,
+    RoomForgetResponse
 )
 
 HOST = "example.org"
@@ -320,6 +321,7 @@ class TestClass(object):
         assert room.encrypted
         assert client.should_query_keys
 
+
     def test_device_store(self, tempdir):
         client = Client("ephemeral", "DEVICEID", tempdir)
         client.receive_response(self.login_response)
@@ -566,6 +568,37 @@ class TestClass(object):
 
         assert isinstance(response, RoomKeyRequestResponse)
         assert "test_session_id" in http_client.outgoing_key_requests
+
+
+    def test_http_client_room_forget(self, http_client):
+        http_client.connect(TransportType.HTTP2)
+
+        _, _ = http_client.login("1234")
+
+        http_client.receive(self.login_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, LoginResponse)
+        assert http_client.access_token == "ABCD"
+
+        _, _ = http_client.sync()
+
+        http_client.receive(self.sync_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, SyncResponse)
+        assert http_client.access_token == "ABCD"
+
+        assert http_client.rooms
+        room_id = list(http_client.rooms.keys())[0]
+        _, _ = http_client.room_forget(room_id)
+
+        http_client.receive(self.empty_response(5))
+        response = http_client.next_response()
+
+        assert isinstance(response, RoomForgetResponse)
+        assert room_id not in http_client.rooms
+
 
     def test_event_callback(self, client):
         client.receive_response(self.login_response)

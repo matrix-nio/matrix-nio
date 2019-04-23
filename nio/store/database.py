@@ -397,6 +397,13 @@ class LegacyMatrixStore(object):
                 LegacyEncryptedRooms.account
             ]).on_conflict_ignore().execute()
 
+    @use_database_atomic
+    def delete_encrypted_room(self, room):
+        """Delete the room id for this account."""
+        LegacyEncryptedRooms.get(
+            LegacyEncryptedRooms.room_id == room
+        ).delete_instance()
+
     def blacklist_device(self, device):
         # type: (OlmDevice) -> bool
         raise NotImplementedError

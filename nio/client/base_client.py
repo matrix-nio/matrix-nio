@@ -50,7 +50,8 @@ from ..responses import (
     ShareGroupSessionResponse,
     KeysClaimResponse,
     JoinedMembersResponse,
-    RoomKeyRequestResponse
+    RoomKeyRequestResponse,
+    RoomForgetResponse
 )
 
 from ..events import (
@@ -620,6 +621,18 @@ class Client(object):
         if room.encrypted and self.olm is not None:
             self.olm.update_tracked_users(room)
 
+    def _handle_room_forget_response(self, response):
+        self.encrypted_rooms.discard(response.room_id)
+
+        if response.room_id in self.rooms:
+            room = self.rooms.pop(response.room_id)
+
+            if room.encrypted and self.store:
+                self.store.delete_encrypted_room(room.room_id)
+
+        elif response.room_id in self.invited_rooms:
+            del self.invited_rooms[response.room_id]
+
     def receive_response(self, response):
         # type: (Response) -> None
         """Receive a Matrix Response and change the client state accordingly.
@@ -652,8 +665,8 @@ class Client(object):
             self._handle_joined_members(response)
         elif isinstance(response, RoomKeyRequestResponse):
             self._handle_olm_response(response)
-        else:
-            pass
+        elif isinstance(response, RoomForgetResponse):
+            self._handle_room_forget_response(response)
 
     @store_loaded
     def export_keys(self, outfile, passphrase, count=10000):
