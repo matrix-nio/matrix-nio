@@ -371,6 +371,19 @@ class HttpClient(Client):
     @connected
     @logged_in
     def room_forget(self, room_id):
+        # type: (str) -> Tuple[UUID, bytes]
+        """Forget a room.
+
+        This tells the server to forget the given room's history for our user.
+        If all users on a homeserver forget the room, the room will be
+        eligible for deletion from that homeserver.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            room_id (str): Room id of the room to forget.
+        """
         request = self._build_request(
             Api.room_forget(
                 self.access_token,
