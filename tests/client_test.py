@@ -25,7 +25,8 @@ from nio import (
     ShareGroupSessionResponse,
     TransportType,
     MegolmEvent,
-    RoomKeyRequestResponse
+    RoomKeyRequestResponse,
+    TypingNoticeEvent
 )
 
 HOST = "example.org"
@@ -132,7 +133,13 @@ class TestClass(object):
             False,
             "prev_batch_token"
         )
-        test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(1, 2, []))
+        test_room_info = RoomInfo(
+            timeline,
+            [],
+            [TypingNoticeEvent([ALICE_ID])],
+            [],
+            RoomSummary(1, 2, [])
+        )
         rooms = Rooms(
             {},
             {
@@ -145,7 +152,7 @@ class TestClass(object):
             rooms,
             DeviceOneTimeKeyCount(49, 50),
             DeviceList([ALICE_ID], []),
-            []
+            [RoomEncryptionEvent("event_id_2", ALICE_ID, 1516809890615)]
         )
 
     @property
@@ -559,3 +566,47 @@ class TestClass(object):
 
         assert isinstance(response, RoomKeyRequestResponse)
         assert "test_session_id" in http_client.outgoing_key_requests
+
+    def test_event_callback(self, client):
+        client.receive_response(self.login_response)
+
+        class CallbackException(Exception):
+            pass
+
+        def cb(room, event):
+            if isinstance(event, RoomMemberEvent):
+                raise CallbackException()
+
+        client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
+
+        with pytest.raises(CallbackException):
+            client.receive_response(self.sync_response)
+
+    def test_to_device_cb(self, client):
+        client.receive_response(self.login_response)
+
+        class CallbackException(Exception):
+            pass
+
+        def cb(event):
+            if isinstance(event, RoomEncryptionEvent):
+                raise CallbackException()
+
+        client.add_to_device_callback(cb, RoomEncryptionEvent)
+
+        with pytest.raises(CallbackException):
+            client.receive_response(self.sync_response)
+
+    def test_ephemeral_cb(self, client):
+        client.receive_response(self.login_response)
+
+        class CallbackException(Exception):
+            pass
+
+        def cb(_, event):
+            raise CallbackException()
+
+        client.add_ephermeral_callback(cb, TypingNoticeEvent)
+
+        with pytest.raises(CallbackException):
+            client.receive_response(self.sync_response)

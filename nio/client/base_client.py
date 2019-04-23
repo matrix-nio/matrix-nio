@@ -25,7 +25,8 @@ from typing import (
     Callable,
     Set,
     Any,
-    Tuple
+    Tuple,
+    Type
 )
 
 from logbook import Logger
@@ -57,7 +58,8 @@ from ..events import (
     BadEventType,
     RoomEncryptedEvent,
     MegolmEvent,
-    RoomEncryptionEvent
+    RoomEncryptionEvent,
+    ToDeviceEvent
 )
 from ..rooms import MatrixInvitedRoom, MatrixRoom
 from ..store import MatrixStore, DefaultStore
@@ -92,6 +94,14 @@ def store_loaded(fn):
                                      "loaded.")
         return fn(self, *args, **kwargs)
     return inner
+
+
+@attr.s
+class ClientCallback(object):
+    """nio internal callback class."""
+
+    func = attr.ib()
+    filter = attr.ib()
 
 
 @attr.s
@@ -162,6 +172,10 @@ class Client(object):
         self.rooms = dict()  # type: Dict[str, MatrixRoom]
         self.invited_rooms = dict()  # type: Dict[str, MatrixRoom]
         self.encrypted_rooms = set()  # type: Set[str]
+
+        self.event_callbacks = []      # type: List[ClientCallback]
+        self.ephemeral_callbacks = []  # type: List[ClientCallback]
+        self.to_device_callbacks = []  # type: List[ClientCallback]
 
     @property
     def logged_in(self):
@@ -435,11 +449,17 @@ class Client(object):
 
         for index, to_device_event in enumerate(response.to_device_events):
             if isinstance(to_device_event, RoomEncryptedEvent):
-                if not self.olm:
-                    continue
-                event = self.olm.decrypt_event(to_device_event)
-                if event:
-                    decrypted_to_device.append((index, event))
+                if self.olm:
+                    event = self.olm.decrypt_event(to_device_event)
+
+                    if event:
+                        decrypted_to_device.append((index, event))
+                        to_device_event = event
+
+            for cb in self.to_device_callbacks:
+                if (cb.filter is None
+                        or isinstance(to_device_event, cb.filter)):
+                    cb.func(to_device_event)
 
         # Replace the encrypted to_device events with decrypted ones
         for decrypted_event in decrypted_to_device:
@@ -495,6 +515,10 @@ class Client(object):
 
                 room.handle_event(event)
 
+                for cb in self.event_callbacks:
+                    if (cb.filter is None or isinstance(event, cb.filter)):
+                        cb.func(room, event)
+
             # Replace the Megolm events with decrypted ones
             for decrypted_event in decrypted_events:
                 index, event = decrypted_event
@@ -502,6 +526,10 @@ class Client(object):
 
             for event in join_info.ephemeral:
                 room.handle_ephemeral_event(event)
+
+                for cb in self.ephemeral_callbacks:
+                    if (cb.filter is None or isinstance(event, cb.filter)):
+                        cb.func(room, event)
 
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)
@@ -721,3 +749,48 @@ class Client(object):
         message_type = "m.room.encrypted"
 
         return message_type, content
+
+    def add_event_callback(self, callback, filter):
+        # type: (Callable[[MatrixRoom, Event], None], Tuple[Type]) -> None
+        """Add a callback that will be executed on room events.
+
+        Args:
+            callback (Callable[MatrixRoom, Event]): A function that will be
+                called if the event type in the filter argument is found in a
+                room timeline.
+            filter (Type, Tuple[Type]): The event type or a tuple containing
+                multiple types for which the function will be called.
+
+        """
+        cb = ClientCallback(callback, filter)
+        self.event_callbacks.append(cb)
+
+    def add_ephermeral_callback(self, callback, filter):
+        # type: (Callable[[MatrixRoom, Event], None], Tuple[Type]) -> None
+        """Add a callback that will be executed on ephemeral room events.
+
+        Args:
+            callback (Callable[MatrixRoom, Event]): A function that will be
+                called if the event type in the filter argument is found in the
+                ephemeral room event list.
+            filter (Type, Tuple[Type]): The event type or a tuple containing
+                multiple types for which the function will be called.
+
+        """
+        cb = ClientCallback(callback, filter)
+        self.ephemeral_callbacks.append(cb)
+
+    def add_to_device_callback(self, callback, filter):
+        # type: (Callable[[ToDeviceEvent], None], Tuple[Type]) -> None
+        """Add a callback that will be executed on to-device events.
+
+        Args:
+            callback (Callable[MatrixRoom, Event]): A function that will be
+                called if the event type in the filter argument is found in a
+                the to-device part of the sync response.
+            filter (Type, Tuple[Type]): The event type or a tuple containing
+                multiple types for which the function will be called.
+
+        """
+        cb = ClientCallback(callback, filter)
+        self.to_device_callbacks.append(cb)
