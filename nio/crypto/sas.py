@@ -126,11 +126,12 @@ class Sas(olm.Sas):
 
         return obj
 
-    def receive_key(self, event):
-        if self.other_key_set:
-            raise LocalProtocolError("Other key already set")
-        # TODO abort if the sender or transaciton id don't match
-        self.set_their_pubkey(event.key)
+
+    @property
+    def _commitment_valid(self):
+        assert self.commitment
+        # TODO check the commitment here
+        return True
 
     def _grouper(self, iterable, n, fillvalue=None):
         """Collect data into fixed-length chunks or blocks."""
@@ -245,3 +246,24 @@ class Sas(olm.Sas):
             "keys": self.calculate_mac(key_id, info + "KEY_IDS"),
             "transaction_id": self.transaction_id,
         }
+
+    def receive_accept_event(self, event):
+        if (event.transaction_id != self.transaction_id
+                or self.other_user != event.sender):
+            self.state = SasState.canceled
+            return
+
+        self.commitment = event.commitment
+
+        if not self._commitment_valid:
+            self.state = SasState.canceled
+            return
+
+        self.state = SasState.accepted
+
+    def receive_key_event(self, event):
+        if self.other_key_set:
+            raise LocalProtocolError("Other key already set")
+        # TODO abort if the sender or transaciton id don't match
+        self.set_their_pubkey(event.key)
+        self.state = SasState.key_received
