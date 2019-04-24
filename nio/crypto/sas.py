@@ -142,9 +142,14 @@ class Sas(olm.Sas):
     def get_emoji(self):
         if self.we_started_it:
             info = ("MATRIX_KEY_VERIFICATION_SAS"
-                    "{user_id}{device_id}{user_id}{transaction_id}".format(
-                        user_id=self.other_user, device_id=self.other_device,
-                        transaction_id=self.transaction_id))
+                    "{first_user}{first_device}"
+                    "{second_user}{second_device}{transaction_id}".format(
+                        first_user=self.own_user,
+                        first_device=self.own_device,
+                        second_user=self.other_user,
+                        second_device=self.other_device,
+                        transaction_id=self.transaction_id
+                    ))
         else:
             info = ("MATRIX_KEY_VERIFICATION_SAS"
                     "{first_user}{first_device}"
