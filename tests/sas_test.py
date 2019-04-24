@@ -136,3 +136,29 @@ class TestClass(object):
         alice.receive_key_event(key_event)
         assert alice.state == SasState.key_received
         assert alice.get_emoji() == bob.get_emoji()
+
+    def test_sas_decimals(self):
+        alice = Sas(
+            alice_id,
+            alicd_device,
+            alice_keys["ed25519"],
+            bob_id,
+            bob_device
+        )
+        start = {
+            "sender": alice_id,
+            "content": alice.start_verification()
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+
+        bob = Sas.from_key_verification_start(
+            bob_id,
+            bob_device,
+            bob_keys["ed25519"],
+            start_event
+        )
+
+        alice.set_their_pubkey(bob.pubkey)
+        bob.set_their_pubkey(alice.pubkey)
+
+        assert alice.get_decimals() == bob.get_decimals()

@@ -139,9 +139,10 @@ class Sas(olm.Sas):
         args = [iter(iterable)] * n
         return zip_longest(*args, fillvalue=fillvalue)
 
-    def get_emoji(self):
+    @property
+    def _extra_info(self):
         if self.we_started_it:
-            info = ("MATRIX_KEY_VERIFICATION_SAS"
+            return ("MATRIX_KEY_VERIFICATION_SAS"
                     "{first_user}{first_device}"
                     "{second_user}{second_device}{transaction_id}".format(
                         first_user=self.own_user,
@@ -151,7 +152,7 @@ class Sas(olm.Sas):
                         transaction_id=self.transaction_id
                     ))
         else:
-            info = ("MATRIX_KEY_VERIFICATION_SAS"
+            return ("MATRIX_KEY_VERIFICATION_SAS"
                     "{first_user}{first_device}"
                     "{second_user}{second_device}{transaction_id}".format(
                         first_user=self.other_user,
@@ -160,7 +161,11 @@ class Sas(olm.Sas):
                         second_device=self.own_device,
                         transaction_id=self.transaction_id))
 
-        return self.generate_emoji(info)
+    def get_emoji(self):
+        return self.generate_emoji(self._extra_info)
+
+    def get_decimals(self):
+        return self.generate_decimals(self._extra_info)
 
     def generate_emoji(self, extra_info):
         """Create a list of emojies from our shared secret."""
@@ -170,6 +175,15 @@ class Sas(olm.Sas):
             self.emoji[int(x, 2)] for x in
             map("".join, list(self._grouper(number[:42], 6)))
         ]
+
+    def generate_decimals(self, extra_info):
+        """Create a decimal number from our shared secret."""
+        generated_bytes = self.generate_bytes(extra_info, 5)
+        number = "".join([format(x, "08b") for x in bytes(generated_bytes)])
+        return tuple(
+            int(x, 2) + 1000 for x in
+            map("".join, list(self._grouper(number[:-1], 13)))
+        )
 
     def start_verification(self):
         """Create a content dictionary to start the verification."""
