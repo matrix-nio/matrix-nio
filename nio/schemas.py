@@ -1274,7 +1274,7 @@ class Schemas(object):
                     "transaction_id": {"type": "string"},
                     "commitment": {"type": "string"},
                     "key_agreement_protocol": {"type": "string"},
-                    "hashe": {"type": "string"},
+                    "hash": {"type": "string"},
                     "message_authentication_code": {"type": "string"},
                     "short_authentication_string": {
                         "type": "array",
@@ -1285,7 +1285,7 @@ class Schemas(object):
                     "transaction_id",
                     "commitment",
                     "key_agreement_protocol",
-                    "hashe",
+                    "hash",
                     "message_authentication_code",
                     "short_authentication_string",
                 ]

@@ -101,7 +101,7 @@ class KeyVerificationAccept(ToDeviceEvent):
             content["transaction_id"],
             content["commitment"],
             content["key_agreement_protocol"],
-            content["hashe"],
+            content["hash"],
             content["message_authentication_code"],
             content["short_authentication_string"],
         )
