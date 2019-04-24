@@ -2,7 +2,7 @@ language: python
 dist: xenial
 sudo: false
 before_install:
-    - wget https://gitlab.matrix.org/matrix-org/olm/-/archive/master/olm-master.tar.gz
+    - wget https://gitlab.matrix.org/matrix-org/olm/-/archive/master/olm-master.tar.bz2
     - tar -xvf olm-master.tar.bz2
     - pushd olm-master && make && sudo make PREFIX="/usr" install && popd
     - rm -r olm-master
