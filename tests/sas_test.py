@@ -162,3 +162,53 @@ class TestClass(object):
         bob.set_their_pubkey(alice.pubkey)
 
         assert alice.get_decimals() == bob.get_decimals()
+
+    def test_sas_invalid_commitment(self):
+        alice = Sas(
+            alice_id,
+            alicd_device,
+            alice_keys["ed25519"],
+            bob_id,
+            bob_device
+        )
+        start = {
+            "sender": alice_id,
+            "content": alice.start_verification()
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+
+        bob = Sas.from_key_verification_start(
+            bob_id,
+            bob_device,
+            bob_keys["ed25519"],
+            start_event
+        )
+
+        accept = {
+            "sender": bob_id,
+            "content": bob.accept_verification()
+        }
+        accept_event = KeyVerificationAccept.from_dict(accept)
+        alice.receive_accept_event(accept_event)
+
+        alice_key = {
+            "sender": alice_id,
+            "content": alice.share_key()
+        }
+
+        key_event = KeyVerificationKey.from_dict(alice_key)
+        assert isinstance(key_event, KeyVerificationKey)
+        bob.receive_key_event(key_event)
+        assert bob.state == SasState.key_received
+
+        bob_key = {
+            "sender": bob_id,
+            "content": bob.share_key()
+        }
+
+        bob_key["content"]["key"] = alice.pubkey
+
+        key_event = KeyVerificationKey.from_dict(bob_key)
+        assert isinstance(key_event, KeyVerificationKey)
+        alice.receive_key_event(key_event)
+        assert alice.state == SasState.canceled

@@ -131,11 +131,12 @@ class Sas(olm.Sas):
         """Is the verification request canceled."""
         return self.state == SasState.canceled
 
-    @property
-    def _commitment_valid(self):
+    def _check_commitment(self, key):
         assert self.commitment
-        # TODO check the commitment here
-        return True
+        calculated_commitment = olm.sha256(
+            key + Api.to_canonical_json(self.start_verification())
+        )
+        return self.commitment == calculated_commitment
 
     def _grouper(self, iterable, n, fillvalue=None):
         """Collect data into fixed-length chunks or blocks."""
@@ -277,16 +278,21 @@ class Sas(olm.Sas):
             return
 
         self.commitment = event.commitment
-
-        if not self._commitment_valid:
-            self.state = SasState.canceled
-            return
-
         self.state = SasState.accepted
 
     def receive_key_event(self, event):
         if self.other_key_set:
             raise LocalProtocolError("Other key already set")
-        # TODO abort if the sender or transaciton id don't match
+
+        if (self.other_user != event. sender
+                or self.transaction_id != event.transaction_id):
+            self.state = SasState.canceled
+            return
+
+        if self.we_started_it:
+            if not self._check_commitment(event.key):
+                self.state = SasState.canceled
+                return
+
         self.set_their_pubkey(event.key)
         self.state = SasState.key_received
