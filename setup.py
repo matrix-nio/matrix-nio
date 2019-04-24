@@ -25,7 +25,7 @@ setup(
         "atomicwrites",
         "unpaddedbase64",
         "pycryptodome",
-        "python-olm-dev",
+        "python-olm>=3.1.0",
     ],
     zip_safe=False
 )
