@@ -183,7 +183,6 @@ class Sas(olm.Sas):
             "hashes": ["sha256"],
             "message_authentication_codes": ["hkdf-hmac-sha256"],
             "short_authentication_string": ["decimal", "emoji"],
-            "commitment": self.commitment,
         }
 
         return content
