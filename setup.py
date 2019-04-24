@@ -15,7 +15,7 @@ setup(
     install_requires=[
         "attrs",
         "future",
-        "peewee",
+        "peewee<=3.9.3",
         "aiohttp;python_version>'3.5'",
         "typing;python_version<'3.5'",
         "h11",
