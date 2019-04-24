@@ -126,6 +126,10 @@ class Sas(olm.Sas):
 
         return obj
 
+    @property
+    def canceled(self):
+        """Is the verification request canceled."""
+        return self.state == SasState.canceled
 
     @property
     def _commitment_valid(self):
