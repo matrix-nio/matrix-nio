@@ -1220,4 +1220,155 @@ class Schemas(object):
         "required": ["displayname"]
     }
 
+    key_verification_start = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "transaction_id": {"type": "string"},
+                    "from_device": {"type": "string"},
+                    "method": {"type": "string"},
+                    "key_agreement_protocols": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "hashes": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "message_authentication_codes": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "short_authentication_string": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                },
+                "required": [
+                    "transaction_id",
+                    "from_device",
+                    "method",
+                    "key_agreement_protocols",
+                    "hashes",
+                    "message_authentication_codes",
+                    "short_authentication_string",
+                ]
+            }
+        },
+        "required": [
+            "sender",
+            "content",
+        ],
+    }
+
+    key_verification_accept = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "transaction_id": {"type": "string"},
+                    "commitment": {"type": "string"},
+                    "key_agreement_protocol": {"type": "string"},
+                    "hashe": {"type": "string"},
+                    "message_authentication_code": {"type": "string"},
+                    "short_authentication_string": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                },
+                "required": [
+                    "transaction_id",
+                    "commitment",
+                    "key_agreement_protocol",
+                    "hashe",
+                    "message_authentication_code",
+                    "short_authentication_string",
+                ]
+            }
+        },
+        "required": [
+            "sender",
+            "content",
+        ],
+    }
+
+    key_verification_key = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "transaction_id": {"type": "string"},
+                    "key": {"type": "string"},
+                },
+                "required": [
+                    "transaction_id",
+                    "key",
+                ]
+            }
+        },
+        "required": [
+            "sender",
+            "content",
+        ],
+    }
+
+    key_verification_mac = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "mac": {
+                        "type": "object",
+                        "patternProperties": {
+                            r".+": {"type": "string"}
+                        }
+                    },
+                    "keys": {"type": "string"},
+                },
+                "required": [
+                    "transaction_id",
+                    "mac",
+                    "keys",
+                ]
+            }
+        },
+        "required": [
+            "sender",
+            "content",
+        ],
+    }
+
+    key_verification_cancel = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "transaction_id": {"type": "string"},
+                    "code": {"type": "string"},
+                    "reason": {"type": "string"},
+                },
+                "required": [
+                    "transaction_id",
+                    "code",
+                    "reason",
+                ]
+            }
+        },
+        "required": [
+            "sender",
+            "content"
+        ],
+    }
+
     empty = {"type": "object", "properties": {}, "additionalProperties": False}
