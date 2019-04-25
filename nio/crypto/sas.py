@@ -353,6 +353,10 @@ class Sas(olm.Sas):
 
     def share_key(self):
         """Create a dictionary containing our public key."""
+        if self.state == SasState.canceled:
+            raise LocalProtocolError("SAS verification was canceled , can't "
+                                     "share our public key.")
+
         return {
             "transaction_id": self.transaction_id,
             "key": self.pubkey
