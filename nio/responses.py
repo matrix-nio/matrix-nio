@@ -886,7 +886,7 @@ class _SyncResponse(Response):
         for event_dict in parsed_dict["events"]:
             event = ToDeviceEvent.parse_event(event_dict)
 
-            if isinstance(event, ToDeviceEvent):
+            if event:
                 events.append(event)
 
         return events
