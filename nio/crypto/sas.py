@@ -20,6 +20,7 @@ from enum import Enum
 from builtins import super, bytes
 from future.moves.itertools import zip_longest
 from uuid import uuid4
+from typing import Tuple, List, Optional
 
 import olm
 
@@ -31,6 +32,11 @@ from .sessions import OlmDevice
 
 
 class SasState(Enum):
+    """Short Authentication String enum.
+
+    This enum tracks the current state of our verification process.
+    """
+
     created = 0
     started = 1
     accepted = 2
@@ -40,6 +46,34 @@ class SasState(Enum):
 
 
 class Sas(olm.Sas):
+    """Matrix Short Authentication String class.
+
+    This class implements a state machine to handle device verification using
+    short authentication strings.
+
+    Attributes:
+        we_started_it (bool): Is true if the verification process was started
+            by us, otherwise false.
+        self.sas_accepted (bool): Is true if we accepted that the short
+            authentication string matches on both devices.
+
+    Args:
+        own_user (str): The user id of our own user.
+        own_device (str): The device id of our own user.
+        own_fp_key (str): The fingerprint key of our own device that will
+            be verified by the other client.
+        other_olm_device (OlmDevice): The OlmDevice which we would like to
+            verify.
+        transaction_id (str, optional): A string that will uniquely identify
+            this verification process. A random and unique string will be
+            generated if one isn't provided.
+        short_auth_string (List[str], optional): A list of valid short
+            authentication methods that the client would like to allow for this
+            authentication session. By default the 'emoji' and 'decimal'
+            methods are allowed.
+
+    """
+
     _sas_method_v1 = "m.sas.v1"
     _key_agreement_v1 = "curve25519"
     _hash_v1 = "sha256"
@@ -80,6 +114,7 @@ class Sas(olm.Sas):
         transaction_id=None,
         short_auth_string=None
     ):
+        # type: (str, str, str, OlmDevice, str, Optional[List[str]]) -> None
         self.own_user = own_user
         self.own_device = own_device
         self.own_fp_key = own_fp_key
@@ -105,7 +140,20 @@ class Sas(olm.Sas):
         other_olm_device,
         event
     ):
-        """Create a SAS object from a KeyVerificationStart event."""
+        # type: (str, str, str, OlmDevice, KeyVerificationStart) -> Sas
+        """Create a SAS object from a KeyVerificationStart event.
+
+        Args:
+            own_user (str): The user id of our own user.
+            own_device (str): The device id of our own user.
+            own_fp_key (str): The fingerprint key of our own device that will
+                be verified by the other client.
+            other_olm_device (OlmDevice): The Olm device of the other user that
+                should be verified.
+            event (KeyVerificationStart): The event that we received from the
+                other device to start the key verification process.
+
+        """
         obj = cls(
             own_user,
             own_device,
@@ -156,24 +204,35 @@ class Sas(olm.Sas):
                     "{second_user}{second_device}{transaction_id}".format(
                         first_user=self.own_user,
                         first_device=self.own_device,
-                        second_user=self.other_user,
-                        second_device=self.other_device,
+                        second_user=self.other_olm_device.user_id,
+                        second_device=self.other_olm_device.id,
                         transaction_id=self.transaction_id
                     ))
         else:
             return ("MATRIX_KEY_VERIFICATION_SAS"
                     "{first_user}{first_device}"
                     "{second_user}{second_device}{transaction_id}".format(
-                        first_user=self.other_user,
-                        first_device=self.other_device,
+                        first_user=self.other_olm_device.user_id,
+                        first_device=self.other_olm_device.id,
                         second_user=self.own_user,
                         second_device=self.own_device,
                         transaction_id=self.transaction_id))
 
     def get_emoji(self):
+        # type: () -> List[Tuple[str, str]]
+        """Get the emoji short authentication string.
+
+        Returns a list of tuples that contain the emoji and the description of
+        the emoji of the short authentication string.
+        """
         return self.generate_emoji(self._extra_info)
 
     def get_decimals(self):
+        """Get the decimal short authentication string.
+
+        Returns a tuple that contains three 4 digit integer numbers that
+        represent the short authentication string.
+        """
         return self.generate_decimals(self._extra_info)
 
     def generate_emoji(self, extra_info):
@@ -276,6 +335,7 @@ class Sas(olm.Sas):
         }
 
     def receive_accept_event(self, event):
+        """Receive a KeyVerificationAccept event."""
         if (event.transaction_id != self.transaction_id
                 or self.other_olm_device.user_id != event.sender):
             self.state = SasState.canceled
@@ -285,6 +345,7 @@ class Sas(olm.Sas):
         self.state = SasState.accepted
 
     def receive_key_event(self, event):
+        """Receive a KeyVerificationKey event."""
         if self.other_key_set:
             raise LocalProtocolError("Other key already set")
 
