@@ -80,6 +80,23 @@ class Sas(olm.Sas):
     _mac_v1 = "hkdf-hmac-sha256"
     _strings_v1 = ["emoji", "decimal"]
 
+    _user_cancel_error = ("m.user", "Canceled by user")
+    _timeout_error = ("m.timeout", "Timed out")
+    _txid_error = ("m.unknown_transaction", "Unknown transaction")
+    _unknonw_method_error = ("m.unknown_method", "Unknown method")
+    _unexpected_message_error = ("m.unexpected_message", "Unexpected message")
+    _key_mismatch_error = ("m.key_mismatch", "Key mismatch")
+    _user_mismatch_error = ("m.user_error", "User mismatch")
+    _invalid_message_error = ("m.invalid_message", "Invalid message")
+    _commitment_mismatch_error = (
+        "m.mismatched_commitment",
+        "Mismatched commitment"
+    )
+    _sas_mismatch_error = (
+        "m.mismatched_sas",
+        "Mismatched short authentication string"
+    )
+
     emoji = [
         ("🐶", "Dog"), ("🐱", "Cat"), ("🦁", "Lion"),
         ("🐎", "Horse"), ("🦄", "Unicorn"), ("🐷", "Pig"),
@@ -129,6 +146,7 @@ class Sas(olm.Sas):
         self.sas_accepted = False
         self.commitment = None
         self.cancel_reason = None
+        self.cancel_code = None
         super().__init__()
 
     @classmethod
@@ -175,6 +193,7 @@ class Sas(olm.Sas):
                 or ("emoji" not in event.short_authentication_string
                     and "decimal" not in event.short_authentication_string)):
             obj.state = SasState.canceled
+            obj.cancel_code, obj.cancel_reason = obj._unknonw_method_error
 
         return obj
 
@@ -334,11 +353,25 @@ class Sas(olm.Sas):
             "transaction_id": self.transaction_id,
         }
 
+    def _event_ok(self, event):
+        if self.state == SasState.canceled:
+            return False
+
+        if event.transaction_id != self.transaction_id:
+            self.state = SasState.canceled
+            self.cancel_code, self.cancel_reason = self._txid_error
+            return False
+
+        if self.other_olm_device.user_id != event.sender:
+            self.state = SasState.canceled
+            self.cancel_code, self.cancel_reason = self._user_mismatch_error
+            return False
+
+        return True
+
     def receive_accept_event(self, event):
         """Receive a KeyVerificationAccept event."""
-        if (event.transaction_id != self.transaction_id
-                or self.other_olm_device.user_id != event.sender):
-            self.state = SasState.canceled
+        if not self._event_ok(event):
             return
 
         self.commitment = event.commitment
@@ -347,16 +380,21 @@ class Sas(olm.Sas):
     def receive_key_event(self, event):
         """Receive a KeyVerificationKey event."""
         if self.other_key_set:
-            raise LocalProtocolError("Other key already set")
-
-        if (self.other_olm_device.user_id != event. sender
-                or self.transaction_id != event.transaction_id):
             self.state = SasState.canceled
+            self.cancel_code, self.cancel_reason = (
+                self._unexpected_message_error
+            )
+            return
+
+        if not self._event_ok(event):
             return
 
         if self.we_started_it:
             if not self._check_commitment(event.key):
                 self.state = SasState.canceled
+                self.cancel_code, self.cancel_reason = (
+                    self._commitment_mismatch_error
+                )
                 return
 
         self.set_their_pubkey(event.key)
@@ -364,6 +402,9 @@ class Sas(olm.Sas):
 
     def receive_mac_event(self, event):
         """Receive a KeyVerificationMac event."""
+        if not self._event_ok(event):
+            return
+
         info = ("MATRIX_KEY_VERIFICATION_MAC"
                 "{first_user}{first_device}"
                 "{second_user}{second_device}{transaction_id}".format(
@@ -377,6 +418,7 @@ class Sas(olm.Sas):
 
         if event.keys != self.calculate_mac(key_ids, info + "KEY_IDS"):
             self.state = SasState.canceled
+            self.cancel_code, self.cancel_reason = self._key_mismatch_error
             return
 
         for key_id, key_mac in event.mac.items():
@@ -388,12 +430,14 @@ class Sas(olm.Sas):
 
             if key_type != "ed25519" or device_id != self.other_olm_device.id:
                 self.state = SasState.canceled
+                self.cancel_code, self.cancel_reason = self._key_mismatch_error
                 return
 
             other_fp_key = self.other_olm_device.ed25519
 
             if key_mac != self.calculate_mac(other_fp_key, info + key_id):
                 self.state = SasState.canceled
+                self.cancel_code, self.cancel_reason = self._key_mismatch_error
                 return
 
         self.state = SasState.mac_received
