@@ -215,6 +215,16 @@ class Sas(olm.Sas):
                                      " string.")
         self.sas_accepted = True
 
+    def reject_sas(self):
+        """Reject the authentication string."""
+        if not self.other_key_set:
+            raise LocalProtocolError("Other public key isn't set yet, can't "
+                                     "generate nor reject a short "
+                                     "authentication string.")
+
+        self.state = SasState.canceled
+        self.cancel_code, self.cancel_reason = self._sas_mismatch_error
+
     def cancel(self):
         """Cancel the authentication process."""
         self.state = SasState.canceled
