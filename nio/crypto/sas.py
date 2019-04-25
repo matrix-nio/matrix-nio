@@ -215,6 +215,11 @@ class Sas(olm.Sas):
                                      " string.")
         self.sas_accepted = True
 
+    def cancel(self):
+        """Cancel the authentication process."""
+        self.state = SasState.canceled
+        self.cancel_code, self.cancel_reason = self._user_cancel_error
+
     def _check_commitment(self, key):
         assert self.commitment
         calculated_commitment = olm.sha256(
@@ -373,6 +378,20 @@ class Sas(olm.Sas):
             "transaction_id": self.transaction_id,
         }
 
+    def get_cancelation(self):
+        """Create a dictionary containing our verification cancelation."""
+        if self.state != SasState.canceled:
+            raise LocalProtocolError("Sas process isn't canceled.")
+
+        assert self.cancel_code
+        assert self.cancel_reason
+
+        return {
+            "code": self.cancel_code,
+            "reason": self.cancel_reason,
+            "transaction_id": self.transaction_id,
+        }
+
     def _event_ok(self, event):
         if self.state == SasState.canceled:
             return False
@@ -446,6 +465,9 @@ class Sas(olm.Sas):
                 key_type, device_id = key_id.split(":", 2)
             except ValueError:
                 self.state = SasState.canceled
+                self.cancel_code, self.cancel_reason = (
+                    self._invalid_message_error
+                )
                 return
 
             if key_type != "ed25519" or device_id != self.other_olm_device.id:

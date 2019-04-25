@@ -276,3 +276,25 @@ class TestClass(object):
 
         bob.accept_sas_string()
         assert bob.verified
+
+    def test_sas_cancelation(self):
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys["ed25519"],
+            bob_device,
+        )
+        assert not alice.canceled
+
+        with pytest.raises(LocalProtocolError):
+            alice.get_cancelation()
+
+        alice.cancel()
+        assert alice.canceled
+
+        cancelation = alice.get_cancelation()
+        assert cancelation == {
+            "transaction_id": alice.transaction_id,
+            "code": "m.user",
+            "reason": "Canceled by user"
+        }
