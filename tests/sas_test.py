@@ -25,7 +25,8 @@ class TestClass(object):
             alicd_device,
             alice_keys["ed25519"],
             bob_id,
-            bob_device
+            bob_device,
+            bob_keys["ed25519"]
         )
 
         with pytest.raises(LocalProtocolError):
@@ -37,7 +38,8 @@ class TestClass(object):
             alicd_device,
             alice_keys["ed25519"],
             bob_id,
-            bob_device
+            bob_device,
+            bob_keys["ed25519"]
         )
         assert alice.state == SasState.created
 
@@ -53,6 +55,7 @@ class TestClass(object):
             bob_id,
             bob_device,
             bob_keys["ed25519"],
+            alice_keys["ed25519"],
             start_event
         )
 
@@ -64,7 +67,8 @@ class TestClass(object):
             alicd_device,
             alice_keys["ed25519"],
             bob_id,
-            bob_device
+            bob_device,
+            bob_keys["ed25519"]
         )
         start = {
             "sender": alice_id,
@@ -76,6 +80,7 @@ class TestClass(object):
             bob_id,
             bob_device,
             bob_keys["ed25519"],
+            alice_keys["ed25519"],
             start_event
         )
 
@@ -94,7 +99,8 @@ class TestClass(object):
             alicd_device,
             alice_keys["ed25519"],
             bob_id,
-            bob_device
+            bob_device,
+            bob_keys["ed25519"],
         )
         start = {
             "sender": alice_id,
@@ -106,6 +112,7 @@ class TestClass(object):
             bob_id,
             bob_device,
             bob_keys["ed25519"],
+            alice_keys["ed25519"],
             start_event
         )
 
@@ -143,7 +150,8 @@ class TestClass(object):
             alicd_device,
             alice_keys["ed25519"],
             bob_id,
-            bob_device
+            bob_device,
+            bob_keys["ed25519"],
         )
         start = {
             "sender": alice_id,
@@ -155,6 +163,7 @@ class TestClass(object):
             bob_id,
             bob_device,
             bob_keys["ed25519"],
+            alice_keys["ed25519"],
             start_event
         )
 
@@ -169,7 +178,8 @@ class TestClass(object):
             alicd_device,
             alice_keys["ed25519"],
             bob_id,
-            bob_device
+            bob_device,
+            bob_keys["ed25519"],
         )
         start = {
             "sender": alice_id,
@@ -181,6 +191,7 @@ class TestClass(object):
             bob_id,
             bob_device,
             bob_keys["ed25519"],
+            alice_keys["ed25519"],
             start_event
         )
 

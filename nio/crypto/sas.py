@@ -74,6 +74,7 @@ class Sas(olm.Sas):
         own_fp_key,
         other_user,
         other_device,
+        other_fp_key,
         transaction_id=None,
         short_auth_string=None
     ):
@@ -81,10 +82,12 @@ class Sas(olm.Sas):
         self.own_device = own_device
         self.own_fp_key = own_fp_key
 
-        self.transaction_id = transaction_id or str(uuid4())
         self.other_user = other_user
-
         self.other_device = other_device
+        self.other_fp_key = other_fp_key
+
+        self.transaction_id = transaction_id or str(uuid4())
+
         self.short_auth_string = short_auth_string or ["emoji", "decimal"]
         self.state = SasState.created
         self.we_started_it = True
@@ -98,6 +101,7 @@ class Sas(olm.Sas):
         own_user,
         own_device,
         own_fp_key,
+        other_fp_key,
         event
     ):
         """Create a SAS object from a KeyVerificationStart event."""
@@ -107,6 +111,7 @@ class Sas(olm.Sas):
             own_fp_key,
             event.sender,
             event.from_device,
+            other_fp_key,
             event.transaction_id,
             event.short_authentication_string
         )
