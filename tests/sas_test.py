@@ -248,17 +248,31 @@ class TestClass(object):
             start_event
         )
 
+        with pytest.raises(LocalProtocolError):
+            alice.accept_sas_string()
+
         alice.set_their_pubkey(bob.pubkey)
         bob.set_their_pubkey(alice.pubkey)
 
         alice.state = SasState.key_received
         bob.state = SasState.key_received
 
+        with pytest.raises(LocalProtocolError):
+            alice.get_mac()
+
+        alice.accept_sas_string()
         alice_mac = {
             "sender": alice_id,
             "content": alice.get_mac()
         }
+
         mac_event = KeyVerificationMac.from_dict(alice_mac)
         assert isinstance(mac_event, KeyVerificationMac)
+        assert not bob.verified
+
         bob.receive_mac_event(mac_event)
         assert bob.state == SasState.mac_received
+        assert not bob.verified
+
+        bob.accept_sas_string()
+        assert bob.verified

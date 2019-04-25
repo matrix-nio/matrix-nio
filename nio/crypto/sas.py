@@ -202,6 +202,19 @@ class Sas(olm.Sas):
         """Is the verification request canceled."""
         return self.state == SasState.canceled
 
+    @property
+    def verified(self):
+        """Is the device verified and the request done."""
+        return self.state == SasState.mac_received and self.sas_accepted
+
+    def accept_sas_string(self):
+        """Is the device verified and the request done."""
+        if not self.other_key_set:
+            raise LocalProtocolError("Other public key isn't set yet, can't "
+                                     "generate nor accept short authentication"
+                                     " string.")
+        self.sas_accepted = True
+
     def _check_commitment(self, key):
         assert self.commitment
         calculated_commitment = olm.sha256(
@@ -332,6 +345,13 @@ class Sas(olm.Sas):
 
     def get_mac(self):
         """Create a dictionary containing our MAC."""
+        if not self.sas_accepted:
+            raise LocalProtocolError("SAS string wasn't yet accepted")
+
+        if self.state == SasState.canceled:
+            raise LocalProtocolError("SAS verification was canceled , can't "
+                                     "generate MAC.")
+
         key_id = "ed25519:{}".format(self.own_device)
 
         info = ("MATRIX_KEY_VERIFICATION_MAC"
