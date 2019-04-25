@@ -25,6 +25,9 @@ import olm
 
 from ..api import Api
 from ..exceptions import LocalProtocolError
+from ..events import KeyVerificationStart
+
+from .sessions import OlmDevice
 
 
 class SasState(Enum):
@@ -32,7 +35,8 @@ class SasState(Enum):
     started = 1
     accepted = 2
     key_received = 3
-    canceled = 4
+    mac_received = 4
+    canceled = 5
 
 
 class Sas(olm.Sas):
@@ -72,9 +76,7 @@ class Sas(olm.Sas):
         own_user,
         own_device,
         own_fp_key,
-        other_user,
-        other_device,
-        other_fp_key,
+        other_olm_device,
         transaction_id=None,
         short_auth_string=None
     ):
@@ -82,15 +84,14 @@ class Sas(olm.Sas):
         self.own_device = own_device
         self.own_fp_key = own_fp_key
 
-        self.other_user = other_user
-        self.other_device = other_device
-        self.other_fp_key = other_fp_key
+        self.other_olm_device = other_olm_device
 
         self.transaction_id = transaction_id or str(uuid4())
 
         self.short_auth_string = short_auth_string or ["emoji", "decimal"]
         self.state = SasState.created
         self.we_started_it = True
+        self.sas_accepted = False
         self.commitment = None
         self.cancel_reason = None
         super().__init__()
@@ -101,7 +102,7 @@ class Sas(olm.Sas):
         own_user,
         own_device,
         own_fp_key,
-        other_fp_key,
+        other_olm_device,
         event
     ):
         """Create a SAS object from a KeyVerificationStart event."""
@@ -109,9 +110,7 @@ class Sas(olm.Sas):
             own_user,
             own_device,
             own_fp_key,
-            event.sender,
-            event.from_device,
-            other_fp_key,
+            other_olm_device,
             event.transaction_id,
             event.short_authentication_string
         )
@@ -262,8 +261,8 @@ class Sas(olm.Sas):
                 "{second_user}{second_device}{transaction_id}".format(
                     first_user=self.own_user,
                     first_device=self.own_device,
-                    second_user=self.other_user,
-                    second_device=self.other_device,
+                    second_user=self.other_olm_device.user_id,
+                    second_device=self.other_olm_device.id,
                     transaction_id=self.transaction_id))
 
         mac = {
@@ -278,7 +277,7 @@ class Sas(olm.Sas):
 
     def receive_accept_event(self, event):
         if (event.transaction_id != self.transaction_id
-                or self.other_user != event.sender):
+                or self.other_olm_device.user_id != event.sender):
             self.state = SasState.canceled
             return
 
@@ -289,7 +288,7 @@ class Sas(olm.Sas):
         if self.other_key_set:
             raise LocalProtocolError("Other key already set")
 
-        if (self.other_user != event. sender
+        if (self.other_olm_device.user_id != event. sender
                 or self.transaction_id != event.transaction_id):
             self.state = SasState.canceled
             return
@@ -301,3 +300,39 @@ class Sas(olm.Sas):
 
         self.set_their_pubkey(event.key)
         self.state = SasState.key_received
+
+    def receive_mac_event(self, event):
+        """Receive a KeyVerificationMac event."""
+        info = ("MATRIX_KEY_VERIFICATION_MAC"
+                "{first_user}{first_device}"
+                "{second_user}{second_device}{transaction_id}".format(
+                    first_user=self.other_olm_device.user_id,
+                    first_device=self.other_olm_device.id,
+                    second_user=self.own_user,
+                    second_device=self.own_device,
+                    transaction_id=self.transaction_id))
+
+        key_ids = ",".join(sorted(event.mac.keys()))
+
+        if event.keys != self.calculate_mac(key_ids, info + "KEY_IDS"):
+            self.state = SasState.canceled
+            return
+
+        for key_id, key_mac in event.mac.items():
+            try:
+                key_type, device_id = key_id.split(":", 2)
+            except ValueError:
+                self.state = SasState.canceled
+                return
+
+            if key_type != "ed25519" or device_id != self.other_olm_device.id:
+                self.state = SasState.canceled
+                return
+
+            other_fp_key = self.other_olm_device.ed25519
+
+            if key_mac != self.calculate_mac(other_fp_key, info + key_id):
+                self.state = SasState.canceled
+                return
+
+        self.state = SasState.mac_received
