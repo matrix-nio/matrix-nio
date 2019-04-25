@@ -354,11 +354,10 @@ class Olm(object):
 
                 if not verified:
                     logger.warning(
-                        "Signature verification failed for device %s of "
-                        "user %s.",
-                        device_id,
-                        user_id
-                    )
+                        "Signature verification failed for device {} of "
+                        "user {}.".format(
+                            device_id,
+                            user_id))
                     continue
 
                 user_devices = self.device_store[user_id]
