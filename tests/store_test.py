@@ -307,27 +307,6 @@ class TestClass(object):
         assert TEST_ROOM in encrypted_rooms
 
     @ephemeral
-    def test_encrypted_room_delete(self):
-        self._create_ephemeral_account()
-        store = self.ephemeral_store
-        encrypted_rooms = store.load_encrypted_rooms()
-
-        assert not encrypted_rooms
-
-        store.save_encrypted_rooms([TEST_ROOM, TEST_ROOM_2])
-
-        store = self.ephemeral_store
-        encrypted_rooms = store.load_encrypted_rooms()
-        assert TEST_ROOM in encrypted_rooms
-        assert TEST_ROOM_2 in encrypted_rooms
-
-        store.delete_encrypted_room(TEST_ROOM_2)
-        store = self.ephemeral_store
-        encrypted_rooms = store.load_encrypted_rooms()
-        assert TEST_ROOM in encrypted_rooms
-        assert TEST_ROOM_2 not in encrypted_rooms
-
-    @ephemeral
     def test_key_request_saving(self):
         self._create_ephemeral_account()
         store = self.ephemeral_store
@@ -445,9 +424,27 @@ class TestClass(object):
 
         store.save_encrypted_rooms([TEST_ROOM])
 
-        store2 =  self.copy_store(store)
+        store2 = self.copy_store(store)
         encrypted_rooms = store2.load_encrypted_rooms()
         assert TEST_ROOM in encrypted_rooms
+
+    def test_new_encrypted_room_delete(self, store):
+        encrypted_rooms = store.load_encrypted_rooms()
+
+        assert not encrypted_rooms
+
+        store.save_encrypted_rooms([TEST_ROOM, TEST_ROOM_2])
+
+        store2 = self.copy_store(store)
+        encrypted_rooms = store2.load_encrypted_rooms()
+        assert TEST_ROOM in encrypted_rooms
+        assert TEST_ROOM_2 in encrypted_rooms
+
+        store.delete_encrypted_room(TEST_ROOM_2)
+        store3 = self.copy_store(store2)
+        encrypted_rooms = store3.load_encrypted_rooms()
+        assert TEST_ROOM in encrypted_rooms
+        assert TEST_ROOM_2 not in encrypted_rooms
 
     def test_new_key_request_saving(self, store):
         key_requests = store.load_outgoing_key_requests()
