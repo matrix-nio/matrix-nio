@@ -249,7 +249,7 @@ class TestClass(object):
         )
 
         with pytest.raises(LocalProtocolError):
-            alice.accept_sas_string()
+            alice.accept_sas()
 
         alice.set_their_pubkey(bob.pubkey)
         bob.set_their_pubkey(alice.pubkey)
@@ -260,7 +260,7 @@ class TestClass(object):
         with pytest.raises(LocalProtocolError):
             alice.get_mac()
 
-        alice.accept_sas_string()
+        alice.accept_sas()
         alice_mac = {
             "sender": alice_id,
             "content": alice.get_mac()
@@ -274,7 +274,7 @@ class TestClass(object):
         assert bob.state == SasState.mac_received
         assert not bob.verified
 
-        bob.accept_sas_string()
+        bob.accept_sas()
         assert bob.verified
 
     def test_sas_cancelation(self):

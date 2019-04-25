@@ -207,12 +207,12 @@ class Sas(olm.Sas):
         """Is the device verified and the request done."""
         return self.state == SasState.mac_received and self.sas_accepted
 
-    def accept_sas_string(self):
-        """Is the device verified and the request done."""
+    def accept_sas(self):
+        """Accept the short authentication string."""
         if not self.other_key_set:
             raise LocalProtocolError("Other public key isn't set yet, can't "
-                                     "generate nor accept short authentication"
-                                     " string.")
+                                     "generate nor accept a short "
+                                     "authentication string.")
         self.sas_accepted = True
 
     def reject_sas(self):
@@ -332,20 +332,20 @@ class Sas(olm.Sas):
             raise LocalProtocolError("SAS verification was canceled , can't "
                                      "accept offer.")
 
-        sas_strings = []
+        sas_methods = []
 
         if "emoji" in self.short_auth_string:
-            sas_strings.append("emoji")
+            sas_methods.append("emoji")
 
         if "decimal" in self.short_auth_string:
-            sas_strings.append("decimal")
+            sas_methods.append("decimal")
 
         content = {
             "transaction_id": self.transaction_id,
             "key_agreement_protocol": self._key_agreement_v1,
             "hash": self._hash_v1,
             "message_authentication_code": self._mac_v1,
-            "short_authentication_string": sas_strings,
+            "short_authentication_string": sas_methods,
             "commitment": self.commitment,
         }
 
