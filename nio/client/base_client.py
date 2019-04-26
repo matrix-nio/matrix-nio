@@ -60,7 +60,8 @@ from ..events import (
     RoomEncryptedEvent,
     MegolmEvent,
     RoomEncryptionEvent,
-    ToDeviceEvent
+    ToDeviceEvent,
+    KeyVerificationEvent
 )
 from ..rooms import MatrixInvitedRoom, MatrixRoom
 from ..store import MatrixStore, DefaultStore
@@ -456,6 +457,10 @@ class Client(object):
                     if event:
                         decrypted_to_device.append((index, event))
                         to_device_event = event
+
+            elif isinstance(to_device_event, KeyVerificationEvent):
+                if self.olm:
+                    self.olm.handle_key_verification(to_device_event)
 
             for cb in self.to_device_callbacks:
                 if (cb.filter is None
