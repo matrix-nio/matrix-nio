@@ -1220,6 +1220,14 @@ class Schemas(object):
         "required": ["displayname"]
     }
 
+    get_avatar = {
+        "type": "object",
+        "properties": {
+            "avatar_url": {"type": "string"},
+        },
+        "required": ["avatar_url"]
+    }
+
     key_verification_start = {
         "type": "object",
         "properties": {

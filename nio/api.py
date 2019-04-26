@@ -864,6 +864,48 @@ class Api(object):
         )
 
     @staticmethod
+    def profile_get_avatar(access_token, user_id):
+        # type (str, str) -> Tuple[str, str, str]
+        """Get avatar URL.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            user_id (str): User id to get avatar for.
+        """
+        query_parameters = {"access_token": access_token}
+        path = "profile/{user}/avatar_url".format(user=user_id)
+
+        return (
+            "GET",
+            Api._build_path(path, query_parameters),
+            ""
+        )
+
+    @staticmethod
+    def profile_set_avatar(access_token, user_id, avatar_url):
+        # type (str, str, str) -> Tuple[str, str, str]
+        """Set avatar url.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            user_id (str): User id to set display name for.
+            avatar_url (str): matrix content URI of the avatar to set.
+        """
+        query_parameters = {"access_token": access_token}
+        content = {"avatar_url": avatar_url}
+        path = "profile/{user}/avatar_url".format(user=user_id)
+
+        return (
+            "PUT",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content)
+        )
+
+    @staticmethod
     def whoami(access_token):
         # type (str) -> Tuple[str, str]
         """Get information about the owner of a given access token.

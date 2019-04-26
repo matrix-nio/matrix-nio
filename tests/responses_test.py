@@ -9,6 +9,7 @@ from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
                            JoinedMembersResponse, KeysClaimResponse,
                            KeysQueryResponse, KeysUploadResponse, LoginError,
                            LoginResponse, PartialSyncResponse,
+                           ProfileGetAvatarResponse,
                            ProfileGetDisplayNameResponse, RoomKeyRequestError,
                            RoomKeyRequestResponse, RoomMessagesResponse,
                            SyncError, SyncResponse, ToDeviceError,
@@ -164,6 +165,12 @@ class TestClass(object):
             "tests/data/get_displayname_response.json")
         response = ProfileGetDisplayNameResponse.from_dict(parsed_dict)
         assert isinstance(response, ProfileGetDisplayNameResponse)
+
+    def test_get_avatar(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/get_avatar_response.json")
+        response = ProfileGetAvatarResponse.from_dict(parsed_dict)
+        assert isinstance(response, ProfileGetAvatarResponse)
 
     def test_to_device(self):
         message = "message"

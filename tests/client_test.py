@@ -324,7 +324,6 @@ class TestClass(object):
         assert room.encrypted
         assert client.should_query_keys
 
-
     def test_device_store(self, tempdir):
         client = Client("ephemeral", "DEVICEID", tempdir)
         client.receive_response(self.login_response)
