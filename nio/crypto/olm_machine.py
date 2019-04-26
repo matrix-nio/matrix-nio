@@ -63,6 +63,7 @@ from . import (
     logger,
 )
 
+from .sas import Sas
 from .key_export import encrypt_and_save, decrypt_and_read
 from .sessions import OutgoingKeyRequest
 from ..store import MatrixStore
@@ -84,7 +85,13 @@ from ..events import (
     ForwardedRoomKeyEvent,
     BadEvent,
     UnknownBadEvent,
-    validate_or_badevent
+    validate_or_badevent,
+    KeyVerificationEvent,
+    KeyVerificationStart,
+    KeyVerificationAccept,
+    KeyVerificationCancel,
+    KeyVerificationKey,
+    KeyVerificationMac
 )
 from ..api import Api
 
@@ -131,6 +138,9 @@ class Olm(object):
             # type: Dict[str, OutgoingKeyRequest]
         self.key_request_cancelations = dict()  \
             # type: Dict[str, OutgoingKeyRequest]
+
+        self.key_verifications = dict()  # type: Dict[str, Sas]
+        self.outgoing_to_device_events = []  # type: List[ToDeviceMessage]
 
         self.store = store
 
@@ -1306,3 +1316,111 @@ class Olm(object):
         logger.info(
             "Successfully imported encryption keys from {}".format(infile)
         )
+
+    def clear_canceled_verifications(self):
+        """Remove canceled key verifications from our cache.
+
+        Returns a list of events that need to be added to the to-device event
+        stream of our caller.
+
+        """
+        acitve_sas = dict()
+        events = []
+
+        for transaction_id, sas in self.key_verifications.items():
+            if sas.timed_out:
+                message = sas.get_cancelation()
+                self.outgoing_to_device_events.append(message)
+                cancel_event = {
+                    "sender": self.user_id,
+                    "content": message.content
+                }
+                events.append(KeyVerificationCancel.from_dict(cancel_event))
+                continue
+            elif sas.canceled:
+                continue
+            else:
+                acitve_sas[transaction_id] = sas
+
+        self.key_verifications = acitve_sas
+
+        return events
+
+    def handle_key_verification(self, event):
+        # type: (KeyVerificationEvent) -> None
+        """Receive key verification events."""
+        if isinstance(event, KeyVerificationStart):
+            logger.info("Received key verification start event from "
+                        "{} {}".format(event.sender, event.from_device))
+            try:
+                device = self.device_store[event.sender][event.from_device]
+            except KeyError:
+                logger.warn("Received key verification event from unknown "
+                            "device: {} {}".format(
+                                event.sender,
+                                event.from_device
+                            ))
+                self.users_for_key_query.add(event.sender)
+                return
+
+            sas = Sas.from_key_verification_start(
+                self.user_id,
+                self.device_id,
+                self.account.identity_keys["ed25519"],
+                device,
+                event
+            )
+
+            # TODO set cancelation events to send out things
+            if sas.canceled:
+                logger.warn("Received malformed key verification event from "
+                            "{} {}".format(
+                                event.sender,
+                                event.from_device
+                            ))
+                return
+
+            else:
+                logger.info("Sucesfully started key verification with"
+                            "{} {}".format(event.sender, event.from_device))
+                self.key_verifications[event.transaction_id] = sas
+
+        elif isinstance(event, KeyVerificationAccept):
+            sas = self.key_verifications.get(event.transaction_id, None)
+
+            if not sas:
+                return
+
+            sas.receive_accept_event(event)
+
+            if sas.canceled:
+                message = sas.get_cancelation()
+            else:
+                message = sas.share_keys()
+
+            self.outgoing_to_device_events.append(message)
+
+        elif isinstance(event, KeyVerificationCancel):
+            self.key_verifications.pop(event.transaction_id, None)
+
+        elif isinstance(event, KeyVerificationKey):
+            sas = self.key_verifications.get(event.transaction_id, None)
+
+            if not sas:
+                return
+
+            sas.receive_key_event(event)
+            if sas.canceled:
+                message = sas.get_cancelation()
+                self.outgoing_to_device_events.append(message)
+
+        elif isinstance(event, KeyVerificationMac):
+            sas = self.key_verifications.get(event.transaction_id, None)
+
+            if not sas:
+                return
+
+            sas.receive_mac_event(event)
+            if sas.canceled:
+                message = sas.get_cancelation()
+                self.outgoing_to_device_events.append(message)

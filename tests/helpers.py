@@ -67,6 +67,7 @@ faker.add_provider(Provider)
 
 ephemeral_dir = os.path.join(os.curdir, "tests/data/encryption")
 
+
 def ephemeral(func):
     def wrapper(*args, **kwargs):
         try:

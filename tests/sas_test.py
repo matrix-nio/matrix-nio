@@ -16,8 +16,8 @@ alice_id = faker.mx_id()
 alice_device_id = faker.device_id()
 alice_keys = faker.olm_key_pair()
 
-bob_id = faker.mx_id()
-bob_device_id = faker.device_id()
+bob_id = "@bob:example.org"
+bob_device_id = "JLAFKJWSRS"
 bob_keys = faker.olm_key_pair()
 
 alice_device = OlmDevice(
@@ -449,3 +449,24 @@ class TestClass(object):
         bob.receive_mac_event(mac_event)
         assert bob.canceled
         assert not bob.verified
+
+    def test_client_mac(self, olm_machine):
+        bob_sas = Sas(
+            bob_id,
+            bob_device_id,
+            olm_machine.account.identity_keys["ed25519"],
+            bob_device
+        )
+
+        start = {
+            "sender": bob_id,
+            "content": bob_sas.start_verification().content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+
+        assert olm_machine.device_store[bob_id][bob_device_id]
+        olm_machine.handle_key_verification(start_event)
+
+        alice_sas = olm_machine.key_verifications[start_event.transaction_id]
+
+        assert alice_sas
