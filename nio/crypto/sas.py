@@ -35,7 +35,7 @@ from .sessions import OlmDevice
 
 
 @attr.s
-class ToDeviceMessage:
+class ToDeviceMessage(object):
     """A to-device message that should be sent out.
 
     Attributes:
