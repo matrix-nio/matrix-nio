@@ -282,7 +282,7 @@ class Sas(olm.Sas):
         """
         return self.generate_decimals(self._extra_info)
 
-    def generate_emoji(self, extra_info):
+    def _generate_emoji(self, extra_info):
         """Create a list of emojies from our shared secret."""
         generated_bytes = self.generate_bytes(extra_info, 6)
         number = "".join([format(x, "08b") for x in bytes(generated_bytes)])
@@ -291,7 +291,7 @@ class Sas(olm.Sas):
             map("".join, list(self._grouper(number[:42], 6)))
         ]
 
-    def generate_decimals(self, extra_info):
+    def _generate_decimals(self, extra_info):
         """Create a decimal number from our shared secret."""
         generated_bytes = self.generate_bytes(extra_info, 5)
         number = "".join([format(x, "08b") for x in bytes(generated_bytes)])
