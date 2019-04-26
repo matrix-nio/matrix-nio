@@ -168,8 +168,8 @@ class Sas(olm.Sas):
         self.we_started_it = True
         self.sas_accepted = False
         self.commitment = None
-        self.cancel_reason = None
-        self.cancel_code = None
+        self.cancel_reason = ""
+        self.cancel_code = ""
 
         self._creation_time = datetime.now()
         self._last_event_time = self._creation_time
