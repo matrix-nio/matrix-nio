@@ -63,7 +63,7 @@ from . import (
     logger,
 )
 
-from .sas import Sas
+from .sas import Sas, ToDeviceMessage
 from .key_export import encrypt_and_save, decrypt_and_read
 from .sessions import OutgoingKeyRequest
 from ..store import MatrixStore
