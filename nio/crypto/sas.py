@@ -239,8 +239,6 @@ class Sas(olm.Sas):
             return True
         return False
 
-        pass
-
     @property
     def verified(self):
         """Is the device verified and the request done."""
