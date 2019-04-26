@@ -23,7 +23,7 @@ from enum import Enum
 from builtins import super, bytes
 from future.moves.itertools import zip_longest
 from uuid import uuid4
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Dict
 
 import olm
 
@@ -32,6 +32,23 @@ from ..exceptions import LocalProtocolError
 from ..events import KeyVerificationStart
 
 from .sessions import OlmDevice
+
+
+@attr.s
+class ToDeviceMessage:
+    """A to-device message that should be sent out.
+
+    Attributes:
+        recepient (str): The user to whom we should sent this message.
+        recepient_device (str): The device id of the device that the message
+            should be sent to.
+        content (Dict[Any, Any]): The content that should be sent to the user.
+
+    """
+
+    recepient = attr.ib(type=str)
+    recepient_device = attr.ib(type=str)
+    content = attr.ib(type=Dict)
 
 
 class SasState(Enum):
@@ -255,7 +272,7 @@ class Sas(olm.Sas):
     def _check_commitment(self, key):
         assert self.commitment
         calculated_commitment = olm.sha256(
-            key + Api.to_canonical_json(self.start_verification())
+            key + Api.to_canonical_json(self.start_verification().content)
         )
         return self.commitment == calculated_commitment
 
@@ -294,7 +311,7 @@ class Sas(olm.Sas):
         Returns a list of tuples that contain the emoji and the description of
         the emoji of the short authentication string.
         """
-        return self.generate_emoji(self._extra_info)
+        return self._generate_emoji(self._extra_info)
 
     def get_decimals(self):
         """Get the decimal short authentication string.
@@ -302,7 +319,7 @@ class Sas(olm.Sas):
         Returns a tuple that contains three 4 digit integer numbers that
         represent the short authentication string.
         """
-        return self.generate_decimals(self._extra_info)
+        return self._generate_decimals(self._extra_info)
 
     def _generate_emoji(self, extra_info):
         """Create a list of emojies from our shared secret."""
@@ -323,6 +340,7 @@ class Sas(olm.Sas):
         )
 
     def start_verification(self):
+        # type: () -> ToDeviceMessage
         """Create a content dictionary to start the verification."""
         if not self.we_started_it:
             raise LocalProtocolError("Verification was not started by us, "
@@ -342,7 +360,13 @@ class Sas(olm.Sas):
             "short_authentication_string": ["decimal", "emoji"],
         }
 
-        return content
+        message = ToDeviceMessage(
+            self.other_olm_device.user_id,
+            self.other_olm_device.id,
+            content
+        )
+
+        return message
 
     def accept_verification(self):
         """Create a content dictionary to accept the verification offer."""
@@ -371,7 +395,13 @@ class Sas(olm.Sas):
             "commitment": self.commitment,
         }
 
-        return content
+        message = ToDeviceMessage(
+            self.other_olm_device.user_id,
+            self.other_olm_device.id,
+            content
+        )
+
+        return message
 
     def share_key(self):
         """Create a dictionary containing our public key."""
@@ -379,10 +409,18 @@ class Sas(olm.Sas):
             raise LocalProtocolError("SAS verification was canceled , can't "
                                      "share our public key.")
 
-        return {
+        content = {
             "transaction_id": self.transaction_id,
             "key": self.pubkey
         }
+
+        message = ToDeviceMessage(
+            self.other_olm_device.user_id,
+            self.other_olm_device.id,
+            content
+        )
+
+        return message
 
     def get_mac(self):
         """Create a dictionary containing our MAC."""
@@ -408,11 +446,19 @@ class Sas(olm.Sas):
             key_id: self.calculate_mac(self.own_fp_key, info + key_id)
         }
 
-        return {
+        content = {
             "mac": mac,
             "keys": self.calculate_mac(key_id, info + "KEY_IDS"),
             "transaction_id": self.transaction_id,
         }
+
+        message = ToDeviceMessage(
+            self.other_olm_device.user_id,
+            self.other_olm_device.id,
+            content
+        )
+
+        return message
 
     def get_cancelation(self):
         """Create a dictionary containing our verification cancelation."""
@@ -422,11 +468,19 @@ class Sas(olm.Sas):
         assert self.cancel_code
         assert self.cancel_reason
 
-        return {
+        content = {
             "code": self.cancel_code,
             "reason": self.cancel_reason,
             "transaction_id": self.transaction_id,
         }
+
+        message = ToDeviceMessage(
+            self.other_olm_device.user_id,
+            self.other_olm_device.id,
+            content
+        )
+
+        return message
 
     def _event_ok(self, event):
         if self.state == SasState.canceled:

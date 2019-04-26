@@ -58,7 +58,7 @@ class TestClass(object):
 
         start = {
             "sender": alice_id,
-            "content": alice.start_verification()
+            "content": alice.start_verification().content
         }
 
         start_event = KeyVerificationStart.from_dict(start)
@@ -86,7 +86,7 @@ class TestClass(object):
         )
         start = {
             "sender": alice_id,
-            "content": alice.start_verification()
+            "content": alice.start_verification().content
         }
         start_event = KeyVerificationStart.from_dict(start)
 
@@ -100,7 +100,7 @@ class TestClass(object):
 
         accept = {
             "sender": bob_id,
-            "content": bob.accept_verification()
+            "content": bob.accept_verification().content
         }
         accept_event = KeyVerificationAccept.from_dict(accept)
         assert isinstance(accept_event, KeyVerificationAccept)
@@ -116,7 +116,7 @@ class TestClass(object):
         )
         start = {
             "sender": alice_id,
-            "content": alice.start_verification()
+            "content": alice.start_verification().content
         }
         start_event = KeyVerificationStart.from_dict(start)
 
@@ -130,14 +130,14 @@ class TestClass(object):
 
         accept = {
             "sender": bob_id,
-            "content": bob.accept_verification()
+            "content": bob.accept_verification().content
         }
         accept_event = KeyVerificationAccept.from_dict(accept)
         alice.receive_accept_event(accept_event)
 
         alice_key = {
             "sender": alice_id,
-            "content": alice.share_key()
+            "content": alice.share_key().content
         }
 
         key_event = KeyVerificationKey.from_dict(alice_key)
@@ -147,7 +147,7 @@ class TestClass(object):
 
         bob_key = {
             "sender": bob_id,
-            "content": bob.share_key()
+            "content": bob.share_key().content
         }
 
         key_event = KeyVerificationKey.from_dict(bob_key)
@@ -165,7 +165,7 @@ class TestClass(object):
         )
         start = {
             "sender": alice_id,
-            "content": alice.start_verification()
+            "content": alice.start_verification().content
         }
         start_event = KeyVerificationStart.from_dict(start)
 
@@ -191,7 +191,7 @@ class TestClass(object):
         )
         start = {
             "sender": alice_id,
-            "content": alice.start_verification()
+            "content": alice.start_verification().content
         }
         start_event = KeyVerificationStart.from_dict(start)
 
@@ -205,14 +205,14 @@ class TestClass(object):
 
         accept = {
             "sender": bob_id,
-            "content": bob.accept_verification()
+            "content": bob.accept_verification().content
         }
         accept_event = KeyVerificationAccept.from_dict(accept)
         alice.receive_accept_event(accept_event)
 
         alice_key = {
             "sender": alice_id,
-            "content": alice.share_key()
+            "content": alice.share_key().content
         }
 
         key_event = KeyVerificationKey.from_dict(alice_key)
@@ -222,11 +222,10 @@ class TestClass(object):
 
         bob_key = {
             "sender": bob_id,
-            "content": bob.share_key()
+            "content": bob.share_key().content
         }
 
         bob_key["content"]["key"] = alice.pubkey
-
         key_event = KeyVerificationKey.from_dict(bob_key)
         assert isinstance(key_event, KeyVerificationKey)
         alice.receive_key_event(key_event)
@@ -241,7 +240,7 @@ class TestClass(object):
         )
         start = {
             "sender": alice_id,
-            "content": alice.start_verification()
+            "content": alice.start_verification().content
         }
         start_event = KeyVerificationStart.from_dict(start)
 
@@ -268,7 +267,7 @@ class TestClass(object):
         alice.accept_sas()
         alice_mac = {
             "sender": alice_id,
-            "content": alice.get_mac()
+            "content": alice.get_mac().content
         }
 
         mac_event = KeyVerificationMac.from_dict(alice_mac)
@@ -300,7 +299,7 @@ class TestClass(object):
         with pytest.raises(LocalProtocolError):
             alice.start_verification()
 
-        cancelation = alice.get_cancelation()
+        cancelation = alice.get_cancelation().content
         assert cancelation == {
             "transaction_id": alice.transaction_id,
             "code": "m.user",
@@ -317,7 +316,7 @@ class TestClass(object):
 
         start = {
             "sender": alice_id,
-            "content": alice.start_verification()
+            "content": alice.start_verification().content
         }
         start_event = KeyVerificationStart.from_dict(start)
         start_event.method = "m.sas.v0"
@@ -342,7 +341,7 @@ class TestClass(object):
 
         start = {
             "sender": alice_id,
-            "content": alice.start_verification()
+            "content": alice.start_verification().content
         }
         start_event = KeyVerificationStart.from_dict(start)
 
@@ -407,7 +406,7 @@ class TestClass(object):
         )
         start = {
             "sender": alice_id,
-            "content": alice.start_verification()
+            "content": alice.start_verification().content
         }
         start_event = KeyVerificationStart.from_dict(start)
 
@@ -431,7 +430,7 @@ class TestClass(object):
         alice.accept_sas()
         alice_mac = {
             "sender": alice_id,
-            "content": alice.get_mac()
+            "content": alice.get_mac().content
         }
 
         mac_event = KeyVerificationMac.from_dict(alice_mac)
