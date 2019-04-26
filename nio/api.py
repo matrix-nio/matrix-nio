@@ -424,11 +424,32 @@ class Api(object):
 
         Args:
             access_token (str): The access token to be used with the request.
-            room_id (str): The room id of the room that will left.
+            room_id (str): The room id of the room that will be left.
         """
         query_parameters = {"access_token": access_token}
         body = {}
         path = "rooms/{room}/leave".format(room=room_id)
+
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body)
+        )
+
+    @staticmethod
+    def room_forget(access_token, room_id):
+        # type (str, str) -> Tuple[str, str, str]
+        """Forget a room.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room id of the room that will be forgotten.
+        """
+        query_parameters = {"access_token": access_token}
+        body = {}
+        path = "rooms/{room}/forget".format(room=room_id)
 
         return (
             "POST",

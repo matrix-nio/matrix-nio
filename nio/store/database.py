@@ -838,6 +838,14 @@ class MatrixStore(object):
                 EncryptedRooms.account
             ]).on_conflict_ignore().execute()
 
+    @use_database
+    def delete_encrypted_room(self, room):
+        # type: (str) -> None
+        """Delete the room id for this account."""
+        db_room = EncryptedRooms.get_or_none(EncryptedRooms.room_id == room)
+        if db_room:
+            db_room.delete_instance()
+
     def blacklist_device(self, device):
         # type: (OlmDevice) -> bool
         raise NotImplementedError

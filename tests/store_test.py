@@ -34,6 +34,7 @@ BOB_CURVE = "T9tOKF+TShsn6mk1zisW2IBsBbTtzDNvw99RBFMJOgI"
 BOB_ONETIME = "6QlQw3mGUveS735k/JDaviuoaih5eEi6S1J65iHjfgU"
 
 TEST_ROOM = "!test:example.org"
+TEST_ROOM_2 = "!test2:example.org"
 TEST_FORWARDING_CHAIN = [BOB_CURVE, BOB_ONETIME]
 
 
@@ -423,9 +424,27 @@ class TestClass(object):
 
         store.save_encrypted_rooms([TEST_ROOM])
 
-        store2 =  self.copy_store(store)
+        store2 = self.copy_store(store)
         encrypted_rooms = store2.load_encrypted_rooms()
         assert TEST_ROOM in encrypted_rooms
+
+    def test_new_encrypted_room_delete(self, store):
+        encrypted_rooms = store.load_encrypted_rooms()
+
+        assert not encrypted_rooms
+
+        store.save_encrypted_rooms([TEST_ROOM, TEST_ROOM_2])
+
+        store2 = self.copy_store(store)
+        encrypted_rooms = store2.load_encrypted_rooms()
+        assert TEST_ROOM in encrypted_rooms
+        assert TEST_ROOM_2 in encrypted_rooms
+
+        store.delete_encrypted_room(TEST_ROOM_2)
+        store3 = self.copy_store(store2)
+        encrypted_rooms = store3.load_encrypted_rooms()
+        assert TEST_ROOM in encrypted_rooms
+        assert TEST_ROOM_2 not in encrypted_rooms
 
     def test_new_key_request_saving(self, store):
         key_requests = store.load_outgoing_key_requests()
