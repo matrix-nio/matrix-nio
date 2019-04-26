@@ -7,10 +7,12 @@ from helpers import FrameFactory, ephemeral, ephemeral_dir, faker
 from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
                  HttpClient, JoinedMembersResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginResponse,
-                 MegolmEvent, RoomEncryptionEvent, RoomForgetResponse,
-                 RoomInfo, RoomKeyRequestResponse, RoomMember, RoomMemberEvent,
-                 Rooms, RoomSummary, ShareGroupSessionResponse, SyncResponse,
-                 Timeline, TransportType, TypingNoticeEvent)
+                 MegolmEvent, ProfileGetAvatarResponse,
+                 ProfileSetAvatarResponse, RoomEncryptionEvent,
+                 RoomForgetResponse, RoomInfo, RoomKeyRequestResponse,
+                 RoomMember, RoomMemberEvent, Rooms, RoomSummary,
+                 ShareGroupSessionResponse, SyncResponse, Timeline,
+                 TransportType, TypingNoticeEvent)
 from nio.messages import ToDeviceMessage
 
 HOST = "example.org"
@@ -92,6 +94,23 @@ class TestClass(object):
         )
 
         body = b"{}"
+
+        data = frame_factory.build_data_frame(
+            data=body,
+            stream_id=stream_id,
+            flags=['END_STREAM']
+        )
+
+        return f.serialize() + data.serialize()
+
+    def get_avatar_byte_response(self, avatar_url, stream_id=5):
+        frame_factory = FrameFactory()
+
+        f = frame_factory.build_headers_frame(
+            headers=self.example_response_headers, stream_id=stream_id
+        )
+
+        body = json.dumps({"avatar_url": avatar_url}).encode("utf-8")
 
         data = frame_factory.build_data_frame(
             data=body,
@@ -454,7 +473,7 @@ class TestClass(object):
         assert client.store
         assert client.olm
 
-    def test_makring_sessions_as_shared(self, client):
+    def test_marking_sessions_as_shared(self, client):
         client.receive_response(self.login_response)
         client.receive_response(self.sync_response)
         client.receive_response(self.joined_members)
@@ -571,7 +590,6 @@ class TestClass(object):
         assert isinstance(response, RoomKeyRequestResponse)
         assert "test_session_id" in http_client.outgoing_key_requests
 
-
     def test_http_client_room_forget(self, http_client):
         http_client.connect(TransportType.HTTP2)
 
@@ -601,6 +619,48 @@ class TestClass(object):
         assert isinstance(response, RoomForgetResponse)
         assert room_id not in http_client.rooms
 
+    def test_http_client_get_set_avatar(self, http_client):
+        http_client.connect(TransportType.HTTP2)
+
+        _, _ = http_client.login("1234")
+
+        http_client.receive(self.login_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, LoginResponse)
+        assert http_client.access_token == "ABCD"
+
+        _, _ = http_client.sync()
+
+        http_client.receive(self.sync_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, SyncResponse)
+        assert http_client.access_token == "ABCD"
+
+        _, _ = http_client.get_avatar()
+
+        http_client.receive(self.get_avatar_byte_response(None, 5))
+        response = http_client.next_response()
+
+        assert isinstance(response, ProfileGetAvatarResponse)
+        assert not response.avatar_url
+
+        new_avatar = faker.avatar_url().replace("#auto", "")
+        _, _ = http_client.set_avatar(new_avatar)
+
+        http_client.receive(self.empty_response(7))
+        response = http_client.next_response()
+
+        assert isinstance(response, ProfileSetAvatarResponse)
+
+        _, _ = http_client.get_avatar()
+
+        http_client.receive(self.get_avatar_byte_response(new_avatar, 9))
+        response = http_client.next_response()
+
+        assert isinstance(response, ProfileGetAvatarResponse)
+        assert response.avatar_url.replace("#auto", "") == new_avatar
 
     def test_event_callback(self, client):
         client.receive_response(self.login_response)
