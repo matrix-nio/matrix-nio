@@ -16,6 +16,9 @@
 
 from __future__ import unicode_literals
 
+import attr
+
+from datetime import datetime, timedelta
 from enum import Enum
 from builtins import super, bytes
 from future.moves.itertools import zip_longest
@@ -97,6 +100,9 @@ class Sas(olm.Sas):
         "Mismatched short authentication string"
     )
 
+    _max_age = timedelta(minutes=5)
+    _max_event_timeout = timedelta(minutes=1)
+
     emoji = [
         ("🐶", "Dog"), ("🐱", "Cat"), ("🦁", "Lion"),
         ("🐎", "Horse"), ("🦄", "Unicorn"), ("🐷", "Pig"),
@@ -147,6 +153,9 @@ class Sas(olm.Sas):
         self.commitment = None
         self.cancel_reason = None
         self.cancel_code = None
+
+        self._creation_time = datetime.now()
+        self._last_event_time = self._creation_time
         super().__init__()
 
     @classmethod
@@ -201,6 +210,19 @@ class Sas(olm.Sas):
     def canceled(self):
         """Is the verification request canceled."""
         return self.state == SasState.canceled
+
+    @property
+    def timed_out(self):
+        """Did the verification process time out."""
+        now = datetime.now()
+        if (now - self._creation_time >= self._max_age
+                or now - self._last_event_time >= self._max_event_timeout):
+            self.state = SasState.canceled
+            self.cancel_code, self.cancel_reason = self._timeout_error
+            return True
+        return False
+
+        pass
 
     @property
     def verified(self):

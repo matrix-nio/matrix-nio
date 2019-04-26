@@ -1,5 +1,7 @@
 import pytest
 
+import json
+from datetime import datetime, timedelta
 from nio.crypto import Sas, SasState, OlmDevice
 from nio.exceptions import LocalProtocolError
 from nio.events import (
@@ -362,6 +364,38 @@ class TestClass(object):
 
         alice.reject_sas()
 
+        assert alice.canceled
+
+    def test_sas_timeout(self):
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys["ed25519"],
+            bob_device,
+        )
+
+        assert not alice.timed_out
+
+        minute = timedelta(minutes=1)
+        alice._creation_time -= minute
+
+        assert not alice.timed_out
+        alice._creation_time -= (minute * 4)
+        assert alice.timed_out
+        assert alice.canceled
+
+    def test_sas_event_timeout(self):
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys["ed25519"],
+            bob_device,
+        )
+        minute = timedelta(minutes=1)
+
+        assert not alice.timed_out
+        alice._last_event_time -= minute
+        assert alice.timed_out
         assert alice.canceled
 
     def test_sas_invalid_mac(self):
