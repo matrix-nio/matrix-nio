@@ -17,7 +17,7 @@ class TestClass(object):
 
     @property
     def new_user(self):
-        return faker.mx_id(), faker.name()
+        return faker.mx_id(), faker.name(), faker.avatar_url()
 
     @property
     def test_room(self):
@@ -30,10 +30,15 @@ class TestClass(object):
     def test_adding_members(self):
         room = self.test_room
         assert not room.users
-        room.add_member(*self.new_user)
+        mx_id, name, avatar = self.new_user
+        room.add_member(mx_id, name, avatar)
         assert room.users
         assert room.members_synced
         assert room.member_count == 1
+        member = list(room.users.values())[0]
+        assert member.user_id == mx_id
+        assert member.display_name == name
+        assert member.avatar_url == avatar
 
     def test_named_checks(self):
         room = self.test_room
@@ -52,16 +57,16 @@ class TestClass(object):
 
     def test_name_calculation_when_unnamed_with_members(self):
         room = self.test_room
-        room.add_member("@alice:example.org", "Alice")
+        room.add_member("@alice:example.org", "Alice", None)
         assert room.display_name == "Alice"
 
-        room.add_member(BOB_ID, "Bob")
+        room.add_member(BOB_ID, "Bob", None)
         assert room.display_name == "Alice"
 
-        room.add_member("@malory:example.org", "Alice")
+        room.add_member("@malory:example.org", "Alice", None)
         assert (room.display_name ==
                 "Alice (@alice:example.org) and Alice (@malory:example.org)")
-        room.add_member("@steve:example.org", "Steve")
+        room.add_member("@steve:example.org", "Steve", None)
         assert (room.display_name ==
                 "Alice (@alice:example.org) and 2 others")
 
@@ -102,14 +107,14 @@ class TestClass(object):
     def test_user_name_calculation(self):
         room = self.test_room
 
-        room.add_member("@alice:example.org", "Alice")
+        room.add_member("@alice:example.org", "Alice", None)
         assert room.user_name("@alice:example.org") == "Alice"
         assert room.user_name_clashes("Alice") == ["@alice:example.org"]
 
-        room.add_member("@bob:example.org", None)
+        room.add_member("@bob:example.org", None, None)
         assert room.user_name("@bob:example.org") == "@bob:example.org"
 
-        room.add_member("@malory:example.org", "Alice")
+        room.add_member("@malory:example.org", "Alice", None)
         assert room.user_name("@alice:example.org") == "Alice (@alice:example.org)"
         assert room.user_name("@malory:example.org") == "Alice (@malory:example.org)"
         assert room.user_name_clashes("Alice") == ["@alice:example.org", "@malory:example.org"]
@@ -118,11 +123,11 @@ class TestClass(object):
         assert room.user_name("@malory:example.org") == "Alice"
 
         room.remove_member("@malory:example.org")
-        room.add_member("@alice:example.org", None)
+        room.add_member("@alice:example.org", None, None)
         assert room.user_name("@alice:example.org") == "@alice:example.org"
         assert room.user_name_clashes("@alice:example.org") == ["@alice:example.org"]
 
-        room.add_member("@malory:example.org", "@alice:example.org")
+        room.add_member("@malory:example.org", "@alice:example.org", None)
         assert room.user_name("@alice:example.org") == "@alice:example.org"
         assert room.user_name("@malory:example.org") == "@alice:example.org (@malory:example.org)"
         assert room.user_name_clashes("@alice:example.org") == ["@alice:example.org", "@malory:example.org"]

@@ -141,6 +141,17 @@ class MatrixRoom(object):
         """Get a list of users that have same display name."""
         return self.names[name]
 
+    def avatar_url(self, user_id):
+        # type: (str) -> Optional[str]
+        """Get avatar url for a user.
+
+        Returns a matrix content URI, or None if the user has no avatar.
+        """
+        if user_id not in self.users:
+            return None
+
+        return self.users[user_id].avatar_url
+
     @property
     def machine_name(self):
         """Calculate an unambiguous, unique machine name for a room.
@@ -169,7 +180,7 @@ class MatrixRoom(object):
         """
         return not self.is_named
 
-    def add_member(self, user_id, display_name):
+    def add_member(self, user_id, display_name, avatar_url):
         if user_id in self.users:
             return
 
@@ -178,7 +189,7 @@ class MatrixRoom(object):
             self.power_levels.defaults.users_default
         )
 
-        user = MatrixUser(user_id, display_name, level)
+        user = MatrixUser(user_id, display_name, avatar_url, level)
         self.users[user_id] = user
 
         name = display_name if display_name else user_id
@@ -204,7 +215,10 @@ class MatrixRoom(object):
         if event.content["membership"] == "join":
             if event.state_key not in self.users:
                 display_name = event.content.get("displayname", None)
-                return self.add_member(event.state_key, display_name)
+                avatar_url = event.content.get("avatar_url", None)
+                return self.add_member(
+                    event.state_key, display_name, avatar_url
+                )
 
             # Handle profile changes
             user = self.users[event.sender]
@@ -213,6 +227,9 @@ class MatrixRoom(object):
                 user.display_name = event.content["displayname"]
                 self.names[user.name].append(user.user_id)
                 return False
+
+            if "avatar_url" in event.content:
+                user.avatar_url = event.content["avatar_url"]
 
         elif event.content["membership"] in ["leave", "ban"]:
             return self.remove_member(event.state_key)
@@ -357,10 +374,13 @@ class MatrixInvitedRoom(MatrixRoom):
 
 
 class MatrixUser(object):
-    def __init__(self, user_id, display_name=None, power_level=0):
+    def __init__(
+        self, user_id, display_name=None, avatar_url=None, power_level=0
+    ):
         # yapf: disable
         self.user_id = user_id            # type: str
         self.display_name = display_name  # type: str
+        self.avatar_url = avatar_url      # type: str
         self.power_level = power_level    # type: int
         # yapf: enable
 

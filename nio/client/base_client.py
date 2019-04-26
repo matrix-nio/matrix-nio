@@ -724,7 +724,9 @@ class Client(object):
         room = self.rooms[response.room_id]
 
         for member in response.members:
-            room.add_member(member.user_id, member.display_name)
+            room.add_member(
+                member.user_id, member.display_name, member.avatar_url
+            )
 
         if room.encrypted and self.olm is not None:
             self.olm.update_tracked_users(room)
