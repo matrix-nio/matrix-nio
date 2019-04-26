@@ -56,8 +56,12 @@ class ToDeviceEvent(object):
 
 
 @attr.s
-class KeyVerificationStart(ToDeviceEvent):
+class KeyVerificationEvent(ToDeviceEvent):
     transaction_id = attr.ib(type=str)
+
+
+@attr.s
+class KeyVerificationStart(KeyVerificationEvent):
     from_device = attr.ib(type=str)
     method = attr.ib(type=str)
     key_agreement_protocols = attr.ib(type=List[str])
@@ -83,8 +87,7 @@ class KeyVerificationStart(ToDeviceEvent):
 
 
 @attr.s
-class KeyVerificationAccept(ToDeviceEvent):
-    transaction_id = attr.ib(type=str)
+class KeyVerificationAccept(KeyVerificationEvent):
     commitment = attr.ib(type=str)
     key_agreement_protocol = attr.ib(type=str)
     hash = attr.ib(type=str)
@@ -108,8 +111,7 @@ class KeyVerificationAccept(ToDeviceEvent):
 
 
 @attr.s
-class KeyVerificationKey(ToDeviceEvent):
-    transaction_id = attr.ib(type=str)
+class KeyVerificationKey(KeyVerificationEvent):
     key = attr.ib(type=str)
 
     @classmethod
@@ -125,8 +127,7 @@ class KeyVerificationKey(ToDeviceEvent):
 
 
 @attr.s
-class KeyVerificationMac(ToDeviceEvent):
-    transaction_id = attr.ib(type=str)
+class KeyVerificationMac(KeyVerificationEvent):
     mac = attr.ib(type=Dict[str, str])
     keys = attr.ib(type=str)
 
@@ -144,8 +145,7 @@ class KeyVerificationMac(ToDeviceEvent):
 
 
 @attr.s
-class KeyVerificationCancel(ToDeviceEvent):
-    transaction_id = attr.ib(type=str)
+class KeyVerificationCancel(KeyVerificationEvent):
     code = attr.ib(type=str)
     reason = attr.ib(type=str)
 
