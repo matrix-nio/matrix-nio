@@ -70,6 +70,9 @@ class TestClass(object):
             start_event
         )
 
+        with pytest.raises(LocalProtocolError):
+            bob.start_verification()
+
         assert bob.state == SasState.started
 
     def test_sas_accept(self):
@@ -292,9 +295,124 @@ class TestClass(object):
         alice.cancel()
         assert alice.canceled
 
+        with pytest.raises(LocalProtocolError):
+            alice.start_verification()
+
         cancelation = alice.get_cancelation()
         assert cancelation == {
             "transaction_id": alice.transaction_id,
             "code": "m.user",
             "reason": "Canceled by user"
         }
+
+    def test_sas_invalid_start(self):
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys["ed25519"],
+            bob_device,
+        )
+
+        start = {
+            "sender": alice_id,
+            "content": alice.start_verification()
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+        start_event.method = "m.sas.v0"
+
+        bob = Sas.from_key_verification_start(
+            bob_id,
+            bob_device_id,
+            bob_keys["ed25519"],
+            alice_device,
+            start_event
+        )
+
+        assert bob.canceled
+
+    def test_sas_reject(self):
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys["ed25519"],
+            bob_device,
+        )
+
+        start = {
+            "sender": alice_id,
+            "content": alice.start_verification()
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+
+        bob = Sas.from_key_verification_start(
+            bob_id,
+            bob_device_id,
+            bob_keys["ed25519"],
+            alice_device,
+            start_event
+        )
+
+        with pytest.raises(LocalProtocolError):
+            alice.reject_sas()
+
+        alice.set_their_pubkey(bob.pubkey)
+        bob.set_their_pubkey(alice.pubkey)
+        alice.state = SasState.key_received
+        bob.state = SasState.key_received
+
+        alice.reject_sas()
+
+        assert alice.canceled
+
+    def test_sas_invalid_mac(self):
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys["ed25519"],
+            bob_device,
+        )
+        start = {
+            "sender": alice_id,
+            "content": alice.start_verification()
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+
+        bob = Sas.from_key_verification_start(
+            bob_id,
+            bob_device_id,
+            bob_keys["ed25519"],
+            alice_device,
+            start_event
+        )
+
+        with pytest.raises(LocalProtocolError):
+            alice.accept_sas()
+
+        alice.set_their_pubkey(bob.pubkey)
+        bob.set_their_pubkey(alice.pubkey)
+
+        alice.state = SasState.key_received
+        bob.state = SasState.key_received
+
+        alice.accept_sas()
+        alice_mac = {
+            "sender": alice_id,
+            "content": alice.get_mac()
+        }
+
+        mac_event = KeyVerificationMac.from_dict(alice_mac)
+        mac_event.keys = "FAKEKEYS"
+
+        bob.receive_mac_event(mac_event)
+        assert bob.canceled
+        assert not bob.verified
+
+        bob.state = SasState.key_received
+        assert not bob.canceled
+
+        mac_event = KeyVerificationMac.from_dict(alice_mac)
+        mac_event.mac["ed25519:{}".format(alice_device)] = "FAKEKEYS"
+
+        bob.receive_mac_event(mac_event)
+        assert bob.canceled
+        assert not bob.verified
