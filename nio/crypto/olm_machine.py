@@ -1371,56 +1371,82 @@ class Olm(object):
                 event
             )
 
-            # TODO set cancelation events to send out things
             if sas.canceled:
                 logger.warn("Received malformed key verification event from "
                             "{} {}".format(
                                 event.sender,
                                 event.from_device
                             ))
-                return
+                message = sas.get_cancelation()
 
             else:
                 logger.info("Sucesfully started key verification with"
                             "{} {}".format(event.sender, event.from_device))
                 self.key_verifications[event.transaction_id] = sas
-
-        elif isinstance(event, KeyVerificationAccept):
-            sas = self.key_verifications.get(event.transaction_id, None)
-
-            if not sas:
-                return
-
-            sas.receive_accept_event(event)
-
-            if sas.canceled:
-                message = sas.get_cancelation()
-            else:
-                message = sas.share_keys()
+                message = sas.accept_verification()
 
             self.outgoing_to_device_events.append(message)
 
-        elif isinstance(event, KeyVerificationCancel):
-            self.key_verifications.pop(event.transaction_id, None)
-
-        elif isinstance(event, KeyVerificationKey):
+        else:
             sas = self.key_verifications.get(event.transaction_id, None)
 
             if not sas:
+                logger.warn("Received key verification event with an unknown "
+                            "transaction id from {}".format(event.sender))
                 return
 
-            sas.receive_key_event(event)
-            if sas.canceled:
-                message = sas.get_cancelation()
+            if isinstance(event, KeyVerificationAccept):
+                sas.receive_accept_event(event)
+
+                if sas.canceled:
+                    message = sas.get_cancelation()
+                else:
+                    logger.info("Received a key verification accept event "
+                                "from {} {}, sharing keys".format(
+                                    event.sender,
+                                    sas.other_olm_device.id))
+                    message = sas.share_keys()
+
                 self.outgoing_to_device_events.append(message)
 
-        elif isinstance(event, KeyVerificationMac):
-            sas = self.key_verifications.get(event.transaction_id, None)
+            elif isinstance(event, KeyVerificationCancel):
+                logger.info("Received a key verification cancelation "
+                            "from {} {}. Canceling verification.".format(
+                                event.sender,
+                                sas.other_olm_device.id))
+                self.key_verifications.pop(event.transaction_id, None)
 
-            if not sas:
-                return
+            elif isinstance(event, KeyVerificationKey):
+                sas.receive_key_event(event)
 
-            sas.receive_mac_event(event)
-            if sas.canceled:
-                message = sas.get_cancelation()
-                self.outgoing_to_device_events.append(message)
+                if sas.canceled:
+                    message = sas.get_cancelation()
+                else:
+                    logger.info("Received a key verification pubkey "
+                                "from {} {}.".format(
+                                    event.sender,
+                                    sas.other_olm_device.id))
+
+                if not sas.we_started_it:
+                    message = sas.share_keys()
+
+                if message:
+                    self.outgoing_to_device_events.append(message)
+
+            elif isinstance(event, KeyVerificationMac):
+                sas.receive_mac_event(event)
+
+                if sas.canceled:
+                    message = sas.get_cancelation()
+                    self.outgoing_to_device_events.append(message)
+                    return
+
+                logger.info("Received a valid key verification MAC "
+                            "from {} {}.".format(
+                                event.sender,
+                                sas.other_olm_device.id
+                            ))
+
+                if sas.verified:
+                    device = sas.other_olm_device
+                    self.verify_device(device)
