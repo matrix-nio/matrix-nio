@@ -1,7 +1,6 @@
 import pytest
 
-import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 from nio.crypto import Sas, SasState, OlmDevice
 from nio.exceptions import LocalProtocolError
 from nio.events import (
