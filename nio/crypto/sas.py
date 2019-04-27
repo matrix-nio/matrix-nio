@@ -212,7 +212,7 @@ class Sas(olm.Sas):
         string_content = Api.to_canonical_json(event.source["content"])
         obj.commitment = olm.sha256(obj.pubkey + string_content)
 
-        if (Sas._sas_method_v1 not in event.method
+        if (Sas._sas_method_v1 != event.method
                 or Sas._key_agreement_v1 not in event.key_agreement_protocols
                 or Sas._hash_v1 not in event.hashes
                 or Sas._mac_v1 not in event.message_authentication_codes
