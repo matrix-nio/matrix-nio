@@ -140,7 +140,7 @@ class Olm(object):
             # type: Dict[str, OutgoingKeyRequest]
 
         self.key_verifications = dict()  # type: Dict[str, Sas]
-        self.outgoing_to_device_events = []  # type: List[ToDeviceMessage]
+        self.outgoing_to_device_messages = []  # type: List[ToDeviceMessage]
 
         self.store = store
 
@@ -1330,7 +1330,7 @@ class Olm(object):
         for transaction_id, sas in self.key_verifications.items():
             if sas.timed_out:
                 message = sas.get_cancelation()
-                self.outgoing_to_device_events.append(message)
+                self.outgoing_to_device_messages.append(message)
                 cancel_event = {
                     "sender": self.user_id,
                     "content": message.content
@@ -1363,7 +1363,7 @@ class Olm(object):
                 self.users_for_key_query.add(event.sender)
                 return
 
-            sas = Sas.from_key_verification_start(
+            new_sas = Sas.from_key_verification_start(
                 self.user_id,
                 self.device_id,
                 self.account.identity_keys["ed25519"],
@@ -1371,21 +1371,19 @@ class Olm(object):
                 event
             )
 
-            if sas.canceled:
+            if new_sas.canceled:
                 logger.warn("Received malformed key verification event from "
                             "{} {}".format(
                                 event.sender,
                                 event.from_device
                             ))
-                message = sas.get_cancelation()
+                message = new_sas.get_cancelation()
+                self.outgoing_to_device_messages.append(message)
 
             else:
                 logger.info("Sucesfully started key verification with"
                             "{} {}".format(event.sender, event.from_device))
-                self.key_verifications[event.transaction_id] = sas
-                message = sas.accept_verification()
-
-            self.outgoing_to_device_events.append(message)
+                self.key_verifications[event.transaction_id] = new_sas
 
         else:
             sas = self.key_verifications.get(event.transaction_id, None)
@@ -1405,9 +1403,9 @@ class Olm(object):
                                 "from {} {}, sharing keys".format(
                                     event.sender,
                                     sas.other_olm_device.id))
-                    message = sas.share_keys()
+                    message = sas.share_key()
 
-                self.outgoing_to_device_events.append(message)
+                self.outgoing_to_device_messages.append(message)
 
             elif isinstance(event, KeyVerificationCancel):
                 logger.info("Received a key verification cancelation "
@@ -1428,17 +1426,17 @@ class Olm(object):
                                     sas.other_olm_device.id))
 
                 if not sas.we_started_it:
-                    message = sas.share_keys()
+                    message = sas.share_key()
 
                 if message:
-                    self.outgoing_to_device_events.append(message)
+                    self.outgoing_to_device_messages.append(message)
 
             elif isinstance(event, KeyVerificationMac):
                 sas.receive_mac_event(event)
 
                 if sas.canceled:
                     message = sas.get_cancelation()
-                    self.outgoing_to_device_events.append(message)
+                    self.outgoing_to_device_messages.append(message)
                     return
 
                 logger.info("Received a valid key verification MAC "
