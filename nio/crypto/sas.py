@@ -363,7 +363,7 @@ class Sas(olm.Sas):
                                      "accept offer.")
 
         if self.state == SasState.canceled:
-            raise LocalProtocolError("SAS verification was canceled , can't "
+            raise LocalProtocolError("SAS verification was canceled, can't "
                                      "accept offer.")
 
         sas_methods = []
@@ -400,7 +400,7 @@ class Sas(olm.Sas):
     def share_key(self):
         """Create a dictionary containing our public key."""
         if self.state == SasState.canceled:
-            raise LocalProtocolError("SAS verification was canceled , can't "
+            raise LocalProtocolError("SAS verification was canceled, can't "
                                      "share our public key.")
 
         content = {
@@ -423,7 +423,7 @@ class Sas(olm.Sas):
             raise LocalProtocolError("SAS string wasn't yet accepted")
 
         if self.state == SasState.canceled:
-            raise LocalProtocolError("SAS verification was canceled , can't "
+            raise LocalProtocolError("SAS verification was canceled, can't "
                                      "generate MAC.")
 
         key_id = "ed25519:{}".format(self.own_device)
