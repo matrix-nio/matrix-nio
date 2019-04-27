@@ -67,7 +67,8 @@ from ..rooms import MatrixInvitedRoom, MatrixRoom
 from ..store import MatrixStore, DefaultStore
 
 if False:
-    from ..crypto import OlmDevice, OutgoingKeyRequest
+    from ..crypto import OlmDevice, OutgoingKeyRequest, Sas
+    from .messages import ToDeviceMessage
 
 try:
     from json.decoder import JSONDecodeError
@@ -239,6 +240,31 @@ class Client(object):
         # type: () -> Dict[str, OutgoingKeyRequest]
         """Our active key requests that we made."""
         return self.olm.outgoing_key_requests if self.olm else dict()
+
+    @property
+    def key_verifications(self):
+        # type: () -> Dict[str, Sas]
+        """Key verifications that the client is participating in."""
+        return self.olm.key_verifications if self.olm else dict()
+
+    @property
+    def outgoing_to_device_messages(self):
+        # type: () -> List[ToDeviceMessage]
+        """To-device messages that we need to send out."""
+        return self.olm.outgoing_to_device_messages if self.olm else []
+
+    def mark_to_device_message_as_sent(self, message):
+        """Mark a to-device message as sent.
+
+        This removes the to-device message from our outgoing to-device list.
+        """
+        if not self.olm:
+            return
+
+        try:
+            self.olm.outgoing_to_device_messages.remove(message)
+        except ValueError:
+            pass
 
     def load_store(self):
         # type: () -> None
