@@ -840,6 +840,22 @@ class ProfileSetDisplayNameResponse(EmptyResponse):
 
 
 @attr.s
+class ToDeviceError(ErrorResponse):
+    pass
+
+
+@attr.s
+class ToDeviceResponse(Response):
+    """Response representing a successful room key request."""
+
+    @classmethod
+    @verify(Schemas.empty, ToDeviceError)
+    def from_dict(cls, parsed_dict):
+        """Create a ToDeviceResponse from a json response."""
+        return cls()
+
+
+@attr.s
 class _SyncResponse(Response):
     next_batch = attr.ib(type=str)
     rooms = attr.ib(type=Rooms)

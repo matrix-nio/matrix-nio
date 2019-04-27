@@ -87,8 +87,12 @@ from ..responses import (
     ProfileGetDisplayNameResponse,
     ProfileSetDisplayNameResponse,
     RoomKeyRequestResponse,
-    RoomForgetResponse
+    RoomForgetResponse,
+    ToDeviceResponse
 )
+
+if False:
+    from .messages import ToDeviceMessage
 
 try:
     from json.decoder import JSONDecodeError
@@ -756,6 +760,90 @@ class HttpClient(Client):
                 )
             )
         )
+
+    @connected
+    @logged_in
+    @store_loaded
+    def accept_short_auth_string(self, transaction_id, tx_id=None):
+        # type: (str, Optional[str]) -> Tuple[UUID, bytes]
+        """Accept a short auth string and mark it as matching.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            transaction_id (str): An transaction id of a valid key verification
+                process.
+        """
+        if transaction_id not in self.key_verifications:
+            raise LocalProtocolError("Key verification with the transaction "
+                                     "id {} does not exist.".format(
+                                         transaction_id
+                                     ))
+
+        sas = self.key_verifications[transaction_id]
+
+        sas.accept_sas()
+        message = sas.get_mac()
+
+        if sas.verified:
+            self.verify_device(sas.other_olm_device)
+
+        return self.to_device(message, tx_id)
+
+    @connected
+    @logged_in
+    @store_loaded
+    def accept_key_verification(self, transaction_id, tx_id=None):
+        # type: (str, Optional[str]) -> Tuple[UUID, bytes]
+        """Accept a key verification start event.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            transaction_id (str): An transaction id of a valid key verification
+                process.
+        """
+        if transaction_id not in self.key_verifications:
+            raise LocalProtocolError("Key verification with the transaction "
+                                     "id {} does not exist.".format(
+                                         transaction_id
+                                     ))
+
+        sas = self.key_verifications[transaction_id]
+
+        message = sas.accept_verification()
+
+        return self.to_device(message, tx_id)
+
+    @logged_in
+    @store_loaded
+    def to_device(
+        self,
+        message,
+        tx_id=None
+    ):
+        # type: (ToDeviceMessage, Optional[str]) -> Tuple[UUID, bytes]
+        """Send a message to a specific device.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            message (ToDeviceMessage): The type of the message.
+            tx_id (str, optional): The transaction ID for this message. Should
+                be unique.
+        """
+        uuid = tx_id or uuid4()
+
+        request = self._build_request(Api.to_device(
+            self.access_token,
+            message.type,
+            message.as_dict(),
+            uuid
+        ))
+        return self._send(request, RequestInfo(ToDeviceResponse))
 
     @connected
     @logged_in
