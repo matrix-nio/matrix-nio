@@ -259,6 +259,8 @@ class TestClass(object):
 
         alice.state = SasState.key_received
         bob.state = SasState.key_received
+        alice.chosen_mac_method = Sas._mac_normal
+        bob.chosen_mac_method = Sas._mac_normal
 
         with pytest.raises(LocalProtocolError):
             alice.get_mac()
@@ -425,6 +427,8 @@ class TestClass(object):
 
         alice.state = SasState.key_received
         bob.state = SasState.key_received
+        alice.chosen_mac_method = Sas._mac_normal
+        bob.chosen_mac_method = Sas._mac_normal
 
         alice.accept_sas()
         alice_mac = {
