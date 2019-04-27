@@ -352,10 +352,10 @@ class Sas(olm.Sas):
             "from_device": self.own_device,
             "method": self._sas_method_v1,
             "transaction_id": self.transaction_id,
-            "key_agreement_protocols": ["curve25519"],
-            "hashes": ["sha256"],
-            "message_authentication_codes": ["hkdf-hmac-sha256"],
-            "short_authentication_string": ["decimal", "emoji"],
+            "key_agreement_protocols": [self._key_agreement_v1],
+            "hashes": [self._hash_v1],
+            "message_authentication_codes": [self._mac_v1],
+            "short_authentication_string": self._strings_v1
         }
 
         message = ToDeviceMessage(
