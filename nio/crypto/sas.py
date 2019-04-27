@@ -16,39 +16,21 @@
 
 from __future__ import unicode_literals
 
-import attr
-
 from datetime import datetime, timedelta
 from enum import Enum
 from builtins import super, bytes
 from future.moves.itertools import zip_longest
 from uuid import uuid4
-from typing import Tuple, List, Optional, Dict
+from typing import Tuple, List, Optional
 
 import olm
 
 from ..api import Api
 from ..exceptions import LocalProtocolError
 from ..events import KeyVerificationStart
+from ..messages import ToDeviceMessage
 
 from .sessions import OlmDevice
-
-
-@attr.s
-class ToDeviceMessage(object):
-    """A to-device message that should be sent out.
-
-    Attributes:
-        recepient (str): The user to whom we should sent this message.
-        recepient_device (str): The device id of the device that the message
-            should be sent to.
-        content (Dict[Any, Any]): The content that should be sent to the user.
-
-    """
-
-    recepient = attr.ib(type=str)
-    recepient_device = attr.ib(type=str)
-    content = attr.ib(type=Dict)
 
 
 class SasState(Enum):
@@ -359,6 +341,7 @@ class Sas(olm.Sas):
         }
 
         message = ToDeviceMessage(
+            "m.key.verification.start",
             self.other_olm_device.user_id,
             self.other_olm_device.id,
             content
@@ -394,6 +377,7 @@ class Sas(olm.Sas):
         }
 
         message = ToDeviceMessage(
+            "m.key.verification.accept",
             self.other_olm_device.user_id,
             self.other_olm_device.id,
             content
@@ -413,6 +397,7 @@ class Sas(olm.Sas):
         }
 
         message = ToDeviceMessage(
+            "m.key.verification.key",
             self.other_olm_device.user_id,
             self.other_olm_device.id,
             content
@@ -451,6 +436,7 @@ class Sas(olm.Sas):
         }
 
         message = ToDeviceMessage(
+            "m.key.verification.mac",
             self.other_olm_device.user_id,
             self.other_olm_device.id,
             content
@@ -473,6 +459,7 @@ class Sas(olm.Sas):
         }
 
         message = ToDeviceMessage(
+            "m.key.verification.cancel",
             self.other_olm_device.user_id,
             self.other_olm_device.id,
             content
