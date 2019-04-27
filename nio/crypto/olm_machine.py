@@ -1446,5 +1446,9 @@ class Olm(object):
                             ))
 
                 if sas.verified:
+                    logger.info("Interactive key verification successful, "
+                                "verifying device {} of user {}.".format(
+                                    sas.other_olm_device.id,
+                                    event.sender))
                     device = sas.other_olm_device
                     self.verify_device(device)
