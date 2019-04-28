@@ -30,6 +30,7 @@ from functools import wraps
 from json.decoder import JSONDecodeError
 from aiohttp import ClientSession, ContentTypeError, ClientResponse
 
+from ..messages import ToDeviceMessage
 from ..api import Api
 from ..responses import (
     Response,
@@ -43,7 +44,9 @@ from ..responses import (
     ShareGroupSessionResponse,
     ShareGroupSessionError,
     KeysClaimResponse,
-    KeysClaimError
+    KeysClaimError,
+    ToDeviceResponse,
+    ToDeviceError
 )
 from ..exceptions import LocalProtocolError
 
@@ -250,6 +253,86 @@ class AsyncClient(Client):
         )
 
         return await self._send(SyncResponse, method, path)
+
+    @logged_in
+    async def accept_key_verification(self, transaction_id, tx_id=None):
+        # type: (str, Optional[str]) -> Union[ToDeviceResponse, ToDeviceError]
+        """Accept a key verification start event.
+
+        Returns either a `ToDeviceResponse` if the request was successful or
+        a `ToDeviceError` if there was an error with the request.
+
+        Args:
+            transaction_id (str): An transaction id of a valid key verification
+                process.
+        """
+        if transaction_id not in self.key_verifications:
+            raise LocalProtocolError("Key verification with the transaction "
+                                     "id {} does not exist.".format(
+                                         transaction_id
+                                     ))
+
+        sas = self.key_verifications[transaction_id]
+
+        message = sas.accept_verification()
+
+        return await self.to_device(message, tx_id)
+
+    @logged_in
+    async def accept_short_auth_string(self, transaction_id, tx_id=None):
+        # type: (str, Optional[str]) -> Union[ToDeviceResponse, ToDeviceError]
+        """Accept a short auth string and mark it as matching.
+
+        Returns either a `ToDeviceResponse` if the request was successful or
+        a `ToDeviceError` if there was an error with the request.
+
+        Args:
+            transaction_id (str): An transaction id of a valid key verification
+                process.
+        """
+        if transaction_id not in self.key_verifications:
+            raise LocalProtocolError("Key verification with the transaction "
+                                     "id {} does not exist.".format(
+                                         transaction_id
+                                     ))
+
+        sas = self.key_verifications[transaction_id]
+
+        sas.accept_sas()
+        message = sas.get_mac()
+
+        if sas.verified:
+            self.verify_device(sas.other_olm_device)
+
+        return await self.to_device(message, tx_id)
+
+    @logged_in
+    async def to_device(
+            self,
+            message,    # type: ToDeviceMessage
+            tx_id=None  # type: Optional[str]
+    ):
+        # type: (...) -> Union[ToDeviceResponse, ToDeviceError]
+        """Send a to-device message.
+
+        Args:
+            message (ToDeviceMessage): The message that should be sent out.
+            tx_id (str, optional): The transaction ID for this message. Should
+                be unique.
+
+        Returns either a `ToDeviceResponse` if the request was successful or
+        a `ToDeviceError` if there was an error with the request.
+        """
+        uuid = tx_id or uuid4()
+
+        method, path, data = Api.to_device(
+            self.access_token,
+            message.type,
+            message.as_dict(),
+            uuid
+        )
+
+        return await self._send(ToDeviceResponse, method, path, data)
 
     @logged_in
     @store_loaded
