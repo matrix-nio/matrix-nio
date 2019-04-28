@@ -232,7 +232,7 @@ class AsyncClient(Client):
             timeout=None,     # type: Optional[int]
             sync_filter=None  # type: Optional[Dict[Any, Any]]
     ):
-        # type: (...) -> Tuple[SyncResponse, SyncError]
+        # type: (...) -> Union[SyncResponse, SyncError]
         """Synchronise the client's state with the latest state on the server.
 
         Args:
