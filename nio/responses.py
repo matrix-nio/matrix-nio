@@ -114,6 +114,8 @@ __all__ = [
     "ProfileSetDisplayNameError",
     "RoomKeyRequestResponse",
     "RoomKeyRequestError",
+    "ToDeviceResponse",
+    "ToDeviceError",
 ]
 
 
