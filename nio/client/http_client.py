@@ -831,7 +831,7 @@ class HttpClient(Client):
         should be sent to the socket.
 
         Args:
-            message (ToDeviceMessage): The type of the message.
+            message (ToDeviceMessage): The message that should be sent out.
             tx_id (str, optional): The transaction ID for this message. Should
                 be unique.
         """
