@@ -506,10 +506,18 @@ class Sas(olm.Sas):
         if not self._event_ok(event):
             return
 
-        # TODO check that the accepted values are fine.
+        if (event.key_agreement_protocol != Sas._key_agreement_v1
+                or event.hash != Sas._hash_v1
+                or event.message_authentication_code not in Sas._mac_v1
+                or ("emoji" not in event.short_authentication_string
+                    and "decimal" not in event.short_authentication_string)):
+            self.state = SasState.canceled
+            self.cancel_code, self.cancel_reason = Sas._unknonw_method_error
+            return
 
         self.commitment = event.commitment
         self.chosen_mac_method = event.message_authentication_code
+        self.short_auth_string = event.short_authentication_string
         self.state = SasState.accepted
 
     def receive_key_event(self, event):
