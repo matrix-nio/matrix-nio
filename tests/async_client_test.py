@@ -21,7 +21,8 @@ from nio import (
     GroupEncryptionError,
     OlmTrustError,
     RoomSendResponse,
-    ShareGroupSessionResponse
+    ShareGroupSessionResponse,
+    JoinedMembersResponse
 )
 from nio.crypto import OlmDevice
 
@@ -57,6 +58,20 @@ class TestClass(object):
     def keys_query_response(self):
         return self._load_response(
             "tests/data/keys_query.json")
+
+    @property
+    def joined_members_resopnse(self):
+        return {
+            "joined": {
+                "@bar:example.com": {
+                    "avatar_url": None,
+                    "display_name": "Bar"
+                },
+                ALICE_ID: {
+                    "avatar_url": None,
+                    "display_name": "Alice"
+                },
+            }}
 
     @property
     def encryption_sync_response(self):
@@ -211,6 +226,12 @@ class TestClass(object):
             status=200,
             payload={"event_id": "$1555:example.org"}
         )
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/rooms/{}/"
+            "joined_members?access_token=abc123".format(TEST_ROOM_ID),
+            status=200,
+            payload=self.joined_members_resopnse
+        )
         loop.run_until_complete(async_client.login("wordpass"))
 
         async_client.receive_response(self.encryption_sync_response)
@@ -351,3 +372,28 @@ class TestClass(object):
         assert isinstance(response, ShareGroupSessionResponse)
         assert not async_client.get_missing_sessions(TEST_ROOM_ID)
         assert async_client.olm.session_store.get(alice_device.curve25519)
+
+    def test_joined_members(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+        async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        async_client.receive_response(self.encryption_sync_response)
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/rooms/{}/"
+            "joined_members?access_token=abc123".format(TEST_ROOM_ID),
+            status=200,
+            payload=self.joined_members_resopnse
+        )
+
+        room = async_client.rooms[TEST_ROOM_ID]
+        assert not room.members_synced
+
+        response = loop.run_until_complete(
+            async_client.joined_members(TEST_ROOM_ID)
+        )
+
+        assert isinstance(response, JoinedMembersResponse)
+        assert room.members_synced

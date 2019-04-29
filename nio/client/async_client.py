@@ -46,7 +46,9 @@ from ..responses import (
     KeysClaimResponse,
     KeysClaimError,
     ToDeviceResponse,
-    ToDeviceError
+    ToDeviceError,
+    JoinedMembersResponse,
+    JoinedMembersError
 )
 from ..exceptions import LocalProtocolError
 
@@ -389,6 +391,29 @@ class AsyncClient(Client):
         return await self._send(KeysQueryResponse, method, path, data)
 
     @logged_in
+    async def joined_members(self, room_id):
+        """Send a message to a room.
+
+        Args:
+            room_id(str): The room id of the room for which we wan't to request
+                the joined member list.
+
+        Returns either a `JoinedMembersResponse` if the request was successful
+        or a `JoinedMembersError` if there was an error with the request.
+        """
+        method, path = Api.joined_members(
+            self.access_token,
+            room_id
+        )
+
+        return await self._send(
+            JoinedMembersResponse,
+            method,
+            path,
+            response_data=(room_id, )
+        )
+
+    @logged_in
     async def room_send(self, room_id, message_type, content, tx_id=None):
         """Send a message to a room.
 
@@ -416,6 +441,9 @@ class AsyncClient(Client):
                 raise LocalProtocolError(
                     "No such room with id {} found.".format(room_id)
                 )
+
+            if room.encrypted and not room.members_synced:
+                await self.joined_members(room_id)
 
             if room.encrypted:
                 content = self.olm.group_encrypt(
