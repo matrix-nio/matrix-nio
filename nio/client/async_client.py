@@ -54,6 +54,8 @@ from ..exceptions import LocalProtocolError
 
 from . import Client, ClientConfig, logged_in, store_loaded
 
+_ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
+
 
 def client_session(func):
     """Ensure that the Async client has a valid client session."""
@@ -392,6 +394,7 @@ class AsyncClient(Client):
 
     @logged_in
     async def joined_members(self, room_id):
+        # type: (str) -> Union[JoinedMembersResponse, JoinedMembersError]
         """Send a message to a room.
 
         Args:
@@ -506,7 +509,7 @@ class AsyncClient(Client):
             room_id,                        # type: str
             tx_id=None                      # type: Optional[str]
     ):
-        # type: (...) -> Union[ShareGroupSessionResponse]
+        # type: (...) -> _ShareGroupSessionT
         """Share a group session with a room.
 
         This method sends a group session to members of a room.
