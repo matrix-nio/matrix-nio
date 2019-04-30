@@ -16,6 +16,7 @@
 
 import attr
 from ..schemas import Schemas
+from ..messages import ToDeviceMessage
 from .misc import verify
 
 
@@ -154,4 +155,32 @@ class MegolmEvent(RoomEncryptedEvent):
             algorithm,
             room_id,
             tx_id
+        )
+
+    def as_key_request(self, user_id, requesting_device_id):
+        # type: (str, str) -> ToDeviceMessage
+        """Make a to-device message for a room key request.
+
+        Args:
+            user_id (str): The user id of the user that should receive the key
+                request.
+
+        """
+        content = {
+            "action": "request",
+            "body": {
+                "algorithm": self.algorithm,
+                "session_id": self.session_id,
+                "room_id": self.room_id,
+                "sender_key": self.sender_key
+            },
+            "request_id": self.session_id,
+            "requesting_device_id": requesting_device_id,
+        }
+
+        return ToDeviceMessage(
+            "m.room_key_request",
+            user_id,
+            "*",
+            content
         )

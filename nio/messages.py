@@ -23,24 +23,25 @@ class ToDeviceMessage(object):
     """A to-device message that should be sent out.
 
     Attributes:
-        recepient (str): The user to whom we should sent this message.
-        recepient_device (str): The device id of the device that the message
+        type (str): The type of the message.
+        recipient (str): The user to whom we should sent this message.
+        recipient_device (str): The device id of the device that the message
             should be sent to.
         content (Dict[Any, Any]): The content that should be sent to the user.
 
     """
 
     type = attr.ib(type=str)
-    recepient = attr.ib(type=str)
-    recepient_device = attr.ib(type=str)
+    recipient = attr.ib(type=str)
+    recipient_device = attr.ib(type=str)
     content = attr.ib(type=Dict)
 
     def as_dict(self):
         """Format the to-device message as a dictionary for a HTTP request."""
         return {
             "messages": {
-                self.recepient: {
-                    self.recepient_device: self.content
+                self.recipient: {
+                    self.recipient_device: self.content
                 }
             }
         }

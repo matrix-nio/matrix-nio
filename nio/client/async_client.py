@@ -607,30 +607,12 @@ class AsyncClient(Client):
             raise LocalProtocolError("A key sharing request is already sent"
                                      " out for this session id.")
 
-        content = {
-            "action": "request",
-            "body": {
-                "algorithm": event.algorithm,
-                "session_id": event.session_id,
-                "room_id": event.room_id,
-                "sender_key": event.sender_key
-            },
-            "request_id": event.session_id,
-            "requesting_device_id": self.device_id,
-        }
-
-        to_device = {
-            "messages": {
-                self.user_id: {
-                    "*": content
-                }
-            }
-        }
+        message = event.as_key_request(self.user_id, self.device_id)
 
         method, path, data = Api.to_device(
             self.access_token,
-            "m.room_key_request",
-            to_device,
+            message.type,
+            message.as_dict(),
             uuid
         )
 
