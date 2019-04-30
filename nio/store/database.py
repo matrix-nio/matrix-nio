@@ -774,7 +774,19 @@ class MatrixStore(object):
 
         for idx in range(0, len(rows), 100):
             data = rows[idx:idx + 100]
-            DeviceKeys.replace_many(data).execute()
+            DeviceKeys.insert_many(data).on_conflict_ignore().execute()
+
+        for user_id, devices_dict in device_keys.items():
+            for device_id, device in devices_dict.items():
+                DeviceKeys.update(
+                    {
+                        DeviceKeys.deleted: device.deleted
+                    }
+                ).where(
+                    (DeviceKeys.account == account) &
+                    (DeviceKeys.user_id == user_id) &
+                    (DeviceKeys.device_id == device_id)
+                ).execute()
 
     @use_database
     def load_encrypted_rooms(self):

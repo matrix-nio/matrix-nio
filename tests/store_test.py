@@ -611,3 +611,15 @@ class TestClass(object):
         device_store = store.load_device_keys()
         bob_device = device_store[BOB_ID][BOB_DEVICE]
         assert bob_device.deleted
+
+    def test_deleting_trusted_device(self, sqlstore):
+        devices = self.example_devices
+        sqlstore.save_device_keys(devices)
+
+        device_store = sqlstore.load_device_keys()
+        bob_device = device_store[BOB_ID][BOB_DEVICE]
+        sqlstore.verify_device(bob_device)
+
+        bob_device.deleted = True
+        sqlstore.save_device_keys(device_store)
+        sqlstore.save_device_keys(devices)
