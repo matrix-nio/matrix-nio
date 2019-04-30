@@ -132,8 +132,6 @@ class CallEvent(Event):
 
     @staticmethod
     def parse_event(event_dict):
-        event = None
-
         if event_dict["type"] == "m.call.candidates":
             event = CallCandidatesEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.call.invite":
@@ -142,6 +140,8 @@ class CallEvent(Event):
             event = CallAnswerEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.call.hangup":
             event = CallHangupEvent.from_dict(event_dict)
+        else:
+            event = UnknownEvent.from_dict(event_dict)
 
         return event
 
