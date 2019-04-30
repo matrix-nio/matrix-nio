@@ -51,7 +51,8 @@ from ..responses import (
     KeysClaimResponse,
     JoinedMembersResponse,
     RoomKeyRequestResponse,
-    RoomForgetResponse
+    RoomForgetResponse,
+    ToDeviceResponse
 )
 
 from ..events import (
@@ -253,7 +254,7 @@ class Client(object):
         """To-device messages that we need to send out."""
         return self.olm.outgoing_to_device_messages if self.olm else []
 
-    def mark_to_device_message_as_sent(self, message):
+    def _mark_to_device_message_as_sent(self, message):
         """Mark a to-device message as sent.
 
         This removes the to-device message from our outgoing to-device list.
@@ -698,6 +699,8 @@ class Client(object):
             self._handle_olm_response(response)
         elif isinstance(response, RoomForgetResponse):
             self._handle_room_forget_response(response)
+        elif isinstance(response, ToDeviceResponse):
+            self._mark_to_device_message_as_sent(response.to_device_message)
 
     @store_loaded
     def export_keys(self, outfile, passphrase, count=10000):

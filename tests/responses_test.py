@@ -22,7 +22,9 @@ from nio.responses import (
     UploadResponse,
     RoomKeyRequestResponse,
     RoomKeyRequestError,
-    ProfileGetDisplayNameResponse
+    ProfileGetDisplayNameResponse,
+    ToDeviceResponse,
+    ToDeviceError
 )
 
 TEST_ROOM_ID = "!test:example.org"
@@ -175,3 +177,12 @@ class TestClass(object):
             "tests/data/get_displayname_response.json")
         response = ProfileGetDisplayNameResponse.from_dict(parsed_dict)
         assert isinstance(response, ProfileGetDisplayNameResponse)
+
+    def test_to_device(self):
+        message = "message"
+        response = ToDeviceResponse.from_dict(
+            {"error": "error", "errcode": "M_UNKNOWN"}, message
+        )
+        assert isinstance(response, ToDeviceError)
+        response = ToDeviceResponse.from_dict({}, message)
+        assert isinstance(response, ToDeviceResponse)

@@ -843,18 +843,31 @@ class ProfileSetDisplayNameResponse(EmptyResponse):
 
 @attr.s
 class ToDeviceError(ErrorResponse):
-    pass
+    """Response representing a unsuccessful room key request."""
+
+    to_device_message = attr.ib(default=None)
+
+    @classmethod
+    def from_dict(cls, parsed_dict, message):
+        try:
+            validate_json(parsed_dict, Schemas.error)
+        except (SchemaError, ValidationError):
+            return cls("unknown error", None, message)
+
+        return cls(parsed_dict["error"], parsed_dict["errcode"], message)
 
 
 @attr.s
 class ToDeviceResponse(Response):
     """Response representing a successful room key request."""
 
+    to_device_message = attr.ib()
+
     @classmethod
     @verify(Schemas.empty, ToDeviceError)
-    def from_dict(cls, parsed_dict):
+    def from_dict(cls, parsed_dict, message):
         """Create a ToDeviceResponse from a json response."""
-        return cls()
+        return cls(message)
 
 
 @attr.s

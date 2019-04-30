@@ -824,7 +824,7 @@ class HttpClient(Client):
             message.as_dict(),
             uuid
         ))
-        return self._send(request, RequestInfo(ToDeviceResponse))
+        return self._send(request, RequestInfo(ToDeviceResponse, (message, )))
 
     @connected
     @logged_in

@@ -341,7 +341,13 @@ class AsyncClient(Client):
             uuid
         )
 
-        return await self._send(ToDeviceResponse, method, path, data)
+        return await self._send(
+            ToDeviceResponse,
+            method,
+            path,
+            data,
+            response_data=(message, )
+        )
 
     @logged_in
     @store_loaded
