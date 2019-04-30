@@ -22,7 +22,8 @@ from nio import (
     OlmTrustError,
     RoomSendResponse,
     ShareGroupSessionResponse,
-    JoinedMembersResponse
+    JoinedMembersResponse,
+    MegolmEvent
 )
 from nio.crypto import OlmDevice
 
@@ -403,3 +404,36 @@ class TestClass(object):
 
         assert isinstance(response, JoinedMembersResponse)
         assert room.members_synced
+
+    def test_session_sharing(self, alice_client, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+        async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        async_client.receive_response(self.encryption_sync_response)
+
+        alice_client.load_store()
+
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/sendToDevice/m.room_key_request/1?access_token=abc123",
+            status=200,
+            payload={}
+        )
+
+        event = MegolmEvent(
+            "1",
+            ALICE_ID,
+            1,
+            "sender_key_123",
+            ALICE_DEVICE_ID,
+            "session_id_123",
+            "secret",
+            "m.megolm.v1.aes-sha2",
+            TEST_ROOM_ID,
+        )
+
+        loop.run_until_complete(async_client.request_room_key(event, "1"))
+
+        assert "session_id_123" in async_client.outgoing_key_requests

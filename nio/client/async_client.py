@@ -48,11 +48,16 @@ from ..responses import (
     ToDeviceResponse,
     ToDeviceError,
     JoinedMembersResponse,
-    JoinedMembersError
+    JoinedMembersError,
+    RoomKeyRequestResponse,
+    RoomKeyRequestError
 )
 from ..exceptions import LocalProtocolError
 
 from . import Client, ClientConfig, logged_in, store_loaded
+
+if False:
+    from ..events import MegolmEvent
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
 
@@ -572,6 +577,75 @@ class AsyncClient(Client):
 
         except LocalProtocolError:
             return ShareGroupSessionResponse(room_id, shared_with)
+
+    @logged_in
+    @store_loaded
+    async def request_room_key(
+            self,
+            event,       # type: MegolmEvent
+            tx_id=None   # type: Optional[str]
+    ):
+        # type: (...) -> Union[RoomKeyRequestResponse, RoomKeyRequestError]
+        """Request a missing room key.
+
+        This sends out a message to other devices requesting a room key from
+        them.
+
+        Args:
+            event (str): An undecrypted MegolmEvent for which we would like to
+                request the decryption key.
+
+        Returns either a `RoomKeyRequestResponse` if the request was successful
+        or a `RoomKeyRequestError` if there was an error with the request.
+
+        Raises a LocalProtocolError if the room key was already requested.
+
+        """
+        uuid = tx_id or uuid4()
+
+        if event.session_id in self.outgoing_key_requests:
+            raise LocalProtocolError("A key sharing request is already sent"
+                                     " out for this session id.")
+
+        content = {
+            "action": "request",
+            "body": {
+                "algorithm": event.algorithm,
+                "session_id": event.session_id,
+                "room_id": event.room_id,
+                "sender_key": event.sender_key
+            },
+            "request_id": event.session_id,
+            "requesting_device_id": self.device_id,
+        }
+
+        to_device = {
+            "messages": {
+                self.user_id: {
+                    "*": content
+                }
+            }
+        }
+
+        method, path, data = Api.to_device(
+            self.access_token,
+            "m.room_key_request",
+            to_device,
+            uuid
+        )
+
+        return await self._send(
+            RoomKeyRequestResponse,
+            method,
+            path,
+            data,
+            (
+                event.session_id,
+                event.session_id,
+                event.room_id,
+                event.algorithm
+            )
+        )
 
     async def close(self):
         """Close the underlying http session."""
