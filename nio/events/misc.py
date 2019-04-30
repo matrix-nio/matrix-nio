@@ -21,7 +21,6 @@ from logbook import Logger
 from typing import Any, Dict, Optional, Union
 from functools import wraps
 
-from ..api import Api
 from ..log import logger_group
 from ..schemas import validate_json
 
@@ -64,22 +63,28 @@ def verify(schema):
 
 @attr.s
 class UnknownBadEvent(object):
-    event_dict = attr.ib()
+    source = attr.ib()
     transaction_id = attr.ib(default=None, init=False)
+
+    decrypted = attr.ib(default=False, init=False)
+    verified = attr.ib(default=False, init=False)
+    sender_key = attr.ib(default=None, init=False)      # type: Optional[str]
+    session_id = attr.ib(default=None, init=False)      # type: Optional[str]
+    transaction_id = attr.ib(default=None, init=False)  # type: Optional[str]
 
 
 @attr.s
 class BadEvent(object):
+    source = attr.ib()
     event_id = attr.ib()
     sender = attr.ib()
     server_timestamp = attr.ib()
     type = attr.ib()
-    source = attr.ib()
 
     decrypted = attr.ib(default=False, init=False)
     verified = attr.ib(default=False, init=False)
-    sender_key = attr.ib(default=None, init=False)  # type: Optional[str]
-    session_id = attr.ib(default=None, init=False)  # type: Optional[str]
+    sender_key = attr.ib(default=None, init=False)      # type: Optional[str]
+    session_id = attr.ib(default=None, init=False)      # type: Optional[str]
     transaction_id = attr.ib(default=None, init=False)  # type: Optional[str]
 
     def __str__(self):
@@ -92,11 +97,11 @@ class BadEvent(object):
 
         timestamp = timestamp if timestamp > 0 else 0
         return cls(
+            parsed_dict,
             parsed_dict["event_id"],
             parsed_dict["sender"],
             timestamp,
             parsed_dict["type"],
-            Api.to_json(parsed_dict),
         )
 
 
