@@ -783,9 +783,9 @@ class MatrixStore(object):
                         DeviceKeys.deleted: device.deleted
                     }
                 ).where(
-                    (DeviceKeys.account == account) &
-                    (DeviceKeys.user_id == user_id) &
-                    (DeviceKeys.device_id == device_id)
+                    (DeviceKeys.account == account)
+                    & (DeviceKeys.user_id == user_id)
+                    & (DeviceKeys.device_id == device_id)
                 ).execute()
 
     @use_database
