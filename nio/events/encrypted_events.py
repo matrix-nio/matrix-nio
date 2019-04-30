@@ -132,6 +132,14 @@ class MegolmEvent(RoomEncryptedEvent):
     @classmethod
     @verify(Schemas.room_megolm_encrypted)
     def from_dict(cls, event_dict):
+        """Create a MegolmEvent from a dictionary.
+
+        Args:
+            event_dict (Dict): Dictionary containing the event.
+
+        Returns a MegolmEvent if the event_dict contains a valid event or a
+        BadEvent if it's invalid.
+        """
         content = event_dict["content"]
 
         ciphertext = content["ciphertext"]
