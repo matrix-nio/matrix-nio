@@ -31,23 +31,27 @@ from .encrypted_events import RoomEncryptedEvent
 
 @attr.s
 class Event(object):
-    event_id = attr.ib()
-    sender = attr.ib()
-    server_timestamp = attr.ib()
+    source = attr.ib()
+
+    event_id = attr.ib(init=False)
+    sender = attr.ib(init=False)
+    server_timestamp = attr.ib(init=False)
+
     decrypted = attr.ib(default=False, init=False)
     verified = attr.ib(default=False, init=False)
     sender_key = attr.ib(default=None, init=False)  # type: Optional[str]
     session_id = attr.ib(default=None, init=False)  # type: Optional[str]
     transaction_id = attr.ib(default=None, init=False)  # type: Optional[str]
 
+    def __attrs_post_init__(self):
+        self.event_id = self.source["event_id"]
+        self.sender = self.source["sender"]
+        self.server_timestamp = self.source["origin_server_ts"]
+
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[Event, UnknownBadEvent]
-        return cls(
-            parsed_dict["event_id"],
-            parsed_dict["sender"],
-            parsed_dict["origin_server_ts"],
-        )
+        return cls(parsed_dict)
 
     @classmethod
     def parse_event(
@@ -94,16 +98,12 @@ class Event(object):
 @attr.s
 class UnknownEvent(Event):
     type = attr.ib()
-    event_dict = attr.ib()
 
     @classmethod
     def from_dict(cls, event_dict):
         return cls(
-            event_dict["event_id"],
-            event_dict["sender"],
-            event_dict["origin_server_ts"],
+            event_dict,
             event_dict["type"],
-            event_dict
         )
 
 
@@ -155,9 +155,7 @@ class CallCandidatesEvent(CallEvent):
     def from_dict(cls, event_dict):
         content = event_dict.pop("content")
         return cls(
-            event_dict["event_id"],
-            event_dict["sender"],
-            event_dict["origin_server_ts"],
+            event_dict,
             content["call_id"],
             content["version"],
             content["candidates"],
@@ -180,9 +178,7 @@ class CallInviteEvent(CallEvent):
     def from_dict(cls, event_dict):
         content = event_dict.pop("content")
         return cls(
-            event_dict["event_id"],
-            event_dict["sender"],
-            event_dict["origin_server_ts"],
+            event_dict,
             content["call_id"],
             content["version"],
             content["lifetime"],
@@ -199,9 +195,7 @@ class CallAnswerEvent(CallEvent):
     def from_dict(cls, event_dict):
         content = event_dict.pop("content")
         return cls(
-            event_dict["event_id"],
-            event_dict["sender"],
-            event_dict["origin_server_ts"],
+            event_dict,
             content["call_id"],
             content["version"],
             content["answer"],
@@ -215,9 +209,7 @@ class CallHangupEvent(CallEvent):
     def from_dict(cls, event_dict):
         content = event_dict.pop("content")
         return cls(
-            event_dict["event_id"],
-            event_dict["sender"],
-            event_dict["origin_server_ts"],
+            event_dict,
             content["call_id"],
             content["version"],
         )
@@ -244,9 +236,7 @@ class RedactedEvent(Event):
         reason = content_dict.get("reason", None)
 
         return cls(
-            parsed_dict["event_id"],
-            parsed_dict["sender"],
-            parsed_dict["origin_server_ts"],
+            parsed_dict,
             parsed_dict["type"],
             redacter,
             reason,
@@ -268,15 +258,11 @@ class RoomCreateEvent(Event):
     @verify(Schemas.room_create)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomCreateEvent, BadEventType]
-        event_id = parsed_dict["event_id"]
-        sender = parsed_dict["sender"]
-        timestamp = parsed_dict["origin_server_ts"]
-
         creator = parsed_dict["content"]["creator"]
         federate = parsed_dict["content"]["m.federate"]
         version = parsed_dict["content"]["room_version"]
 
-        return cls(event_id, sender, timestamp, creator, federate, version)
+        return cls(parsed_dict, creator, federate, version)
 
 
 @attr.s
@@ -287,13 +273,9 @@ class RoomGuestAccessEvent(Event):
     @verify(Schemas.room_guest_access)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomGuestAccessEvent, BadEventType]
-        event_id = parsed_dict["event_id"]
-        sender = parsed_dict["sender"]
-        timestamp = parsed_dict["origin_server_ts"]
-
         guest_access = parsed_dict["content"]["guest_access"]
 
-        return cls(event_id, sender, timestamp, guest_access)
+        return cls(parsed_dict, guest_access)
 
 
 @attr.s
@@ -304,13 +286,9 @@ class RoomJoinRulesEvent(Event):
     @verify(Schemas.room_join_rules)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomJoinRulesEvent, BadEventType]
-        event_id = parsed_dict["event_id"]
-        sender = parsed_dict["sender"]
-        timestamp = parsed_dict["origin_server_ts"]
-
         join_rule = parsed_dict["content"]["join_rule"]
 
-        return cls(event_id, sender, timestamp, join_rule)
+        return cls(parsed_dict, join_rule)
 
 
 @attr.s
@@ -323,13 +301,9 @@ class RoomHistoryVisibilityEvent(Event):
                   parsed_dict,  # type: Dict[Any, Any]
                   ):
         # type: (...) -> Union[RoomHistoryVisibilityEvent, BadEventType]
-        event_id = parsed_dict["event_id"]
-        sender = parsed_dict["sender"]
-        timestamp = parsed_dict["origin_server_ts"]
-
         history_visibility = parsed_dict["content"]["history_visibility"]
 
-        return cls(event_id, sender, timestamp, history_visibility)
+        return cls(parsed_dict, history_visibility)
 
 
 @attr.s
@@ -340,13 +314,9 @@ class RoomAliasEvent(Event):
     @verify(Schemas.room_canonical_alias)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomAliasEvent, BadEventType]
-        event_id = parsed_dict["event_id"]
-        sender = parsed_dict["sender"]
-        timestamp = parsed_dict["origin_server_ts"]
-
         canonical_alias = parsed_dict["content"]["alias"]
 
-        return cls(event_id, sender, timestamp, canonical_alias)
+        return cls(parsed_dict, canonical_alias)
 
 
 @attr.s
@@ -357,13 +327,9 @@ class RoomNameEvent(Event):
     @verify(Schemas.room_name)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomNameEvent, BadEventType]
-        event_id = parsed_dict["event_id"]
-        sender = parsed_dict["sender"]
-        timestamp = parsed_dict["origin_server_ts"]
-
         room_name = parsed_dict["content"]["name"]
 
-        return cls(event_id, sender, timestamp, room_name)
+        return cls(parsed_dict, room_name)
 
 
 @attr.s
@@ -374,13 +340,9 @@ class RoomTopicEvent(Event):
     @verify(Schemas.room_topic)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomTopicEvent, BadEventType]
-        event_id = parsed_dict["event_id"]
-        sender = parsed_dict["sender"]
-        timestamp = parsed_dict["origin_server_ts"]
-
         canonical_alias = parsed_dict["content"]["topic"]
 
-        return cls(event_id, sender, timestamp, canonical_alias)
+        return cls(parsed_dict, canonical_alias)
 
 
 @attr.s
@@ -450,9 +412,7 @@ class RoomMessageMedia(RoomMessage):
     @verify(Schemas.room_message_media)
     def from_dict(cls, parsed_dict):
         return cls(
-            parsed_dict["event_id"],
-            parsed_dict["sender"],
-            parsed_dict["origin_server_ts"],
+            parsed_dict,
             parsed_dict["content"]["url"],
             parsed_dict["content"]["body"],
         )
@@ -470,9 +430,7 @@ class RoomEncryptedMedia(RoomMessage):
     @verify(Schemas.room_encrypted_media)
     def from_dict(cls, parsed_dict):
         return cls(
-            parsed_dict["event_id"],
-            parsed_dict["sender"],
-            parsed_dict["origin_server_ts"],
+            parsed_dict,
             parsed_dict["content"]["file"]["url"],
             parsed_dict["content"]["body"],
             parsed_dict["content"]["file"]["key"],
@@ -530,9 +488,7 @@ class RoomMessageUnknown(RoomMessage):
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> RoomMessage
         return cls(
-            parsed_dict["event_id"],
-            parsed_dict["sender"],
-            parsed_dict["origin_server_ts"],
+            parsed_dict,
             parsed_dict["content"]["msgtype"],
             parsed_dict.pop("content"),
         )
@@ -546,9 +502,7 @@ class RoomMessageNotice(RoomMessage):
     @verify(Schemas.room_message_notice)
     def from_dict(cls, parsed_dict):
         return cls(
-            parsed_dict["event_id"],
-            parsed_dict["sender"],
-            parsed_dict["origin_server_ts"],
+            parsed_dict,
             parsed_dict["content"]["body"],
         )
 
@@ -589,9 +543,7 @@ class RoomMessageText(RoomMessage):
         )
 
         return cls(
-            parsed_dict["event_id"],
-            parsed_dict["sender"],
-            parsed_dict["origin_server_ts"],
+            parsed_dict,
             body,
             formatted_body,
             body_format,
@@ -667,9 +619,7 @@ class PowerLevelsEvent(Event):
         levels = PowerLevels(default_levels, users, events)
 
         return cls(
-            parsed_dict["event_id"],
-            parsed_dict["sender"],
-            parsed_dict["origin_server_ts"],
+            parsed_dict,
             levels,
         )
 
@@ -687,9 +637,7 @@ class RedactionEvent(Event):
         reason = content.get("reason", None)
 
         return cls(
-            parsed_dict["event_id"],
-            parsed_dict["sender"],
-            parsed_dict["origin_server_ts"],
+            parsed_dict,
             parsed_dict["redacts"],
             reason,
         )
@@ -710,9 +658,7 @@ class RoomMemberEvent(Event):
         prev_content = unsigned.get("prev_content", None)
 
         return cls(
-            parsed_dict["event_id"],
-            parsed_dict["sender"],
-            parsed_dict["origin_server_ts"],
+            parsed_dict,
             parsed_dict["state_key"],
             content,
             prev_content,

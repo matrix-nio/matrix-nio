@@ -123,13 +123,19 @@ class TestClass(object):
         timeline = Timeline(
             [
                 RoomMemberEvent(
-                    "event_id_1",
-                    ALICE_ID,
-                    1516809890615,
+                    {"event_id": "event_id_1",
+                     "sender": ALICE_ID,
+                     "origin_server_ts": 1516809890615},
                     ALICE_ID,
                     {"membership": "join"}
                 ),
-                RoomEncryptionEvent("event_id_2", ALICE_ID, 1516809890615)
+                RoomEncryptionEvent(
+                    {
+                        "event_id": "event_id_2",
+                        "sender": ALICE_ID,
+                        "origin_server_ts": 1516809890615
+                    }
+                )
             ],
             False,
             "prev_batch_token"
@@ -153,7 +159,15 @@ class TestClass(object):
             rooms,
             DeviceOneTimeKeyCount(49, 50),
             DeviceList([ALICE_ID], []),
-            [RoomEncryptionEvent("event_id_2", ALICE_ID, 1516809890615)]
+            [
+                RoomEncryptionEvent(
+                    {
+                        "event_id": "event_id_2",
+                        "sender": ALICE_ID,
+                        "origin_server_ts": 1516809890615
+                    }
+                )
+            ]
         )
 
     @property
@@ -161,9 +175,9 @@ class TestClass(object):
         timeline = Timeline(
             [
                 RoomMemberEvent(
-                    "event_id_1",
-                    ALICE_ID,
-                    1516809890615,
+                    {"event_id": "event_id_1",
+                     "sender": ALICE_ID,
+                     "origin_server_ts": 1516809890615},
                     ALICE_ID,
                     {"membership": "join"}
                 ),
@@ -193,13 +207,19 @@ class TestClass(object):
         timeline = Timeline(
             [
                 RoomMemberEvent(
-                    "event_id_1",
-                    ALICE_ID,
-                    1516809890615,
+                    {"event_id": "event_id_1",
+                     "sender": ALICE_ID,
+                     "origin_server_ts": 1516809890615},
                     ALICE_ID,
                     {"membership": "join"}
                 ),
-                RoomEncryptionEvent("event_id_2", ALICE_ID, 1516809890615)
+                RoomEncryptionEvent(
+                    {
+                        "event_id": "event_id_2",
+                        "sender": ALICE_ID,
+                        "origin_server_ts": 1516809890615
+                    }
+                )
             ],
             True,
             "prev_batch_token"

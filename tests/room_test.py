@@ -148,7 +148,16 @@ class TestClass(object):
     def test_create_event(self):
         room = self.test_room
         assert not room.creator
-        room.handle_event(RoomCreateEvent("event_id", BOB_ID, 0, BOB_ID, False))
+        room.handle_event(
+                RoomCreateEvent(
+                    {
+                        "event_id": "event_id",
+                        "sender": BOB_ID,
+                        "origin_server_ts": 0
+                    },
+                    BOB_ID, False
+                )
+        )
         assert room.creator == BOB_ID
         assert room.federate is False
         assert room.room_version == "1"
@@ -156,25 +165,61 @@ class TestClass(object):
     def test_guest_access_event(self):
         room = self.test_room
         assert room.guest_access == "forbidden"
-        room.handle_event(RoomGuestAccessEvent("event_id", BOB_ID, 0, "can_join"))
+        room.handle_event(
+            RoomGuestAccessEvent(
+                {
+                    "event_id": "event_id",
+                    "sender": BOB_ID,
+                    "origin_server_ts": 0
+                },
+                "can_join"
+            )
+        )
         assert room.guest_access == "can_join"
 
     def test_history_visibility_event(self):
         room = self.test_room
         assert room.history_visibility == "shared"
-        room.handle_event(RoomHistoryVisibilityEvent("event_id", BOB_ID, 0, "invited"))
+        room.handle_event(
+            RoomHistoryVisibilityEvent(
+                {
+                    "event_id": "event_id",
+                    "sender": BOB_ID,
+                    "origin_server_ts": 0
+                },
+                "invited"
+            )
+        )
         assert room.history_visibility == "invited"
 
     def test_join_rules_event(self):
         room = self.test_room
         assert room.join_rule == "invite"
-        room.handle_event(RoomJoinRulesEvent("event_id", BOB_ID, 0, "public"))
+        room.handle_event(
+            RoomJoinRulesEvent(
+                {
+                    "event_id": "event_id",
+                    "sender": BOB_ID,
+                    "origin_server_ts": 0
+                },
+                "public"
+            )
+        )
         assert room.join_rule == "public"
 
     def test_name_event(self):
         room = self.test_room
         assert not room.name
-        room.handle_event(RoomNameEvent("event_id", BOB_ID, 0, "test name"))
+        room.handle_event(
+            RoomNameEvent(
+                {
+                    "event_id": "event_id",
+                    "sender": BOB_ID,
+                    "origin_server_ts": 0
+                },
+                "test name"
+            )
+        )
         assert room.name == "test name"
 
     def test_summary_update(self):
