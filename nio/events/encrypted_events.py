@@ -165,7 +165,7 @@ class MegolmEvent(RoomEncryptedEvent):
             tx_id
         )
 
-    def as_key_request(self, user_id, requesting_device_id):
+    def as_key_request(self, user_id, requesting_device_id, request_id=None):
         # type: (str, str) -> ToDeviceMessage
         """Make a to-device message for a room key request.
 
@@ -182,7 +182,7 @@ class MegolmEvent(RoomEncryptedEvent):
                 "room_id": self.room_id,
                 "sender_key": self.sender_key
             },
-            "request_id": self.session_id,
+            "request_id": request_id or self.session_id,
             "requesting_device_id": requesting_device_id,
         }
 
