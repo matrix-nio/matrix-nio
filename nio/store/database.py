@@ -834,6 +834,21 @@ class MatrixStore(object):
             account=account
         ).on_conflict_ignore().execute()
 
+    @use_database
+    def remove_outgoing_key_request(self, key_request):
+        # type: (OutgoingKeyRequest) -> None
+        """Remove an active outgoing key request from the store."""
+        account = self._get_account()
+        assert account
+
+        db_key_request = OutgoingKeyRequests.get_or_none(
+            OutgoingKeyRequests.request_id == key_request.request_id,
+            OutgoingKeyRequests.account == account
+        )
+
+        if db_key_request:
+            db_key_request.delete_instance()
+
     @use_database_atomic
     def save_encrypted_rooms(self, rooms):
         """Save the set of room ids for this account."""

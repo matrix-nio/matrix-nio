@@ -722,11 +722,8 @@ class Olm(object):
             self.save_inbound_group_session(session)
 
         key_request = self.outgoing_key_requests.pop(key_request.request_id)
-        self.key_request_cancelations[key_request.request_id] = key_request
-
-        # TODO remove our key request from the store
-        # self.store.remove_outgoing_key_request(event.session_id)
-        # TODO save our cancelation to the store
+        self.store.remove_outgoing_key_request(key_request)
+        # self.key_request_cancelations[key_request.request_id] = key_request
 
         return event
 
