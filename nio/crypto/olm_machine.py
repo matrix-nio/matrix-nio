@@ -136,8 +136,6 @@ class Olm(object):
         self.tracked_users = set()  # type: Set[str]
         self.outgoing_key_requests = dict()  \
             # type: Dict[str, OutgoingKeyRequest]
-        self.key_request_cancelations = dict()  \
-            # type: Dict[str, OutgoingKeyRequest]
 
         self.key_verifications = dict()  # type: Dict[str, Sas]
         self.outgoing_to_device_messages = []  # type: List[ToDeviceMessage]
@@ -723,7 +721,9 @@ class Olm(object):
 
         key_request = self.outgoing_key_requests.pop(key_request.request_id)
         self.store.remove_outgoing_key_request(key_request)
-        # self.key_request_cancelations[key_request.request_id] = key_request
+        self.outgoing_to_device_messages.append(
+            key_request.as_cancelation(self.user_id, self.device_id)
+        )
 
         return event
 

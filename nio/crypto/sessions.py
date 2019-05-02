@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Set, Tuple
 
 from ..exceptions import EncryptionError
+from ..messages import ToDeviceMessage
 
 if False:
     from ..responses import RoomKeyRequestResponse
@@ -241,3 +242,18 @@ class OutgoingKeyRequest(object):
     def from_database(cls, row):
         """Create a key request object from a database row."""
         return cls.from_response(row)
+
+    def as_cancelation(self, user_id, requesting_device_id):
+        """Turn the key request into a cancelation to-device message."""
+        content = {
+            "action": "cancel_request",
+            "request_id": self.request_id,
+            "requesting_device_id": requesting_device_id,
+        }
+
+        return ToDeviceMessage(
+            "m.room_key_request",
+            user_id,
+            "*",
+            content
+        )
