@@ -816,7 +816,7 @@ class MatrixStore(object):
         if not account:
             return dict()
 
-        return {request.request_id: OutgoingKeyRequest.from_response(request)
+        return {request.request_id: OutgoingKeyRequest.from_database(request)
                 for request in account.out_key_requests}
 
     @use_database

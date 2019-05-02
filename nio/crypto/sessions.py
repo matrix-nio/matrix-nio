@@ -229,10 +229,15 @@ class OutgoingKeyRequest(object):
     @classmethod
     def from_response(cls, response):
         # type: (RoomKeyRequestResponse) -> OutgoingKeyRequest
-        """Create an key request object from a RoomKeyRequestResponse."""
+        """Create a key request object from a RoomKeyRequestResponse."""
         return cls(
             response.request_id,
             response.session_id,
             response.room_id,
             response.algorithm
         )
+
+    @classmethod
+    def from_database(cls, row):
+        """Create a key request object from a database row."""
+        return cls.from_response(row)
