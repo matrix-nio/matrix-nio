@@ -573,6 +573,8 @@ class Client(object):
             self.store.save_encrypted_rooms(encrypted_rooms)
 
         if self.olm:
+            self.olm.clear_verifications()
+
             changed_users = set()
             self.olm.uploaded_key_count = (
                 response.device_key_count.signed_curve25519)

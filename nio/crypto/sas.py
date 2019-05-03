@@ -158,8 +158,8 @@ class Sas(olm.Sas):
         self.cancel_reason = ""
         self.cancel_code = ""
 
-        self._creation_time = datetime.now()
-        self._last_event_time = self._creation_time
+        self.creation_time = datetime.now()
+        self._last_event_time = self.creation_time
         super().__init__()
 
     @classmethod
@@ -221,7 +221,7 @@ class Sas(olm.Sas):
     def timed_out(self):
         """Did the verification process time out."""
         now = datetime.now()
-        if (now - self._creation_time >= self._max_age
+        if (now - self.creation_time >= self._max_age
                 or now - self._last_event_time >= self._max_event_timeout):
             self.state = SasState.canceled
             self.cancel_code, self.cancel_reason = self._timeout_error

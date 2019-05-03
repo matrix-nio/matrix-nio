@@ -21,6 +21,7 @@ import json
 # pylint: disable=redefined-builtin
 from builtins import str
 from collections import defaultdict
+from datetime import datetime, timedelta
 from typing import (
     Any,
     DefaultDict,
@@ -106,6 +107,7 @@ class Olm(object):
     _megolm_algorithm = 'm.megolm.v1.aes-sha2'
     _algorithms = [_olm_algorithm, _megolm_algorithm]
     _maxToDeviceMessagesPerRequest = 20
+    _max_sas_life = timedelta(minutes=20)
 
     def __init__(
         self,
@@ -1314,8 +1316,8 @@ class Olm(object):
             "Successfully imported encryption keys from {}".format(infile)
         )
 
-    def clear_canceled_verifications(self):
-        """Remove canceled key verifications from our cache.
+    def clear_verifications(self):
+        """Remove canceled or done key verifications from our cache.
 
         Returns a list of events that need to be added to the to-device event
         stream of our caller.
@@ -1323,6 +1325,8 @@ class Olm(object):
         """
         acitve_sas = dict()
         events = []
+
+        now = datetime.now()
 
         for transaction_id, sas in self.key_verifications.items():
             if sas.timed_out:
@@ -1335,7 +1339,9 @@ class Olm(object):
                 events.append(KeyVerificationCancel.from_dict(cancel_event))
                 continue
             elif sas.canceled:
-                continue
+                if now - sas.creation_time > self._max_sas_life:
+                    continue
+                acitve_sas[transaction_id] = sas
             else:
                 acitve_sas[transaction_id] = sas
 

@@ -377,10 +377,10 @@ class TestClass(object):
         assert not alice.timed_out
 
         minute = timedelta(minutes=1)
-        alice._creation_time -= minute
+        alice.creation_time -= minute
 
         assert not alice.timed_out
-        alice._creation_time -= (minute * 4)
+        alice.creation_time -= (minute * 4)
         assert alice.timed_out
         assert alice.canceled
 
@@ -453,7 +453,7 @@ class TestClass(object):
         assert bob.canceled
         assert not bob.verified
 
-    def test_client_mac(self, olm_machine):
+    def test_client_creation(self, olm_machine):
         bob_sas = Sas(
             bob_id,
             bob_device_id,
@@ -473,3 +473,29 @@ class TestClass(object):
         alice_sas = olm_machine.key_verifications[start_event.transaction_id]
 
         assert alice_sas
+
+    def test_client_gc(self, olm_machine):
+        bob_sas = Sas(
+            bob_id,
+            bob_device_id,
+            olm_machine.account.identity_keys["ed25519"],
+            bob_device
+        )
+
+        start = {
+            "sender": bob_id,
+            "content": bob_sas.start_verification().content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+        olm_machine.handle_key_verification(start_event)
+        alice_sas = olm_machine.key_verifications[start_event.transaction_id]
+        alice_sas.cancel()
+        olm_machine.clear_verifications()
+        alice_sas = olm_machine.key_verifications[start_event.transaction_id]
+        assert alice_sas
+        alice_sas.creation_time -= timedelta(minutes=25)
+        olm_machine.clear_verifications()
+        with pytest.raises(KeyError):
+            alice_sas = (
+                olm_machine.key_verifications[start_event.transaction_id]
+            )
