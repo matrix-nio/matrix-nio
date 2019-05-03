@@ -254,6 +254,23 @@ class Client(object):
         """To-device messages that we need to send out."""
         return self.olm.outgoing_to_device_messages if self.olm else []
 
+    def get_active_sas(self, user_id, device_id):
+        # type: (str, str) -> Optional[Sas]
+        """Find a non-canceled SAS verification object for the provided user.
+
+        Args:
+            user_id (str): The user for which we should find a SAS verification
+                object.
+            device_id (str): The device_id for which we should find the SAS
+                verification object.
+
+        Returns the object if it's found, otherwise None.
+        """
+        if not self.olm:
+            return None
+
+        return self.olm.get_active_sas(user_id, device_id)
+
     def _mark_to_device_message_as_sent(self, message):
         """Mark a to-device message as sent.
 

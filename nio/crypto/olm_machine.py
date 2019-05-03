@@ -1349,6 +1349,33 @@ class Olm(object):
 
         return events
 
+    def get_active_sas(self, user_id, device_id):
+        # type: (str, str) -> Optional[Sas]
+        """Find a non-canceled SAS verification object for the provided user.
+
+        Args:
+            user_id (str): The user for which we should find a SAS verification
+                object.
+            device_id (str): The device_id for which we should find the SAS
+                verification object.
+
+        Returns the object if it's found, otherwise None.
+        """
+        verifications = [
+            x for x in self.key_verifications.values() if not x.canceled
+        ]
+
+        for sas in sorted(
+            verifications,
+            key=lambda x: x.creation_time,
+            reverse=True
+        ):
+            device = sas.other_olm_device
+            if device.user_id == user_id and device.id == device_id:
+                return sas
+
+        return None
+
     def handle_key_verification(self, event):
         # type: (KeyVerificationEvent) -> None
         """Receive key verification events."""
