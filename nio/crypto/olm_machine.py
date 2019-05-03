@@ -1338,7 +1338,7 @@ class Olm(object):
                 }
                 events.append(KeyVerificationCancel.from_dict(cancel_event))
                 continue
-            elif sas.canceled:
+            elif sas.canceled or sas.verified:
                 if now - sas.creation_time > self._max_sas_life:
                     continue
                 acitve_sas[transaction_id] = sas
