@@ -1392,7 +1392,11 @@ class Olm(object):
         """Receive key verification events."""
         if isinstance(event, KeyVerificationStart):
             logger.info("Received key verification start event from "
-                        "{} {}".format(event.sender, event.from_device))
+                        "{} {} {}".format(
+                            event.sender,
+                            event.from_device,
+                            event.transaction_id
+                        ))
             try:
                 device = self.device_store[event.sender][event.from_device]
             except KeyError:
@@ -1425,7 +1429,11 @@ class Olm(object):
                 # TODO if there is another active SAS object for this
                 # user/device combination cancel it now.
                 logger.info("Sucesfully started key verification with"
-                            "{} {}".format(event.sender, event.from_device))
+                            "{} {} {}".format(
+                                event.sender,
+                                event.from_device,
+                                new_sas.transaction_id
+                            ))
                 self.key_verifications[event.transaction_id] = new_sas
 
         else:
@@ -1443,18 +1451,20 @@ class Olm(object):
                     message = sas.get_cancelation()
                 else:
                     logger.info("Received a key verification accept event "
-                                "from {} {}, sharing keys".format(
+                                "from {} {}, sharing keys {}".format(
                                     event.sender,
-                                    sas.other_olm_device.id))
+                                    sas.other_olm_device.id,
+                                    sas.transaction_id))
                     message = sas.share_key()
 
                 self.outgoing_to_device_messages.append(message)
 
             elif isinstance(event, KeyVerificationCancel):
                 logger.info("Received a key verification cancelation "
-                            "from {} {}. Canceling verification.".format(
+                            "from {} {}. Canceling verification {}.".format(
                                 event.sender,
-                                sas.other_olm_device.id))
+                                sas.other_olm_device.id,
+                                sas.transaction_id))
                 self.key_verifications.pop(event.transaction_id, None)
 
             elif isinstance(event, KeyVerificationKey):
@@ -1464,9 +1474,10 @@ class Olm(object):
                     message = sas.get_cancelation()
                 else:
                     logger.info("Received a key verification pubkey "
-                                "from {} {}.".format(
+                                "from {} {} {}.".format(
                                     event.sender,
-                                    sas.other_olm_device.id))
+                                    sas.other_olm_device.id,
+                                    sas.transaction_id))
 
                 if not sas.we_started_it:
                     message = sas.share_key()
@@ -1483,15 +1494,17 @@ class Olm(object):
                     return
 
                 logger.info("Received a valid key verification MAC "
-                            "from {} {}.".format(
+                            "from {} {} {}.".format(
                                 event.sender,
-                                sas.other_olm_device.id
+                                sas.other_olm_device.id,
+                                event.transaction_id
                             ))
 
                 if sas.verified:
                     logger.info("Interactive key verification successful, "
-                                "verifying device {} of user {}.".format(
+                                "verifying device {} of user {} {}.".format(
                                     sas.other_olm_device.id,
-                                    event.sender))
+                                    event.sender,
+                                    event.transaction_id))
                     device = sas.other_olm_device
                     self.verify_device(device)
