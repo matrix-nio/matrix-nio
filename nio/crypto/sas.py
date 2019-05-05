@@ -220,6 +220,9 @@ class Sas(olm.Sas):
     @property
     def timed_out(self):
         """Did the verification process time out."""
+        if self.verified:
+            return False
+
         now = datetime.now()
         if (now - self.creation_time >= self._max_age
                 or now - self._last_event_time >= self._max_event_timeout):
