@@ -1349,6 +1349,17 @@ class Olm(object):
 
         return events
 
+    def create_sas(self, olm_device):
+        sas = Sas(
+            self.user_id,
+            self.device_id,
+            self.account.identity_keys["ed25519"],
+            olm_device
+        )
+        self.key_verifications[sas.transaction_id] = sas
+
+        return sas.start_verification()
+
     def get_active_sas(self, user_id, device_id):
         # type: (str, str) -> Optional[Sas]
         """Find a non-canceled SAS verification object for the provided user.

@@ -860,3 +860,9 @@ class Client(object):
         """
         cb = ClientCallback(callback, filter)
         self.to_device_callbacks.append(cb)
+
+    @store_loaded
+    def create_key_verification(self, device):
+        # type: (OlmDevice) -> ToDeviceMessage
+        assert self.olm
+        return self.olm.create_sas(device)
