@@ -1469,6 +1469,7 @@ class Olm(object):
 
             elif isinstance(event, KeyVerificationKey):
                 sas.receive_key_event(event)
+                message = None
 
                 if sas.canceled:
                     message = sas.get_cancelation()
