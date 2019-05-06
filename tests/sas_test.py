@@ -7,7 +7,8 @@ from nio.events import (
     KeyVerificationStart,
     KeyVerificationAccept,
     KeyVerificationKey,
-    KeyVerificationMac
+    KeyVerificationMac,
+    KeyVerificationCancel
 )
 from helpers import faker
 
@@ -835,3 +836,40 @@ class TestClass(object):
         assert not alice_sas.canceled
         olm_machine.handle_key_verification(accept_event)
         assert alice_sas.canceled
+
+    def test_client_cancel_event(self, olm_machine):
+        alice_device = OlmDevice(
+            olm_machine.user_id,
+            olm_machine.device_id,
+            olm_machine.account.identity_keys["ed25519"],
+            olm_machine.account.identity_keys["curve25519"],
+        )
+        bob_device = olm_machine.device_store[bob_id][bob_device_id]
+
+        start = {
+            "sender": alice_device.user_id,
+            "content": olm_machine.create_sas(bob_device).content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+
+        bob_sas = Sas.from_key_verification_start(
+            bob_device.user_id,
+            bob_device.id,
+            bob_device.ed25519,
+            alice_device,
+            start_event
+        )
+
+        alice_sas = olm_machine.key_verifications[start_event.transaction_id]
+        assert alice_sas
+
+        bob_sas.cancel()
+        cancel = {
+            "sender": bob_id,
+            "content": bob_sas.get_cancelation().content
+        }
+        cancel_event = KeyVerificationCancel.from_dict(cancel)
+        assert not alice_sas.canceled
+        olm_machine.handle_key_verification(cancel_event)
+        assert alice_sas.canceled
+        assert alice_sas.transaction_id not in olm_machine.key_verifications
