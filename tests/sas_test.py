@@ -917,3 +917,36 @@ class TestClass(object):
         assert (
             start_event.transaction_id == to_device.content["transaction_id"]
         )
+
+    def test_duplicate_verification(self, olm_machine):
+        alice_device = OlmDevice(
+            olm_machine.user_id,
+            olm_machine.device_id,
+            olm_machine.account.identity_keys["ed25519"],
+            olm_machine.account.identity_keys["curve25519"],
+        )
+        bob_device = olm_machine.device_store[bob_id][bob_device_id]
+
+        bob_sas = Sas(
+            bob_device.user_id,
+            bob_device.id,
+            bob_device.ed25519,
+            alice_device
+        )
+        start = {
+            "sender": bob_device.user_id,
+            "content": bob_sas.start_verification().content
+        }
+
+        start_event = KeyVerificationStart.from_dict(start)
+
+        olm_machine.handle_key_verification(start_event)
+        alice_sas = olm_machine.key_verifications[start_event.transaction_id]
+        assert alice_sas
+        olm_machine.handle_key_verification(start_event)
+
+        assert alice_sas.canceled
+
+        new_alice_sas = olm_machine.get_active_sas(bob_id, bob_device_id)
+        assert new_alice_sas
+        assert not new_alice_sas.canceled
