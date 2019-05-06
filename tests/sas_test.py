@@ -950,3 +950,19 @@ class TestClass(object):
         new_alice_sas = olm_machine.get_active_sas(bob_id, bob_device_id)
         assert new_alice_sas
         assert not new_alice_sas.canceled
+
+    def test_client_sas_expiration(self, olm_machine):
+        bob_device = olm_machine.device_store[bob_id][bob_device_id]
+        olm_machine.create_sas(bob_device)
+        sas = olm_machine.get_active_sas(bob_id, bob_device_id)
+        assert sas
+
+        olm_machine.clear_verifications()
+
+        assert sas in olm_machine.key_verifications.values()
+        minute = timedelta(minutes=1)
+        sas.creation_time -= (minute * 5)
+
+        olm_machine.clear_verifications()
+        assert sas.canceled
+        assert sas not in olm_machine.key_verifications.values()
