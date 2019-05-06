@@ -701,3 +701,63 @@ class TestClass(object):
         assert alice_sas.state == SasState.mac_received
         assert alice_sas.verified
         assert olm_machine.is_device_verified(bob_device)
+
+    def test_client_unknown_device(self, olm_machine):
+        alice_device = OlmDevice(
+            olm_machine.user_id,
+            olm_machine.device_id,
+            olm_machine.account.identity_keys["ed25519"],
+            olm_machine.account.identity_keys["curve25519"],
+        )
+
+        bob_device = faker.olm_device()
+
+        bob_sas = Sas(
+            bob_device.user_id,
+            bob_device.id,
+            bob_device.ed25519,
+            alice_device
+        )
+
+        start = {
+            "sender": bob_device.user_id,
+            "content": bob_sas.start_verification().content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+        olm_machine.handle_key_verification(start_event)
+
+        assert start_event.transaction_id not in olm_machine.key_verifications
+        assert bob_device.user_id in olm_machine.users_for_key_query
+
+    def test_client_unsupported_method(self, olm_machine):
+        alice_device = OlmDevice(
+            olm_machine.user_id,
+            olm_machine.device_id,
+            olm_machine.account.identity_keys["ed25519"],
+            olm_machine.account.identity_keys["curve25519"],
+        )
+        bob_device = olm_machine.device_store[bob_id][bob_device_id]
+
+        bob_sas = Sas(
+            bob_device.user_id,
+            bob_device.id,
+            bob_device.ed25519,
+            alice_device
+        )
+
+        start = {
+            "sender": bob_device.user_id,
+            "content": bob_sas.start_verification().content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+        start_event.method = "unsupported"
+        assert not olm_machine.outgoing_to_device_messages
+
+        olm_machine.handle_key_verification(start_event)
+
+        assert start_event.transaction_id not in olm_machine.key_verifications
+        assert olm_machine.outgoing_to_device_messages
+        to_device = olm_machine.outgoing_to_device_messages[0]
+        assert (
+            start_event.transaction_id == to_device.content["transaction_id"]
+        )
