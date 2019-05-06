@@ -399,6 +399,121 @@ class TestClass(object):
         assert alice.timed_out
         assert alice.canceled
 
+    def test_sas_local_errors(self):
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys["ed25519"],
+            bob_device,
+        )
+        start = {
+            "sender": alice_id,
+            "content": alice.start_verification().content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+
+        bob = Sas.from_key_verification_start(
+            bob_id,
+            bob_device_id,
+            bob_keys["ed25519"],
+            alice_device,
+            start_event
+        )
+
+        alice.set_their_pubkey(bob.pubkey)
+        alice.state = SasState.canceled
+
+        with pytest.raises(LocalProtocolError):
+            alice.accept_verification()
+
+        with pytest.raises(LocalProtocolError):
+            alice.share_key()
+
+        alice.sas_accepted = True
+
+        with pytest.raises(LocalProtocolError):
+            alice.get_mac()
+
+    def test_sas_not_ok_events(self):
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys["ed25519"],
+            bob_device,
+        )
+        start = {
+            "sender": alice_id,
+            "content": alice.start_verification().content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+
+        bob = Sas.from_key_verification_start(
+            bob_id,
+            bob_device_id,
+            bob_keys["ed25519"],
+            alice_device,
+            start_event
+        )
+        accept = {
+            "sender": bob_id,
+            "content": bob.accept_verification().content
+        }
+        accept_event = KeyVerificationAccept.from_dict(accept)
+        accept_event.sender = faker.mx_id()
+        alice.receive_accept_event(accept_event)
+        assert alice.canceled
+
+        alice.state = SasState.created
+        accept_event.sender = bob_id
+        accept_event.transaction_id = "fake_id"
+        alice.receive_accept_event(accept_event)
+        assert alice.canceled
+
+        accept_event.transaction_id = alice.transaction_id
+        alice.receive_accept_event(accept_event)
+        assert alice.canceled
+
+        alice.state = SasState.created
+        accept_event.hash = "fake_hash"
+        alice.receive_accept_event(accept_event)
+        assert alice.canceled
+
+    def test_sas_mac_before_key(self):
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys["ed25519"],
+            bob_device,
+        )
+        start = {
+            "sender": alice_id,
+            "content": alice.start_verification().content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+
+        bob = Sas.from_key_verification_start(
+            bob_id,
+            bob_device_id,
+            bob_keys["ed25519"],
+            alice_device,
+            start_event
+        )
+        bob.set_their_pubkey(alice.pubkey)
+        bob.state = SasState.key_received
+
+        bob.chosen_mac_method = Sas._mac_normal
+        bob.accept_sas()
+        bob_mac = {
+            "sender": bob_id,
+            "content": bob.get_mac().content
+        }
+
+        mac_event = KeyVerificationMac.from_dict(bob_mac)
+
+        alice.receive_mac_event(mac_event)
+
+        assert alice.canceled
+
     def test_sas_invalid_mac(self):
         alice = Sas(
             alice_id,
@@ -567,6 +682,9 @@ class TestClass(object):
         assert not alice_sas.verified
 
         alice_sas.accept_sas()
+        assert alice_sas.verified
+        bob_mac_event.keys = "fake_keys"
+        olm_machine.handle_key_verification(bob_mac_event)
         assert alice_sas.verified
 
     def test_client_invalid_key(self, olm_machine):
