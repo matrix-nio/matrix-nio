@@ -283,6 +283,59 @@ class TestClass(object):
         bob.accept_sas()
         assert bob.verified
 
+    def test_sas_old_mac_method(self):
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys["ed25519"],
+            bob_device,
+        )
+        start = {
+            "sender": alice_id,
+            "content": alice.start_verification().content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+        start_event.message_authentication_codes.remove(Sas._mac_normal)
+
+        bob = Sas.from_key_verification_start(
+            bob_id,
+            bob_device_id,
+            bob_keys["ed25519"],
+            alice_device,
+            start_event
+        )
+
+        with pytest.raises(LocalProtocolError):
+            alice.accept_sas()
+
+        alice.set_their_pubkey(bob.pubkey)
+        bob.set_their_pubkey(alice.pubkey)
+
+        alice.state = SasState.key_received
+        bob.state = SasState.key_received
+        alice.chosen_mac_method = Sas._mac_normal
+        bob.chosen_mac_method = Sas._mac_normal
+
+        with pytest.raises(LocalProtocolError):
+            alice.get_mac()
+
+        alice.accept_sas()
+        alice_mac = {
+            "sender": alice_id,
+            "content": alice.get_mac().content
+        }
+
+        mac_event = KeyVerificationMac.from_dict(alice_mac)
+        assert isinstance(mac_event, KeyVerificationMac)
+        assert not bob.verified
+
+        bob.receive_mac_event(mac_event)
+        assert bob.state == SasState.mac_received
+        assert not bob.verified
+
+        bob.accept_sas()
+        assert bob.verified
+
     def test_sas_cancelation(self):
         alice = Sas(
             alice_id,
@@ -422,9 +475,10 @@ class TestClass(object):
 
         alice.set_their_pubkey(bob.pubkey)
         alice.state = SasState.canceled
+        bob.state = SasState.canceled
 
         with pytest.raises(LocalProtocolError):
-            alice.accept_verification()
+            bob.accept_verification()
 
         with pytest.raises(LocalProtocolError):
             alice.share_key()
@@ -476,6 +530,39 @@ class TestClass(object):
         alice.state = SasState.created
         accept_event.hash = "fake_hash"
         alice.receive_accept_event(accept_event)
+        assert alice.canceled
+
+        alice.state = SasState.created
+        accept_event.hash = Sas._hash_v1
+        alice.receive_accept_event(accept_event)
+        alice_key = {
+            "sender": alice_id,
+            "content": alice.share_key().content
+        }
+        alice_key_event = KeyVerificationKey.from_dict(alice_key)
+
+        alice_key_event.sender = faker.mx_id()
+        bob.receive_key_event(alice_key_event)
+        assert bob.canceled
+
+        bob.set_their_pubkey(alice.pubkey)
+        bob.state = SasState.key_received
+        bob.chosen_mac_method = Sas._mac_normal
+
+        alice.chosen_mac_method = Sas._mac_normal
+        alice.set_their_pubkey(bob.pubkey)
+        alice.state = SasState.key_received
+
+        bob.accept_sas()
+        bob_mac = {
+            "sender": bob_id,
+            "content": bob.get_mac().content
+        }
+
+        mac_event = KeyVerificationMac.from_dict(bob_mac)
+
+        mac_event.sender = faker.mx_id()
+        alice.receive_mac_event(mac_event)
         assert alice.canceled
 
     def test_sas_mac_before_key(self):
