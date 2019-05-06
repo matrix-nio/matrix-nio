@@ -1483,7 +1483,7 @@ class Olm(object):
                                     sas.other_olm_device.id,
                                     sas.transaction_id))
 
-                if not sas.we_started_it:
+                if not sas.we_started_it and not sas.canceled:
                     message = sas.share_key()
 
                 if message:
