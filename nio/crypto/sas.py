@@ -238,6 +238,11 @@ class Sas(olm.Sas):
 
     def accept_sas(self):
         """Accept the short authentication string."""
+        if self.state == SasState.canceled:
+            raise LocalProtocolError("Key verification process was canceled "
+                                     "can't accept short authentication "
+                                     "string")
+
         if not self.other_key_set:
             raise LocalProtocolError("Other public key isn't set yet, can't "
                                      "generate nor accept a short "
