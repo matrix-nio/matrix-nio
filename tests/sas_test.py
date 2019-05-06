@@ -645,7 +645,7 @@ class TestClass(object):
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         start = {
-            "sender": bob_id,
+            "sender": alice_device.user_id,
             "content": olm_machine.create_sas(bob_device).content
         }
         start_event = KeyVerificationStart.from_dict(start)
@@ -761,3 +761,77 @@ class TestClass(object):
         assert (
             start_event.transaction_id == to_device.content["transaction_id"]
         )
+
+    def test_client_unknown_txid(self, olm_machine):
+        alice_device = OlmDevice(
+            olm_machine.user_id,
+            olm_machine.device_id,
+            olm_machine.account.identity_keys["ed25519"],
+            olm_machine.account.identity_keys["curve25519"],
+        )
+        bob_device = olm_machine.device_store[bob_id][bob_device_id]
+
+        bob_sas = Sas(
+            bob_device.user_id,
+            bob_device.id,
+            bob_device.ed25519,
+            alice_device
+        )
+
+        start = {
+            "sender": bob_device.user_id,
+            "content": bob_sas.start_verification().content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+        olm_machine.handle_key_verification(start_event)
+
+        bob_key = {
+            "sender": bob_id,
+            "content": bob_sas.share_key().content
+        }
+        bob_key_event = KeyVerificationKey.from_dict(bob_key)
+        bob_key_event.transaction_id = "unknown"
+        olm_machine.handle_key_verification(start_event)
+        alice_sas = olm_machine.key_verifications[start_event.transaction_id]
+        assert alice_sas
+        assert not alice_sas.other_key_set
+
+        assert (
+            bob_key_event.transaction_id not in olm_machine.key_verifications
+        )
+
+    def test_client_accept_cancel(self, olm_machine):
+        alice_device = OlmDevice(
+            olm_machine.user_id,
+            olm_machine.device_id,
+            olm_machine.account.identity_keys["ed25519"],
+            olm_machine.account.identity_keys["curve25519"],
+        )
+        bob_device = olm_machine.device_store[bob_id][bob_device_id]
+
+        start = {
+            "sender": alice_device.user_id,
+            "content": olm_machine.create_sas(bob_device).content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+
+        bob_sas = Sas.from_key_verification_start(
+            bob_device.user_id,
+            bob_device.id,
+            bob_device.ed25519,
+            alice_device,
+            start_event
+        )
+
+        alice_sas = olm_machine.key_verifications[start_event.transaction_id]
+        assert alice_sas
+
+        accept = {
+            "sender": bob_id,
+            "content": bob_sas.accept_verification().content
+        }
+        accept_event = KeyVerificationAccept.from_dict(accept)
+        olm_machine.handle_key_verification(accept_event)
+        assert not alice_sas.canceled
+        olm_machine.handle_key_verification(accept_event)
+        assert alice_sas.canceled
