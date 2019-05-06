@@ -43,6 +43,7 @@ def olm_machine():
     store = SqliteMemoryStore(ALICE_ID, ALICE_DEVICE_ID)
     client = Olm(ALICE_ID, ALICE_DEVICE_ID, store)
     client.device_store.add(bob_device)
+    store.save_device_keys(client.device_store)
     return client
 
 
