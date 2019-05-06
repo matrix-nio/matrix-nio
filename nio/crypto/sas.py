@@ -514,6 +514,13 @@ class Sas(olm.Sas):
         if not self._event_ok(event):
             return
 
+        if self.state != SasState.created:
+            self.state = SasState.canceled
+            self.cancel_code, self.cancel_reason = (
+                Sas._unexpected_message_error
+            )
+            return
+
         if (event.key_agreement_protocol != Sas._key_agreement_v1
                 or event.hash != Sas._hash_v1
                 or event.message_authentication_code not in Sas._mac_v1
@@ -553,7 +560,17 @@ class Sas(olm.Sas):
 
     def receive_mac_event(self, event):
         """Receive a KeyVerificationMac event."""
+        if self.verified:
+            return
+
         if not self._event_ok(event):
+            return
+
+        if self.state != SasState.key_received:
+            self.state = SasState.canceled
+            self.cancel_code, self.cancel_reason = (
+                Sas._unexpected_message_error
+            )
             return
 
         info = ("MATRIX_KEY_VERIFICATION_MAC"
