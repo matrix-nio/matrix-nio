@@ -792,7 +792,7 @@ class TestClass(object):
         }
         bob_key_event = KeyVerificationKey.from_dict(bob_key)
         bob_key_event.transaction_id = "unknown"
-        olm_machine.handle_key_verification(start_event)
+        olm_machine.handle_key_verification(bob_key_event)
         alice_sas = olm_machine.key_verifications[start_event.transaction_id]
         assert alice_sas
         assert not alice_sas.other_key_set
