@@ -873,3 +873,47 @@ class TestClass(object):
         olm_machine.handle_key_verification(cancel_event)
         assert alice_sas.canceled
         assert alice_sas.transaction_id not in olm_machine.key_verifications
+
+    def test_key_cancel(self, olm_machine):
+        alice_device = OlmDevice(
+            olm_machine.user_id,
+            olm_machine.device_id,
+            olm_machine.account.identity_keys["ed25519"],
+            olm_machine.account.identity_keys["curve25519"],
+        )
+        bob_device = olm_machine.device_store[bob_id][bob_device_id]
+
+        bob_sas = Sas(
+            bob_device.user_id,
+            bob_device.id,
+            bob_device.ed25519,
+            alice_device
+        )
+
+        start = {
+            "sender": bob_device.user_id,
+            "content": bob_sas.start_verification().content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+        olm_machine.handle_key_verification(start_event)
+
+        bob_key = {
+            "sender": bob_id,
+            "content": bob_sas.share_key().content
+        }
+        assert not olm_machine.outgoing_to_device_messages
+        bob_key_event = KeyVerificationKey.from_dict(bob_key)
+        olm_machine.handle_key_verification(bob_key_event)
+        alice_sas = olm_machine.key_verifications[start_event.transaction_id]
+
+        assert alice_sas
+        assert not alice_sas.canceled
+        assert alice_sas.other_key_set
+
+        olm_machine.handle_key_verification(bob_key_event)
+        assert alice_sas.canceled
+        assert olm_machine.outgoing_to_device_messages
+        to_device = olm_machine.outgoing_to_device_messages[0]
+        assert (
+            start_event.transaction_id == to_device.content["transaction_id"]
+        )
