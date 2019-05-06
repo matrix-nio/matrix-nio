@@ -1426,8 +1426,21 @@ class Olm(object):
                 self.outgoing_to_device_messages.append(message)
 
             else:
-                # TODO if there is another active SAS object for this
-                # user/device combination cancel it now.
+                old_sas = self.get_active_sas(event.sender, event.from_device)
+
+                if old_sas:
+                    logger.info("Found an active verification process for the "
+                                "same user/device combination, "
+                                "canceling the old one. "
+                                "Old Sas: {} {} {}".format(
+                                    event.sender,
+                                    event.from_device,
+                                    old_sas.transaction_id
+                                ))
+                    old_sas.cancel()
+                    cancel_message = old_sas.get_cancelation()
+                    self.outgoing_to_device_messages.append(cancel_message)
+
                 logger.info("Sucesfully started key verification with"
                             "{} {} {}".format(
                                 event.sender,
