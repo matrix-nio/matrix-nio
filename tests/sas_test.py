@@ -11,8 +11,8 @@ from nio.events import (
 )
 from helpers import faker
 
-alice_id = faker.mx_id()
-alice_device_id = faker.device_id()
+alice_id = "@alice:example.org"
+alice_device_id = "JLAFKJWSCS"
 alice_keys = faker.olm_key_pair()
 
 bob_id = "@bob:example.org"
@@ -499,3 +499,138 @@ class TestClass(object):
             alice_sas = (
                 olm_machine.key_verifications[start_event.transaction_id]
             )
+
+    def test_client_full_sas(self, olm_machine):
+        alice_device = OlmDevice(
+            olm_machine.user_id,
+            olm_machine.device_id,
+            olm_machine.account.identity_keys["ed25519"],
+            olm_machine.account.identity_keys["curve25519"],
+        )
+        bob_device = olm_machine.device_store[bob_id][bob_device_id]
+        bob_sas = Sas(
+            bob_id,
+            bob_device_id,
+            bob_device.ed25519,
+            alice_device,
+        )
+
+        start = {
+            "sender": bob_id,
+            "content": bob_sas.start_verification().content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+
+        assert olm_machine.device_store[bob_id][bob_device_id]
+        olm_machine.handle_key_verification(start_event)
+
+        alice_sas = olm_machine.key_verifications[start_event.transaction_id]
+
+        accept = {
+            "sender": olm_machine.user_id,
+            "content": alice_sas.accept_verification().content
+        }
+        accept_event = KeyVerificationAccept.from_dict(accept)
+
+        bob_sas.receive_accept_event(accept_event)
+
+        bob_key = {
+            "sender": bob_id,
+            "content": bob_sas.share_key().content
+        }
+        bob_key_event = KeyVerificationKey.from_dict(bob_key)
+
+        olm_machine.handle_key_verification(bob_key_event)
+
+        alice_key = {
+            "sender": alice_id,
+            "content": alice_sas.share_key().content
+        }
+        alice_key_event = KeyVerificationKey.from_dict(alice_key)
+        bob_sas.receive_key_event(alice_key_event)
+
+        assert alice_sas.other_key_set
+        assert bob_sas.other_key_set
+
+        bob_sas.accept_sas()
+
+        bob_mac = {
+            "sender": bob_id,
+            "content": bob_sas.get_mac().content
+        }
+
+        bob_mac_event = KeyVerificationMac.from_dict(bob_mac)
+
+        olm_machine.handle_key_verification(bob_mac_event)
+        assert alice_sas.state == SasState.mac_received
+        assert not alice_sas.verified
+
+        alice_sas.accept_sas()
+        assert alice_sas.verified
+
+    def test_client_invalid_key(self, olm_machine):
+        alice_device = OlmDevice(
+            olm_machine.user_id,
+            olm_machine.device_id,
+            olm_machine.account.identity_keys["ed25519"],
+            olm_machine.account.identity_keys["curve25519"],
+        )
+        bob_sas = Sas(
+            bob_id,
+            bob_device_id,
+            faker.olm_key_pair()["ed25519"],
+            alice_device,
+        )
+
+        start = {
+            "sender": bob_id,
+            "content": bob_sas.start_verification().content
+        }
+        start_event = KeyVerificationStart.from_dict(start)
+
+        assert olm_machine.device_store[bob_id][bob_device_id]
+        olm_machine.handle_key_verification(start_event)
+
+        alice_sas = olm_machine.key_verifications[start_event.transaction_id]
+
+        accept = {
+            "sender": olm_machine.user_id,
+            "content": alice_sas.accept_verification().content
+        }
+        accept_event = KeyVerificationAccept.from_dict(accept)
+
+        bob_sas.receive_accept_event(accept_event)
+
+        bob_key = {
+            "sender": bob_id,
+            "content": bob_sas.share_key().content
+        }
+        bob_key_event = KeyVerificationKey.from_dict(bob_key)
+
+        olm_machine.handle_key_verification(bob_key_event)
+
+        alice_key = {
+            "sender": alice_id,
+            "content": alice_sas.share_key().content
+        }
+        alice_key_event = KeyVerificationKey.from_dict(alice_key)
+        bob_sas.receive_key_event(alice_key_event)
+
+        assert alice_sas.other_key_set
+        assert bob_sas.other_key_set
+
+        bob_sas.accept_sas()
+
+        bob_mac = {
+            "sender": bob_id,
+            "content": bob_sas.get_mac().content
+        }
+
+        bob_mac_event = KeyVerificationMac.from_dict(bob_mac)
+
+        olm_machine.handle_key_verification(bob_mac_event)
+        assert alice_sas.state == SasState.canceled
+        assert not alice_sas.verified
+
+        with pytest.raises(LocalProtocolError):
+            alice_sas.accept_sas()
