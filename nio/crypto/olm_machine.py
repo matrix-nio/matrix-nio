@@ -1465,7 +1465,10 @@ class Olm(object):
                                 event.sender,
                                 sas.other_olm_device.id,
                                 sas.transaction_id))
-                self.key_verifications.pop(event.transaction_id, None)
+                sas = self.key_verifications.pop(event.transaction_id, None)
+
+                if sas:
+                    sas.cancel()
 
             elif isinstance(event, KeyVerificationKey):
                 sas.receive_key_event(event)
