@@ -220,7 +220,7 @@ class Sas(olm.Sas):
     @property
     def timed_out(self):
         """Did the verification process time out."""
-        if self.verified:
+        if self.verified or self.canceled:
             return False
 
         now = datetime.now()
