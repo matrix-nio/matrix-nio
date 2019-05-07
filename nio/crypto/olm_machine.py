@@ -371,6 +371,7 @@ class Olm(object):
                     continue
 
                 user_devices = self.device_store[user_id]
+
                 try:
                     device = user_devices[device_id]
                 except KeyError:
@@ -387,11 +388,16 @@ class Olm(object):
                     ))
                 else:
                     if device.ed25519 != signing_key:
-                        logger.warning("Ed25519 key has changed for device %s "
-                                       "of user %s.", device_id, user_id)
+                        logger.warning("Ed25519 key has changed for device {} "
+                                       "of user {}.".format(
+                                           device_id,
+                                           user_id
+                                       ))
                         continue
+
                     if device.curve25519 == curve_key:
                         continue
+
                     device.curve25519 = curve_key
                     logger.info("Updating curve key in the device store for "
                                 "user {} with device id {}".format(
