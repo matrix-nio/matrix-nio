@@ -70,7 +70,6 @@ class UnknownBadEvent(object):
     verified = attr.ib(default=False, init=False)
     sender_key = attr.ib(default=None, init=False)      # type: Optional[str]
     session_id = attr.ib(default=None, init=False)      # type: Optional[str]
-    transaction_id = attr.ib(default=None, init=False)  # type: Optional[str]
 
 
 @attr.s
