@@ -864,5 +864,43 @@ class Client(object):
     @store_loaded
     def create_key_verification(self, device):
         # type: (OlmDevice) -> ToDeviceMessage
+        """Start a new key verification process with the given device.
+
+        Args:
+            device (OlmDevice): The device which we would like to verify
+
+        Returns a ``ToDeviceMessage`` that should be sent to to the homeserver.
+        """
         assert self.olm
         return self.olm.create_sas(device)
+
+    @store_loaded
+    def confirm_key_verification(self, transaction_id):
+        # type: (str) -> ToDeviceMessage
+        """Confirm that the short auth string of a key verification matches.
+
+        Args:
+            transaction_id (str): The transaction id of the interactive key
+                verification.
+
+        Returns a ``ToDeviceMessage`` that should be sent to to the homeserver.
+
+        If the other user already confirmed the short auth string on their side
+        this function will also verify the device that is partaking in the
+        verification process.
+        """
+        if transaction_id not in self.key_verifications:
+            raise LocalProtocolError("Key verification with the transaction "
+                                     "id {} does not exist.".format(
+                                         transaction_id
+                                     ))
+
+        sas = self.key_verifications[transaction_id]
+
+        sas.accept_sas()
+        message = sas.get_mac()
+
+        if sas.verified:
+            self.verify_device(sas.other_olm_device)
+
+        return message

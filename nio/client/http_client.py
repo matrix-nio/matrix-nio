@@ -92,6 +92,7 @@ from ..responses import (
 
 if False:
     from .messages import ToDeviceMessage
+    from .crypto import OlmDevice
 
 try:
     from json.decoder import JSONDecodeError
@@ -745,9 +746,9 @@ class HttpClient(Client):
     @connected
     @logged_in
     @store_loaded
-    def accept_short_auth_string(self, transaction_id, tx_id=None):
+    def confirm_short_auth_string(self, transaction_id, tx_id=None):
         # type: (str, Optional[str]) -> Tuple[UUID, bytes]
-        """Accept a short auth string and mark it as matching.
+        """Confirm a short auth string and mark it as matching.
 
         Returns a unique uuid that identifies the request and the bytes that
         should be sent to the socket.
@@ -756,20 +757,24 @@ class HttpClient(Client):
             transaction_id (str): An transaction id of a valid key verification
                 process.
         """
-        if transaction_id not in self.key_verifications:
-            raise LocalProtocolError("Key verification with the transaction "
-                                     "id {} does not exist.".format(
-                                         transaction_id
-                                     ))
+        message = self.confirm_key_verification(transaction_id)
+        return self.to_device(message)
 
-        sas = self.key_verifications[transaction_id]
+    @connected
+    @logged_in
+    @store_loaded
+    def start_key_verification(self, device, tx_id=None):
+        # type: (OlmDevice, Optional[str]) -> Tuple[UUID, bytes]
+        """Start a interactive key verification with the given device.
 
-        sas.accept_sas()
-        message = sas.get_mac()
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
 
-        if sas.verified:
-            self.verify_device(sas.other_olm_device)
-
+        Args:
+            device (OlmDevice): An device with which we would like to start the
+                interactive key verification process.
+        """
+        message = self.create_key_verification(device)
         return self.to_device(message, tx_id)
 
     @connected

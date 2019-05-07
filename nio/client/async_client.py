@@ -288,9 +288,9 @@ class AsyncClient(Client):
         return await self.to_device(message, tx_id)
 
     @logged_in
-    async def accept_short_auth_string(self, transaction_id, tx_id=None):
+    async def confirm_short_auth_string(self, transaction_id, tx_id=None):
         # type: (str, Optional[str]) -> Union[ToDeviceResponse, ToDeviceError]
-        """Accept a short auth string and mark it as matching.
+        """Confirm a short auth string and mark it as matching.
 
         Returns either a `ToDeviceResponse` if the request was successful or
         a `ToDeviceError` if there was an error with the request.
@@ -299,20 +299,7 @@ class AsyncClient(Client):
             transaction_id (str): An transaction id of a valid key verification
                 process.
         """
-        if transaction_id not in self.key_verifications:
-            raise LocalProtocolError("Key verification with the transaction "
-                                     "id {} does not exist.".format(
-                                         transaction_id
-                                     ))
-
-        sas = self.key_verifications[transaction_id]
-
-        sas.accept_sas()
-        message = sas.get_mac()
-
-        if sas.verified:
-            self.verify_device(sas.other_olm_device)
-
+        message = self.confirm_key_verification(transaction_id)
         return await self.to_device(message, tx_id)
 
     @logged_in
