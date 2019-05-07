@@ -84,7 +84,7 @@ class AsyncClient(Client):
             this client instance. If not set the server will provide one after
             log in.
         store_path (str, optional): The directory that should be used for state
-            storeage.
+            storage.
         config (ClientConfig, optional): Configuration for the client.
         ssl (bool/ssl.SSLContext, optional): SSL validation mode. None for
             default SSL check (ssl.create_default_context() is used), False
