@@ -806,6 +806,33 @@ class HttpClient(Client):
 
         return self.to_device(message, tx_id)
 
+    @connected
+    @logged_in
+    @store_loaded
+    def cancel_key_verification(self, transaction_id, tx_id=None):
+        # type: (str, Optional[str]) -> Tuple[UUID, bytes]
+        """Abort an interactive key verification.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            transaction_id (str): An transaction id of a valid key verification
+                process.
+        """
+        if transaction_id not in self.key_verifications:
+            raise LocalProtocolError("Key verification with the transaction "
+                                     "id {} does not exist.".format(
+                                         transaction_id
+                                     ))
+
+        sas = self.key_verifications[transaction_id]
+        sas.cancel()
+
+        message = sas.get_cancellation()
+
+        return self.to_device(message, tx_id)
+
     @logged_in
     @store_loaded
     def to_device(
