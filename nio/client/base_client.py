@@ -590,7 +590,13 @@ class Client(object):
             self.store.save_encrypted_rooms(encrypted_rooms)
 
         if self.olm:
-            self.olm.clear_verifications()
+            expired_verifications = self.olm.clear_verifications()
+
+            for event in expired_verifications:
+                for cb in self.to_device_callbacks:
+                    if (cb.filter is None
+                            or isinstance(event, cb.filter)):
+                        cb.func(event)
 
             changed_users = set()
             self.olm.uploaded_key_count = (
