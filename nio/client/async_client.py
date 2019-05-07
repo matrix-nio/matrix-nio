@@ -21,14 +21,21 @@ from typing import (
     Tuple,
     Union,
     Iterable,
-    Type
+    Type,
+    List,
+    Coroutine
 )
+
+import asyncio
+import attr
+from asyncio import Event
 
 from uuid import uuid4
 from functools import wraps
 
 from json.decoder import JSONDecodeError
 from aiohttp import ClientSession, ContentTypeError, ClientResponse
+from aiohttp.client_exceptions import ClientConnectionError
 
 from ..messages import ToDeviceMessage
 from ..api import Api
@@ -62,6 +69,14 @@ if False:
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
 
 
+@attr.s
+class ResponseCb(object):
+    """Response callback."""
+
+    func = attr.ib()
+    filter = attr.ib(default=None)
+
+
 def client_session(func):
     """Ensure that the Async client has a valid client session."""
     @wraps(func)
@@ -92,6 +107,10 @@ class AsyncClient(Client):
         proxy (str, optional): The proxy that should be used for the HTTP
             connection.
 
+    Attributes:
+        synced (Event): An asyncio event that is fired every time the client
+            successfully syncs with the server.
+
     Example:
             >>> client = AsyncClient("https://example.org", "example")
             >>> login_response = loop.run_until_complete(
@@ -116,7 +135,27 @@ class AsyncClient(Client):
         self.ssl = ssl
         self.proxy = proxy
 
+        self.synced = Event()
+        self.response_callbacks = []  # type: List[ResponseCb]
+
         super().__init__(user, device_id, store_path, config)
+
+    def add_response_callback(
+        self,
+        func,           # type: Coroutine[Any, Any, Response]
+        cb_filter=None  # type: Union[Tuple[Type], Type, None]
+    ):
+        # type: (...) -> None
+        """Add a coroutine that will be called if a response is received.
+
+        Args:
+            func (Coroutine): The coroutine that will be called with the
+                response as the argument.
+            cb_filter (Type, optional): A type or a tuple of types for which
+                the callback should be called.
+        """
+        cb = ResponseCb(func, cb_filter)
+        self.response_callbacks.append(cb)
 
     async def parse_body(self, transport_response):
         # type: (ClientResponse) -> Dict[Any, Any]
@@ -261,7 +300,78 @@ class AsyncClient(Client):
             filter=sync_filter
         )
 
-        return await self._send(SyncResponse, method, path)
+        response = await self._send(SyncResponse, method, path)
+
+        self.synced.set()
+        self.synced.clear()
+
+        return response
+
+    @logged_in
+    async def send_to_device_messages(self):
+        # type: () -> List[ToDeviceResponse]
+        """Send out outgoing to-device messages."""
+        if not self.outgoing_to_device_messages:
+            return []
+
+        tasks = []
+
+        for message in self.outgoing_to_device_messages:
+            task = asyncio.create_task(self.to_device(message))
+            tasks.append(task)
+
+        return await asyncio.gather(*tasks)
+
+    @logged_in
+    async def sync_forever(self, timeout=None, filter=None):
+        """Continuously sync with the configured homeserver.
+
+        This method calls the sync method in a loop. To react to events event
+        callbacks should be configured.
+
+        The loop also makes sure to handle other required requests between
+        syncs. To react to the responses a request callback should be added.
+
+        Args:
+            timeout(int, optional): The maximum time that the server should
+                wait for new events before it should return the request
+                anyways, in milliseconds.
+            filter (Dict[Any, Any], optional): A filter that should be used for
+                this sync request.
+        """
+        async def run_response_callbacks(responses):
+            for response in responses:
+                for cb in self.response_callbacks:
+                    if (cb.filter is None
+                            or isinstance(response, cb.filter)):
+                        await cb.func(response)
+
+        while True:
+            try:
+                responses = []
+
+                responses.append(await self.sync(timeout, filter))
+
+                responses += await self.send_to_device_messages()
+
+                if self.should_upload_keys:
+                    responses.append(await self.keys_upload())
+
+                if self.should_query_keys:
+                    responses.append(await self.keys_query())
+
+                await run_response_callbacks(responses)
+
+            except asyncio.CancelledError:
+                break
+
+            except ClientConnectionError:
+                await run_response_callbacks(responses)
+
+                try:
+                    await asyncio.sleep(5)
+                except asyncio.CancelledError:
+                    break
 
     @logged_in
     async def accept_key_verification(self, transaction_id, tx_id=None):
