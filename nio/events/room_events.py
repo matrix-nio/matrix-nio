@@ -50,7 +50,7 @@ class Event(object):
 
     @classmethod
     def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[Event, UnknownBadEvent]
+        # type: (Dict[Any, Any]) -> Union[Event, BadEventType]
         return cls(parsed_dict)
 
     @classmethod
@@ -114,7 +114,7 @@ class EncryptedEvent(Event):
         cls,
         event_dict,  # type: Dict[Any, Any]
     ):
-        # type: (...) -> Union[Event, UnknownBadEvent]
+        # type: (...) -> Union[Event, BadEventType]
         if "unsigned" in event_dict:
             if "redacted_because" in event_dict["unsigned"]:
                 return RedactedEvent.from_dict(event_dict)

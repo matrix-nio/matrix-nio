@@ -38,6 +38,7 @@ from .events import (
     AccountDataEvent,
     InviteEvent,
     UnknownBadEvent,
+    BadEventType,
     ToDeviceEvent,
 )
 from .log import logger_group
@@ -638,7 +639,7 @@ class DeleteDevicesResponse(EmptyResponse):
 
 @attr.s
 class RoomMessagesResponse(Response):
-    chunk = attr.ib(type=List[Union[Event, UnknownBadEvent]])
+    chunk = attr.ib(type=List[Union[Event, BadEventType]])
     start = attr.ib(type=str)
     end = attr.ib(type=str)
 
@@ -646,7 +647,7 @@ class RoomMessagesResponse(Response):
     @verify(Schemas.room_messages, RoomMessagesError)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomMessagesResponse, ErrorResponse]
-        chunk = []  # type: List[Union[Event, UnknownBadEvent]]
+        chunk = []  # type: List[Union[Event, BadEventType]]
         _, chunk = SyncResponse._get_room_events(parsed_dict["chunk"])
         return cls(chunk, parsed_dict["start"], parsed_dict["end"])
 
@@ -901,8 +902,8 @@ class _SyncResponse(Response):
             parsed_dict,  # type: List[Dict[Any, Any]]
             max_events=0  # type: int
     ):
-        # type: (...) -> Tuple[int, List[Union[Event, UnknownBadEvent]]]
-        events = []  # type: List[Union[Event, UnknownBadEvent]]
+        # type: (...) -> Tuple[int, List[Union[Event, BadEventType]]]
+        events = []  # type: List[Union[Event, BadEventType]]
         counter = 0
 
         for counter, event_dict in enumerate(parsed_dict, 1):

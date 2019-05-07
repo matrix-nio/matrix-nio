@@ -15,6 +15,8 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import attr
+from typing import Optional
+
 from ..schemas import Schemas
 from ..messages import ToDeviceMessage
 from .misc import verify
@@ -166,7 +168,7 @@ class MegolmEvent(RoomEncryptedEvent):
         )
 
     def as_key_request(self, user_id, requesting_device_id, request_id=None):
-        # type: (str, str) -> ToDeviceMessage
+        # type: (str, str, Optional[str]) -> ToDeviceMessage
         """Make a to-device message for a room key request.
 
         Args:

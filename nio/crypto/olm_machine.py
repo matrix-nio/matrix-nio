@@ -102,6 +102,9 @@ except ImportError:  # pragma: no cover
     JSONDecodeError = ValueError  # type: ignore
 
 
+DecryptedOlmT = Union[ForwardedRoomKeyEvent, BadEvent, UnknownBadEvent, None]
+
+
 class Olm(object):
     _olm_algorithm = 'm.olm.v1.curve25519-aes-sha2'
     _megolm_algorithm = 'm.megolm.v1.aes-sha2'
@@ -641,8 +644,13 @@ class Olm(object):
 
         return True
 
-    def _handle_room_key_event(self, sender, sender_key, payload):
-        # type: (str, str, Dict[Any, Any]) -> Optional[RoomKeyEvent]
+    def _handle_room_key_event(
+        self,
+        sender,      # type: str
+        sender_key,  # type: str
+        payload      # type: Dict[Any, Any]
+    ):
+        # type: (...) -> Union[RoomKeyEvent, BadEventType, None]
         event = RoomKeyEvent.from_dict(payload, sender, sender_key)
 
         if isinstance(event, (BadEvent, UnknownBadEvent)):
@@ -680,8 +688,13 @@ class Olm(object):
         return event
 
     # This function is copyrighted under the Apache 2.0 license Zil0
-    def _handle_forwarded_room_key_event(self, sender, sender_key, payload):
-        # type: (str, str, Dict[Any, Any]) -> Optional[ForwardedRoomKeyEvent]
+    def _handle_forwarded_room_key_event(
+        self,
+        sender,      # type: str
+        sender_key,  # type: str
+        payload      # type: Dict[Any, Any]
+    ):
+        # type: (...) -> Union[ForwardedRoomKeyEvent, BadEventType, None]
         event = ForwardedRoomKeyEvent.from_dict(payload, sender, sender_key)
 
         if isinstance(event, (BadEvent, UnknownBadEvent)):
@@ -735,12 +748,18 @@ class Olm(object):
 
         return event
 
-    def _handle_olm_event(self, sender, sender_key, payload):
-        # type: (str, str, Dict[Any, Any]) -> Optional[RoomKeyEvent]
+    def _handle_olm_event(
+        self,
+        sender,      # type: str
+        sender_key,  # type: str
+        payload      # type: Dict[Any, Any]
+    ):
+        # type: (...) -> DecryptedOlmT
         logger.info("Recieved Olm event of type: {}".format(payload["type"]))
 
         if payload["type"] == "m.room_key":
-            return self._handle_room_key_event(sender, sender_key, payload)
+            event = self._handle_room_key_event(sender, sender_key, payload)
+            return event  # type: ignore
 
         elif payload["type"] == "m.forwarded_room_key":
             return self._handle_forwarded_room_key_event(
@@ -899,7 +918,7 @@ class Olm(object):
         sender_key,  # type: str
         message,  # type: Union[OlmPreKeyMessage, OlmMessage]
     ):
-        # type: (...) -> Optional[RoomKeyEvent]
+        # type: (...) -> DecryptedOlmT
 
         try:
             # First try to decrypt using an existing session.

@@ -722,6 +722,9 @@ class HttpClient(Client):
             raise LocalProtocolError("A key sharing request is already sent"
                                      " out for this session id.")
 
+        assert self.user_id
+        assert self.device_id
+
         message = event.as_key_request(self.user_id, self.device_id)
 
         request = self._build_request(Api.to_device(
