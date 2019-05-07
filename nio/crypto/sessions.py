@@ -243,8 +243,8 @@ class OutgoingKeyRequest(object):
         """Create a key request object from a database row."""
         return cls.from_response(row)
 
-    def as_cancelation(self, user_id, requesting_device_id):
-        """Turn the key request into a cancelation to-device message."""
+    def as_cancellation(self, user_id, requesting_device_id):
+        """Turn the key request into a cancellation to-device message."""
         content = {
             "action": "cancel_request",
             "request_id": self.request_id,

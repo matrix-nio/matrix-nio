@@ -470,8 +470,8 @@ class Sas(olm.Sas):
 
         return message
 
-    def get_cancelation(self):
-        """Create a dictionary containing our verification cancelation."""
+    def get_cancellation(self):
+        """Create a dictionary containing our verification cancellation."""
         if self.state != SasState.canceled:
             raise LocalProtocolError("Sas process isn't canceled.")
 

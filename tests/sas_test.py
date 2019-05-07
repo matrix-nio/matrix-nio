@@ -336,7 +336,7 @@ class TestClass(object):
         bob.accept_sas()
         assert bob.verified
 
-    def test_sas_cancelation(self):
+    def test_sas_cancellation(self):
         alice = Sas(
             alice_id,
             alice_device_id,
@@ -346,7 +346,7 @@ class TestClass(object):
         assert not alice.canceled
 
         with pytest.raises(LocalProtocolError):
-            alice.get_cancelation()
+            alice.get_cancellation()
 
         alice.cancel()
         assert alice.canceled
@@ -354,8 +354,8 @@ class TestClass(object):
         with pytest.raises(LocalProtocolError):
             alice.start_verification()
 
-        cancelation = alice.get_cancelation().content
-        assert cancelation == {
+        cancellation = alice.get_cancellation().content
+        assert cancellation == {
             "transaction_id": alice.transaction_id,
             "code": "m.user",
             "reason": "Canceled by user"
@@ -1071,7 +1071,7 @@ class TestClass(object):
         bob_sas.cancel()
         cancel = {
             "sender": bob_id,
-            "content": bob_sas.get_cancelation().content
+            "content": bob_sas.get_cancellation().content
         }
         cancel_event = KeyVerificationCancel.from_dict(cancel)
         assert not alice_sas.canceled

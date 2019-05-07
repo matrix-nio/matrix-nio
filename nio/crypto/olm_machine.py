@@ -743,7 +743,7 @@ class Olm(object):
         key_request = self.outgoing_key_requests.pop(key_request.request_id)
         self.store.remove_outgoing_key_request(key_request)
         self.outgoing_to_device_messages.append(
-            key_request.as_cancelation(self.user_id, self.device_id)
+            key_request.as_cancellation(self.user_id, self.device_id)
         )
 
         return event
@@ -1355,7 +1355,7 @@ class Olm(object):
 
         for transaction_id, sas in self.key_verifications.items():
             if sas.timed_out:
-                message = sas.get_cancelation()
+                message = sas.get_cancellation()
                 self.outgoing_to_device_messages.append(message)
                 cancel_event = {
                     "sender": self.user_id,
@@ -1447,7 +1447,7 @@ class Olm(object):
                                 event.sender,
                                 event.from_device
                             ))
-                message = new_sas.get_cancelation()
+                message = new_sas.get_cancellation()
                 self.outgoing_to_device_messages.append(message)
 
             else:
@@ -1463,7 +1463,7 @@ class Olm(object):
                                     old_sas.transaction_id
                                 ))
                     old_sas.cancel()
-                    cancel_message = old_sas.get_cancelation()
+                    cancel_message = old_sas.get_cancellation()
                     self.outgoing_to_device_messages.append(cancel_message)
 
                 logger.info("Sucesfully started key verification with"
@@ -1486,7 +1486,7 @@ class Olm(object):
                 sas.receive_accept_event(event)
 
                 if sas.canceled:
-                    message = sas.get_cancelation()
+                    message = sas.get_cancellation()
                 else:
                     logger.info("Received a key verification accept event "
                                 "from {} {}, sharing keys {}".format(
@@ -1498,7 +1498,7 @@ class Olm(object):
                 self.outgoing_to_device_messages.append(message)
 
             elif isinstance(event, KeyVerificationCancel):
-                logger.info("Received a key verification cancelation "
+                logger.info("Received a key verification cancellation "
                             "from {} {}. Canceling verification {}.".format(
                                 event.sender,
                                 sas.other_olm_device.id,
@@ -1513,7 +1513,7 @@ class Olm(object):
                 message = None
 
                 if sas.canceled:
-                    message = sas.get_cancelation()
+                    message = sas.get_cancellation()
                 else:
                     logger.info("Received a key verification pubkey "
                                 "from {} {} {}.".format(
@@ -1531,7 +1531,7 @@ class Olm(object):
                 sas.receive_mac_event(event)
 
                 if sas.canceled:
-                    message = sas.get_cancelation()
+                    message = sas.get_cancellation()
                     self.outgoing_to_device_messages.append(message)
                     return
 
