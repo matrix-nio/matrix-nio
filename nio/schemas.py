@@ -18,7 +18,7 @@ from __future__ import unicode_literals
 
 from jsonschema import Draft4Validator, FormatChecker, validators
 
-RoomRegex = "^![a-zA-Z0-9]+:.+$"
+RoomRegex = "^!.+:.+$"
 UserIdRegex = "^@.*:.+$"
 EventTypeRegex = r"^.+\..+"
 Base64Regex = r"[^-A-Za-z0-9+/=]|=[^=]|={3,}$"
