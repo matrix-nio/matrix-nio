@@ -887,6 +887,19 @@ class MatrixStore(object):
         # type: (OlmDevice) -> bool
         raise NotImplementedError
 
+    # Mark device's verified/blacklisted status as to be ignored
+    def ignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        raise NotImplementedError
+
+    def unignore_device(self, device):
+        # type: (OldDevice) -> bool
+        raise NotImplementedError
+
+    def is_device_ignored(self, device):
+        # type: (OlmDevice) -> bool
+        raise NotImplementedError
+
 
 @attr.s
 class DefaultStore(MatrixStore):
@@ -912,10 +925,19 @@ class DefaultStore(MatrixStore):
             os.path.join(self.store_path, blacklist_file_path)
         )
 
+        ignore_file_path = "{}_{}.ignored_devices".format(
+            self.user_id,
+            self.device_id
+        )
+        self.ignore_db = KeyStore(
+            os.path.join(self.store_path, ignore_file_path)
+        )
+
     def blacklist_device(self, device):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
         self.trust_db.remove(key)
+        self.ignore_db.remove(key)
         return self.blacklist_db.add(key)
 
     def unblacklist_device(self, device):
@@ -927,6 +949,7 @@ class DefaultStore(MatrixStore):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
         self.blacklist_db.remove(key)
+        self.ignore_db.remove(key)
         return self.trust_db.add(key)
 
     def is_device_verified(self, device):
@@ -943,6 +966,24 @@ class DefaultStore(MatrixStore):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
         return self.trust_db.remove(key)
+
+    def ignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        key = Key.from_olmdevice(device)
+        self.blacklist_db.remove(key)
+        self.trust_db.remove(key)
+        return self.ignore_db.add(key)
+
+    def unignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        key = Key.from_olmdevice(device)
+        return self.ignore_db.remove(key)
+
+    def is_device_ignored(self, device):
+        # type: (OlmDevice) -> bool
+        key = Key.from_olmdevice(device)
+        return key in self.ignore_db
+
 
 
 @attr.s
@@ -1052,6 +1093,50 @@ class SqliteStore(MatrixStore):
             return False
 
         return trust_state == TrustState.blacklisted
+
+    def ignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        if self.is_device_ignored(device):
+            return False
+
+        d = self._get_device(device)
+        assert d
+
+        DeviceTrustState.replace(
+            device=d,
+            state=TrustState.ignored
+        ).execute()
+
+        return True
+
+    def unignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        if not self.is_device_ignored(device):
+            return False
+
+        d = self._get_device(device)
+        assert d
+
+        DeviceTrustState.replace(
+            device=d,
+            state=TrustState.unset
+        ).execute()
+
+        return True
+
+    def is_device_ignored(self, device):
+        # type: (OlmDevice) -> bool
+        d = self._get_device(device)
+
+        if not d:
+            return False
+
+        try:
+            trust_state = d.trust_state[0].state
+        except IndexError:
+            return False
+
+        return trust_state == TrustState.ignored
 
 
 class SqliteMemoryStore(SqliteStore):
