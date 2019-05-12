@@ -8,7 +8,7 @@ setup(
     url="https://github.com/poljar/matrix-nio",
     author='Damir Jelić',
     author_email="poljar@termina.org.uk",
-    description=("A Python Matrix client library, designed according to sans"
+    description=("A Python Matrix client library, designed according to sans "
                  "I/O principles."),
     license="ISC",
     packages=find_packages(),
