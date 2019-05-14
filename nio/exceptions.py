@@ -23,6 +23,10 @@ class LocalProtocolError(ProtocolError):
     pass
 
 
+class MembersSyncError(LocalProtocolError):
+    pass
+
+
 class RemoteProtocolError(ProtocolError):
     pass
 
