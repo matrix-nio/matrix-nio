@@ -59,7 +59,7 @@ from ..responses import (
     RoomKeyRequestResponse,
     RoomKeyRequestError
 )
-from ..exceptions import LocalProtocolError
+from ..exceptions import LocalProtocolError, MembersSyncError
 
 from . import Client, ClientConfig, logged_in, store_loaded
 
@@ -540,10 +540,13 @@ class AsyncClient(Client):
         If the room where the message should be sent is encrypted the message
         will be encrypted before sending.
 
-        Raises GroupEncryptionError if the room is encrypted but the group
+        Raises `GroupEncryptionError` if the room is encrypted but the group
         session wasn't shared yet.
 
-        Raises LocalProtocolError if the client isn't logged in.
+        Raises `MembersSyncError` if the room is encrypted but the room members
+        aren't fully loaded due to member lazy loading.
+
+        Raises `LocalProtocolError` if the client isn't logged in.
         """
         if self.olm:
             try:
@@ -553,18 +556,12 @@ class AsyncClient(Client):
                     "No such room with id {} found.".format(room_id)
                 )
 
-            if room.encrypted and not room.members_synced:
-                await self.joined_members(room_id)
-
             if room.encrypted:
-                content = self.olm.group_encrypt(
+                message_type, content = self.encrypt(
                     room_id,
-                    {
-                        "content": content,
-                        "type": message_type
-                    },
+                    message_type,
+                    content
                 )
-                message_type = "m.room.encrypted"
 
         uuid = tx_id or uuid4()
 

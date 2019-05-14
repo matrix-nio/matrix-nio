@@ -33,6 +33,7 @@ from logbook import Logger
 
 from ..exceptions import (
     LocalProtocolError,
+    MembersSyncError
 )
 from ..crypto import Olm
 
@@ -844,10 +845,30 @@ class Client(object):
         Raises `GroupEncryptionError` if the group session for the provided
         room isn't shared yet.
 
+        Raises `MembersSyncError` if the room is encrypted but the room members
+        aren't fully loaded due to member lazy loading.
+
         Returns a tuple containing the new message type and the new encrypted
         content.
         """
         assert self.olm
+
+        try:
+            room = self.rooms[room_id]
+        except KeyError:
+            raise LocalProtocolError(
+                "No such room with id {} found.".format(room_id)
+            )
+
+        if not room.encrypted:
+            raise LocalProtocolError(
+                "Room {} is not encrypted".format(room_id)
+            )
+
+        if not room.members_synced:
+            raise MembersSyncError("The room is encrypted and the members "
+                                   "aren't fully synced.")
+
         content = self.olm.group_encrypt(
             room_id,
             {

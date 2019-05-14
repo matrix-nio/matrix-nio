@@ -23,7 +23,8 @@ from nio import (
     RoomSendResponse,
     ShareGroupSessionResponse,
     JoinedMembersResponse,
-    MegolmEvent
+    MegolmEvent,
+    MembersSyncError
 )
 from nio.crypto import OlmDevice
 
@@ -239,11 +240,31 @@ class TestClass(object):
             status=200,
             payload=self.joined_members_resopnse
         )
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/rooms/{}/"
+            "joined_members?access_token=abc123".format(TEST_ROOM_ID),
+            status=200,
+            payload=self.joined_members_resopnse
+        )
+
         loop.run_until_complete(async_client.login("wordpass"))
 
         async_client.receive_response(self.encryption_sync_response)
         async_client.receive_response(
             KeysQueryResponse.from_dict(self.keys_query_response)
+        )
+
+        with pytest.raises(MembersSyncError):
+            loop.run_until_complete(
+                async_client.room_send(
+                    TEST_ROOM_ID,
+                    "m.room.message",
+                    {"body": "hello"}
+                )
+            )
+
+        response = loop.run_until_complete(
+            async_client.joined_members(TEST_ROOM_ID)
         )
 
         with pytest.raises(GroupEncryptionError):
@@ -254,6 +275,7 @@ class TestClass(object):
                     {"body": "hello"}
                 )
             )
+
         async_client.olm.outbound_group_sessions[TEST_ROOM_ID].shared = True
 
         response = loop.run_until_complete(
