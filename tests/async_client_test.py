@@ -4,7 +4,6 @@ import pytest
 from os import path
 
 from nio import (
-    AsyncClient,
     LoginResponse,
     SyncResponse,
     LoginError,
@@ -37,6 +36,7 @@ ALICE_DEVICE_ID = "JLAFKJWSCS"
 
 if sys.version_info >= (3, 5):
     import asyncio
+    from nio import AsyncClient
 
 
 @pytest.mark.skipif(sys.version_info < (3, 5), reason="Python 3 specific asyncio tests")
