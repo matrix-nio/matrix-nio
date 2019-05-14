@@ -59,7 +59,8 @@ from ..responses import (
     RoomKeyRequestResponse,
     RoomKeyRequestError
 )
-from ..exceptions import LocalProtocolError, MembersSyncError
+from ..exceptions import (LocalProtocolError, MembersSyncError,
+                          GroupEncryptionError, SendRetryError)
 
 from . import Client, ClientConfig, logged_in, store_loaded
 
@@ -323,6 +324,14 @@ class AsyncClient(Client):
 
         return await asyncio.gather(*tasks)
 
+    async def run_response_callbacks(self, responses):
+        """Run the configured response callbacks for the given responses."""
+        for response in responses:
+            for cb in self.response_callbacks:
+                if (cb.filter is None
+                        or isinstance(response, cb.filter)):
+                    await cb.func(response)
+
     @logged_in
     async def sync_forever(self, timeout=None, filter=None):
         """Continuously sync with the configured homeserver.
@@ -340,12 +349,6 @@ class AsyncClient(Client):
             filter (Dict[Any, Any], optional): A filter that should be used for
                 this sync request.
         """
-        async def run_response_callbacks(responses):
-            for response in responses:
-                for cb in self.response_callbacks:
-                    if (cb.filter is None
-                            or isinstance(response, cb.filter)):
-                        await cb.func(response)
 
         while True:
             try:
@@ -361,13 +364,13 @@ class AsyncClient(Client):
                 if self.should_query_keys:
                     responses.append(await self.keys_query())
 
-                await run_response_callbacks(responses)
+                await self.run_response_callbacks(responses)
 
             except asyncio.CancelledError:
                 break
 
             except ClientConnectionError:
-                await run_response_callbacks(responses)
+                await self.run_response_callbacks(responses)
 
                 try:
                     await asyncio.sleep(5)
@@ -541,46 +544,54 @@ class AsyncClient(Client):
         If the room where the message should be sent is encrypted the message
         will be encrypted before sending.
 
-        Raises `GroupEncryptionError` if the room is encrypted but the group
-        session wasn't shared yet.
+        This method also makes sure that the room members are fully synced and
+        that keys are queried before sending messages to an encrypted room.
 
-        Raises `MembersSyncError` if the room is encrypted but the room members
-        aren't fully loaded due to member lazy loading.
+        If the method can't sync the state fully to send out an encrypted
+        message after a couple of retries it raises `SendRetryError`.
 
         Raises `LocalProtocolError` if the client isn't logged in.
         """
-        if self.olm:
-            try:
-                room = self.rooms[room_id]
-            except KeyError:
-                raise LocalProtocolError(
-                    "No such room with id {} found.".format(room_id)
-                )
+        async def send(room_id, message_type, content, tx_id):
+            if self.olm:
+                try:
+                    room = self.rooms[room_id]
+                except KeyError:
+                    raise LocalProtocolError(
+                        "No such room with id {} found.".format(room_id)
+                    )
 
-            if room.encrypted:
-                message_type, content = self.encrypt(
-                    room_id,
-                    message_type,
-                    content
-                )
+                if room.encrypted:
+                    message_type, content = self.encrypt(room_id, message_type,
+                                                         content)
+
+            method, path, data = Api.room_send(self.access_token, room_id,
+                                               message_type, content, tx_id)
+
+            return await self._send(RoomSendResponse, method, path, data,
+                                    (room_id, ))
+
+        retries = 5
 
         uuid = tx_id or uuid4()
 
-        method, path, data = Api.room_send(
-            self.access_token,
-            room_id,
-            message_type,
-            content,
-            uuid
-        )
+        for i in range(retries):
+            try:
+                return await send(room_id, message_type, content, uuid)
+            except GroupEncryptionError:
+                share = await self.share_group_session(room_id)
+                await self.run_response_callbacks([share])
+            except MembersSyncError:
+                responses = []
+                responses.append(await self.joined_members(room_id))
 
-        return await self._send(
-            RoomSendResponse,
-            method,
-            path,
-            data,
-            (room_id, )
-        )
+                if self.should_query_keys:
+                    responses.append(await self.keys_query())
+
+                await self.run_response_callbacks(responses)
+
+        raise SendRetryError("Max retries exceeded while trying to send "
+                             "the message")
 
     @logged_in
     @store_loaded

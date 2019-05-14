@@ -240,42 +240,22 @@ class TestClass(object):
             status=200,
             payload=self.joined_members_resopnse
         )
-        aioresponse.get(
-            "https://example.org/_matrix/client/r0/rooms/{}/"
-            "joined_members?access_token=abc123".format(TEST_ROOM_ID),
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/query?access_token=abc123",
             status=200,
-            payload=self.joined_members_resopnse
+            payload=self.keys_query_response
         )
+
 
         loop.run_until_complete(async_client.login("wordpass"))
 
         async_client.receive_response(self.encryption_sync_response)
-        async_client.receive_response(
-            KeysQueryResponse.from_dict(self.keys_query_response)
-        )
-
-        with pytest.raises(MembersSyncError):
-            loop.run_until_complete(
-                async_client.room_send(
-                    TEST_ROOM_ID,
-                    "m.room.message",
-                    {"body": "hello"}
-                )
-            )
 
         response = loop.run_until_complete(
             async_client.joined_members(TEST_ROOM_ID)
         )
 
-        with pytest.raises(GroupEncryptionError):
-            loop.run_until_complete(
-                async_client.room_send(
-                    TEST_ROOM_ID,
-                    "m.room.message",
-                    {"body": "hello"}
-                )
-            )
-
+        async_client.olm.create_outbound_group_session(TEST_ROOM_ID)
         async_client.olm.outbound_group_sessions[TEST_ROOM_ID].shared = True
 
         response = loop.run_until_complete(
@@ -288,6 +268,19 @@ class TestClass(object):
         )
 
         assert isinstance(response, RoomSendResponse)
+
+    def keys_claim_dict(self, client):
+        to_share = client.olm.share_keys()
+        one_time_key = list(to_share["one_time_keys"].items())[0]
+        return {
+            "one_time_keys": {
+                ALICE_ID: {
+                    ALICE_DEVICE_ID: {one_time_key[0]: one_time_key[1]},
+                },
+            },
+            "failures": {},
+        }
+
 
     def test_key_claiming(self, alice_client, async_client, aioresponse):
         loop = asyncio.get_event_loop()
@@ -312,23 +305,10 @@ class TestClass(object):
         assert ALICE_ID in missing
         assert ALICE_DEVICE_ID in missing[ALICE_ID]
 
-        to_share = alice_client.olm.share_keys()
-
-        one_time_key = list(to_share["one_time_keys"].items())[0]
-
-        key_claim_dict = {
-            "one_time_keys": {
-                ALICE_ID: {
-                    ALICE_DEVICE_ID: {one_time_key[0]: one_time_key[1]},
-                },
-            },
-            "failures": {},
-        }
-
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=abc123",
             status=200,
-            payload=key_claim_dict
+            payload=self.keys_claim_dict(alice_client)
         )
 
         response = loop.run_until_complete(

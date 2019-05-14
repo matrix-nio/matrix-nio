@@ -27,6 +27,10 @@ class MembersSyncError(LocalProtocolError):
     pass
 
 
+class SendRetryError(LocalProtocolError):
+    pass
+
+
 class RemoteProtocolError(ProtocolError):
     pass
 
