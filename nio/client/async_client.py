@@ -140,6 +140,8 @@ class AsyncClient(Client):
         self.synced = Event()
         self.response_callbacks = []  # type: List[ResponseCb]
 
+        self.sharing_session = dict()  # type: Dict[str, Event]
+
         super().__init__(user, device_id, store_path, config)
 
     def add_response_callback(
@@ -579,8 +581,14 @@ class AsyncClient(Client):
             try:
                 return await send(room_id, message_type, content, uuid)
             except GroupEncryptionError:
-                share = await self.share_group_session(room_id)
-                await self.run_response_callbacks([share])
+                sharing_event = self.sharing_session.get(room_id, None)
+
+                if sharing_event:
+                    await sharing_event.wait()
+                else:
+                    share = await self.share_group_session(room_id)
+                    await self.run_response_callbacks([share])
+
             except MembersSyncError:
                 responses = []
                 responses.append(await self.joined_members(room_id))
@@ -652,6 +660,13 @@ class AsyncClient(Client):
             raise LocalProtocolError("Room with id {} is not encrypted".format(
                 room_id))
 
+        if room_id in self.sharing_session:
+            raise LocalProtocolError(
+                "Already sharing a group session for {}".format(room_id)
+            )
+
+        self.sharing_session[room_id] = Event()
+
         shared_with = set()
 
         missing_sessions = self.get_missing_sessions(room_id)
@@ -689,6 +704,11 @@ class AsyncClient(Client):
 
         except LocalProtocolError:
             return ShareGroupSessionResponse(room_id, shared_with)
+        except ClientConnectionError:
+            raise
+        finally:
+            event = self.sharing_session.pop(room_id)
+            event.set()
 
     @logged_in
     @store_loaded
