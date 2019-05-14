@@ -788,7 +788,7 @@ class AsyncClient(Client):
         assert self.store
         assert self.olm
 
-        loop = asyncio.get_running_loop()
+        loop = asyncio.get_event_loop()
 
         inbound_group_store = self.store.load_inbound_group_sessions()
         export_keys = partial(self.olm.export_keys_static, inbound_group_store,
@@ -815,7 +815,7 @@ class AsyncClient(Client):
         assert self.store
         assert self.olm
 
-        loop = asyncio.get_running_loop()
+        loop = asyncio.get_event_loop()
 
         import_keys = partial(self.olm.import_keys_static, infile, passphrase)
         sessions = await loop.run_in_executor(None, import_keys)
