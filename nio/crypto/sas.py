@@ -16,20 +16,19 @@
 
 from __future__ import unicode_literals
 
+from builtins import bytes, super
 from datetime import datetime, timedelta
 from enum import Enum
-from builtins import super, bytes
-from future.moves.itertools import zip_longest
+from typing import List, Optional, Tuple
 from uuid import uuid4
-from typing import Tuple, List, Optional
 
 import olm
+from future.moves.itertools import zip_longest
 
 from ..api import Api
-from ..exceptions import LocalProtocolError
 from ..events import KeyVerificationStart
+from ..exceptions import LocalProtocolError
 from ..messages import ToDeviceMessage
-
 from .sessions import OlmDevice
 
 

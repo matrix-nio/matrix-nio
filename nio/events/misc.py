@@ -14,16 +14,15 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import attr
+from functools import wraps
+from typing import Any, Dict, Optional, Union
 
+import attr
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
-from typing import Any, Dict, Optional, Union
-from functools import wraps
 
 from ..log import logger_group
 from ..schemas import validate_json
-
 
 logger = Logger("nio.events")
 logger_group.add_logger(logger)

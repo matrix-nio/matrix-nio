@@ -17,33 +17,20 @@
 from __future__ import unicode_literals
 
 from builtins import super
-from typing import Any, DefaultDict, Dict, NamedTuple, Optional, List
-
 from collections import defaultdict
+from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
-from .events import (
-    Event,
-    InviteAliasEvent,
-    InviteMemberEvent,
-    InviteNameEvent,
-    PowerLevels,
-    PowerLevelsEvent,
-    RoomAliasEvent,
-    RoomEncryptionEvent,
-    RoomMemberEvent,
-    RoomCreateEvent,
-    RoomGuestAccessEvent,
-    RoomHistoryVisibilityEvent,
-    RoomJoinRulesEvent,
-    RoomNameEvent,
-    RoomTopicEvent,
-)
-
-from .responses import TypingNoticeEvent, RoomSummary
+from .events import (Event, InviteAliasEvent, InviteMemberEvent,
+                     InviteNameEvent, PowerLevels, PowerLevelsEvent,
+                     RoomAliasEvent, RoomCreateEvent, RoomEncryptionEvent,
+                     RoomGuestAccessEvent, RoomHistoryVisibilityEvent,
+                     RoomJoinRulesEvent, RoomMemberEvent, RoomNameEvent,
+                     RoomTopicEvent)
 from .log import logger_group
+from .responses import RoomSummary, TypingNoticeEvent
 
 logger = Logger("nio.rooms")
 logger_group.add_logger(logger)

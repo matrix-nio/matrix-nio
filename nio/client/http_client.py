@@ -14,81 +14,39 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import attr
 import json
 import pprint
-
 from builtins import str, super
 from collections import deque
 from functools import wraps
-from typing import (
-    Any,
-    Deque,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    Type,
-)
+from typing import Any, Deque, Dict, List, Optional, Tuple, Type, Union
 from uuid import UUID, uuid4
 
+import attr
 import h2
 import h11
 from logbook import Logger
 
 from . import Client, ClientConfig, logged_in, store_loaded
 from ..api import Api, MessageDirection
-from ..exceptions import (
-    LocalProtocolError,
-    RemoteTransportError,
-)
-
-from ..events import (
-    MegolmEvent,
-)
-
-from ..http import (
-    HttpRequest,
-    Http2Request,
-    Http2Connection,
-    HttpConnection,
-    TransportType,
-    TransportResponse,
-    TransportRequest
-)
+from ..events import MegolmEvent
+from ..exceptions import LocalProtocolError, RemoteTransportError
+from ..http import (Http2Connection, Http2Request, HttpConnection, HttpRequest,
+                    TransportRequest, TransportResponse, TransportType)
 from ..log import logger_group
-from ..responses import (
-    JoinResponse,
-    LoginResponse,
-    Response,
-    RoomInviteResponse,
-    RoomKickResponse,
-    RoomLeaveResponse,
-    RoomPutStateResponse,
-    RoomRedactResponse,
-    RoomSendResponse,
-    SyncResponse,
-    PartialSyncResponse,
-    RoomMessagesResponse,
-    KeysUploadResponse,
-    KeysQueryResponse,
-    ShareGroupSessionResponse,
-    KeysClaimResponse,
-    DevicesResponse,
-    UpdateDeviceResponse,
-    DeleteDevicesAuthResponse,
-    DeleteDevicesResponse,
-    JoinedMembersResponse,
-    KeysUploadError,
-    RoomTypingResponse,
-    RoomReadMarkersResponse,
-    ProfileGetDisplayNameResponse,
-    ProfileSetDisplayNameResponse,
-    RoomKeyRequestResponse,
-    RoomForgetResponse,
-    ToDeviceResponse
-)
+from ..responses import (DeleteDevicesAuthResponse, DeleteDevicesResponse,
+                         DevicesResponse, JoinedMembersResponse, JoinResponse,
+                         KeysClaimResponse, KeysQueryResponse, KeysUploadError,
+                         KeysUploadResponse, LoginResponse,
+                         PartialSyncResponse, ProfileGetDisplayNameResponse,
+                         ProfileSetDisplayNameResponse, Response,
+                         RoomForgetResponse, RoomInviteResponse,
+                         RoomKeyRequestResponse, RoomKickResponse,
+                         RoomLeaveResponse, RoomMessagesResponse,
+                         RoomPutStateResponse, RoomReadMarkersResponse,
+                         RoomRedactResponse, RoomSendResponse,
+                         RoomTypingResponse, ShareGroupSessionResponse,
+                         SyncResponse, ToDeviceResponse, UpdateDeviceResponse)
 
 if False:
     from .messages import ToDeviceMessage

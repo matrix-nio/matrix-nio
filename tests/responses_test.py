@@ -4,28 +4,15 @@ from __future__ import unicode_literals
 
 import json
 
-from nio.responses import (
-    ErrorResponse,
-    LoginResponse,
-    SyncResponse,
-    PartialSyncResponse,
-    RoomMessagesResponse,
-    KeysUploadResponse,
-    KeysQueryResponse,
-    KeysClaimResponse,
-    DevicesResponse,
-    DeleteDevicesAuthResponse,
-    JoinedMembersResponse,
-    JoinedMembersError,
-    LoginError,
-    SyncError,
-    UploadResponse,
-    RoomKeyRequestResponse,
-    RoomKeyRequestError,
-    ProfileGetDisplayNameResponse,
-    ToDeviceResponse,
-    ToDeviceError
-)
+from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
+                           ErrorResponse, JoinedMembersError,
+                           JoinedMembersResponse, KeysClaimResponse,
+                           KeysQueryResponse, KeysUploadResponse, LoginError,
+                           LoginResponse, PartialSyncResponse,
+                           ProfileGetDisplayNameResponse, RoomKeyRequestError,
+                           RoomKeyRequestResponse, RoomMessagesResponse,
+                           SyncError, SyncResponse, ToDeviceError,
+                           ToDeviceResponse, UploadResponse)
 
 TEST_ROOM_ID = "!test:example.org"
 

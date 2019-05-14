@@ -1,13 +1,8 @@
 import pytest
 
-from nio.crypto import (
-    OlmAccount,
-    Session,
-    OutboundGroupSession,
-    InboundGroupSession,
-    OutboundSession,
-)
 from nio import EncryptionError
+from nio.crypto import (InboundGroupSession, OlmAccount, OutboundGroupSession,
+                        OutboundSession, Session)
 
 BOB_ID = "@bob:example.org"
 BOB_DEVICE = "AGMTSWVYML"

@@ -14,13 +14,13 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from typing import Any, Dict, List, Optional, Union
+
 import attr
-from typing import Any, Dict, Optional, Union, List
 
 from ..schemas import Schemas
-
-from .misc import BadEventType, verify
 from .encrypted_events import RoomEncryptedEvent
+from .misc import BadEventType, verify
 
 
 @attr.s

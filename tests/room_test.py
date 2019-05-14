@@ -1,17 +1,12 @@
 import pytest
+
 from helpers import faker
-from nio.rooms import MatrixRoom, MatrixInvitedRoom
-from nio.responses import TypingNoticeEvent, RoomSummary
-from nio.events import (
-    InviteNameEvent,
-    InviteAliasEvent,
-    InviteMemberEvent,
-    RoomNameEvent,
-    RoomCreateEvent,
-    RoomGuestAccessEvent,
-    RoomHistoryVisibilityEvent,
-    RoomJoinRulesEvent,
-)
+from nio.events import (InviteAliasEvent, InviteMemberEvent, InviteNameEvent,
+                        RoomCreateEvent, RoomGuestAccessEvent,
+                        RoomHistoryVisibilityEvent, RoomJoinRulesEvent,
+                        RoomNameEvent)
+from nio.responses import RoomSummary, TypingNoticeEvent
+from nio.rooms import MatrixInvitedRoom, MatrixRoom
 
 TEST_ROOM = "!test:example.org"
 BOB_ID = "@bob:example.org"

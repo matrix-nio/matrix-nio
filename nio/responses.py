@@ -16,35 +16,20 @@
 
 from __future__ import unicode_literals
 
-import attr
 from builtins import str
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Union,
-    Tuple,
-    Set
-)
-
 from datetime import datetime
-from jsonschema.exceptions import SchemaError, ValidationError
 from functools import wraps
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
+
+import attr
+from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
-from .events import (
-    Event,
-    AccountDataEvent,
-    InviteEvent,
-    UnknownBadEvent,
-    BadEventType,
-    ToDeviceEvent,
-)
+from .crypto import OlmDevice
+from .events import (AccountDataEvent, BadEventType, Event, InviteEvent,
+                     ToDeviceEvent, UnknownBadEvent)
 from .log import logger_group
 from .schemas import Schemas, validate_json
-
-from .crypto import OlmDevice
 
 logger = Logger("nio.responses")
 logger_group.add_logger(logger)

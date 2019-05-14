@@ -17,84 +17,37 @@
 from __future__ import unicode_literals
 
 import json
-
 # pylint: disable=redefined-builtin
 from builtins import str
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import (
-    Any,
-    DefaultDict,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    Set,
-)
+from typing import Any, DefaultDict, Dict, List, Optional, Set, Tuple, Union
 
-from jsonschema import SchemaError, ValidationError
 import olm
-from olm import (
-    OlmGroupSessionError,
-    OlmMessage,
-    OlmPreKeyMessage,
-    OlmSessionError,
-)
+from jsonschema import SchemaError, ValidationError
+from olm import (OlmGroupSessionError, OlmMessage, OlmPreKeyMessage,
+                 OlmSessionError)
 
-from ..schemas import Schemas, validate_json
-from ..exceptions import (
-    EncryptionError,
-    GroupEncryptionError,
-    OlmTrustError,
-    VerificationError,
-    LocalProtocolError,
-)
-from . import (
-    OutboundGroupSession,
-    InboundGroupSession,
-    OlmDevice,
-    OlmAccount,
-    Session,
-    OutboundSession,
-    InboundSession,
-    SessionStore,
-    GroupSessionStore,
-    DeviceStore,
-    logger,
-)
-
-from .sas import Sas, ToDeviceMessage
-from .key_export import encrypt_and_save, decrypt_and_read
-from .sessions import OutgoingKeyRequest
-from ..store import MatrixStore
-
-from ..responses import (
-    KeysUploadResponse,
-    KeysQueryResponse,
-    KeysClaimResponse,
-    RoomKeyRequestResponse
-)
-from ..events import (
-    Event,
-    EncryptedEvent,
-    MegolmEvent,
-    OlmEvent,
-    RoomEncryptedEvent,
-    BadEventType,
-    RoomKeyEvent,
-    ForwardedRoomKeyEvent,
-    BadEvent,
-    UnknownBadEvent,
-    validate_or_badevent,
-    KeyVerificationEvent,
-    KeyVerificationStart,
-    KeyVerificationAccept,
-    KeyVerificationCancel,
-    KeyVerificationKey,
-    KeyVerificationMac
-)
+from . import (DeviceStore, GroupSessionStore, InboundGroupSession,
+               InboundSession, OlmAccount, OlmDevice, OutboundGroupSession,
+               OutboundSession, Session, SessionStore, logger)
 from ..api import Api
+from ..events import (BadEvent, BadEventType, EncryptedEvent, Event,
+                      ForwardedRoomKeyEvent, KeyVerificationAccept,
+                      KeyVerificationCancel, KeyVerificationEvent,
+                      KeyVerificationKey, KeyVerificationMac,
+                      KeyVerificationStart, MegolmEvent, OlmEvent,
+                      RoomEncryptedEvent, RoomKeyEvent, UnknownBadEvent,
+                      validate_or_badevent)
+from ..exceptions import (EncryptionError, GroupEncryptionError,
+                          LocalProtocolError, OlmTrustError, VerificationError)
+from ..responses import (KeysClaimResponse, KeysQueryResponse,
+                         KeysUploadResponse, RoomKeyRequestResponse)
+from ..schemas import Schemas, validate_json
+from ..store import MatrixStore
+from .key_export import decrypt_and_read, encrypt_and_save
+from .sas import Sas, ToDeviceMessage
+from .sessions import OutgoingKeyRequest
 
 try:
     from json.decoder import JSONDecodeError

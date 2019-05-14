@@ -1,34 +1,16 @@
 # -*- coding: utf-8 -*-
-import pytest
 import json
-from helpers import faker, ephemeral, ephemeral_dir, FrameFactory
 
-from nio import (
-    Client,
-    HttpClient,
-    LocalProtocolError,
-    LoginResponse,
-    KeysUploadResponse,
-    SyncResponse,
-    DeviceList,
-    DeviceOneTimeKeyCount,
-    Rooms,
-    RoomInfo,
-    Timeline,
-    RoomMemberEvent,
-    RoomEncryptionEvent,
-    RoomSummary,
-    KeysQueryResponse,
-    JoinedMembersResponse,
-    RoomMember,
-    EncryptionError,
-    ShareGroupSessionResponse,
-    TransportType,
-    MegolmEvent,
-    RoomKeyRequestResponse,
-    TypingNoticeEvent,
-    RoomForgetResponse
-)
+import pytest
+
+from helpers import FrameFactory, ephemeral, ephemeral_dir, faker
+from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
+                 HttpClient, JoinedMembersResponse, KeysQueryResponse,
+                 KeysUploadResponse, LocalProtocolError, LoginResponse,
+                 MegolmEvent, RoomEncryptionEvent, RoomForgetResponse,
+                 RoomInfo, RoomKeyRequestResponse, RoomMember, RoomMemberEvent,
+                 Rooms, RoomSummary, ShareGroupSessionResponse, SyncResponse,
+                 Timeline, TransportType, TypingNoticeEvent)
 
 HOST = "example.org"
 USER = "example"

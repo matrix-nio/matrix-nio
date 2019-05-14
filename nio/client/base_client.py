@@ -14,59 +14,26 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import attr
-
 from functools import wraps
-from typing import (
-    Dict,
-    List,
-    Optional,
-    Union,
-    Callable,
-    Set,
-    Any,
-    Tuple,
-    Type
-)
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
+import attr
 from logbook import Logger
 
-from ..exceptions import (
-    LocalProtocolError,
-    MembersSyncError
-)
 from ..crypto import Olm
-
+from ..events import (BadEventType, Event, KeyVerificationEvent, MegolmEvent,
+                      RoomEncryptedEvent, RoomEncryptionEvent, ToDeviceEvent)
+from ..exceptions import LocalProtocolError, MembersSyncError
 from ..log import logger_group
-from ..responses import (
-    LoginResponse,
-    Response,
-    SyncResponse,
-    SyncType,
-    PartialSyncResponse,
-    RoomMessagesResponse,
-    KeysUploadResponse,
-    KeysQueryResponse,
-    ErrorResponse,
-    ShareGroupSessionResponse,
-    KeysClaimResponse,
-    JoinedMembersResponse,
-    RoomKeyRequestResponse,
-    RoomForgetResponse,
-    ToDeviceResponse
-)
-
-from ..events import (
-    Event,
-    BadEventType,
-    RoomEncryptedEvent,
-    MegolmEvent,
-    RoomEncryptionEvent,
-    ToDeviceEvent,
-    KeyVerificationEvent
-)
+from ..responses import (ErrorResponse, JoinedMembersResponse,
+                         KeysClaimResponse, KeysQueryResponse,
+                         KeysUploadResponse, LoginResponse,
+                         PartialSyncResponse, Response, RoomForgetResponse,
+                         RoomKeyRequestResponse, RoomMessagesResponse,
+                         ShareGroupSessionResponse, SyncResponse, SyncType,
+                         ToDeviceResponse)
 from ..rooms import MatrixInvitedRoom, MatrixRoom
-from ..store import MatrixStore, DefaultStore
+from ..store import DefaultStore, MatrixStore
 
 if False:
     from ..crypto import OlmDevice, OutgoingKeyRequest, Sas

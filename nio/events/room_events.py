@@ -16,17 +16,15 @@
 
 from __future__ import unicode_literals
 
-import attr
 import time
-
+from builtins import super
 from typing import Any, Dict, Optional, Union
 
-from builtins import super
+import attr
 
 from ..schemas import Schemas
-
-from .misc import BadEventType, UnknownBadEvent, verify, validate_or_badevent
 from .encrypted_events import RoomEncryptedEvent
+from .misc import BadEventType, UnknownBadEvent, validate_or_badevent, verify
 
 
 @attr.s

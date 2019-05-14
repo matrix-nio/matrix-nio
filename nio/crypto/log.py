@@ -15,6 +15,7 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from logbook import Logger
+
 from ..log import logger_group
 
 logger = Logger("nio.encryption")

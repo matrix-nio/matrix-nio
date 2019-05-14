@@ -15,11 +15,12 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-import olm
-import attr
 from builtins import super
 from datetime import datetime, timedelta
 from typing import List, Optional, Set, Tuple
+
+import attr
+import olm
 
 from ..exceptions import EncryptionError
 from ..messages import ToDeviceMessage

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
 import pytest
-
 import unpaddedbase64
+from Crypto import Random
 from Crypto.Cipher import AES
 from Crypto.Util import Counter
-from Crypto import Random
 
-from nio.crypto import decrypt_attachment, encrypt_attachment
 from nio import EncryptionError
+from nio.crypto import decrypt_attachment, encrypt_attachment
+
 
 class TestClass(object):
     def test_encrypt(self):
