@@ -1,16 +1,13 @@
+from datetime import timedelta
+
 import pytest
 
-from datetime import timedelta
-from nio.crypto import Sas, SasState, OlmDevice
-from nio.exceptions import LocalProtocolError
-from nio.events import (
-    KeyVerificationStart,
-    KeyVerificationAccept,
-    KeyVerificationKey,
-    KeyVerificationMac,
-    KeyVerificationCancel
-)
 from helpers import faker
+from nio.crypto import OlmDevice, Sas, SasState
+from nio.events import (KeyVerificationAccept, KeyVerificationCancel,
+                        KeyVerificationKey, KeyVerificationMac,
+                        KeyVerificationStart)
+from nio.exceptions import LocalProtocolError
 
 alice_id = "@alice:example.org"
 alice_device_id = "JLAFKJWSCS"

@@ -14,55 +14,30 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from typing import (
-    Any,
-    Dict,
-    Optional,
-    Tuple,
-    Union,
-    Iterable,
-    Type,
-    List,
-    Coroutine
-)
-
 import asyncio
-import attr
 from asyncio import Event
-
-from uuid import uuid4
-from functools import wraps, partial
-
+from functools import partial, wraps
 from json.decoder import JSONDecodeError
-from aiohttp import ClientSession, ContentTypeError, ClientResponse
+from typing import (Any, Coroutine, Dict, Iterable, List, Optional, Tuple,
+                    Type, Union)
+from uuid import uuid4
+
+import attr
+from aiohttp import ClientResponse, ClientSession, ContentTypeError
 from aiohttp.client_exceptions import ClientConnectionError
 
-from ..messages import ToDeviceMessage
-from ..api import Api
-from ..responses import (
-    Response,
-    LoginResponse,
-    LoginError,
-    SyncResponse,
-    SyncError,
-    KeysUploadResponse,
-    KeysQueryResponse,
-    RoomSendResponse,
-    ShareGroupSessionResponse,
-    ShareGroupSessionError,
-    KeysClaimResponse,
-    KeysClaimError,
-    ToDeviceResponse,
-    ToDeviceError,
-    JoinedMembersResponse,
-    JoinedMembersError,
-    RoomKeyRequestResponse,
-    RoomKeyRequestError
-)
-from ..exceptions import (LocalProtocolError, MembersSyncError,
-                          GroupEncryptionError, SendRetryError)
-
 from . import Client, ClientConfig, logged_in, store_loaded
+from ..api import Api
+from ..exceptions import (GroupEncryptionError, LocalProtocolError,
+                          MembersSyncError, SendRetryError)
+from ..messages import ToDeviceMessage
+from ..responses import (JoinedMembersError, JoinedMembersResponse,
+                         KeysClaimError, KeysClaimResponse, KeysQueryResponse,
+                         KeysUploadResponse, LoginError, LoginResponse,
+                         Response, RoomKeyRequestError, RoomKeyRequestResponse,
+                         RoomSendResponse, ShareGroupSessionError,
+                         ShareGroupSessionResponse, SyncError, SyncResponse,
+                         ToDeviceError, ToDeviceResponse)
 
 if False:
     from ..events import MegolmEvent

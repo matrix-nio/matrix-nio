@@ -23,19 +23,10 @@ This module contains primitives to build Matrix API http requests.
 from __future__ import unicode_literals
 
 import json
-from typing import (
-    Any,
-    Dict,
-    Optional,
-    Tuple,
-    List,
-    Set,
-    DefaultDict,
-    Union,
-    Iterable
-)
-from enum import Enum, unique
 from collections import defaultdict
+from enum import Enum, unique
+from typing import (Any, DefaultDict, Dict, Iterable, List, Optional, Set,
+                    Tuple, Union)
 
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest

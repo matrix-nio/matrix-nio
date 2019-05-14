@@ -14,8 +14,9 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import attr
 from typing import Any, Dict, Optional, Union
+
+import attr
 
 from ..schemas import Schemas
 from .misc import BadEventType, verify

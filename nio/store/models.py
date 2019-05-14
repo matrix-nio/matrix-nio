@@ -12,20 +12,12 @@
 # limitations under the License.
 
 import time
-from datetime import datetime
 from builtins import bytes
+from datetime import datetime
 from enum import Enum
 
-from peewee import (
-    Model,
-    TextField,
-    IntegerField,
-    BlobField,
-    BooleanField,
-    ForeignKeyField,
-    CompositeKey,
-    SQL
-)
+from peewee import (SQL, BlobField, BooleanField, CompositeKey,
+                    ForeignKeyField, IntegerField, Model, TextField)
 
 
 class TrustState(Enum):

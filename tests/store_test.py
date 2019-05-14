@@ -1,32 +1,20 @@
 # -*- coding: utf-8 -*-
 
-import os
 import copy
-import pytest
+import os
 import pdb
 from collections import defaultdict
-from helpers import faker, ephemeral, ephemeral_dir
 from shutil import copyfile
 
-from nio.store import (
-    LegacyMatrixStore,
-    MatrixStore,
-    Key,
-    Ed25519Key,
-    KeyStore,
-    SqliteStore,
-    SqliteMemoryStore
-)
-from nio.exceptions import OlmTrustError
+import pytest
 
-from nio.crypto import (
-    OlmAccount,
-    OlmDevice,
-    OutboundSession,
-    OutboundGroupSession,
-    InboundGroupSession,
-    OutgoingKeyRequest
-)
+from helpers import ephemeral, ephemeral_dir, faker
+from nio.crypto import (InboundGroupSession, OlmAccount, OlmDevice,
+                        OutboundGroupSession, OutboundSession,
+                        OutgoingKeyRequest)
+from nio.exceptions import OlmTrustError
+from nio.store import (Ed25519Key, Key, KeyStore, LegacyMatrixStore,
+                       MatrixStore, SqliteMemoryStore, SqliteStore)
 
 BOB_ID = "@bob:example.org"
 BOB_DEVICE = "AGMTSWVYML"

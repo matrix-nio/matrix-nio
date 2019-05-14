@@ -1,20 +1,15 @@
-import pytest
-
 import json
 from os import path
 
+import pytest
 from hypothesis import given
 from hypothesis.strategies import binary
 
 from nio import EncryptionError
-from nio.store import DefaultStore
 from nio.crypto import Olm
-from nio.crypto.key_export import (
-    encrypt,
-    decrypt,
-    decrypt_and_read,
-    encrypt_and_save
-)
+from nio.crypto.key_export import (decrypt, decrypt_and_read, encrypt,
+                                   encrypt_and_save)
+from nio.store import DefaultStore
 
 TEST_ROOM = "!test:example.org"
 

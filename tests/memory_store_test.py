@@ -1,16 +1,8 @@
-from helpers import faker, ephemeral, ephemeral_dir
-
-from nio.store import MatrixStore, Key, Ed25519Key, KeyStore
+from helpers import ephemeral, ephemeral_dir, faker
+from nio.crypto import (GroupSessionStore, InboundGroupSession, OlmAccount,
+                        OutboundGroupSession, OutboundSession, SessionStore)
 from nio.exceptions import OlmTrustError
-
-from nio.crypto import (
-    OlmAccount,
-    OutboundGroupSession,
-    InboundGroupSession,
-    OutboundSession,
-    SessionStore,
-    GroupSessionStore
-)
+from nio.store import Ed25519Key, Key, KeyStore, MatrixStore
 
 BOB_ID = "@bob:example.org"
 BOB_DEVICE = "AGMTSWVYML"

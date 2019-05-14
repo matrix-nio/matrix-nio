@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-import sys
-import pytest
-import helpers
 import shutil
+import sys
 import tempfile
 
-from nio import Client, HttpClient
-from nio.crypto import OlmDevice, Olm
-from nio.store import SqliteMemoryStore
+import pytest
 from olm import Account
+
+import helpers
+from nio import Client, HttpClient
+from nio.crypto import Olm, OlmDevice
+from nio.store import SqliteMemoryStore
 
 ALICE_ID = "@alice:example.org"
 ALICE_DEVICE_ID = "JLAFKJWSCS"

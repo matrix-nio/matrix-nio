@@ -12,49 +12,22 @@
 # limitations under the License.
 
 import os
-from functools import wraps
 from builtins import super
+from functools import wraps
 from typing import Optional
 
 import attr
+from peewee import DoesNotExist, SqliteDatabase
 
-from peewee import (
-    SqliteDatabase,
-    DoesNotExist
-)
-
-from . import (
-    LegacyAccounts,
-    LegacyOlmSessions,
-    LegacyMegolmInboundSessions,
-    LegacyForwardedChains,
-    LegacyDeviceKeys,
-    LegacyEncryptedRooms,
-    LegacyOutgoingKeyRequests,
-    StoreVersion,
-    Accounts,
-    OlmSessions,
-    MegolmInboundSessions,
-    ForwardedChains,
-    DeviceKeys,
-    EncryptedRooms,
-    OutgoingKeyRequests,
-    Key,
-    KeyStore,
-    DeviceTrustState,
-    TrustState
-)
-
-from ..crypto import (
-    OlmAccount,
-    Session,
-    InboundGroupSession,
-    OlmDevice,
-    SessionStore,
-    GroupSessionStore,
-    DeviceStore,
-    OutgoingKeyRequest
-)
+from . import (Accounts, DeviceKeys, DeviceTrustState, EncryptedRooms,
+               ForwardedChains, Key, KeyStore, LegacyAccounts,
+               LegacyDeviceKeys, LegacyEncryptedRooms, LegacyForwardedChains,
+               LegacyMegolmInboundSessions, LegacyOlmSessions,
+               LegacyOutgoingKeyRequests, MegolmInboundSessions, OlmSessions,
+               OutgoingKeyRequests, StoreVersion, TrustState)
+from ..crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
+                      OlmAccount, OlmDevice, OutgoingKeyRequest, Session,
+                      SessionStore)
 
 
 def use_database(fn):

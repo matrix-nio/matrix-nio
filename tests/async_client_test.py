@@ -1,32 +1,16 @@
-import sys
 import json
-import pytest
+import sys
 from os import path
 
-from nio import (
-    LoginResponse,
-    SyncResponse,
-    LoginError,
-    LocalProtocolError,
-    KeysUploadResponse,
-    Rooms,
-    RoomInfo,
-    Timeline,
-    RoomMemberEvent,
-    RoomEncryptionEvent,
-    RoomSummary,
-    DeviceOneTimeKeyCount,
-    DeviceList,
-    KeysQueryResponse,
-    KeysClaimResponse,
-    GroupEncryptionError,
-    OlmTrustError,
-    RoomSendResponse,
-    ShareGroupSessionResponse,
-    JoinedMembersResponse,
-    MegolmEvent,
-    MembersSyncError
-)
+import pytest
+
+from nio import (DeviceList, DeviceOneTimeKeyCount, GroupEncryptionError,
+                 JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
+                 KeysUploadResponse, LocalProtocolError, LoginError,
+                 LoginResponse, MegolmEvent, MembersSyncError, OlmTrustError,
+                 RoomEncryptionEvent, RoomInfo, RoomMemberEvent, Rooms,
+                 RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
+                 SyncResponse, Timeline)
 from nio.crypto import OlmDevice
 
 TEST_ROOM_ID = "!testroom:example.org"

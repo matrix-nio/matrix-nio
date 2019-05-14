@@ -1,43 +1,21 @@
 # -*- coding: utf-8 -*-
 
-import os
-import pytest
-import json
 import copy
+import json
+import os
 
-from olm import (
-    Account,
-    OutboundGroupSession,
-    OlmPreKeyMessage,
-    OlmMessage
-)
+import pytest
+from olm import Account, OlmMessage, OlmPreKeyMessage, OutboundGroupSession
 
-from nio.crypto import (
-    Olm,
-    OlmDevice,
-    OutboundSession,
-    SessionStore,
-    DeviceStore,
-    InboundGroupSession,
-    GroupSessionStore,
-    OutgoingKeyRequest
-)
-from nio.exceptions import OlmTrustError, GroupEncryptionError, EncryptionError
-from nio.responses import (
-    KeysQueryResponse,
-    KeysUploadResponse,
-    KeysClaimResponse
-)
-from nio.store import KeyStore, Ed25519Key, Key, DefaultStore
-from nio.events import (
-    UnknownBadEvent,
-    RoomKeyEvent,
-    ForwardedRoomKeyEvent,
-    OlmEvent,
-    MegolmEvent,
-    RoomMessageText
-)
-
+from nio.crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
+                        Olm, OlmDevice, OutboundSession, OutgoingKeyRequest,
+                        SessionStore)
+from nio.events import (ForwardedRoomKeyEvent, MegolmEvent, OlmEvent,
+                        RoomKeyEvent, RoomMessageText, UnknownBadEvent)
+from nio.exceptions import EncryptionError, GroupEncryptionError, OlmTrustError
+from nio.responses import (KeysClaimResponse, KeysQueryResponse,
+                           KeysUploadResponse)
+from nio.store import DefaultStore, Ed25519Key, Key, KeyStore
 
 AliceId = "@alice:example.org"
 Alice_device = "ALDEVICE"

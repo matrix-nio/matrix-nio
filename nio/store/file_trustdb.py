@@ -1,14 +1,11 @@
-from typing import List, Optional, DefaultDict, Iterator, Dict
-
 from functools import wraps
+from typing import DefaultDict, Dict, Iterator, List, Optional
+
 from atomicwrites import atomic_write
 
-from ..exceptions import OlmTrustError
-from ..crypto import (
-    OlmDevice,
-)
 from . import logger
-
+from ..crypto import OlmDevice
+from ..exceptions import OlmTrustError
 
 try:
     FileNotFoundError  # type: ignore

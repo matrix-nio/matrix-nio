@@ -14,11 +14,12 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import attr
 from typing import Optional
 
-from ..schemas import Schemas
+import attr
+
 from ..messages import ToDeviceMessage
+from ..schemas import Schemas
 from .misc import verify
 
 
