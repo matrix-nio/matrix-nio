@@ -114,7 +114,8 @@ class AsyncClient(Client):
     Example:
             >>> client = AsyncClient("https://example.org", "example")
             >>> login_response = loop.run_until_complete(
-            >>>     client.login("hunter1"))
+            >>>     client.login("hunter1")
+            >>> )
 
     """
 
