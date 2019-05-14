@@ -1,8 +1,10 @@
 import sys
 import json
 import pytest
+from os import path
 
 from nio import (
+    AsyncClient,
     LoginResponse,
     SyncResponse,
     LoginError,
@@ -439,3 +441,42 @@ class TestClass(object):
         loop.run_until_complete(async_client.request_room_key(event, "1"))
 
         assert "session_id_123" in async_client.outgoing_key_requests
+
+    def test_key_exports(self, async_client, tempdir):
+        file = path.join(tempdir, "keys_file")
+
+        async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+
+        async_client.olm.create_outbound_group_session(TEST_ROOM_ID)
+
+        out_session = async_client.olm.outbound_group_sessions[TEST_ROOM_ID]
+
+        assert async_client.olm.inbound_group_store.get(
+                TEST_ROOM_ID,
+                async_client.olm.account.identity_keys["curve25519"],
+                out_session.id
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(async_client.export_keys(file, "pass"))
+
+        alice_client = AsyncClient(
+            "https://example.org",
+            "alice",
+            ALICE_DEVICE_ID,
+            tempdir
+        )
+
+        alice_client.user_id = ALICE_ID
+        alice_client.load_store()
+
+        loop.run_until_complete(alice_client.import_keys(file, "pass"))
+
+        imported_session = alice_client.olm.inbound_group_store.get(
+                TEST_ROOM_ID,
+                async_client.olm.account.identity_keys["curve25519"],
+                out_session.id
+        )
+
+        assert imported_session.id == out_session.id

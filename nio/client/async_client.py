@@ -31,7 +31,7 @@ import attr
 from asyncio import Event
 
 from uuid import uuid4
-from functools import wraps
+from functools import wraps, partial
 
 from json.decoder import JSONDecodeError
 from aiohttp import ClientSession, ContentTypeError, ClientResponse
@@ -769,3 +769,59 @@ class AsyncClient(Client):
         if self.client_session:
             await self.client_session.close()
             self.client_session = None
+
+    @store_loaded
+    async def export_keys(self, outfile, passphrase, count=10000):
+        """Export all the Megolm decryption keys of this device.
+
+        The keys will be encrypted using the passphrase.
+        NOTE:
+            This does not save other information such as the private identity
+            keys of the device.
+        Args:
+            outfile (str): The file to write the keys to.
+            passphrase (str): The encryption passphrase.
+            count (int): Optional. Round count for the underlying key
+                derivation. It is not recommended to specify it unless
+                absolutely sure of the consequences.
+        """
+        assert self.store
+        assert self.olm
+
+        loop = asyncio.get_running_loop()
+
+        inbound_group_store = self.store.load_inbound_group_sessions()
+        export_keys = partial(self.olm.export_keys_static, inbound_group_store,
+                              outfile, passphrase, count)
+
+        await loop.run_in_executor(None, export_keys)
+
+    @store_loaded
+    async def import_keys(self, infile, passphrase):
+        """Import Megolm decryption keys.
+
+        The keys will be added to the current instance as well as written to
+        database.
+
+        Args:
+            infile (str): The file containing the keys.
+            passphrase (str): The decryption passphrase.
+
+        Raises `EncryptionError` if the file is invalid or couldn't be
+            decrypted.
+
+        Raises the usual file errors if the file couldn't be opened.
+        """
+        assert self.store
+        assert self.olm
+
+        loop = asyncio.get_running_loop()
+
+        import_keys = partial(self.olm.import_keys_static, infile, passphrase)
+        sessions = await loop.run_in_executor(None, import_keys)
+
+        for session in sessions:
+            # This could be improved by writing everything to db at once at
+            # the end
+            if self.olm.inbound_group_store.add(session):
+                self.store.save_inbound_group_session(session)
