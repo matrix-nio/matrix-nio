@@ -1454,7 +1454,7 @@ class Olm(object):
                     cancel_message = old_sas.get_cancellation()
                     self.outgoing_to_device_messages.append(cancel_message)
 
-                logger.info("Sucesfully started key verification with"
+                logger.info("Sucesfully started key verification with "
                             "{} {} {}".format(
                                 event.sender,
                                 event.from_device,
