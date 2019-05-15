@@ -41,6 +41,7 @@ from ..responses import (JoinedMembersError, JoinedMembersResponse,
 
 if False:
     from ..events import MegolmEvent
+    from .crypto import OlmDevice
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
 
@@ -355,6 +356,69 @@ class AsyncClient(Client):
                     break
 
     @logged_in
+    @store_loaded
+    async def start_key_verification(
+        self,
+        device,     # type: OlmDevice
+        tx_id=None  # type: Optional[str]
+    ):
+        # type: (...) -> Union[ToDeviceResponse, ToDeviceError]
+        """Start a interactive key verification with the given device.
+
+        Returns either a `ToDeviceResponse` if the request was successful or
+        a `ToDeviceError` if there was an error with the request.
+
+        Args:
+            device (OlmDevice): An device with which we would like to start the
+                interactive key verification process.
+        """
+        message = self.create_key_verification(device)
+        return await self.to_device(message, tx_id)
+
+    @logged_in
+    @store_loaded
+    async def cancel_key_verification(
+        self,
+        transaction_id,     # type: OlmDevice
+        reject=False,       # type: bool
+        tx_id=None          # type: Optional[str]
+    ):
+        # type: (...) -> Union[ToDeviceResponse, ToDeviceError]
+        """Cancel a interactive key verification with the given device.
+
+        Returns either a `ToDeviceResponse` if the request was successful or
+        a `ToDeviceError` if there was an error with the request.
+
+        Args:
+            transaction_id (str): An transaction id of a valid key verification
+                process.
+            reject (bool): Is the cancelation reason because we're rejecting
+                the short auth string and mark it as mismatching or a normal
+                user cancelation.
+
+        Raises a LocalProtocolError no verification process with the given
+        transaction ID exists or if reject is True and the short auth string
+        couldn't be shown yet because plublic keys weren't yet exchanged.
+        """
+        if transaction_id not in self.key_verifications:
+            raise LocalProtocolError("Key verification with the transaction "
+                                     "id {} does not exist.".format(
+                                         transaction_id
+                                     ))
+
+        sas = self.key_verifications[transaction_id]
+
+        if reject:
+            sas.reject_sas()
+        else:
+            sas.cancel()
+
+        message = sas.get_cancellation()
+
+        return await self.to_device(message, tx_id)
+
+    @logged_in
+    @store_loaded
     async def accept_key_verification(self, transaction_id, tx_id=None):
         # type: (str, Optional[str]) -> Union[ToDeviceResponse, ToDeviceError]
         """Accept a key verification start event.
@@ -379,6 +443,7 @@ class AsyncClient(Client):
         return await self.to_device(message, tx_id)
 
     @logged_in
+    @store_loaded
     async def confirm_short_auth_string(self, transaction_id, tx_id=None):
         # type: (str, Optional[str]) -> Union[ToDeviceResponse, ToDeviceError]
         """Confirm a short auth string and mark it as matching.
