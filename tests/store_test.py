@@ -537,7 +537,7 @@ class TestClass(object):
     def test_store_versioning(self, store):
         version = store._get_store_version()
 
-        assert version == 1
+        assert version == 2
 
     def test_sqlitestore_verification(self, sqlstore):
         devices = self.example_devices
