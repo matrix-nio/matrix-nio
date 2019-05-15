@@ -208,6 +208,7 @@ class DeviceKeys(Model):
     fp_key = TextField()
     device_id = TextField()
     user_id = TextField()
+    display_name = TextField(default="")
 
     class Meta:
         constraints = [SQL("UNIQUE(account_id,user_id,device_id)")]

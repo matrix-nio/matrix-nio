@@ -209,7 +209,8 @@ class OlmDevice(object):
         device_id,       # type: str
         ed25519_key,     # type: str
         curve25519_key,  # type: str
-        deleted=False    # type: bool
+        deleted=False,   # type: bool
+        display_name=""  # type: str
     ):
         # type: (...) -> None
         self.user_id = user_id
@@ -217,6 +218,7 @@ class OlmDevice(object):
         self.ed25519 = ed25519_key
         self.curve25519 = curve25519_key
         self.deleted = deleted
+        self.display_name = display_name
 
 
 @attr.s

@@ -17,7 +17,8 @@ from functools import wraps
 from typing import Optional
 
 import attr
-from peewee import DoesNotExist, SqliteDatabase
+from peewee import DoesNotExist, SqliteDatabase, TextField
+from playhouse.migrate import SqliteMigrator, migrate
 
 from . import (Accounts, DeviceKeys, DeviceTrustState, EncryptedRooms,
                ForwardedChains, Key, KeyStore, LegacyAccounts,
@@ -409,7 +410,7 @@ class MatrixStore(object):
         OutgoingKeyRequests,
         StoreVersion
     ]
-    store_version = 1
+    store_version = 2
 
     user_id = attr.ib(type=str)
     device_id = attr.ib(type=str)
@@ -489,6 +490,17 @@ class MatrixStore(object):
             }
         )
 
+    def upgrate_to_v2(self):
+        migrator = SqliteMigrator(self.database)
+        migrate(
+            migrator.add_column(
+                "devicekeys",
+                "display_name",
+                TextField(default="")
+            )
+        )
+        self._update_version(2)
+
     def __attrs_post_init__(self):
         self.database_name = self.database_name or "{}_{}.db".format(
             self.user_id,
@@ -502,32 +514,30 @@ class MatrixStore(object):
                 and self.database.table_exists("accounts")):
             self._update_from_legacy_db()
 
-        with self.database.bind_ctx(self.models):
-            self.database.create_tables(self.models)
-
         store_version = self._get_store_version()
 
         # Update the store if it's an old version here.
         if store_version == 1:
-            pass
+            self.upgrate_to_v2()
 
-        self._save_store_version()
+        with self.database.bind_ctx(self.models):
+            self.database.create_tables(self.models)
 
-    @use_database
     def _get_store_version(self):
-        try:
-            v = StoreVersion.get()
+        with self.database.bind_ctx([StoreVersion]):
+            self.database.create_tables([StoreVersion])
+            v, _ = StoreVersion.get_or_create(
+                defaults={"version": self.store_version}
+            )
             return v.version
-        except DoesNotExist:
-            return None
 
-    @use_database
-    def _save_store_version(self):
-        try:
-            v = StoreVersion.get()
-            v.version = self.store_version
-        except DoesNotExist:
-            StoreVersion.create(version=self.store_version)
+    def _update_version(self, new_version):
+        with self.database.bind_ctx([StoreVersion]):
+            v, _ = StoreVersion.get_or_create(
+                defaults={"version": new_version}
+            )
+            v.version = new_version
+            v.save()
 
     @use_database
     def _get_account(self):
@@ -712,6 +722,7 @@ class MatrixStore(object):
                 d.fp_key,
                 d.sender_key,
                 d.deleted,
+                d.display_name
             ))
 
         return store
@@ -739,6 +750,7 @@ class MatrixStore(object):
                         "fp_key": device.ed25519,
                         "device_id": device_id,
                         "user_id": user_id,
+                        "display_name": device.display_name
                     }
                 )
 
