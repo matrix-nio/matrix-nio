@@ -488,6 +488,18 @@ class Olm(object):
         # type: (OlmDevice) -> bool
         return self.store.unverify_device(device)
 
+    def ignore_device(self, device):
+        # type: (OldDevice) -> bool
+        return self.store.ignore_device(device)
+
+    def unignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        return self.store.unignore_device(device)
+
+    def is_device_ignored(self, device):
+        # type: (OlmDevice) -> bool
+        return self.store.is_device(ignored(device)
+
     def create_session(self, one_time_key, curve_key):
         # type: (str, str) -> None
         # TODO this can fail
@@ -1040,7 +1052,8 @@ class Olm(object):
         self,
         room_id,  # type: str
         users,    # type: List[str]
-        ignore_missing_sessions=False  # type: bool
+        ignore_missing_sessions=False,  # type: bool
+        ignore_unverified_devices=False # type: bool
     ):
         # type: (...) -> Tuple[Set[Tuple[str, str]], Dict[str, Any]]
         logger.info("Sharing group session for room {}".format(room_id))
@@ -1103,11 +1116,16 @@ class Olm(object):
                                                   device.id))
 
                 if not self.is_device_verified(device):
-                    raise OlmTrustError("Device {} for user {} is not "
-                                        "verified or blacklisted.".format(
-                                            device.id,
-                                            device.user_id
-                                        ))
+                    if self.is_device_ignored(device):
+                        pass
+                    elif ignore_unverified_devices:
+                        self.ignore_device(device)
+                    else:
+                        raise OlmTrustError("Device {} for user {} is not "
+                                            "verified or blacklisted.".format(
+                                                device.id,
+                                                device.user_id
+                                            ))
 
                 user_map.append((user_id, device, session))
 
