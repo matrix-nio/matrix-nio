@@ -268,16 +268,22 @@ class Client(object):
         if not self.device_id:
             raise LocalProtocolError("Device id is not set")
 
-        self.store = self.config.store(
-            self.user_id,
-            self.device_id,
-            self.store_path,
-            self.config.pickle_key,
-            self.config.store_name
-        )
-        assert self.store
-        self.olm = Olm(self.user_id, self.device_id, self.store)
-        self.encrypted_rooms = self.store.load_encrypted_rooms()
+        if not self.config.store:
+            raise LocalProtocolError("No store class was provided in the "
+                                     "config.")
+
+        if self.config.encryption_enabled:
+            self.store = self.config.store(
+                self.user_id,
+                self.device_id,
+                self.store_path,
+                self.config.pickle_key,
+                self.config.store_name
+            )
+            assert self.store
+
+            self.olm = Olm(self.user_id, self.device_id, self.store)
+            self.encrypted_rooms = self.store.load_encrypted_rooms()
 
     def room_contains_unverified(self, room_id):
         # type: (str) -> bool
@@ -304,6 +310,7 @@ class Client(object):
 
         return False
 
+    @store_loaded
     def invalidate_outbound_session(self, room_id):
         """Explicitely remove encryption keys for a room.
 
@@ -425,7 +432,7 @@ class Client(object):
         self.user_id = response.user_id
         self.device_id = response.device_id
 
-        if self.store_path and (not self.store or not self.olm):
+        if self.store_path and not (self.store and self.olm):
             self.load_store()
 
     @store_loaded
@@ -601,8 +608,10 @@ class Client(object):
             index, event = decrypted_event
             response.chunk[index] = event
 
-    @store_loaded
     def _handle_olm_response(self, response):
+        if not self.olm:
+            return
+
         self.olm.handle_response(response)
 
         if isinstance(response, ShareGroupSessionResponse):
