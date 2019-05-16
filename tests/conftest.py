@@ -7,7 +7,7 @@ import pytest
 from olm import Account
 
 import helpers
-from nio import Client, HttpClient
+from nio import Client, HttpClient, ClientConfig
 from nio.crypto import Olm, OlmDevice
 from nio.store import SqliteMemoryStore
 
@@ -28,6 +28,13 @@ def tempdir():
 @pytest.fixture
 def client(tempdir):
     return Client("ephemeral", "DEVICEID", tempdir)
+
+
+@pytest.fixture
+def client_no_e2e(tempdir):
+    config = ClientConfig(encryption_enabled=False)
+    return Client("ephemeral", "DEVICEID", tempdir, config)
+
 
 
 @pytest.fixture

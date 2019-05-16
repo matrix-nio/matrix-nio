@@ -12,6 +12,8 @@ from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
                  Rooms, RoomSummary, ShareGroupSessionResponse, SyncResponse,
                  Timeline, TransportType, TypingNoticeEvent)
 
+from nio.messages import ToDeviceMessage
+
 HOST = "example.org"
 USER = "example"
 DEVICE_ID = "DEVICEID"
@@ -645,3 +647,40 @@ class TestClass(object):
 
         with pytest.raises(CallbackException):
             client.receive_response(self.sync_response)
+
+    def test_no_encryption(self, client_no_e2e):
+        client_no_e2e.receive_response(self.login_response)
+        assert client_no_e2e.logged_in
+
+        assert not client_no_e2e.olm
+        client_no_e2e.receive_response(self.sync_response)
+
+        assert len(client_no_e2e.rooms) == 1
+
+        room = list(client_no_e2e.rooms.values())[0]
+
+        assert room.encrypted
+        client_no_e2e.receive_response(self.second_sync)
+
+        with pytest.raises(LocalProtocolError):
+            client_no_e2e.device_store
+
+        with pytest.raises(LocalProtocolError):
+            client_no_e2e.olm_account_shared
+
+        not client_no_e2e.should_query_keys
+
+        not client_no_e2e.users_for_key_query
+        not client_no_e2e.key_verifications
+        not client_no_e2e.outgoing_to_device_messages
+        not client_no_e2e.get_active_sas(ALICE_ID, ALICE_DEVICE_ID)
+
+        to_device = ToDeviceMessage("m.test", ALICE_ID, ALICE_DEVICE_ID, {})
+        client_no_e2e._mark_to_device_message_as_sent(to_device)
+
+        client_no_e2e.room_contains_unverified(room.room_id)
+
+        with pytest.raises(LocalProtocolError):
+            client_no_e2e.invalidate_outbound_session(room.room_id)
+
+        client_no_e2e.receive_response(self.keys_query_response)
