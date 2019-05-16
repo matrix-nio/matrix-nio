@@ -91,8 +91,7 @@ class TestClass(object):
         device = OlmDevice(
             "example",
             "DEVICEID",
-            account.identity_keys["ed25519"],
-            account.identity_keys["curve25519"],
+            account.identity_keys
         )
         key = Key.from_olmdevice(device)
 
@@ -171,8 +170,8 @@ class TestClass(object):
         alice = OlmDevice(
             "example",
             "DEVICEID",
-            "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA",
-            "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
+            {"edd25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA",
+             "curve25519": "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
         )
 
         store = DeviceStore()
@@ -190,8 +189,7 @@ class TestClass(object):
         bob_device = OlmDevice(
             BobId,
             Bob_device,
-            bob.identity_keys["ed25519"],
-            bob.identity_keys["curve25519"]
+            bob.identity_keys
         )
 
         olm = self.ephemeral_olm
@@ -292,21 +290,18 @@ class TestClass(object):
         alice_device = OlmDevice(
             AliceId,
             Alice_device,
-            alice.account.identity_keys["ed25519"],
-            alice.account.identity_keys["curve25519"],
+            alice.account.identity_keys
         )
         bob_device = OlmDevice(
             BobId,
             Bob_device,
-            bob.account.identity_keys["ed25519"],
-            bob.account.identity_keys["curve25519"],
+            bob.account.identity_keys
         )
 
         malory_device = OlmDevice(
             MaloryId,
             Malory_device,
-            malory.account.identity_keys["ed25519"],
-            malory.account.identity_keys["curve25519"],
+            malory.account.identity_keys
         )
 
         # add the devices to the device list
@@ -444,21 +439,18 @@ class TestClass(object):
         alice_device = OlmDevice(
             AliceId,
             Alice_device,
-            alice.account.identity_keys["ed25519"],
-            alice.account.identity_keys["curve25519"],
+            alice.account.identity_keys
         )
         bob_device = OlmDevice(
             BobId,
             Bob_device,
-            bob.account.identity_keys["ed25519"],
-            bob.account.identity_keys["curve25519"],
+            bob.account.identity_keys
         )
 
         malory_device = OlmDevice(
             MaloryId,
             Malory_device,
-            malory.account.identity_keys["ed25519"],
-            malory.account.identity_keys["curve25519"],
+            malory.account.identity_keys
         )
 
         # add the devices to the device list
@@ -632,15 +624,13 @@ class TestClass(object):
         bob_device = OlmDevice(
             BobId,
             Bob_device,
-            bob.account.identity_keys["ed25519"],
-            bob.account.identity_keys["curve25519"],
+            bob.account.identity_keys
         )
 
         bob2_device = OlmDevice(
             BobId,
             Malory_device,
-            bob.account.identity_keys["ed25519"],
-            bob.account.identity_keys["curve25519"],
+            bob.account.identity_keys
         )
 
         alice.device_store.add(bob_device)
@@ -764,8 +754,7 @@ class TestClass(object):
         bob_device = OlmDevice(
             BobId,
             Bob_device,
-            bob.account.identity_keys["ed25519"],
-            bob.account.identity_keys["curve25519"],
+            bob.account.identity_keys
         )
 
         assert not alice.get_missing_sessions([BobId])

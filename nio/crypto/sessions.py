@@ -17,7 +17,7 @@
 
 from builtins import super
 from datetime import datetime, timedelta
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple, Dict
 
 import attr
 import olm
@@ -205,20 +205,34 @@ class OutboundGroupSession(olm.OutboundGroupSession):
 class OlmDevice(object):
     def __init__(
         self,
-        user_id,         # type: str
-        device_id,       # type: str
-        ed25519_key,     # type: str
-        curve25519_key,  # type: str
-        deleted=False,   # type: bool
-        display_name=""  # type: str
+        user_id,          # type: str
+        device_id,        # type: str
+        keys,             # type: Dict[str, str]
+        display_name="",  # type: str
+        deleted=False,    # type: bool
     ):
         # type: (...) -> None
         self.user_id = user_id
         self.id = device_id
-        self.ed25519 = ed25519_key
-        self.curve25519 = curve25519_key
-        self.deleted = deleted
+        self.keys = keys
         self.display_name = display_name
+        self.deleted = deleted
+
+    @property
+    def ed25519(self):
+        return self.keys["ed25519"]
+
+    @ed25519.setter
+    def ed25519(self, new_value):
+        self.keys["ed25519"] = new_value
+
+    @property
+    def curve25519(self):
+        return self.keys["curve25519"]
+
+    @curve25519.setter
+    def curve25519(self, new_value):
+        self.keys["curve25519"] = new_value
 
 
 @attr.s

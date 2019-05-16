@@ -17,15 +17,15 @@ from functools import wraps
 from typing import Optional
 
 import attr
-from peewee import DoesNotExist, SqliteDatabase, TextField
-from playhouse.migrate import SqliteMigrator, migrate
+from peewee import DoesNotExist, SqliteDatabase
 
 from . import (Accounts, DeviceKeys, DeviceTrustState, EncryptedRooms,
                ForwardedChains, Key, KeyStore, LegacyAccounts,
                LegacyDeviceKeys, LegacyEncryptedRooms, LegacyForwardedChains,
                LegacyMegolmInboundSessions, LegacyOlmSessions,
                LegacyOutgoingKeyRequests, MegolmInboundSessions, OlmSessions,
-               OutgoingKeyRequests, StoreVersion, TrustState)
+               OutgoingKeyRequests, StoreVersion, TrustState, DeviceKeys_v1,
+               Keys)
 from ..crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
                       OlmAccount, OlmDevice, OutgoingKeyRequest, Session,
                       SessionStore)
@@ -271,9 +271,10 @@ class LegacyMatrixStore(object):
             store.add(OlmDevice(
                 d.user_id,
                 d.user_device_id,
-                d.ed_key,
-                d.curve_key,
-                d.deleted,
+                {"ed25519": d.ed_key,
+                 "curve25519": d.curve_key},
+                display_name="",
+                deleted=d.deleted,
             ))
 
         return store
@@ -408,7 +409,8 @@ class MatrixStore(object):
         DeviceKeys,
         EncryptedRooms,
         OutgoingKeyRequests,
-        StoreVersion
+        StoreVersion,
+        Keys
     ]
     store_version = 2
 
@@ -491,14 +493,14 @@ class MatrixStore(object):
         )
 
     def upgrate_to_v2(self):
-        migrator = SqliteMigrator(self.database)
-        migrate(
-            migrator.add_column(
-                "devicekeys",
-                "display_name",
-                TextField(default="")
-            )
-        )
+        with self.database.bind_ctx([DeviceKeys_v1]):
+            self.database.drop_tables([
+                DeviceTrustState,
+                DeviceKeys_v1,
+            ], safe=True)
+
+        with self.database.bind_ctx(self.models):
+            self.database.create_tables([DeviceKeys, DeviceTrustState])
         self._update_version(2)
 
     def __attrs_post_init__(self):
@@ -719,10 +721,9 @@ class MatrixStore(object):
             store.add(OlmDevice(
                 d.user_id,
                 d.device_id,
-                d.fp_key,
-                d.sender_key,
-                d.deleted,
-                d.display_name
+                {k.key_type: k.key for k in d.keys},
+                display_name=d.display_name,
+                deleted=d.deleted,
             ))
 
         return store
@@ -744,13 +745,11 @@ class MatrixStore(object):
             for device_id, device in devices_dict.items():
                 rows.append(
                     {
-                        "sender_key": device.curve25519,
-                        "deleted": device.deleted,
                         "account": account,
-                        "fp_key": device.ed25519,
-                        "device_id": device_id,
                         "user_id": user_id,
-                        "display_name": device.display_name
+                        "device_id": device_id,
+                        "display_name": device.display_name,
+                        "deleted": device.deleted,
                     }
                 )
 
@@ -763,15 +762,21 @@ class MatrixStore(object):
 
         for user_id, devices_dict in device_keys.items():
             for device_id, device in devices_dict.items():
-                DeviceKeys.update(
-                    {
-                        DeviceKeys.deleted: device.deleted
-                    }
-                ).where(
+                d = DeviceKeys.get(
                     (DeviceKeys.account == account)
                     & (DeviceKeys.user_id == user_id)
                     & (DeviceKeys.device_id == device_id)
-                ).execute()
+                )
+
+                d.deleted = device.deleted
+                d.save()
+
+                for key_type, key in device.keys.items():
+                    Keys.replace(
+                        key_type=key_type,
+                        key=key,
+                        device=d
+                    ).execute()
 
     @use_database
     def load_encrypted_rooms(self):

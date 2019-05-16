@@ -20,15 +20,13 @@ bob_keys = faker.olm_key_pair()
 alice_device = OlmDevice(
     alice_id,
     alice_device_id,
-    alice_keys["ed25519"],
-    alice_keys["curve25519"]
+    alice_keys
 )
 
 bob_device = OlmDevice(
     bob_id,
     bob_device_id,
-    bob_keys["ed25519"],
-    bob_keys["curve25519"]
+    bob_keys
 )
 
 
@@ -704,8 +702,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys["ed25519"],
-            olm_machine.account.identity_keys["curve25519"],
+            olm_machine.account.identity_keys
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
         bob_sas = Sas(
@@ -775,8 +772,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys["ed25519"],
-            olm_machine.account.identity_keys["curve25519"],
+            olm_machine.account.identity_keys
         )
         bob_sas = Sas(
             bob_id,
@@ -842,8 +838,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys["ed25519"],
-            olm_machine.account.identity_keys["curve25519"],
+            olm_machine.account.identity_keys
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
@@ -909,8 +904,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys["ed25519"],
-            olm_machine.account.identity_keys["curve25519"],
+            olm_machine.account.identity_keys
         )
 
         bob_device = faker.olm_device()
@@ -936,8 +930,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys["ed25519"],
-            olm_machine.account.identity_keys["curve25519"],
+            olm_machine.account.identity_keys
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
@@ -969,8 +962,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys["ed25519"],
-            olm_machine.account.identity_keys["curve25519"],
+            olm_machine.account.identity_keys
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
@@ -1007,8 +999,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys["ed25519"],
-            olm_machine.account.identity_keys["curve25519"],
+            olm_machine.account.identity_keys
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
@@ -1043,8 +1034,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys["ed25519"],
-            olm_machine.account.identity_keys["curve25519"],
+            olm_machine.account.identity_keys
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
@@ -1080,8 +1070,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys["ed25519"],
-            olm_machine.account.identity_keys["curve25519"],
+            olm_machine.account.identity_keys
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
@@ -1124,8 +1113,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys["ed25519"],
-            olm_machine.account.identity_keys["curve25519"],
+            olm_machine.account.identity_keys
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
