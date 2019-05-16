@@ -37,8 +37,7 @@ def olm_machine():
     bob_device = OlmDevice(
             BOB_DEVICE,
             BOB_DEVICE_ID,
-            key_pair["ed25519"],
-            key_pair["curve25519"]
+            key_pair
         )
 
     store = SqliteMemoryStore(ALICE_ID, ALICE_DEVICE_ID)

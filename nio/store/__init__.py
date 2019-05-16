@@ -8,6 +8,7 @@ from .models import (
     LegacyForwardedChains,
     LegacyEncryptedRooms,
     LegacyOutgoingKeyRequests,
+    DeviceKeys_v1,
     Accounts,
     OlmSessions,
     DeviceKeys,
@@ -18,7 +19,8 @@ from .models import (
     DeviceTrustState,
     DeviceTrustField,
     StoreVersion,
-    TrustState
+    TrustState,
+    Keys
 )
 from .database import (
     DefaultStore,

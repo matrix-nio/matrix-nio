@@ -75,8 +75,8 @@ class TestClass(object):
         bob_device = OlmDevice(
             BOB_ID,
             BOB_DEVICE,
-            BOB_ONETIME,
-            BOB_CURVE
+            {"ed25519": BOB_ONETIME,
+             "curve25519": BOB_CURVE}
         )
 
         devices[BOB_ID][BOB_DEVICE] = bob_device

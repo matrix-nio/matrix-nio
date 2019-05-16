@@ -281,8 +281,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             ALICE_ID,
             ALICE_DEVICE_ID,
-            alice_client.olm.account.identity_keys["ed25519"],
-            alice_client.olm.account.identity_keys["curve25519"],
+            alice_client.olm.account.identity_keys
         )
 
         async_client.device_store.add(alice_device)
@@ -318,8 +317,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             ALICE_ID,
             ALICE_DEVICE_ID,
-            alice_client.olm.account.identity_keys["ed25519"],
-            alice_client.olm.account.identity_keys["curve25519"],
+            alice_client.olm.account.identity_keys
         )
 
         async_client.device_store.add(alice_device)

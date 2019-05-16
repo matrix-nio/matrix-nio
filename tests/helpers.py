@@ -48,8 +48,7 @@ class Provider(BaseProvider):
         return OlmDevice(
             user_id,
             device_id,
-            key_pair["ed25519"],
-            key_pair["curve25519"]
+            key_pair,
         )
 
     def ed25519_key(self):

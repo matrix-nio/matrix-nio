@@ -301,14 +301,21 @@ class Olm(object):
                     key_dict = payload["keys"]
                     signing_key = key_dict["ed25519:{}".format(device_id)]
                     curve_key = key_dict["curve25519:{}".format(device_id)]
+                    if "unsigned" in payload:
+                        display_name = payload["unsigned"].get(
+                            "device_display_name",
+                            ""
+                        )
+                    else:
+                        display_name = ""
                 except KeyError as e:
                     logger.warning(
-                        "Invalid identity keys payload from device %s of"
-                        " user %s: %s.",
-                        device_id,
-                        user_id,
-                        e
-                    )
+                        "Invalid identity keys payload from device {} of"
+                        " user {}: {}.".format(
+                            device_id,
+                            user_id,
+                            e
+                        ))
                     continue
 
                 verified = self.verify_json(
@@ -339,8 +346,11 @@ class Olm(object):
                     self.device_store.add(OlmDevice(
                         user_id,
                         device_id,
-                        ed25519_key=signing_key,
-                        curve25519_key=curve_key,
+                        {
+                            "ed25519": signing_key,
+                            "curve25519": curve_key
+                        },
+                        display_name=display_name
                     ))
                 else:
                     if device.ed25519 != signing_key:
@@ -351,15 +361,22 @@ class Olm(object):
                                        ))
                         continue
 
-                    if device.curve25519 == curve_key:
+                    if (device.curve25519 == curve_key
+                            and device.display_name == display_name):
                         continue
 
                     device.curve25519 = curve_key
-                    logger.info("Updating curve key in the device store for "
-                                "user {} with device id {}".format(
-                                    user_id,
-                                    device_id
-                                ))
+                    device.display_name = display_name
+
+                    if device.curve_key == curve_key:
+                        logger.info("Updating curve key in the device store "
+                                    "for user {} with device id {}".format(
+                                        user_id, device_id))
+
+                    elif device.display_name == display_name:
+                        logger.info("Updating display name in the device "
+                                    "store for user {} with device id "
+                                    "{}".format(user_id, device_id))
 
                 changed[user_id][device_id] = user_devices[device_id]
 
