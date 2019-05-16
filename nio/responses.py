@@ -25,7 +25,6 @@ import attr
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
-from .crypto import OlmDevice
 from .events import (AccountDataEvent, BadEventType, Event, InviteEvent,
                      ToDeviceEvent, UnknownBadEvent)
 from .log import logger_group
@@ -693,7 +692,7 @@ class KeysQueryResponse(Response):
     device_keys = attr.ib(type=Dict)
     failures = attr.ib(type=Dict)
     changed = attr.ib(
-        type=Dict[str, Dict[str, OlmDevice]],
+        type=Dict[str, Dict[str, Any]],
         init=False,
         factory=dict
     )
