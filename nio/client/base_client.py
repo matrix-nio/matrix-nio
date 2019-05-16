@@ -76,7 +76,7 @@ class ClientCallback(object):
     filter = attr.ib()
 
 
-@attr.s
+@attr.s(frozen=True)
 class ClientConfig(object):
     """nio client configuration.
 
