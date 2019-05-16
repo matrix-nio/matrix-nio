@@ -1,23 +1,32 @@
-from .sessions import (
-    OlmAccount,
-    Session,
-    OutboundSession,
-    InboundSession,
-    OutboundGroupSession,
-    InboundGroupSession,
-    OlmDevice,
-    OutgoingKeyRequest
-)
+from .._compat import package_installed
 
-from .memorystores import (
-    SessionStore,
-    GroupSessionStore,
-    DeviceStore
-)
+if package_installed("olm"):
+    from .sessions import (
+        OlmAccount,
+        Session,
+        OutboundSession,
+        InboundSession,
+        OutboundGroupSession,
+        InboundGroupSession,
+        OlmDevice,
+        OutgoingKeyRequest
+    )
 
-from .log import logger
+    from .memorystores import (
+        SessionStore,
+        GroupSessionStore,
+        DeviceStore
+    )
 
-from .olm_machine import Olm
+    from .log import logger
+
+    from .olm_machine import Olm
+
+    from .sas import Sas, SasState
+
+    ENCRYPTION_ENABLED = True
+
+else:
+    ENCRYPTION_ENABLED = False
 
 from .attachments import encrypt_attachment, decrypt_attachment
-from .sas import Sas, SasState

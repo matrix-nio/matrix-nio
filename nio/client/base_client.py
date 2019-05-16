@@ -20,7 +20,12 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 import attr
 from logbook import Logger
 
-from ..crypto import Olm
+from ..crypto import ENCRYPTION_ENABLED
+
+if ENCRYPTION_ENABLED:
+    from ..crypto import Olm
+    from ..store import DefaultStore, MatrixStore
+
 from ..events import (BadEventType, Event, KeyVerificationEvent, MegolmEvent,
                       RoomEncryptedEvent, RoomEncryptionEvent, ToDeviceEvent)
 from ..exceptions import LocalProtocolError, MembersSyncError
@@ -33,7 +38,6 @@ from ..responses import (ErrorResponse, JoinedMembersResponse,
                          ShareGroupSessionResponse, SyncResponse, SyncType,
                          ToDeviceResponse)
 from ..rooms import MatrixInvitedRoom, MatrixRoom
-from ..store import DefaultStore, MatrixStore
 
 if False:
     from ..crypto import OlmDevice, OutgoingKeyRequest, Sas
@@ -90,12 +94,26 @@ class ClientConfig(object):
         pickle_key: (str, optional): A passphrase that will be used to encrypt
             end to end encryption keys.
 
+    Raises an ImportWarning if encryption_enabled is true but the dependencies
+    for encryption aren't installed.
+
     """
 
-    store = attr.ib(type=Callable, default=DefaultStore)
+    if ENCRYPTION_ENABLED:
+        store = attr.ib(type=Callable, default=DefaultStore)
+        encryption_enabled = attr.ib(type=bool, default=True)
+    else:
+        store = attr.ib(type=Callable, default=None)
+        encryption_enabled = attr.ib(type=bool, default=False)
+
     store_name = attr.ib(type=str, default="")
-    encryption_enabled = attr.ib(type=bool, default=True)
     pickle_key = attr.ib(type=str, default="DEFAULT_KEY")
+
+    def __attrs_post_init__(self):
+        if not ENCRYPTION_ENABLED and self.encryption_enabled:
+            raise ImportWarning("Encryption is enabled in the client "
+                                "configuration but dependencies for E2E "
+                                "encrytpion aren't installed.")
 
 
 class Client(object):
