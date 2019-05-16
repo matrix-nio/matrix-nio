@@ -15,17 +15,21 @@ setup(
     install_requires=[
         "attrs",
         "future",
-        "peewee>=3.9.5",
         "aiohttp;python_version>'3.5'",
         "typing;python_version<'3.5'",
         "h11",
         "h2",
         "logbook",
         "jsonschema",
-        "atomicwrites",
         "unpaddedbase64",
         "pycryptodome",
-        "python-olm>=3.1.0",
     ],
+    extras_require={
+        "e2e":  [
+            "python-olm>=3.1.0",
+            "peewee>=3.9.5",
+            "atomicwrites",
+        ]
+    },
     zip_safe=False
 )
