@@ -296,7 +296,10 @@ class Client(object):
         Returns False if no Olm session is loaded or if the room isn't
         encrypted.
         """
-        room = self.rooms[room_id]
+        try:
+            room = self.rooms[room_id]
+        except KeyError:
+            LocalProtocolError("No room found with room id {}".format(room_id))
 
         if not room.encrypted:
             return False
