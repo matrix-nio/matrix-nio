@@ -19,13 +19,13 @@ from typing import Optional
 import attr
 from peewee import DoesNotExist, SqliteDatabase
 
-from . import (Accounts, DeviceKeys, DeviceTrustState, EncryptedRooms,
-               ForwardedChains, Key, KeyStore, LegacyAccounts,
-               LegacyDeviceKeys, LegacyEncryptedRooms, LegacyForwardedChains,
-               LegacyMegolmInboundSessions, LegacyOlmSessions,
-               LegacyOutgoingKeyRequests, MegolmInboundSessions, OlmSessions,
-               OutgoingKeyRequests, StoreVersion, TrustState, DeviceKeys_v1,
-               Keys)
+from . import (Accounts, DeviceKeys, DeviceKeys_v1, DeviceTrustState,
+               EncryptedRooms, ForwardedChains, Key, Keys, KeyStore,
+               LegacyAccounts, LegacyDeviceKeys, LegacyEncryptedRooms,
+               LegacyForwardedChains, LegacyMegolmInboundSessions,
+               LegacyOlmSessions, LegacyOutgoingKeyRequests,
+               MegolmInboundSessions, OlmSessions, OutgoingKeyRequests,
+               StoreVersion, TrustState)
 from ..crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
                       OlmAccount, OlmDevice, OutgoingKeyRequest, Session,
                       SessionStore)

@@ -17,7 +17,7 @@
 
 from builtins import super
 from datetime import datetime, timedelta
-from typing import List, Optional, Set, Tuple, Dict
+from typing import Dict, List, Optional, Set, Tuple
 
 import attr
 import olm

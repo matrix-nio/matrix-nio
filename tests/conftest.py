@@ -7,7 +7,7 @@ import pytest
 from olm import Account
 
 import helpers
-from nio import Client, HttpClient, ClientConfig
+from nio import Client, ClientConfig, HttpClient
 from nio.crypto import Olm, OlmDevice
 from nio.store import SqliteMemoryStore
 

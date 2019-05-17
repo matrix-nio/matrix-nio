@@ -21,11 +21,6 @@ import attr
 from logbook import Logger
 
 from ..crypto import ENCRYPTION_ENABLED
-
-if ENCRYPTION_ENABLED:
-    from ..crypto import Olm
-    from ..store import DefaultStore, MatrixStore
-
 from ..events import (BadEventType, Event, KeyVerificationEvent, MegolmEvent,
                       RoomEncryptedEvent, RoomEncryptionEvent, ToDeviceEvent)
 from ..exceptions import LocalProtocolError, MembersSyncError
@@ -38,6 +33,11 @@ from ..responses import (ErrorResponse, JoinedMembersResponse,
                          ShareGroupSessionResponse, SyncResponse, SyncType,
                          ToDeviceResponse)
 from ..rooms import MatrixInvitedRoom, MatrixRoom
+
+if ENCRYPTION_ENABLED:
+    from ..crypto import Olm
+    from ..store import DefaultStore, MatrixStore
+
 
 if False:
     from ..crypto import OlmDevice, OutgoingKeyRequest, Sas

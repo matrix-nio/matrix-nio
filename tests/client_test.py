@@ -11,7 +11,6 @@ from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
                  RoomInfo, RoomKeyRequestResponse, RoomMember, RoomMemberEvent,
                  Rooms, RoomSummary, ShareGroupSessionResponse, SyncResponse,
                  Timeline, TransportType, TypingNoticeEvent)
-
 from nio.messages import ToDeviceMessage
 
 HOST = "example.org"
