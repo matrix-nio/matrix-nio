@@ -468,7 +468,7 @@ class Olm(object):
 
     def is_device_ignored(self, device):
         # type: (OlmDevice) -> bool
-        return self.store.is_device(ignored(device)
+        return self.store.is_device_ignored(device)
 
     def create_session(self, one_time_key, curve_key):
         # type: (str, str) -> None
