@@ -448,6 +448,43 @@ class Client(object):
         assert self.olm
         return self.olm.unblacklist_device(device)
 
+    @store_loaded
+    def ignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        """Mark a device as ignored.
+
+        Ignored devices will still receive room encryption keys, despire not
+        being verified. 
+
+        Args:
+            device (Device): the device to ignore
+
+        Returns true if device is ignored, or false if it is already on the
+        list of ignored devices.
+        """
+
+        assert self.olm
+        changed = self.olm.ignore_device(device)
+        if changed:
+            self._invalidate_outbound_sessions(device)
+
+        return changed
+
+    @store_loaded
+    def unignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        """Unmark a device as ignored.
+
+        Args:
+            device (Device): The device which should be removed from the
+                list of ignored devices.
+
+        Returns true if the device was removed, false if it wasn't on the
+        list and no removal happened.
+        """
+        assert self.olm
+        return self.olm.unignore_device(device)
+
     def _handle_login(self, response):
         # type: (Union[LoginResponse, ErrorResponse]) -> None
         if isinstance(response, ErrorResponse):
