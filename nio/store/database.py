@@ -893,7 +893,7 @@ class MatrixStore(object):
         raise NotImplementedError
 
     def unignore_device(self, device):
-        # type: (OldDevice) -> bool
+        # type: (OlmDevice) -> bool
         raise NotImplementedError
 
     def is_device_ignored(self, device):
@@ -983,7 +983,6 @@ class DefaultStore(MatrixStore):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
         return key in self.ignore_db
-
 
 
 @attr.s

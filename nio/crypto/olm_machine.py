@@ -459,7 +459,7 @@ class Olm(object):
         return self.store.unverify_device(device)
 
     def ignore_device(self, device):
-        # type: (OldDevice) -> bool
+        # type: (OlmDevice) -> bool
         return self.store.ignore_device(device)
 
     def unignore_device(self, device):
@@ -1022,8 +1022,8 @@ class Olm(object):
         self,
         room_id,  # type: str
         users,    # type: List[str]
-        ignore_missing_sessions=False,  # type: bool
-        ignore_unverified_devices=False # type: bool
+        ignore_missing_sessions=False,   # type: bool
+        ignore_unverified_devices=False  # type: bool
     ):
         # type: (...) -> Tuple[Set[Tuple[str, str]], Dict[str, Any]]
         logger.info("Sharing group session for room {}".format(room_id))
