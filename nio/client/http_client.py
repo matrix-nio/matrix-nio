@@ -522,9 +522,28 @@ class HttpClient(Client):
         self,
         room_id,
         ignore_missing_sessions=False,
-        tx_id=None
+        tx_id=None,
+        ignore_unverified_devices=False
     ):
-        # type: (str, bool, str) -> Tuple[UUID, bytes]
+        # type: (str, bool, str, bool) -> Tuple[UUID, bytes]
+        """Share a group session with a room.
+
+        This method sends a group session to members of a room.
+
+        Args:
+            room_id(str): The room id of the room where the message should be
+                sent to.
+            tx_id(str, optional): The transaction ID of this event used to
+                uniquely identify this message.
+            ignore_unverified_devices(bool): Mark unverified devices as
+                ignored. Ignored devices will still receive encryption
+                keys for messages but they won't be marked as verified.
+
+        Raises LocalProtocolError if the client isn't logged in, if the session
+        store isn't loaded, no room with the given room id exists or the room
+        isn't an encrypted room.
+        """
+
         assert self.olm
         try:
             room = self.rooms[room_id]
@@ -538,7 +557,8 @@ class HttpClient(Client):
         user_map, to_device_dict = self.olm.share_group_session(
             room_id,
             list(room.users.keys()),
-            ignore_missing_sessions
+            ignore_missing_sessions,
+            ignore_unverified_devices
         )
 
         uuid = tx_id or uuid4()
