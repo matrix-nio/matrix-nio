@@ -450,7 +450,7 @@ class Client(object):
         """Mark a device as ignored.
 
         Ignored devices will still receive room encryption keys, despire not
-        being verified. 
+        being verified.
 
         Args:
             device (Device): the device to ignore
