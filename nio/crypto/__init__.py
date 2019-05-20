@@ -1,4 +1,5 @@
 from .._compat import package_installed
+from .attachments import encrypt_attachment, decrypt_attachment
 
 if package_installed("olm"):
     from .sessions import (
@@ -28,5 +29,3 @@ if package_installed("olm"):
 
 else:
     ENCRYPTION_ENABLED = False
-
-from .attachments import encrypt_attachment, decrypt_attachment
