@@ -705,8 +705,9 @@ class AsyncClient(Client):
 
 
         Raises LocalProtocolError if the client isn't logged in, if the session
-        store isn't loaded, no room with the given room id exists or the room
-        isn't an encrypted room.
+        store isn't loaded, no room with the given room id exists, the room
+        isn't an encrypted room or a key sharing request is already in flight
+        for this room.
         """
         assert self.olm
 
