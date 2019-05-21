@@ -1,32 +1,20 @@
 # -*- coding: utf-8 -*-
 
-import os
 import copy
-import pytest
+import os
 import pdb
 from collections import defaultdict
-from helpers import faker, ephemeral, ephemeral_dir
 from shutil import copyfile
 
-from nio.store import (
-    LegacyMatrixStore,
-    MatrixStore,
-    Key,
-    Ed25519Key,
-    KeyStore,
-    SqliteStore,
-    SqliteMemoryStore
-)
-from nio.exceptions import OlmTrustError
+import pytest
 
-from nio.crypto import (
-    OlmAccount,
-    OlmDevice,
-    OutboundSession,
-    OutboundGroupSession,
-    InboundGroupSession,
-    OutgoingKeyRequest
-)
+from helpers import ephemeral, ephemeral_dir, faker
+from nio.crypto import (InboundGroupSession, OlmAccount, OlmDevice,
+                        OutboundGroupSession, OutboundSession,
+                        OutgoingKeyRequest)
+from nio.exceptions import OlmTrustError
+from nio.store import (Ed25519Key, Key, KeyStore, LegacyMatrixStore,
+                       MatrixStore, SqliteMemoryStore, SqliteStore)
 
 BOB_ID = "@bob:example.org"
 BOB_DEVICE = "AGMTSWVYML"
@@ -87,8 +75,8 @@ class TestClass(object):
         bob_device = OlmDevice(
             BOB_ID,
             BOB_DEVICE,
-            BOB_ONETIME,
-            BOB_CURVE
+            {"ed25519": BOB_ONETIME,
+             "curve25519": BOB_CURVE}
         )
 
         devices[BOB_ID][BOB_DEVICE] = bob_device
@@ -549,7 +537,7 @@ class TestClass(object):
     def test_store_versioning(self, store):
         version = store._get_store_version()
 
-        assert version == 1
+        assert version == 2
 
     def test_sqlitestore_verification(self, sqlstore):
         devices = self.example_devices
@@ -611,3 +599,15 @@ class TestClass(object):
         device_store = store.load_device_keys()
         bob_device = device_store[BOB_ID][BOB_DEVICE]
         assert bob_device.deleted
+
+    def test_deleting_trusted_device(self, sqlstore):
+        devices = self.example_devices
+        sqlstore.save_device_keys(devices)
+
+        device_store = sqlstore.load_device_keys()
+        bob_device = device_store[BOB_ID][BOB_DEVICE]
+        sqlstore.verify_device(bob_device)
+
+        bob_device.deleted = True
+        sqlstore.save_device_keys(device_store)
+        sqlstore.save_device_keys(devices)

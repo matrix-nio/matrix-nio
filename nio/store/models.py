@@ -12,20 +12,12 @@
 # limitations under the License.
 
 import time
-from datetime import datetime
 from builtins import bytes
+from datetime import datetime
 from enum import Enum
 
-from peewee import (
-    Model,
-    TextField,
-    IntegerField,
-    BlobField,
-    BooleanField,
-    ForeignKeyField,
-    CompositeKey,
-    SQL
-)
+from peewee import (SQL, BlobField, BooleanField, CompositeKey,
+                    ForeignKeyField, IntegerField, Model, TextField)
 
 
 class TrustState(Enum):
@@ -204,7 +196,7 @@ class OlmSessions(Model):
     session_id = TextField(primary_key=True)
 
 
-class DeviceKeys(Model):
+class DeviceKeys_v1(Model):
     sender_key = TextField()
     deleted = BooleanField()
     account = ForeignKeyField(
@@ -219,6 +211,36 @@ class DeviceKeys(Model):
 
     class Meta:
         constraints = [SQL("UNIQUE(account_id,user_id,device_id)")]
+        table_name = "devicekeys"
+
+
+class DeviceKeys(Model):
+    device_id = TextField()
+    user_id = TextField()
+    display_name = TextField(default="")
+    deleted = BooleanField()
+    account = ForeignKeyField(
+        model=Accounts,
+        column_name="account_id",
+        backref="device_keys",
+        on_delete="CASCADE",
+    )
+
+    class Meta:
+        constraints = [SQL("UNIQUE(account_id,user_id,device_id)")]
+
+
+class Keys(Model):
+    key_type = TextField()
+    key = TextField()
+    device = ForeignKeyField(
+        model=DeviceKeys,
+        column_name="device_id",
+        backref="keys",
+    )
+
+    class Meta:
+        constraints = [SQL("UNIQUE(device_id,key_type)")]
 
 
 class DeviceTrustState(Model):

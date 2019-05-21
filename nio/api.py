@@ -23,19 +23,10 @@ This module contains primitives to build Matrix API http requests.
 from __future__ import unicode_literals
 
 import json
-from typing import (
-    Any,
-    Dict,
-    Optional,
-    Tuple,
-    List,
-    Set,
-    DefaultDict,
-    Union,
-    Iterable
-)
-from enum import Enum, unique
 from collections import defaultdict
+from enum import Enum, unique
+from typing import (Any, DefaultDict, Dict, Iterable, List, Optional, Set,
+                    Tuple, Union)
 
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest
@@ -871,3 +862,18 @@ class Api(object):
             Api._build_path(path, query_parameters),
             Api.to_json(content)
         )
+
+    @staticmethod
+    def whoami(access_token):
+        # type (str) -> Tuple[str, str]
+        """Get information about the owner of a given access token.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+        """
+        query_parameters = {"access_token": access_token}
+        path = "account/whoami"
+
+        return "GET", Api._build_path(path, query_parameters)

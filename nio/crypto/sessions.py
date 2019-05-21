@@ -15,13 +15,15 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-import olm
-import attr
 from builtins import super
 from datetime import datetime, timedelta
-from typing import List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
+
+import attr
+import olm
 
 from ..exceptions import EncryptionError
+from ..messages import ToDeviceMessage
 
 if False:
     from ..responses import RoomKeyRequestResponse
@@ -203,18 +205,34 @@ class OutboundGroupSession(olm.OutboundGroupSession):
 class OlmDevice(object):
     def __init__(
         self,
-        user_id,         # type: str
-        device_id,       # type: str
-        ed25519_key,     # type: str
-        curve25519_key,  # type: str
-        deleted=False    # type: bool
+        user_id,          # type: str
+        device_id,        # type: str
+        keys,             # type: Dict[str, str]
+        display_name="",  # type: str
+        deleted=False,    # type: bool
     ):
         # type: (...) -> None
         self.user_id = user_id
         self.id = device_id
-        self.ed25519 = ed25519_key
-        self.curve25519 = curve25519_key
+        self.keys = keys
+        self.display_name = display_name
         self.deleted = deleted
+
+    @property
+    def ed25519(self):
+        return self.keys["ed25519"]
+
+    @ed25519.setter
+    def ed25519(self, new_value):
+        self.keys["ed25519"] = new_value
+
+    @property
+    def curve25519(self):
+        return self.keys["curve25519"]
+
+    @curve25519.setter
+    def curve25519(self, new_value):
+        self.keys["curve25519"] = new_value
 
 
 @attr.s
@@ -229,10 +247,30 @@ class OutgoingKeyRequest(object):
     @classmethod
     def from_response(cls, response):
         # type: (RoomKeyRequestResponse) -> OutgoingKeyRequest
-        """Create an key request object from a RoomKeyRequestResponse."""
+        """Create a key request object from a RoomKeyRequestResponse."""
         return cls(
             response.request_id,
             response.session_id,
             response.room_id,
             response.algorithm
+        )
+
+    @classmethod
+    def from_database(cls, row):
+        """Create a key request object from a database row."""
+        return cls.from_response(row)
+
+    def as_cancellation(self, user_id, requesting_device_id):
+        """Turn the key request into a cancellation to-device message."""
+        content = {
+            "action": "cancel_request",
+            "request_id": self.request_id,
+            "requesting_device_id": requesting_device_id,
+        }
+
+        return ToDeviceMessage(
+            "m.room_key_request",
+            user_id,
+            "*",
+            content
         )

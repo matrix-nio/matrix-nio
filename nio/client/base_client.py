@@ -14,59 +14,34 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import attr
-
 from functools import wraps
-from typing import (
-    Dict,
-    List,
-    Optional,
-    Union,
-    Callable,
-    Set,
-    Any,
-    Tuple,
-    Type
-)
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
+import attr
 from logbook import Logger
 
-from ..exceptions import (
-    LocalProtocolError,
-)
-from ..crypto import Olm
-
+from ..crypto import ENCRYPTION_ENABLED
+from ..events import (BadEventType, Event, KeyVerificationEvent, MegolmEvent,
+                      RoomEncryptedEvent, RoomEncryptionEvent, ToDeviceEvent)
+from ..exceptions import LocalProtocolError, MembersSyncError
 from ..log import logger_group
-from ..responses import (
-    LoginResponse,
-    Response,
-    SyncResponse,
-    SyncType,
-    PartialSyncResponse,
-    RoomMessagesResponse,
-    KeysUploadResponse,
-    KeysQueryResponse,
-    ErrorResponse,
-    ShareGroupSessionResponse,
-    KeysClaimResponse,
-    JoinedMembersResponse,
-    RoomKeyRequestResponse,
-    RoomForgetResponse
-)
-
-from ..events import (
-    Event,
-    BadEventType,
-    RoomEncryptedEvent,
-    MegolmEvent,
-    RoomEncryptionEvent,
-    ToDeviceEvent
-)
+from ..responses import (ErrorResponse, JoinedMembersResponse,
+                         KeysClaimResponse, KeysQueryResponse,
+                         KeysUploadResponse, LoginResponse,
+                         PartialSyncResponse, Response, RoomForgetResponse,
+                         RoomKeyRequestResponse, RoomMessagesResponse,
+                         ShareGroupSessionResponse, SyncResponse, SyncType,
+                         ToDeviceResponse)
 from ..rooms import MatrixInvitedRoom, MatrixRoom
-from ..store import MatrixStore, DefaultStore
+
+if ENCRYPTION_ENABLED:
+    from ..crypto import Olm
+    from ..store import DefaultStore, MatrixStore
+
 
 if False:
-    from ..crypto import OlmDevice, OutgoingKeyRequest
+    from ..crypto import OlmDevice, OutgoingKeyRequest, Sas
+    from .messages import ToDeviceMessage
 
 try:
     from json.decoder import JSONDecodeError
@@ -105,7 +80,7 @@ class ClientCallback(object):
     filter = attr.ib()
 
 
-@attr.s
+@attr.s(frozen=True)
 class ClientConfig(object):
     """nio client configuration.
 
@@ -119,12 +94,26 @@ class ClientConfig(object):
         pickle_key: (str, optional): A passphrase that will be used to encrypt
             end to end encryption keys.
 
+    Raises an ImportWarning if encryption_enabled is true but the dependencies
+    for encryption aren't installed.
+
     """
 
-    store = attr.ib(type=Callable, default=DefaultStore)
+    if ENCRYPTION_ENABLED:
+        store = attr.ib(type=Callable, default=DefaultStore)
+        encryption_enabled = attr.ib(type=bool, default=True)
+    else:
+        store = attr.ib(type=Callable, default=None)
+        encryption_enabled = attr.ib(type=bool, default=False)
+
     store_name = attr.ib(type=str, default="")
-    encryption_enabled = attr.ib(type=bool, default=True)
     pickle_key = attr.ib(type=str, default="DEFAULT_KEY")
+
+    def __attrs_post_init__(self):
+        if not ENCRYPTION_ENABLED and self.encryption_enabled:
+            raise ImportWarning("Encryption is enabled in the client "
+                                "configuration but dependencies for E2E "
+                                "encrytpion aren't installed.")
 
 
 class Client(object):
@@ -239,6 +228,48 @@ class Client(object):
         """Our active key requests that we made."""
         return self.olm.outgoing_key_requests if self.olm else dict()
 
+    @property
+    def key_verifications(self):
+        # type: () -> Dict[str, Sas]
+        """Key verifications that the client is participating in."""
+        return self.olm.key_verifications if self.olm else dict()
+
+    @property
+    def outgoing_to_device_messages(self):
+        # type: () -> List[ToDeviceMessage]
+        """To-device messages that we need to send out."""
+        return self.olm.outgoing_to_device_messages if self.olm else []
+
+    def get_active_sas(self, user_id, device_id):
+        # type: (str, str) -> Optional[Sas]
+        """Find a non-canceled SAS verification object for the provided user.
+
+        Args:
+            user_id (str): The user for which we should find a SAS verification
+                object.
+            device_id (str): The device_id for which we should find the SAS
+                verification object.
+
+        Returns the object if it's found, otherwise None.
+        """
+        if not self.olm:
+            return None
+
+        return self.olm.get_active_sas(user_id, device_id)
+
+    def _mark_to_device_message_as_sent(self, message):
+        """Mark a to-device message as sent.
+
+        This removes the to-device message from our outgoing to-device list.
+        """
+        if not self.olm:
+            return
+
+        try:
+            self.olm.outgoing_to_device_messages.remove(message)
+        except ValueError:
+            pass
+
     def load_store(self):
         # type: () -> None
         """Load the session store and olm account.
@@ -255,16 +286,22 @@ class Client(object):
         if not self.device_id:
             raise LocalProtocolError("Device id is not set")
 
-        self.store = self.config.store(
-            self.user_id,
-            self.device_id,
-            self.store_path,
-            self.config.pickle_key,
-            self.config.store_name
-        )
-        assert self.store
-        self.olm = Olm(self.user_id, self.device_id, self.store)
-        self.encrypted_rooms = self.store.load_encrypted_rooms()
+        if not self.config.store:
+            raise LocalProtocolError("No store class was provided in the "
+                                     "config.")
+
+        if self.config.encryption_enabled:
+            self.store = self.config.store(
+                self.user_id,
+                self.device_id,
+                self.store_path,
+                self.config.pickle_key,
+                self.config.store_name
+            )
+            assert self.store
+
+            self.olm = Olm(self.user_id, self.device_id, self.store)
+            self.encrypted_rooms = self.store.load_encrypted_rooms()
 
     def room_contains_unverified(self, room_id):
         # type: (str) -> bool
@@ -277,7 +314,10 @@ class Client(object):
         Returns False if no Olm session is loaded or if the room isn't
         encrypted.
         """
-        room = self.rooms[room_id]
+        try:
+            room = self.rooms[room_id]
+        except KeyError:
+            LocalProtocolError("No room found with room id {}".format(room_id))
 
         if not room.encrypted:
             return False
@@ -291,6 +331,7 @@ class Client(object):
 
         return False
 
+    @store_loaded
     def invalidate_outbound_session(self, room_id):
         """Explicitely remove encryption keys for a room.
 
@@ -403,6 +444,43 @@ class Client(object):
         assert self.olm
         return self.olm.unblacklist_device(device)
 
+    @store_loaded
+    def ignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        """Mark a device as ignored.
+
+        Ignored devices will still receive room encryption keys, despire not
+        being verified.
+
+        Args:
+            device (Device): the device to ignore
+
+        Returns true if device is ignored, or false if it is already on the
+        list of ignored devices.
+        """
+
+        assert self.olm
+        changed = self.olm.ignore_device(device)
+        if changed:
+            self._invalidate_outbound_sessions(device)
+
+        return changed
+
+    @store_loaded
+    def unignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        """Unmark a device as ignored.
+
+        Args:
+            device (Device): The device which should be removed from the
+                list of ignored devices.
+
+        Returns true if the device was removed, false if it wasn't on the
+        list and no removal happened.
+        """
+        assert self.olm
+        return self.olm.unignore_device(device)
+
     def _handle_login(self, response):
         # type: (Union[LoginResponse, ErrorResponse]) -> None
         if isinstance(response, ErrorResponse):
@@ -412,7 +490,7 @@ class Client(object):
         self.user_id = response.user_id
         self.device_id = response.device_id
 
-        if self.store_path and (not self.store or not self.olm):
+        if self.store_path and not (self.store and self.olm):
             self.load_store()
 
     @store_loaded
@@ -456,6 +534,10 @@ class Client(object):
                     if event:
                         decrypted_to_device.append((index, event))
                         to_device_event = event
+
+            elif isinstance(to_device_event, KeyVerificationEvent):
+                if self.olm:
+                    self.olm.handle_key_verification(to_device_event)
 
             for cb in self.to_device_callbacks:
                 if (cb.filter is None
@@ -541,6 +623,14 @@ class Client(object):
             self.store.save_encrypted_rooms(encrypted_rooms)
 
         if self.olm:
+            expired_verifications = self.olm.clear_verifications()
+
+            for event in expired_verifications:
+                for cb in self.to_device_callbacks:
+                    if (cb.filter is None
+                            or isinstance(event, cb.filter)):
+                        cb.func(event)
+
             changed_users = set()
             self.olm.uploaded_key_count = (
                 response.device_key_count.signed_curve25519)
@@ -576,8 +666,10 @@ class Client(object):
             index, event = decrypted_event
             response.chunk[index] = event
 
-    @store_loaded
     def _handle_olm_response(self, response):
+        if not self.olm:
+            return
+
         self.olm.handle_response(response)
 
         if isinstance(response, ShareGroupSessionResponse):
@@ -667,6 +759,8 @@ class Client(object):
             self._handle_olm_response(response)
         elif isinstance(response, RoomForgetResponse):
             self._handle_room_forget_response(response)
+        elif isinstance(response, ToDeviceResponse):
+            self._mark_to_device_message_as_sent(response.to_device_message)
 
     @store_loaded
     def export_keys(self, outfile, passphrase, count=10000):
@@ -748,10 +842,30 @@ class Client(object):
         Raises `GroupEncryptionError` if the group session for the provided
         room isn't shared yet.
 
+        Raises `MembersSyncError` if the room is encrypted but the room members
+        aren't fully loaded due to member lazy loading.
+
         Returns a tuple containing the new message type and the new encrypted
         content.
         """
         assert self.olm
+
+        try:
+            room = self.rooms[room_id]
+        except KeyError:
+            raise LocalProtocolError(
+                "No such room with id {} found.".format(room_id)
+            )
+
+        if not room.encrypted:
+            raise LocalProtocolError(
+                "Room {} is not encrypted".format(room_id)
+            )
+
+        if not room.members_synced:
+            raise MembersSyncError("The room is encrypted and the members "
+                                   "aren't fully synced.")
+
         content = self.olm.group_encrypt(
             room_id,
             {
@@ -807,3 +921,47 @@ class Client(object):
         """
         cb = ClientCallback(callback, filter)
         self.to_device_callbacks.append(cb)
+
+    @store_loaded
+    def create_key_verification(self, device):
+        # type: (OlmDevice) -> ToDeviceMessage
+        """Start a new key verification process with the given device.
+
+        Args:
+            device (OlmDevice): The device which we would like to verify
+
+        Returns a ``ToDeviceMessage`` that should be sent to to the homeserver.
+        """
+        assert self.olm
+        return self.olm.create_sas(device)
+
+    @store_loaded
+    def confirm_key_verification(self, transaction_id):
+        # type: (str) -> ToDeviceMessage
+        """Confirm that the short auth string of a key verification matches.
+
+        Args:
+            transaction_id (str): The transaction id of the interactive key
+                verification.
+
+        Returns a ``ToDeviceMessage`` that should be sent to to the homeserver.
+
+        If the other user already confirmed the short auth string on their side
+        this function will also verify the device that is partaking in the
+        verification process.
+        """
+        if transaction_id not in self.key_verifications:
+            raise LocalProtocolError("Key verification with the transaction "
+                                     "id {} does not exist.".format(
+                                         transaction_id
+                                     ))
+
+        sas = self.key_verifications[transaction_id]
+
+        sas.accept_sas()
+        message = sas.get_mac()
+
+        if sas.verified:
+            self.verify_device(sas.other_olm_device)
+
+        return message

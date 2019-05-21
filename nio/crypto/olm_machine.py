@@ -17,76 +17,37 @@
 from __future__ import unicode_literals
 
 import json
-
 # pylint: disable=redefined-builtin
 from builtins import str
 from collections import defaultdict
-from typing import (
-    Any,
-    DefaultDict,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    Set,
-)
+from datetime import datetime, timedelta
+from typing import Any, DefaultDict, Dict, List, Optional, Set, Tuple, Union
 
-from jsonschema import SchemaError, ValidationError
 import olm
-from olm import (
-    OlmGroupSessionError,
-    OlmMessage,
-    OlmPreKeyMessage,
-    OlmSessionError,
-)
+from jsonschema import SchemaError, ValidationError
+from olm import (OlmGroupSessionError, OlmMessage, OlmPreKeyMessage,
+                 OlmSessionError)
 
-from ..schemas import Schemas, validate_json
-from ..exceptions import (
-    EncryptionError,
-    GroupEncryptionError,
-    OlmTrustError,
-    VerificationError,
-    LocalProtocolError,
-)
-from . import (
-    OutboundGroupSession,
-    InboundGroupSession,
-    OlmDevice,
-    OlmAccount,
-    Session,
-    OutboundSession,
-    InboundSession,
-    SessionStore,
-    GroupSessionStore,
-    DeviceStore,
-    logger,
-)
-
-from .key_export import encrypt_and_save, decrypt_and_read
-from .sessions import OutgoingKeyRequest
-from ..store import MatrixStore
-
-from ..responses import (
-    KeysUploadResponse,
-    KeysQueryResponse,
-    KeysClaimResponse,
-    RoomKeyRequestResponse
-)
-from ..events import (
-    Event,
-    EncryptedEvent,
-    MegolmEvent,
-    OlmEvent,
-    RoomEncryptedEvent,
-    BadEventType,
-    RoomKeyEvent,
-    ForwardedRoomKeyEvent,
-    BadEvent,
-    UnknownBadEvent,
-    validate_or_badevent
-)
+from . import (DeviceStore, GroupSessionStore, InboundGroupSession,
+               InboundSession, OlmAccount, OlmDevice, OutboundGroupSession,
+               OutboundSession, Session, SessionStore, logger)
 from ..api import Api
+from ..events import (BadEvent, BadEventType, EncryptedEvent, Event,
+                      ForwardedRoomKeyEvent, KeyVerificationAccept,
+                      KeyVerificationCancel, KeyVerificationEvent,
+                      KeyVerificationKey, KeyVerificationMac,
+                      KeyVerificationStart, MegolmEvent, OlmEvent,
+                      RoomEncryptedEvent, RoomKeyEvent, UnknownBadEvent,
+                      validate_or_badevent)
+from ..exceptions import (EncryptionError, GroupEncryptionError,
+                          LocalProtocolError, OlmTrustError, VerificationError)
+from ..responses import (KeysClaimResponse, KeysQueryResponse,
+                         KeysUploadResponse, RoomKeyRequestResponse)
+from ..schemas import Schemas, validate_json
+from ..store import MatrixStore
+from .key_export import decrypt_and_read, encrypt_and_save
+from .sas import Sas, ToDeviceMessage
+from .sessions import OutgoingKeyRequest
 
 try:
     from json.decoder import JSONDecodeError
@@ -94,11 +55,15 @@ except ImportError:  # pragma: no cover
     JSONDecodeError = ValueError  # type: ignore
 
 
+DecryptedOlmT = Union[ForwardedRoomKeyEvent, BadEvent, UnknownBadEvent, None]
+
+
 class Olm(object):
     _olm_algorithm = 'm.olm.v1.curve25519-aes-sha2'
     _megolm_algorithm = 'm.megolm.v1.aes-sha2'
     _algorithms = [_olm_algorithm, _megolm_algorithm]
     _maxToDeviceMessagesPerRequest = 20
+    _max_sas_life = timedelta(minutes=20)
 
     def __init__(
         self,
@@ -129,8 +94,9 @@ class Olm(object):
         self.tracked_users = set()  # type: Set[str]
         self.outgoing_key_requests = dict()  \
             # type: Dict[str, OutgoingKeyRequest]
-        self.key_request_cancelations = dict()  \
-            # type: Dict[str, OutgoingKeyRequest]
+
+        self.key_verifications = dict()  # type: Dict[str, Sas]
+        self.outgoing_to_device_messages = []  # type: List[ToDeviceMessage]
 
         self.store = store
 
@@ -335,14 +301,21 @@ class Olm(object):
                     key_dict = payload["keys"]
                     signing_key = key_dict["ed25519:{}".format(device_id)]
                     curve_key = key_dict["curve25519:{}".format(device_id)]
+                    if "unsigned" in payload:
+                        display_name = payload["unsigned"].get(
+                            "device_display_name",
+                            ""
+                        )
+                    else:
+                        display_name = ""
                 except KeyError as e:
                     logger.warning(
-                        "Invalid identity keys payload from device %s of"
-                        " user %s: %s.",
-                        device_id,
-                        user_id,
-                        e
-                    )
+                        "Invalid identity keys payload from device {} of"
+                        " user {}: {}.".format(
+                            device_id,
+                            user_id,
+                            e
+                        ))
                     continue
 
                 verified = self.verify_json(
@@ -361,6 +334,7 @@ class Olm(object):
                     continue
 
                 user_devices = self.device_store[user_id]
+
                 try:
                     device = user_devices[device_id]
                 except KeyError:
@@ -372,22 +346,37 @@ class Olm(object):
                     self.device_store.add(OlmDevice(
                         user_id,
                         device_id,
-                        ed25519_key=signing_key,
-                        curve25519_key=curve_key,
+                        {
+                            "ed25519": signing_key,
+                            "curve25519": curve_key
+                        },
+                        display_name=display_name
                     ))
                 else:
                     if device.ed25519 != signing_key:
-                        logger.warning("Ed25519 key has changed for device %s "
-                                       "of user %s.", device_id, user_id)
+                        logger.warning("Ed25519 key has changed for device {} "
+                                       "of user {}.".format(
+                                           device_id,
+                                           user_id
+                                       ))
                         continue
-                    if device.curve25519 == curve_key:
+
+                    if (device.curve25519 == curve_key
+                            and device.display_name == display_name):
                         continue
+
                     device.curve25519 = curve_key
-                    logger.info("Updating curve key in the device store for "
-                                "user {} with device id {}".format(
-                                    user_id,
-                                    device_id
-                                ))
+                    device.display_name = display_name
+
+                    if device.curve25519 == curve_key:
+                        logger.info("Updating curve key in the device store "
+                                    "for user {} with device id {}".format(
+                                        user_id, device_id))
+
+                    elif device.display_name == display_name:
+                        logger.info("Updating display name in the device "
+                                    "store for user {} with device id "
+                                    "{}".format(user_id, device_id))
 
                 changed[user_id][device_id] = user_devices[device_id]
 
@@ -468,6 +457,18 @@ class Olm(object):
     def unverify_device(self, device):
         # type: (OlmDevice) -> bool
         return self.store.unverify_device(device)
+
+    def ignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        return self.store.ignore_device(device)
+
+    def unignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        return self.store.unignore_device(device)
+
+    def is_device_ignored(self, device):
+        # type: (OlmDevice) -> bool
+        return self.store.is_device_ignored(device)
 
     def create_session(self, one_time_key, curve_key):
         # type: (str, str) -> None
@@ -625,8 +626,13 @@ class Olm(object):
 
         return True
 
-    def _handle_room_key_event(self, sender, sender_key, payload):
-        # type: (str, str, Dict[Any, Any]) -> Optional[RoomKeyEvent]
+    def _handle_room_key_event(
+        self,
+        sender,      # type: str
+        sender_key,  # type: str
+        payload      # type: Dict[Any, Any]
+    ):
+        # type: (...) -> Union[RoomKeyEvent, BadEventType, None]
         event = RoomKeyEvent.from_dict(payload, sender, sender_key)
 
         if isinstance(event, (BadEvent, UnknownBadEvent)):
@@ -664,8 +670,13 @@ class Olm(object):
         return event
 
     # This function is copyrighted under the Apache 2.0 license Zil0
-    def _handle_forwarded_room_key_event(self, sender, sender_key, payload):
-        # type: (str, str, Dict[Any, Any]) -> Optional[ForwardedRoomKeyEvent]
+    def _handle_forwarded_room_key_event(
+        self,
+        sender,      # type: str
+        sender_key,  # type: str
+        payload      # type: Dict[Any, Any]
+    ):
+        # type: (...) -> Union[ForwardedRoomKeyEvent, BadEventType, None]
         event = ForwardedRoomKeyEvent.from_dict(payload, sender, sender_key)
 
         if isinstance(event, (BadEvent, UnknownBadEvent)):
@@ -697,7 +708,7 @@ class Olm(object):
         chain = content["forwarding_curve25519_key_chain"]
         chain.append(session_sender_key)
 
-        session = self._import_group_session(
+        session = Olm._import_group_session(
             content["session_key"],
             signing_key,
             session_sender_key,
@@ -712,20 +723,25 @@ class Olm(object):
             self.save_inbound_group_session(session)
 
         key_request = self.outgoing_key_requests.pop(key_request.request_id)
-        self.key_request_cancelations[key_request.request_id] = key_request
-
-        # TODO remove our key request from the store
-        # self.store.remove_outgoing_key_request(event.session_id)
-        # TODO save our cancelation to the store
+        self.store.remove_outgoing_key_request(key_request)
+        self.outgoing_to_device_messages.append(
+            key_request.as_cancellation(self.user_id, self.device_id)
+        )
 
         return event
 
-    def _handle_olm_event(self, sender, sender_key, payload):
-        # type: (str, str, Dict[Any, Any]) -> Optional[RoomKeyEvent]
+    def _handle_olm_event(
+        self,
+        sender,      # type: str
+        sender_key,  # type: str
+        payload      # type: Dict[Any, Any]
+    ):
+        # type: (...) -> DecryptedOlmT
         logger.info("Recieved Olm event of type: {}".format(payload["type"]))
 
         if payload["type"] == "m.room_key":
-            return self._handle_room_key_event(sender, sender_key, payload)
+            event = self._handle_room_key_event(sender, sender_key, payload)
+            return event  # type: ignore
 
         elif payload["type"] == "m.forwarded_room_key":
             return self._handle_forwarded_room_key_event(
@@ -884,7 +900,7 @@ class Olm(object):
         sender_key,  # type: str
         message,  # type: Union[OlmPreKeyMessage, OlmMessage]
     ):
-        # type: (...) -> Optional[RoomKeyEvent]
+        # type: (...) -> DecryptedOlmT
 
         try:
             # First try to decrypt using an existing session.
@@ -1006,7 +1022,8 @@ class Olm(object):
         self,
         room_id,  # type: str
         users,    # type: List[str]
-        ignore_missing_sessions=False  # type: bool
+        ignore_missing_sessions=False,   # type: bool
+        ignore_unverified_devices=False  # type: bool
     ):
         # type: (...) -> Tuple[Set[Tuple[str, str]], Dict[str, Any]]
         logger.info("Sharing group session for room {}".format(room_id))
@@ -1069,11 +1086,16 @@ class Olm(object):
                                                   device.id))
 
                 if not self.is_device_verified(device):
-                    raise OlmTrustError("Device {} for user {} is not "
-                                        "verified or blacklisted.".format(
-                                            device.id,
-                                            device.user_id
-                                        ))
+                    if self.is_device_ignored(device):
+                        pass
+                    elif ignore_unverified_devices:
+                        self.ignore_device(device)
+                    else:
+                        raise OlmTrustError("Device {} for user {} is not "
+                                            "verified or blacklisted.".format(
+                                                device.id,
+                                                device.user_id
+                                            ))
 
                 user_map.append((user_id, device, session))
 
@@ -1194,27 +1216,13 @@ class Olm(object):
         # type: () -> None
         self.account.mark_keys_as_published()
 
-    # This function is copyrighted under the Apache 2.0 license Zil0
-    def export_keys(self, outfile, passphrase, count=10000):
-        """Export all the Megolm decryption keys of this device.
-
-        The keys will be encrypted using the passphrase.
-        NOTE:
-            This does not save other information such as the private identity
-            keys of the device.
-        Args:
-            outfile (str): The file to write the keys to.
-            passphrase (str): The encryption passphrase.
-            count (int): Optional. Round count for the underlying key
-                derivation. It is not recommended to specify it unless
-                absolutely sure of the consequences.
-        """
+    @staticmethod
+    def export_keys_static(sessions, outfile, passphrase, count=10000):
         session_list = []
-        inbound_group_store = self.store.load_inbound_group_sessions()
 
-        for session in inbound_group_store:
+        for session in sessions:
             payload = {
-                "algorithm": self._megolm_algorithm,
+                "algorithm": Olm._megolm_algorithm,
                 "sender_key": session.sender_key,
                 "sender_claimed_keys": {
                     "ed25519": session.ed25519
@@ -1231,12 +1239,31 @@ class Olm(object):
         data = json.dumps(session_list).encode()
         encrypt_and_save(data, outfile, passphrase, count=count)
 
+    # This function is copyrighted under the Apache 2.0 license Zil0
+    def export_keys(self, outfile, passphrase, count=10000):
+        """Export all the Megolm decryption keys of this device.
+
+        The keys will be encrypted using the passphrase.
+        NOTE:
+            This does not save other information such as the private identity
+            keys of the device.
+        Args:
+            outfile (str): The file to write the keys to.
+            passphrase (str): The encryption passphrase.
+            count (int): Optional. Round count for the underlying key
+                derivation. It is not recommended to specify it unless
+                absolutely sure of the consequences.
+        """
+        inbound_group_store = self.store.load_inbound_group_sessions()
+
+        Olm.export_keys_static(inbound_group_store, outfile, passphrase, count)
+
         logger.info(
             "Succesfully exported encryption keys to {}".format(outfile)
         )
 
+    @staticmethod
     def _import_group_session(
-        self,
         session_key,
         sender_fp_key,
         sender_key,
@@ -1255,17 +1282,11 @@ class Olm(object):
             logger.warn("Error importing inbound group session: {}".format(e))
             return None
 
-    # This function is copyrighted under the Apache 2.0 license Zil0
-    def import_keys(self, infile, passphrase):
-        """Import Megolm decryption keys.
+    @staticmethod
+    def import_keys_static(infile, passphrase):
+        # type: (str, str) -> List[InboundGroupSession]
+        sessions = []
 
-        The keys will be added to the current instance as well as written to
-        database.
-
-        Args:
-            infile (str): The file containing the keys.
-            passphrase (str): The decryption passphrase.
-        """
         try:
             data = decrypt_and_read(infile, passphrase)
         except ValueError as e:
@@ -1283,11 +1304,11 @@ class Olm(object):
             raise EncryptionError("Error parsing key file: {}".format(str(e)))
 
         for session_dict in session_list:
-            if session_dict["algorithm"] != self._megolm_algorithm:
+            if session_dict["algorithm"] != Olm._megolm_algorithm:
                 logger.warning("Ignoring session with unsupported algorithm.")
                 continue
 
-            session = self._import_group_session(
+            session = Olm._import_group_session(
                 session_dict["session_key"],
                 session_dict["sender_claimed_keys"]["ed25519"],
                 session_dict["sender_key"],
@@ -1298,6 +1319,24 @@ class Olm(object):
             if not session:
                 continue
 
+            sessions.append(session)
+
+        return sessions
+
+    # This function is copyrighted under the Apache 2.0 license Zil0
+    def import_keys(self, infile, passphrase):
+        """Import Megolm decryption keys.
+
+        The keys will be added to the current instance as well as written to
+        database.
+
+        Args:
+            infile (str): The file containing the keys.
+            passphrase (str): The decryption passphrase.
+        """
+        sessions = Olm.import_keys_static(infile, passphrase)
+
+        for session in sessions:
             # This could be improved by writing everything to db at once at
             # the end
             if self.inbound_group_store.add(session):
@@ -1306,3 +1345,213 @@ class Olm(object):
         logger.info(
             "Successfully imported encryption keys from {}".format(infile)
         )
+
+    def clear_verifications(self):
+        """Remove canceled or done key verifications from our cache.
+
+        Returns a list of events that need to be added to the to-device event
+        stream of our caller.
+
+        """
+        acitve_sas = dict()
+        events = []
+
+        now = datetime.now()
+
+        for transaction_id, sas in self.key_verifications.items():
+            if sas.timed_out:
+                message = sas.get_cancellation()
+                self.outgoing_to_device_messages.append(message)
+                cancel_event = {
+                    "sender": self.user_id,
+                    "content": message.content
+                }
+                events.append(KeyVerificationCancel.from_dict(cancel_event))
+                continue
+            elif sas.canceled or sas.verified:
+                if now - sas.creation_time > self._max_sas_life:
+                    continue
+                acitve_sas[transaction_id] = sas
+            else:
+                acitve_sas[transaction_id] = sas
+
+        self.key_verifications = acitve_sas
+
+        return events
+
+    def create_sas(self, olm_device):
+        sas = Sas(
+            self.user_id,
+            self.device_id,
+            self.account.identity_keys["ed25519"],
+            olm_device
+        )
+        self.key_verifications[sas.transaction_id] = sas
+
+        return sas.start_verification()
+
+    def get_active_sas(self, user_id, device_id):
+        # type: (str, str) -> Optional[Sas]
+        """Find a non-canceled SAS verification object for the provided user.
+
+        Args:
+            user_id (str): The user for which we should find a SAS verification
+                object.
+            device_id (str): The device_id for which we should find the SAS
+                verification object.
+
+        Returns the object if it's found, otherwise None.
+        """
+        verifications = [
+            x for x in self.key_verifications.values() if not x.canceled
+        ]
+
+        for sas in sorted(
+            verifications,
+            key=lambda x: x.creation_time,
+            reverse=True
+        ):
+            device = sas.other_olm_device
+            if device.user_id == user_id and device.id == device_id:
+                return sas
+
+        return None
+
+    def handle_key_verification(self, event):
+        # type: (KeyVerificationEvent) -> None
+        """Receive key verification events."""
+        if isinstance(event, KeyVerificationStart):
+            logger.info("Received key verification start event from "
+                        "{} {} {}".format(
+                            event.sender,
+                            event.from_device,
+                            event.transaction_id
+                        ))
+            try:
+                device = self.device_store[event.sender][event.from_device]
+            except KeyError:
+                logger.warn("Received key verification event from unknown "
+                            "device: {} {}".format(
+                                event.sender,
+                                event.from_device
+                            ))
+                self.users_for_key_query.add(event.sender)
+                return
+
+            new_sas = Sas.from_key_verification_start(
+                self.user_id,
+                self.device_id,
+                self.account.identity_keys["ed25519"],
+                device,
+                event
+            )
+
+            if new_sas.canceled:
+                logger.warn("Received malformed key verification event from "
+                            "{} {}".format(
+                                event.sender,
+                                event.from_device
+                            ))
+                message = new_sas.get_cancellation()
+                self.outgoing_to_device_messages.append(message)
+
+            else:
+                old_sas = self.get_active_sas(event.sender, event.from_device)
+
+                if old_sas:
+                    logger.info("Found an active verification process for the "
+                                "same user/device combination, "
+                                "canceling the old one. "
+                                "Old Sas: {} {} {}".format(
+                                    event.sender,
+                                    event.from_device,
+                                    old_sas.transaction_id
+                                ))
+                    old_sas.cancel()
+                    cancel_message = old_sas.get_cancellation()
+                    self.outgoing_to_device_messages.append(cancel_message)
+
+                logger.info("Sucesfully started key verification with "
+                            "{} {} {}".format(
+                                event.sender,
+                                event.from_device,
+                                new_sas.transaction_id
+                            ))
+                self.key_verifications[event.transaction_id] = new_sas
+
+        else:
+            sas = self.key_verifications.get(event.transaction_id, None)
+
+            if not sas:
+                logger.warn("Received key verification event with an unknown "
+                            "transaction id from {}".format(event.sender))
+                return
+
+            if isinstance(event, KeyVerificationAccept):
+                sas.receive_accept_event(event)
+
+                if sas.canceled:
+                    message = sas.get_cancellation()
+                else:
+                    logger.info("Received a key verification accept event "
+                                "from {} {}, sharing keys {}".format(
+                                    event.sender,
+                                    sas.other_olm_device.id,
+                                    sas.transaction_id))
+                    message = sas.share_key()
+
+                self.outgoing_to_device_messages.append(message)
+
+            elif isinstance(event, KeyVerificationCancel):
+                logger.info("Received a key verification cancellation "
+                            "from {} {}. Canceling verification {}.".format(
+                                event.sender,
+                                sas.other_olm_device.id,
+                                sas.transaction_id))
+                sas = self.key_verifications.pop(event.transaction_id, None)
+
+                if sas:
+                    sas.cancel()
+
+            elif isinstance(event, KeyVerificationKey):
+                sas.receive_key_event(event)
+                message = None
+
+                if sas.canceled:
+                    message = sas.get_cancellation()
+                else:
+                    logger.info("Received a key verification pubkey "
+                                "from {} {} {}.".format(
+                                    event.sender,
+                                    sas.other_olm_device.id,
+                                    sas.transaction_id))
+
+                if not sas.we_started_it and not sas.canceled:
+                    message = sas.share_key()
+
+                if message:
+                    self.outgoing_to_device_messages.append(message)
+
+            elif isinstance(event, KeyVerificationMac):
+                sas.receive_mac_event(event)
+
+                if sas.canceled:
+                    message = sas.get_cancellation()
+                    self.outgoing_to_device_messages.append(message)
+                    return
+
+                logger.info("Received a valid key verification MAC "
+                            "from {} {} {}.".format(
+                                event.sender,
+                                sas.other_olm_device.id,
+                                event.transaction_id
+                            ))
+
+                if sas.verified:
+                    logger.info("Interactive key verification successful, "
+                                "verifying device {} of user {} {}.".format(
+                                    sas.other_olm_device.id,
+                                    event.sender,
+                                    event.transaction_id))
+                    device = sas.other_olm_device
+                    self.verify_device(device)

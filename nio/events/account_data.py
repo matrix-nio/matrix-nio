@@ -16,12 +16,12 @@
 
 from __future__ import unicode_literals
 
-import attr
-
 from typing import Any, Dict
 
-from .misc import verify
+import attr
+
 from ..schemas import Schemas
+from .misc import verify
 
 
 @attr.s

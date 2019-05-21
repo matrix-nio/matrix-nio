@@ -4,26 +4,15 @@ from __future__ import unicode_literals
 
 import json
 
-from nio.responses import (
-    ErrorResponse,
-    LoginResponse,
-    SyncResponse,
-    PartialSyncResponse,
-    RoomMessagesResponse,
-    KeysUploadResponse,
-    KeysQueryResponse,
-    KeysClaimResponse,
-    DevicesResponse,
-    DeleteDevicesAuthResponse,
-    JoinedMembersResponse,
-    JoinedMembersError,
-    LoginError,
-    SyncError,
-    UploadResponse,
-    RoomKeyRequestResponse,
-    RoomKeyRequestError,
-    ProfileGetDisplayNameResponse
-)
+from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
+                           ErrorResponse, JoinedMembersError,
+                           JoinedMembersResponse, KeysClaimResponse,
+                           KeysQueryResponse, KeysUploadResponse, LoginError,
+                           LoginResponse, PartialSyncResponse,
+                           ProfileGetDisplayNameResponse, RoomKeyRequestError,
+                           RoomKeyRequestResponse, RoomMessagesResponse,
+                           SyncError, SyncResponse, ToDeviceError,
+                           ToDeviceResponse, UploadResponse)
 
 TEST_ROOM_ID = "!test:example.org"
 
@@ -175,3 +164,12 @@ class TestClass(object):
             "tests/data/get_displayname_response.json")
         response = ProfileGetDisplayNameResponse.from_dict(parsed_dict)
         assert isinstance(response, ProfileGetDisplayNameResponse)
+
+    def test_to_device(self):
+        message = "message"
+        response = ToDeviceResponse.from_dict(
+            {"error": "error", "errcode": "M_UNKNOWN"}, message
+        )
+        assert isinstance(response, ToDeviceError)
+        response = ToDeviceResponse.from_dict({}, message)
+        assert isinstance(response, ToDeviceResponse)

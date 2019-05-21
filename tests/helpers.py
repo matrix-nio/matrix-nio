@@ -7,21 +7,19 @@ This module contains helpers for the nio tests.
 """
 
 import os
-from hyperframe.frame import (
-    HeadersFrame, DataFrame, SettingsFrame, WindowUpdateFrame, PingFrame,
-    GoAwayFrame, RstStreamFrame, PushPromiseFrame, PriorityFrame,
-    ContinuationFrame, AltSvcFrame
-)
-from hpack.hpack import Encoder
-
-from faker import Faker
-from faker.providers import BaseProvider
 from random import choice
 from string import ascii_uppercase
 
+from faker import Faker
+from faker.providers import BaseProvider
+from hpack.hpack import Encoder
+from hyperframe.frame import (AltSvcFrame, ContinuationFrame, DataFrame,
+                              GoAwayFrame, HeadersFrame, PingFrame,
+                              PriorityFrame, PushPromiseFrame, RstStreamFrame,
+                              SettingsFrame, WindowUpdateFrame)
+
 from nio.crypto import OlmAccount, OlmDevice
 from nio.store import Ed25519Key
-
 
 SAMPLE_SETTINGS = {
     SettingsFrame.HEADER_TABLE_SIZE: 4096,
@@ -50,8 +48,7 @@ class Provider(BaseProvider):
         return OlmDevice(
             user_id,
             device_id,
-            key_pair["ed25519"],
-            key_pair["curve25519"]
+            key_pair,
         )
 
     def ed25519_key(self):
@@ -66,6 +63,7 @@ faker.add_provider(Provider)
 
 
 ephemeral_dir = os.path.join(os.curdir, "tests/data/encryption")
+
 
 def ephemeral(func):
     def wrapper(*args, **kwargs):

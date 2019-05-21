@@ -15,7 +15,7 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from collections import defaultdict
-from typing import DefaultDict, Iterator, Optional, List, Dict
+from typing import DefaultDict, Dict, Iterator, List, Optional
 
 if False:
     from .sessions import OlmDevice, InboundGroupSession, Session

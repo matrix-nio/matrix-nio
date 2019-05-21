@@ -1,34 +1,17 @@
 # -*- coding: utf-8 -*-
-import pytest
 import json
-from helpers import faker, ephemeral, ephemeral_dir, FrameFactory
 
-from nio import (
-    Client,
-    HttpClient,
-    LocalProtocolError,
-    LoginResponse,
-    KeysUploadResponse,
-    SyncResponse,
-    DeviceList,
-    DeviceOneTimeKeyCount,
-    Rooms,
-    RoomInfo,
-    Timeline,
-    RoomMemberEvent,
-    RoomEncryptionEvent,
-    RoomSummary,
-    KeysQueryResponse,
-    JoinedMembersResponse,
-    RoomMember,
-    EncryptionError,
-    ShareGroupSessionResponse,
-    TransportType,
-    MegolmEvent,
-    RoomKeyRequestResponse,
-    TypingNoticeEvent,
-    RoomForgetResponse
-)
+import pytest
+
+from helpers import FrameFactory, ephemeral, ephemeral_dir, faker
+from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
+                 HttpClient, JoinedMembersResponse, KeysQueryResponse,
+                 KeysUploadResponse, LocalProtocolError, LoginResponse,
+                 MegolmEvent, RoomEncryptionEvent, RoomForgetResponse,
+                 RoomInfo, RoomKeyRequestResponse, RoomMember, RoomMemberEvent,
+                 Rooms, RoomSummary, ShareGroupSessionResponse, SyncResponse,
+                 Timeline, TransportType, TypingNoticeEvent)
+from nio.messages import ToDeviceMessage
 
 HOST = "example.org"
 USER = "example"
@@ -123,13 +106,19 @@ class TestClass(object):
         timeline = Timeline(
             [
                 RoomMemberEvent(
-                    "event_id_1",
-                    ALICE_ID,
-                    1516809890615,
+                    {"event_id": "event_id_1",
+                     "sender": ALICE_ID,
+                     "origin_server_ts": 1516809890615},
                     ALICE_ID,
                     {"membership": "join"}
                 ),
-                RoomEncryptionEvent("event_id_2", ALICE_ID, 1516809890615)
+                RoomEncryptionEvent(
+                    {
+                        "event_id": "event_id_2",
+                        "sender": ALICE_ID,
+                        "origin_server_ts": 1516809890615
+                    }
+                )
             ],
             False,
             "prev_batch_token"
@@ -153,7 +142,15 @@ class TestClass(object):
             rooms,
             DeviceOneTimeKeyCount(49, 50),
             DeviceList([ALICE_ID], []),
-            [RoomEncryptionEvent("event_id_2", ALICE_ID, 1516809890615)]
+            [
+                RoomEncryptionEvent(
+                    {
+                        "event_id": "event_id_2",
+                        "sender": ALICE_ID,
+                        "origin_server_ts": 1516809890615
+                    }
+                )
+            ]
         )
 
     @property
@@ -161,9 +158,9 @@ class TestClass(object):
         timeline = Timeline(
             [
                 RoomMemberEvent(
-                    "event_id_1",
-                    ALICE_ID,
-                    1516809890615,
+                    {"event_id": "event_id_1",
+                     "sender": ALICE_ID,
+                     "origin_server_ts": 1516809890615},
                     ALICE_ID,
                     {"membership": "join"}
                 ),
@@ -193,13 +190,19 @@ class TestClass(object):
         timeline = Timeline(
             [
                 RoomMemberEvent(
-                    "event_id_1",
-                    ALICE_ID,
-                    1516809890615,
+                    {"event_id": "event_id_1",
+                     "sender": ALICE_ID,
+                     "origin_server_ts": 1516809890615},
                     ALICE_ID,
                     {"membership": "join"}
                 ),
-                RoomEncryptionEvent("event_id_2", ALICE_ID, 1516809890615)
+                RoomEncryptionEvent(
+                    {
+                        "event_id": "event_id_2",
+                        "sender": ALICE_ID,
+                        "origin_server_ts": 1516809890615
+                    }
+                )
             ],
             True,
             "prev_batch_token"
@@ -643,3 +646,40 @@ class TestClass(object):
 
         with pytest.raises(CallbackException):
             client.receive_response(self.sync_response)
+
+    def test_no_encryption(self, client_no_e2e):
+        client_no_e2e.receive_response(self.login_response)
+        assert client_no_e2e.logged_in
+
+        assert not client_no_e2e.olm
+        client_no_e2e.receive_response(self.sync_response)
+
+        assert len(client_no_e2e.rooms) == 1
+
+        room = list(client_no_e2e.rooms.values())[0]
+
+        assert room.encrypted
+        client_no_e2e.receive_response(self.second_sync)
+
+        with pytest.raises(LocalProtocolError):
+            client_no_e2e.device_store
+
+        with pytest.raises(LocalProtocolError):
+            client_no_e2e.olm_account_shared
+
+        not client_no_e2e.should_query_keys
+
+        not client_no_e2e.users_for_key_query
+        not client_no_e2e.key_verifications
+        not client_no_e2e.outgoing_to_device_messages
+        not client_no_e2e.get_active_sas(ALICE_ID, ALICE_DEVICE_ID)
+
+        to_device = ToDeviceMessage("m.test", ALICE_ID, ALICE_DEVICE_ID, {})
+        client_no_e2e._mark_to_device_message_as_sent(to_device)
+
+        client_no_e2e.room_contains_unverified(room.room_id)
+
+        with pytest.raises(LocalProtocolError):
+            client_no_e2e.invalidate_outbound_session(room.room_id)
+
+        client_no_e2e.receive_response(self.keys_query_response)

@@ -12,6 +12,9 @@ typecheck:
 coverage:
 	python3 -m pytest --cov nio --benchmark-disable
 
+isort:
+	isort -p nio
+
 clean:
 	-rm -r dist/ __pycache__/
 	-rm -r packages/

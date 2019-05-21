@@ -5,26 +5,12 @@ from __future__ import unicode_literals
 import json
 import pdb
 
-from nio.events import (
-    BadEvent,
-    UnknownBadEvent,
-    RedactedEvent,
-    RoomCreateEvent,
-    RoomGuestAccessEvent,
-    RoomJoinRulesEvent,
-    RoomHistoryVisibilityEvent,
-    RoomTopicEvent,
-    RoomNameEvent,
-    RoomAliasEvent,
-    RoomMessageText,
-    RoomMessageEmote,
-    PowerLevelsEvent,
-    RoomMemberEvent,
-    RedactionEvent,
-    RoomMessageNotice,
-    ToDeviceEvent,
-    OlmEvent
-)
+from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
+                        RedactionEvent, RoomAliasEvent, RoomCreateEvent,
+                        RoomGuestAccessEvent, RoomHistoryVisibilityEvent,
+                        RoomJoinRulesEvent, RoomMemberEvent, RoomMessageEmote,
+                        RoomMessageNotice, RoomMessageText, RoomNameEvent,
+                        RoomTopicEvent, ToDeviceEvent, UnknownBadEvent)
 
 
 class TestClass(object):

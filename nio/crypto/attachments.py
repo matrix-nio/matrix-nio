@@ -17,12 +17,13 @@
 
 """Matrix encryption algorithms for file uploads."""
 
-import unpaddedbase64
 import base64
-from Crypto.Cipher import AES
-from Crypto.Util import Counter
-from Crypto.Hash import SHA256
+
+import unpaddedbase64
 from Crypto import Random
+from Crypto.Cipher import AES
+from Crypto.Hash import SHA256
+from Crypto.Util import Counter
 
 from ..exceptions import EncryptionError
 

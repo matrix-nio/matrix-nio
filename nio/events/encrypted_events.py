@@ -14,7 +14,11 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from typing import Optional
+
 import attr
+
+from ..messages import ToDeviceMessage
 from ..schemas import Schemas
 from .misc import verify
 
@@ -131,6 +135,14 @@ class MegolmEvent(RoomEncryptedEvent):
     @classmethod
     @verify(Schemas.room_megolm_encrypted)
     def from_dict(cls, event_dict):
+        """Create a MegolmEvent from a dictionary.
+
+        Args:
+            event_dict (Dict): Dictionary containing the event.
+
+        Returns a MegolmEvent if the event_dict contains a valid event or a
+        BadEvent if it's invalid.
+        """
         content = event_dict["content"]
 
         ciphertext = content["ciphertext"]
@@ -154,4 +166,32 @@ class MegolmEvent(RoomEncryptedEvent):
             algorithm,
             room_id,
             tx_id
+        )
+
+    def as_key_request(self, user_id, requesting_device_id, request_id=None):
+        # type: (str, str, Optional[str]) -> ToDeviceMessage
+        """Make a to-device message for a room key request.
+
+        Args:
+            user_id (str): The user id of the user that should receive the key
+                request.
+
+        """
+        content = {
+            "action": "request",
+            "body": {
+                "algorithm": self.algorithm,
+                "session_id": self.session_id,
+                "room_id": self.room_id,
+                "sender_key": self.sender_key
+            },
+            "request_id": request_id or self.session_id,
+            "requesting_device_id": requesting_device_id,
+        }
+
+        return ToDeviceMessage(
+            "m.room_key_request",
+            user_id,
+            "*",
+            content
         )

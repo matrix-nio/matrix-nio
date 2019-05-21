@@ -1,28 +1,16 @@
-import sys
 import json
+import sys
+from os import path
+
 import pytest
 
-from nio import (
-    LoginResponse,
-    SyncResponse,
-    LoginError,
-    LocalProtocolError,
-    KeysUploadResponse,
-    Rooms,
-    RoomInfo,
-    Timeline,
-    RoomMemberEvent,
-    RoomEncryptionEvent,
-    RoomSummary,
-    DeviceOneTimeKeyCount,
-    DeviceList,
-    KeysQueryResponse,
-    KeysClaimResponse,
-    GroupEncryptionError,
-    OlmTrustError,
-    RoomSendResponse,
-    ShareGroupSessionResponse
-)
+from nio import (DeviceList, DeviceOneTimeKeyCount, GroupEncryptionError,
+                 JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
+                 KeysUploadResponse, LocalProtocolError, LoginError,
+                 LoginResponse, MegolmEvent, MembersSyncError, OlmTrustError,
+                 RoomEncryptionEvent, RoomInfo, RoomMemberEvent, Rooms,
+                 RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
+                 SyncResponse, Timeline)
 from nio.crypto import OlmDevice
 
 TEST_ROOM_ID = "!testroom:example.org"
@@ -32,6 +20,7 @@ ALICE_DEVICE_ID = "JLAFKJWSCS"
 
 if sys.version_info >= (3, 5):
     import asyncio
+    from nio import AsyncClient
 
 
 @pytest.mark.skipif(sys.version_info < (3, 5), reason="Python 3 specific asyncio tests")
@@ -59,17 +48,37 @@ class TestClass(object):
             "tests/data/keys_query.json")
 
     @property
+    def joined_members_resopnse(self):
+        return {
+            "joined": {
+                "@bar:example.com": {
+                    "avatar_url": None,
+                    "display_name": "Bar"
+                },
+                ALICE_ID: {
+                    "avatar_url": None,
+                    "display_name": "Alice"
+                },
+            }}
+
+    @property
     def encryption_sync_response(self):
         timeline = Timeline(
             [
                 RoomMemberEvent(
-                    "event_id_1",
-                    ALICE_ID,
-                    1516809890615,
+                    {"event_id": "event_id_1",
+                     "sender": ALICE_ID,
+                     "origin_server_ts": 1516809890615},
                     ALICE_ID,
                     {"membership": "join"}
                 ),
-                RoomEncryptionEvent("event_id_2", ALICE_ID, 1516809890615)
+                RoomEncryptionEvent(
+                    {
+                        "event_id": "event_id_2",
+                        "sender": ALICE_ID,
+                        "origin_server_ts": 1516809890615
+                    }
+                )
             ],
             False,
             "prev_batch_token"
@@ -211,21 +220,28 @@ class TestClass(object):
             status=200,
             payload={"event_id": "$1555:example.org"}
         )
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/rooms/{}/"
+            "joined_members?access_token=abc123".format(TEST_ROOM_ID),
+            status=200,
+            payload=self.joined_members_resopnse
+        )
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/query?access_token=abc123",
+            status=200,
+            payload=self.keys_query_response
+        )
+
+
         loop.run_until_complete(async_client.login("wordpass"))
 
         async_client.receive_response(self.encryption_sync_response)
-        async_client.receive_response(
-            KeysQueryResponse.from_dict(self.keys_query_response)
+
+        response = loop.run_until_complete(
+            async_client.joined_members(TEST_ROOM_ID)
         )
 
-        with pytest.raises(GroupEncryptionError):
-            loop.run_until_complete(
-                async_client.room_send(
-                    TEST_ROOM_ID,
-                    "m.room.message",
-                    {"body": "hello"}
-                )
-            )
+        async_client.olm.create_outbound_group_session(TEST_ROOM_ID)
         async_client.olm.outbound_group_sessions[TEST_ROOM_ID].shared = True
 
         response = loop.run_until_complete(
@@ -238,6 +254,19 @@ class TestClass(object):
         )
 
         assert isinstance(response, RoomSendResponse)
+
+    def keys_claim_dict(self, client):
+        to_share = client.olm.share_keys()
+        one_time_key = list(to_share["one_time_keys"].items())[0]
+        return {
+            "one_time_keys": {
+                ALICE_ID: {
+                    ALICE_DEVICE_ID: {one_time_key[0]: one_time_key[1]},
+                },
+            },
+            "failures": {},
+        }
+
 
     def test_key_claiming(self, alice_client, async_client, aioresponse):
         loop = asyncio.get_event_loop()
@@ -252,8 +281,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             ALICE_ID,
             ALICE_DEVICE_ID,
-            alice_client.olm.account.identity_keys["ed25519"],
-            alice_client.olm.account.identity_keys["curve25519"],
+            alice_client.olm.account.identity_keys
         )
 
         async_client.device_store.add(alice_device)
@@ -262,23 +290,10 @@ class TestClass(object):
         assert ALICE_ID in missing
         assert ALICE_DEVICE_ID in missing[ALICE_ID]
 
-        to_share = alice_client.olm.share_keys()
-
-        one_time_key = list(to_share["one_time_keys"].items())[0]
-
-        key_claim_dict = {
-            "one_time_keys": {
-                ALICE_ID: {
-                    ALICE_DEVICE_ID: {one_time_key[0]: one_time_key[1]},
-                },
-            },
-            "failures": {},
-        }
-
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=abc123",
             status=200,
-            payload=key_claim_dict
+            payload=self.keys_claim_dict(alice_client)
         )
 
         response = loop.run_until_complete(
@@ -302,8 +317,7 @@ class TestClass(object):
         alice_device = OlmDevice(
             ALICE_ID,
             ALICE_DEVICE_ID,
-            alice_client.olm.account.identity_keys["ed25519"],
-            alice_client.olm.account.identity_keys["curve25519"],
+            alice_client.olm.account.identity_keys
         )
 
         async_client.device_store.add(alice_device)
@@ -351,3 +365,100 @@ class TestClass(object):
         assert isinstance(response, ShareGroupSessionResponse)
         assert not async_client.get_missing_sessions(TEST_ROOM_ID)
         assert async_client.olm.session_store.get(alice_device.curve25519)
+
+    def test_joined_members(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+        async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        async_client.receive_response(self.encryption_sync_response)
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/rooms/{}/"
+            "joined_members?access_token=abc123".format(TEST_ROOM_ID),
+            status=200,
+            payload=self.joined_members_resopnse
+        )
+
+        room = async_client.rooms[TEST_ROOM_ID]
+        assert not room.members_synced
+
+        response = loop.run_until_complete(
+            async_client.joined_members(TEST_ROOM_ID)
+        )
+
+        assert isinstance(response, JoinedMembersResponse)
+        assert room.members_synced
+
+    def test_session_sharing(self, alice_client, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+        async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        async_client.receive_response(self.encryption_sync_response)
+
+        alice_client.load_store()
+
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/sendToDevice/m.room_key_request/1?access_token=abc123",
+            status=200,
+            payload={}
+        )
+
+        event = MegolmEvent(
+            "1",
+            ALICE_ID,
+            1,
+            "sender_key_123",
+            ALICE_DEVICE_ID,
+            "session_id_123",
+            "secret",
+            "m.megolm.v1.aes-sha2",
+            TEST_ROOM_ID,
+        )
+
+        loop.run_until_complete(async_client.request_room_key(event, "1"))
+
+        assert "session_id_123" in async_client.outgoing_key_requests
+
+    def test_key_exports(self, async_client, tempdir):
+        file = path.join(tempdir, "keys_file")
+
+        async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+
+        async_client.olm.create_outbound_group_session(TEST_ROOM_ID)
+
+        out_session = async_client.olm.outbound_group_sessions[TEST_ROOM_ID]
+
+        assert async_client.olm.inbound_group_store.get(
+                TEST_ROOM_ID,
+                async_client.olm.account.identity_keys["curve25519"],
+                out_session.id
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(async_client.export_keys(file, "pass"))
+
+        alice_client = AsyncClient(
+            "https://example.org",
+            "alice",
+            ALICE_DEVICE_ID,
+            tempdir
+        )
+
+        alice_client.user_id = ALICE_ID
+        alice_client.load_store()
+
+        loop.run_until_complete(alice_client.import_keys(file, "pass"))
+
+        imported_session = alice_client.olm.inbound_group_store.get(
+                TEST_ROOM_ID,
+                async_client.olm.account.identity_keys["curve25519"],
+                out_session.id
+        )
+
+        assert imported_session.id == out_session.id

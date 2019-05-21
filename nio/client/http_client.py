@@ -14,81 +14,43 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import attr
 import json
 import pprint
-
 from builtins import str, super
-from enum import Enum, unique
 from collections import deque
 from functools import wraps
-from typing import (
-    Any,
-    Deque,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    Type,
-)
+from typing import Any, Deque, Dict, List, Optional, Tuple, Type, Union
 from uuid import UUID, uuid4
 
+import attr
 import h2
 import h11
 from logbook import Logger
 
 from . import Client, ClientConfig, logged_in, store_loaded
 from ..api import Api, MessageDirection
-from ..exceptions import (
-    LocalProtocolError,
-    RemoteTransportError,
-)
-
-from ..events import (
-    MegolmEvent,
-)
-
-from ..http import (
-    HttpRequest,
-    Http2Request,
-    Http2Connection,
-    HttpConnection,
-    TransportType,
-    TransportResponse,
-    TransportRequest
-)
+from ..events import MegolmEvent
+from ..exceptions import LocalProtocolError, RemoteTransportError
+from ..http import (Http2Connection, Http2Request, HttpConnection, HttpRequest,
+                    TransportRequest, TransportResponse, TransportType)
 from ..log import logger_group
-from ..responses import (
-    JoinResponse,
-    LoginResponse,
-    Response,
-    RoomInviteResponse,
-    RoomKickResponse,
-    RoomLeaveResponse,
-    RoomPutStateResponse,
-    RoomRedactResponse,
-    RoomSendResponse,
-    SyncResponse,
-    PartialSyncResponse,
-    RoomMessagesResponse,
-    KeysUploadResponse,
-    KeysQueryResponse,
-    ShareGroupSessionResponse,
-    KeysClaimResponse,
-    DevicesResponse,
-    UpdateDeviceResponse,
-    DeleteDevicesAuthResponse,
-    DeleteDevicesResponse,
-    JoinedMembersResponse,
-    KeysUploadError,
-    RoomTypingResponse,
-    RoomReadMarkersResponse,
-    ProfileGetDisplayNameResponse,
-    ProfileSetDisplayNameResponse,
-    RoomKeyRequestResponse,
-    RoomForgetResponse
-)
+from ..responses import (DeleteDevicesAuthResponse, DeleteDevicesResponse,
+                         DevicesResponse, JoinedMembersResponse, JoinResponse,
+                         KeysClaimResponse, KeysQueryResponse, KeysUploadError,
+                         KeysUploadResponse, LoginResponse,
+                         PartialSyncResponse, ProfileGetDisplayNameResponse,
+                         ProfileSetDisplayNameResponse, Response,
+                         RoomForgetResponse, RoomInviteResponse,
+                         RoomKeyRequestResponse, RoomKickResponse,
+                         RoomLeaveResponse, RoomMessagesResponse,
+                         RoomPutStateResponse, RoomReadMarkersResponse,
+                         RoomRedactResponse, RoomSendResponse,
+                         RoomTypingResponse, ShareGroupSessionResponse,
+                         SyncResponse, ToDeviceResponse, UpdateDeviceResponse)
+
+if False:
+    from .messages import ToDeviceMessage
+    from .crypto import OlmDevice
 
 try:
     from json.decoder import JSONDecodeError
@@ -560,9 +522,28 @@ class HttpClient(Client):
         self,
         room_id,
         ignore_missing_sessions=False,
-        tx_id=None
+        tx_id=None,
+        ignore_unverified_devices=False
     ):
-        # type: (str, bool, str) -> Tuple[UUID, bytes]
+        # type: (str, bool, str, bool) -> Tuple[UUID, bytes]
+        """Share a group session with a room.
+
+        This method sends a group session to members of a room.
+
+        Args:
+            room_id(str): The room id of the room where the message should be
+                sent to.
+            tx_id(str, optional): The transaction ID of this event used to
+                uniquely identify this message.
+            ignore_unverified_devices(bool): Mark unverified devices as
+                ignored. Ignored devices will still receive encryption
+                keys for messages but they won't be marked as verified.
+
+        Raises LocalProtocolError if the client isn't logged in, if the session
+        store isn't loaded, no room with the given room id exists or the room
+        isn't an encrypted room.
+        """
+
         assert self.olm
         try:
             room = self.rooms[room_id]
@@ -576,7 +557,8 @@ class HttpClient(Client):
         user_map, to_device_dict = self.olm.share_group_session(
             room_id,
             list(room.users.keys()),
-            ignore_missing_sessions
+            ignore_missing_sessions,
+            ignore_unverified_devices
         )
 
         uuid = tx_id or uuid4()
@@ -718,30 +700,15 @@ class HttpClient(Client):
             raise LocalProtocolError("A key sharing request is already sent"
                                      " out for this session id.")
 
-        content = {
-            "action": "request",
-            "body": {
-                "algorithm": event.algorithm,
-                "session_id": event.session_id,
-                "room_id": event.room_id,
-                "sender_key": event.sender_key
-            },
-            "request_id": event.session_id,
-            "requesting_device_id": self.device_id,
-        }
+        assert self.user_id
+        assert self.device_id
 
-        to_device = {
-            "messages": {
-                self.user_id: {
-                    "*": content
-                }
-            }
-        }
+        message = event.as_key_request(self.user_id, self.device_id)
 
         request = self._build_request(Api.to_device(
             self.access_token,
-            "m.room_key_request",
-            to_device,
+            message.type,
+            message.as_dict(),
             uuid
         ))
         return self._send(
@@ -756,6 +723,121 @@ class HttpClient(Client):
                 )
             )
         )
+
+    @connected
+    @logged_in
+    @store_loaded
+    def confirm_short_auth_string(self, transaction_id, tx_id=None):
+        # type: (str, Optional[str]) -> Tuple[UUID, bytes]
+        """Confirm a short auth string and mark it as matching.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            transaction_id (str): An transaction id of a valid key verification
+                process.
+        """
+        message = self.confirm_key_verification(transaction_id)
+        return self.to_device(message)
+
+    @connected
+    @logged_in
+    @store_loaded
+    def start_key_verification(self, device, tx_id=None):
+        # type: (OlmDevice, Optional[str]) -> Tuple[UUID, bytes]
+        """Start a interactive key verification with the given device.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            device (OlmDevice): An device with which we would like to start the
+                interactive key verification process.
+        """
+        message = self.create_key_verification(device)
+        return self.to_device(message, tx_id)
+
+    @connected
+    @logged_in
+    @store_loaded
+    def accept_key_verification(self, transaction_id, tx_id=None):
+        # type: (str, Optional[str]) -> Tuple[UUID, bytes]
+        """Accept a key verification start event.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            transaction_id (str): An transaction id of a valid key verification
+                process.
+        """
+        if transaction_id not in self.key_verifications:
+            raise LocalProtocolError("Key verification with the transaction "
+                                     "id {} does not exist.".format(
+                                         transaction_id
+                                     ))
+
+        sas = self.key_verifications[transaction_id]
+
+        message = sas.accept_verification()
+
+        return self.to_device(message, tx_id)
+
+    @connected
+    @logged_in
+    @store_loaded
+    def cancel_key_verification(self, transaction_id, tx_id=None):
+        # type: (str, Optional[str]) -> Tuple[UUID, bytes]
+        """Abort an interactive key verification.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            transaction_id (str): An transaction id of a valid key verification
+                process.
+        """
+        if transaction_id not in self.key_verifications:
+            raise LocalProtocolError("Key verification with the transaction "
+                                     "id {} does not exist.".format(
+                                         transaction_id
+                                     ))
+
+        sas = self.key_verifications[transaction_id]
+        sas.cancel()
+
+        message = sas.get_cancellation()
+
+        return self.to_device(message, tx_id)
+
+    @logged_in
+    @store_loaded
+    def to_device(
+        self,
+        message,
+        tx_id=None
+    ):
+        # type: (ToDeviceMessage, Optional[str]) -> Tuple[UUID, bytes]
+        """Send a message to a specific device.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            message (ToDeviceMessage): The message that should be sent out.
+            tx_id (str, optional): The transaction ID for this message. Should
+                be unique.
+        """
+        uuid = tx_id or uuid4()
+
+        request = self._build_request(Api.to_device(
+            self.access_token,
+            message.type,
+            message.as_dict(),
+            uuid
+        ))
+        return self._send(request, RequestInfo(ToDeviceResponse, (message, )))
 
     @connected
     @logged_in
@@ -808,6 +890,9 @@ class HttpClient(Client):
         return response
 
     def handle_key_upload_error(self, response):
+        if not self.olm:
+            return
+
         if response.status_code in [400, 500]:
             self.olm.mark_keys_as_published()
             self.olm.save_account()

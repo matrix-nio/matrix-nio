@@ -16,34 +16,19 @@
 
 from __future__ import unicode_literals
 
-import attr
 from builtins import str
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Union,
-    Tuple,
-    Set
-)
-
 from datetime import datetime
-from jsonschema.exceptions import SchemaError, ValidationError
 from functools import wraps
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
+
+import attr
+from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
-from .events import (
-    Event,
-    AccountDataEvent,
-    InviteEvent,
-    UnknownBadEvent,
-    ToDeviceEvent,
-)
+from .events import (AccountDataEvent, BadEventType, Event, InviteEvent,
+                     ToDeviceEvent, UnknownBadEvent)
 from .log import logger_group
 from .schemas import Schemas, validate_json
-
-from .crypto import OlmDevice
 
 logger = Logger("nio.responses")
 logger_group.add_logger(logger)
@@ -114,6 +99,8 @@ __all__ = [
     "ProfileSetDisplayNameError",
     "RoomKeyRequestResponse",
     "RoomKeyRequestError",
+    "ToDeviceResponse",
+    "ToDeviceError",
 ]
 
 
@@ -636,7 +623,7 @@ class DeleteDevicesResponse(EmptyResponse):
 
 @attr.s
 class RoomMessagesResponse(Response):
-    chunk = attr.ib(type=List[Union[Event, UnknownBadEvent]])
+    chunk = attr.ib(type=List[Union[Event, BadEventType]])
     start = attr.ib(type=str)
     end = attr.ib(type=str)
 
@@ -644,7 +631,7 @@ class RoomMessagesResponse(Response):
     @verify(Schemas.room_messages, RoomMessagesError)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomMessagesResponse, ErrorResponse]
-        chunk = []  # type: List[Union[Event, UnknownBadEvent]]
+        chunk = []  # type: List[Union[Event, BadEventType]]
         _, chunk = SyncResponse._get_room_events(parsed_dict["chunk"])
         return cls(chunk, parsed_dict["start"], parsed_dict["end"])
 
@@ -705,7 +692,7 @@ class KeysQueryResponse(Response):
     device_keys = attr.ib(type=Dict)
     failures = attr.ib(type=Dict)
     changed = attr.ib(
-        type=Dict[str, Dict[str, OlmDevice]],
+        type=Dict[str, Dict[str, Any]],
         init=False,
         factory=dict
     )
@@ -840,6 +827,35 @@ class ProfileSetDisplayNameResponse(EmptyResponse):
 
 
 @attr.s
+class ToDeviceError(ErrorResponse):
+    """Response representing a unsuccessful room key request."""
+
+    to_device_message = attr.ib(default=None)
+
+    @classmethod
+    def from_dict(cls, parsed_dict, message):
+        try:
+            validate_json(parsed_dict, Schemas.error)
+        except (SchemaError, ValidationError):
+            return cls("unknown error", None, message)
+
+        return cls(parsed_dict["error"], parsed_dict["errcode"], message)
+
+
+@attr.s
+class ToDeviceResponse(Response):
+    """Response representing a successful room key request."""
+
+    to_device_message = attr.ib()
+
+    @classmethod
+    @verify(Schemas.empty, ToDeviceError)
+    def from_dict(cls, parsed_dict, message):
+        """Create a ToDeviceResponse from a json response."""
+        return cls(message)
+
+
+@attr.s
 class _SyncResponse(Response):
     next_batch = attr.ib(type=str)
     rooms = attr.ib(type=Rooms)
@@ -870,8 +886,8 @@ class _SyncResponse(Response):
             parsed_dict,  # type: List[Dict[Any, Any]]
             max_events=0  # type: int
     ):
-        # type: (...) -> Tuple[int, List[Union[Event, UnknownBadEvent]]]
-        events = []  # type: List[Union[Event, UnknownBadEvent]]
+        # type: (...) -> Tuple[int, List[Union[Event, BadEventType]]]
+        events = []  # type: List[Union[Event, BadEventType]]
         counter = 0
 
         for counter, event_dict in enumerate(parsed_dict, 1):
