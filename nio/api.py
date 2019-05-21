@@ -862,3 +862,18 @@ class Api(object):
             Api._build_path(path, query_parameters),
             Api.to_json(content)
         )
+
+    @staticmethod
+    def whoami(access_token):
+        # type (str) -> Tuple[str, str]
+        """Get information about the owner of a given access token.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+        """
+        query_parameters = {"access_token": access_token}
+        path = "account/whoami"
+
+        return "GET", Api._build_path(path, query_parameters)
