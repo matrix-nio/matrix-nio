@@ -22,7 +22,8 @@ from logbook import Logger
 
 from ..crypto import ENCRYPTION_ENABLED
 from ..events import (BadEventType, Event, KeyVerificationEvent, MegolmEvent,
-                      RoomEncryptedEvent, RoomEncryptionEvent, ToDeviceEvent)
+                      RoomEncryptedEvent, RoomEncryptionEvent, RoomMemberEvent,
+                      ToDeviceEvent)
 from ..exceptions import LocalProtocolError, MembersSyncError
 from ..log import logger_group
 from ..responses import (ErrorResponse, JoinedMembersResponse,
@@ -331,6 +332,11 @@ class Client(object):
 
         return False
 
+    def _invalidate_session_for_member_event(self, room_id):
+        if not self.olm:
+            return
+        self.invalidate_outbound_session(room_id)
+
     @store_loaded
     def invalidate_outbound_session(self, room_id):
         """Explicitely remove encryption keys for a room.
@@ -458,7 +464,6 @@ class Client(object):
         Returns true if device is ignored, or false if it is already on the
         list of ignored devices.
         """
-
         assert self.olm
         changed = self.olm.ignore_device(device)
         if changed:
@@ -549,6 +554,7 @@ class Client(object):
             index, event = decrypted_event
             response.to_device_events[index] = event
 
+        # Handle invited rooms
         for room_id, info in response.rooms.invite.items():
             if room_id not in self.invited_rooms:
                 logger.info("New invited room {}".format(room_id))
@@ -561,6 +567,7 @@ class Client(object):
             for event in info.invite_state:
                 room.handle_event(event)
 
+        # Handle joined rooms
         for room_id, join_info in response.rooms.join.items():
             if room_id in self.invited_rooms:
                 del self.invited_rooms[room_id]
@@ -578,7 +585,12 @@ class Client(object):
             for event in join_info.state:
                 if isinstance(event, RoomEncryptionEvent):
                     encrypted_rooms.add(room_id)
-                room.handle_event(event)
+
+                if isinstance(event, RoomMemberEvent):
+                    if room.handle_membership(event):
+                        self._invalidate_session_for_member_event(room_id)
+                else:
+                    room.handle_event(event)
 
             if join_info.summary:
                 room.update_summary(join_info.summary)
@@ -596,7 +608,11 @@ class Client(object):
                 elif isinstance(event, RoomEncryptionEvent):
                     encrypted_rooms.add(room_id)
 
-                room.handle_event(event)
+                if isinstance(event, RoomMemberEvent):
+                    if room.handle_membership(event):
+                        self._invalidate_session_for_member_event(room_id)
+                else:
+                    room.handle_event(event)
 
                 for cb in self.event_callbacks:
                     if (cb.filter is None or isinstance(event, cb.filter)):

@@ -190,29 +190,37 @@ class MatrixRoom(object):
             self.names[user.name].remove(user.user_id)
             del self.users[user_id]
 
-    def _handle_membership(self, event):
-        # type: (Any) -> None
-        def join(event):
-            display_name = event.content.get("displayname", None)
-            self.add_member(event.state_key, display_name)
-            return
+    def handle_membership(self, event):
+        # type: (RoomMemberEvent) -> bool
+        """Handle a membership event for the room.
 
+        Args:
+            event (RoomMemberEvent): The event that should be handled that
+                updates the room state.
+
+        Returns True if the member list of the room has changed False
+        otherwise.
+        """
         if event.content["membership"] == "join":
             if event.state_key not in self.users:
-                join(event)
-            else:
-                # Handle profile changes
-                user = self.users[event.sender]
-                if "displayname" in event.content:
-                    self.names[user.name].remove(user.user_id)
-                    user.display_name = event.content["displayname"]
-                    self.names[user.name].append(user.user_id)
+                display_name = event.content.get("displayname", None)
+                return self.add_member(event.state_key, display_name)
+
+            # Handle profile changes
+            user = self.users[event.sender]
+            if "displayname" in event.content:
+                self.names[user.name].remove(user.user_id)
+                user.display_name = event.content["displayname"]
+                self.names[user.name].append(user.user_id)
+                return False
 
         elif event.content["membership"] in ["leave", "ban"]:
-            self.remove_member(event.state_key)
+            return self.remove_member(event.state_key)
 
         elif event.content["membership"] == "invite":
             pass
+
+        return False
 
     def handle_ephemeral_event(self, event):
         if isinstance(event, TypingNoticeEvent):
@@ -226,10 +234,7 @@ class MatrixRoom(object):
             )
         )
 
-        if isinstance(event, RoomMemberEvent):
-            self._handle_membership(event)
-
-        elif isinstance(event, RoomCreateEvent):
+        if isinstance(event, RoomCreateEvent):
             self.creator = event.creator
             self.federate = event.federate
             self.room_version = event.room_version
@@ -316,15 +321,22 @@ class MatrixInvitedRoom(MatrixRoom):
         self.inviter = None  # type: Optional[str]
         super().__init__(room_id, own_user_id)
 
-    def _handle_membership(self, event):
-        # type: (Any) -> None
-        if (
-            event.content["membership"] == "invite"
-            and event.state_key == self.own_user_id
-        ):
+    def handle_membership(self, event):
+        # type: (RoomMemberEvent) -> bool
+        """Handle a membership event for the invited room.
+
+        Args:
+            event (RoomMemberEvent): The event that should be handled that
+                updates the room state.
+
+        Returns True if the member list of the room has changed False
+        otherwise.
+        """
+        if (event.content["membership"] == "invite"
+                and event.state_key == self.own_user_id):
             self.inviter = event.sender
 
-        super()._handle_membership(event)
+        return super().handle_membership(event)
 
     def handle_event(self, event):
         # type: (Event) -> None
@@ -335,7 +347,7 @@ class MatrixInvitedRoom(MatrixRoom):
         )
 
         if isinstance(event, InviteMemberEvent):
-            self._handle_membership(event)
+            self.handle_membership(event)
 
         elif isinstance(event, InviteNameEvent):
             self.name = event.name
