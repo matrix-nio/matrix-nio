@@ -1215,9 +1215,17 @@ class Schemas(object):
     get_displayname = {
         "type": "object",
         "properties": {
-            "displayname": {"type": "string"},
+            "displayname": {"type": ["string", "null"]},
         },
         "required": ["displayname"]
+    }
+
+    get_avatar = {
+        "type": "object",
+        "properties": {
+            "avatar_url": {"type": ["string", "null"]},
+        },
+        "required": ["avatar_url"]
     }
 
     key_verification_start = {

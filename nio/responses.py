@@ -97,6 +97,10 @@ __all__ = [
     "ProfileGetDisplayNameError",
     "ProfileSetDisplayNameResponse",
     "ProfileSetDisplayNameError",
+    "ProfileGetAvatarResponse",
+    "ProfileGetAvatarError",
+    "ProfileSetAvatarResponse",
+    "ProfileSetAvatarError",
     "RoomKeyRequestResponse",
     "RoomKeyRequestError",
     "ToDeviceResponse",
@@ -386,6 +390,14 @@ class ProfileGetDisplayNameError(ErrorResponse):
 
 
 class ProfileSetDisplayNameError(ErrorResponse):
+    pass
+
+
+class ProfileGetAvatarError(ErrorResponse):
+    pass
+
+
+class ProfileSetAvatarError(ErrorResponse):
     pass
 
 
@@ -824,6 +836,37 @@ class ProfileSetDisplayNameResponse(EmptyResponse):
     @staticmethod
     def create_error(parsed_dict):
         return ProfileSetDisplayNameError.from_dict(parsed_dict)
+
+
+@attr.s
+class ProfileGetAvatarResponse(Response):
+    """Response representing a successful get avatar request.
+
+    Attributes:
+        avatar_url (str, optional): The matrix content URI for the user's
+            avatae. None if the user doesn't have an avatar.
+    """
+
+    avatar_url = attr.ib(type=Optional[str], default=None)
+
+    def __str__(self):
+        # type: () -> str
+        return "Avatar URL: {}".format(self.avatar_url)
+
+    @classmethod
+    @verify(Schemas.get_avatar, ProfileGetAvatarError)
+    def from_dict(
+        cls,
+        parsed_dict  # type: (Dict[Any, Any])
+    ):
+        # type: (...) -> Union[ProfileGetAvatarResponse, ErrorResponse]
+        return cls(parsed_dict.get("avatar_url"))
+
+
+class ProfileSetAvatarResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict):
+        return ProfileSetAvatarError.from_dict(parsed_dict)
 
 
 @attr.s

@@ -8,7 +8,7 @@ This module contains helpers for the nio tests.
 
 import os
 from random import choice
-from string import ascii_uppercase
+from string import ascii_uppercase, ascii_letters
 
 from faker import Faker
 from faker.providers import BaseProvider
@@ -20,6 +20,7 @@ from hyperframe.frame import (AltSvcFrame, ContinuationFrame, DataFrame,
 
 from nio.crypto import OlmAccount, OlmDevice
 from nio.store import Ed25519Key
+
 
 SAMPLE_SETTINGS = {
     SettingsFrame.HEADER_TABLE_SIZE: 4096,
@@ -33,6 +34,12 @@ faker = Faker()
 class Provider(BaseProvider):
     def mx_id(self):
         return "@{}:{}".format(faker.user_name(), faker.hostname())
+
+    def avatar_url(self):
+        return "mxc://{}/{}#auto".format(
+            faker.hostname(),
+            "".join(choice(ascii_letters) for i in range(24))
+        )
 
     def device_id(self):
         return "".join(choice(ascii_uppercase) for i in range(10))

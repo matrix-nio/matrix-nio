@@ -39,8 +39,9 @@ from ..responses import (DeleteDevicesAuthResponse, DeleteDevicesResponse,
                          KeysClaimResponse, KeysQueryResponse, KeysUploadError,
                          KeysUploadResponse, LoginResponse,
                          PartialSyncResponse, ProfileGetDisplayNameResponse,
-                         ProfileSetDisplayNameResponse, Response,
-                         RoomForgetResponse, RoomInviteResponse,
+                         ProfileSetDisplayNameResponse,
+                         ProfileGetAvatarResponse, ProfileSetAvatarResponse,
+                         Response, RoomForgetResponse, RoomInviteResponse,
                          RoomKeyRequestResponse, RoomKickResponse,
                          RoomLeaveResponse, RoomMessagesResponse,
                          RoomPutStateResponse, RoomReadMarkersResponse,
@@ -675,6 +676,55 @@ class HttpClient(Client):
         return self._send(
             request,
             RequestInfo(ProfileSetDisplayNameResponse)
+        )
+
+    @connected
+    @logged_in
+    def get_avatar(self, user_id=None):
+        # type: (str) -> Tuple[UUID, bytes]
+        """Get an user's avatar URL.
+
+        This queries the avatar matrix content URI of an user from the server.
+        The currently logged in user is queried if no user is specified.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            user_id (str): User id of the user to get the avatar for.
+        """
+        request = self._build_request(Api.profile_get_avatar(
+            self.access_token,
+            user_id or self.user_id
+        ))
+        return self._send(
+            request,
+            RequestInfo(ProfileGetAvatarResponse)
+        )
+
+    @connected
+    @logged_in
+    def set_avatar(self, avatar_url):
+        # type: (str) -> Tuple[UUID, bytes]
+        """Set user's avatar URL.
+
+        This tells the server to set avatar of the currently logged
+        in user to supplied matrix content URI.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            avatar_url (str): matrix content URI of the avatar to set.
+        """
+        request = self._build_request(Api.profile_set_avatar(
+            self.access_token,
+            self.user_id,
+            avatar_url
+        ))
+        return self._send(
+            request,
+            RequestInfo(ProfileSetAvatarResponse)
         )
 
     @connected
