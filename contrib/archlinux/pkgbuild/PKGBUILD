@@ -5,7 +5,7 @@ pkgbase=python-nio
 _pypiname=matrix-nio
 pkgname=('python-nio' 'python2-nio')
 pkgver=0.3
-pkgrel=1
+pkgrel=2
 pkgdesc='python no-IO library for the matrix chat protocol'
 arch=('any')
 url='https://github.com/poljar/matrix-nio'
@@ -34,7 +34,7 @@ package_python2-nio() {
   depends=('python2' 'python2-olm' 'python2-h11' 'python2-h2'
            'python2-jsonschema' 'python2-logbook' 'python2-attrs'
            'python2-peewee' 'python2-atomicwrites' 'python2-typing'
-           'python2-future' 'python-pycryptodome' 'python-unpaddedbase64')
+           'python2-future' 'python2-pycryptodome' 'python2-unpaddedbase64')
   cd "$srcdir"/$_pypiname-$pkgver-py2
 
   python2 setup.py install --root="${pkgdir}/" --optimize=1
