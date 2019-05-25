@@ -1,9 +1,10 @@
 # $Id$
 # Maintainer: Damir Jelić <poljar@termina.org.uk>
 
-pkgbase=matrix-nio
+pkgbase=python-nio
+_pypiname=matrix-nio
 pkgname=('python-nio' 'python2-nio')
-pkgver=0.1
+pkgver=0.3
 pkgrel=2
 pkgdesc='python no-IO library for the matrix chat protocol'
 arch=('any')
@@ -12,16 +13,11 @@ license=('ISC')
 makedepends=('python-setuptools' 'python2-setuptools')
 checkdepends=()
 source=("https://github.com/poljar/matrix-nio/archive/$pkgver.tar.gz")
-sha512sums=('0055eaea804dc770c07ecb82d8a9c56e963f77e8ed3a9e0708c40f27d950055db4fc048fec309ed1e78a4c71e6414c8493e8d33e3acdb051b401c1307cbea74f')
+sha512sums=('bab90911d95a1551df2ec1e15ced0ca020317b9d6329934fa6016017852c773ef47bd5c075e240f4230a39b788c8d329635507ec145e97becc858319d1ec8224')
 
 prepare() {
   cd "$srcdir"
-  cp -a $pkgbase-$pkgver{,-py2}
-}
-
-build() {
-  make -C "$srcdir"/$pkgbase-$pkgver
-  make PYTHON=python2 -C "$srcdir"/$pkgbase-$pkgver-py2
+  cp -a $_pypiname-$pkgver{,-py2}
 }
 
 package_python-nio() {
@@ -29,9 +25,9 @@ package_python-nio() {
            'python-jsonschema' 'python-logbook' 'python-attrs'
            'python-peewee' 'python-atomicwrites' 'python-future'
            'python-pycryptodome' 'python-unpaddedbase64')
-  cd "$srcdir"/$pkgbase-$pkgver
+  cd "$srcdir"/$_pypiname-$pkgver
 
-  make DESTDIR="$pkgdir" install
+  python setup.py install --root="${pkgdir}/" --optimize=1
 }
 
 package_python2-nio() {
@@ -39,7 +35,7 @@ package_python2-nio() {
            'python2-jsonschema' 'python2-logbook' 'python2-attrs'
            'python2-peewee' 'python2-atomicwrites' 'python2-typing'
            'python2-future' 'python2-pycryptodome' 'python2-unpaddedbase64')
-  cd "$srcdir"/$pkgbase-$pkgver-py2
+  cd "$srcdir"/$_pypiname-$pkgver-py2
 
-  make PYTHON=python2 DESTDIR="$pkgdir" install
+  python2 setup.py install --root="${pkgdir}/" --optimize=1
 }
