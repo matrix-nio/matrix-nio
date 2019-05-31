@@ -19,8 +19,11 @@ import sys
 if sys.version_info >= (3, 5):
     import importlib
     if sys.version_info >= (3, 6):
-        from importlib import util
-    
+        # Can't use the `from importlib import util` form, apparently.
+        # https://github.com/poljar/weechat-matrix/issues/95
+        # https://stackoverflow.com/questions/39660934/error-when-using-importlib-util-to-check-for-library
+        import importlib.util
+
     # The imp module is deprecated by importlib but importlib doesn't have the
     # find_spec function on python2. Use the imp module for py2 until we
     # deprecate python2 support.
