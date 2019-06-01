@@ -74,7 +74,7 @@ class InviteAliasEvent(InviteEvent):
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[InviteAliasEvent, BadEventType]
         sender = parsed_dict["sender"]
-        canonical_alias = parsed_dict["content"]["alias"]
+        canonical_alias = parsed_dict["content"].get("alias")
 
         return cls(sender, canonical_alias)
 

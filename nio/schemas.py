@@ -683,7 +683,7 @@ class Schemas(object):
             "content": {
                 "type": "object",
                 "properties": {"alias": {"type": "string"}},
-                "required": ["alias"],
+                "required": [],
             },
         },
         "required": ["type", "sender", "content"],

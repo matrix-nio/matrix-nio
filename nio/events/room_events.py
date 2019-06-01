@@ -312,7 +312,7 @@ class RoomAliasEvent(Event):
     @verify(Schemas.room_canonical_alias)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomAliasEvent, BadEventType]
-        canonical_alias = parsed_dict["content"]["alias"]
+        canonical_alias = parsed_dict["content"].get("alias")
 
         return cls(parsed_dict, canonical_alias)
 
