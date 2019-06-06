@@ -17,21 +17,18 @@
 import sys
 
 if sys.version_info >= (3, 5):
-    import importlib
-    if sys.version_info >= (3, 6):
-        from importlib import util
-    
+    from importlib import util
+
     # The imp module is deprecated by importlib but importlib doesn't have the
     # find_spec function on python2. Use the imp module for py2 until we
     # deprecate python2 support.
 
     def package_installed(package_name):
-        spec = importlib.util.find_spec(package_name)
+        spec = util.find_spec(package_name)
 
         if spec is None:
             return False
-        else:
-            return True
+        return True
 else:
     import imp
 
