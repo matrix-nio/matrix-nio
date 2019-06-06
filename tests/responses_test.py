@@ -13,7 +13,8 @@ from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
                            ProfileGetDisplayNameResponse, RoomKeyRequestError,
                            RoomKeyRequestResponse, RoomMessagesResponse,
                            SyncError, SyncResponse, ToDeviceError,
-                           ToDeviceResponse, UploadResponse)
+                           ToDeviceResponse, UploadResponse,
+                           RoomContextResponse, RoomContextError)
 
 TEST_ROOM_ID = "!test:example.org"
 
@@ -180,3 +181,20 @@ class TestClass(object):
         assert isinstance(response, ToDeviceError)
         response = ToDeviceResponse.from_dict({}, message)
         assert isinstance(response, ToDeviceResponse)
+
+    def test_context(self):
+        response = RoomContextResponse.from_dict(
+            {"error": "error", "errcode": "M_UNKNOWN"}, TEST_ROOM_ID
+        )
+        assert isinstance(response, RoomContextError)
+        assert response.room_id == TEST_ROOM_ID
+
+        parsed_dict = TestClass._load_response("tests/data/context.json")
+        response = RoomContextResponse.from_dict(parsed_dict, TEST_ROOM_ID)
+
+        assert isinstance(response, RoomContextResponse)
+
+        assert response.room_id == TEST_ROOM_ID
+        assert not response.events_before
+        assert len(response.events_after) == 1
+        assert len(response.state) == 9

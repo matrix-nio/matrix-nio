@@ -105,6 +105,8 @@ __all__ = [
     "RoomKeyRequestError",
     "ToDeviceResponse",
     "ToDeviceError",
+    "RoomContextResponse",
+    "RoomContextError"
 ]
 
 
@@ -896,6 +898,69 @@ class ToDeviceResponse(Response):
     def from_dict(cls, parsed_dict, message):
         """Create a ToDeviceResponse from a json response."""
         return cls(message)
+
+
+@attr.s
+class RoomContextError(_ErrorWithRoomId):
+    """Response representing a unsuccessful room context request."""
+
+
+@attr.s
+class RoomContextResponse(Response):
+    """Room event context response.
+
+    This Response holds a number of events that happened just before and after
+    a specified event.
+
+    Attributes:
+        room_id(str): The room id of the room which the events belong to.
+        start(str): A token that can be used to paginate backwards with.
+        end(str): A token that can be used to paginate forwards with.
+        events_before(List[Event]): A list of room events that happened just
+            before the requested event, in reverse-chronological order.
+        event(Event): Details of the requested event.
+        events_after(List[Event]): A list of room events that happened just
+            after the requested event, in chronological order.
+        state(List[Event]): The state of the room at the last event returned.
+
+    """
+
+    room_id = attr.ib(type=str)
+
+    start = attr.ib(type=str)
+    end = attr.ib(type=str)
+
+
+    event = attr.ib(type=Union[Event, BadEventType])
+
+    events_before = attr.ib(type=List[Union[Event, BadEventType]])
+    events_after = attr.ib(type=List[Union[Event, BadEventType]])
+
+    state = attr.ib(type=List[Union[Event, BadEventType]])
+
+    @classmethod
+    @verify(Schemas.room_context, RoomContextError)
+    def from_dict(cls, parsed_dict, room_id):
+        # type: (Dict[Any, Any]) -> Union[RoomContextResponse, ErrorResponse]
+        _, events_before = SyncResponse._get_room_events(
+            parsed_dict["events_before"]
+        )
+        _, events_after = SyncResponse._get_room_events(
+            parsed_dict["events_after"]
+        )
+
+        try:
+            validate_json(parsed_dict["event"], Schemas.room_event)
+            event = Event.parse_event(parsed_dict["event"])
+        except (SchemaError, ValidationError):
+            event = UnknownBadEvent(parsed_dict["event"])
+
+        _, state = SyncResponse._get_room_events(
+            parsed_dict["state"]
+        )
+
+        return cls(room_id, parsed_dict["start"], parsed_dict["end"],
+                   event, events_before, events_after, state)
 
 
 @attr.s

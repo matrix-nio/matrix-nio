@@ -827,6 +827,27 @@ class Schemas(object):
         "additionalProperties": False,
     }
 
+    room_context = {
+        "type": "object",
+        "properties": {
+            "start": {"type": "string"},
+            "end": {"type": "string"},
+            "state": {"type": "array"},
+            "events_before": {"type": "array"},
+            "events_after": {"type": "array"},
+            "event": {"type": "object"},
+        },
+        "required": [
+            "start",
+            "end",
+            "state",
+            "events_before",
+            "events_after",
+            "event",
+        ],
+        "additionalProperties": False,
+    }
+
     ephemeral_event = {
         "type": "object",
         "properties": {
