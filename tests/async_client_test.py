@@ -10,7 +10,7 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, GroupEncryptionError,
                  LoginResponse, MegolmEvent, MembersSyncError, OlmTrustError,
                  RoomEncryptionEvent, RoomInfo, RoomMemberEvent, Rooms,
                  RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
-                 SyncResponse, Timeline)
+                 SyncResponse, Timeline, RoomContextResponse)
 from nio.crypto import OlmDevice
 
 TEST_ROOM_ID = "!testroom:example.org"
@@ -41,6 +41,10 @@ class TestClass(object):
     @property
     def sync_response(self):
         return self._load_response("tests/data/sync.json")
+
+    @property
+    def context_response(self):
+        return self._load_response("tests/data/context.json")
 
     @property
     def keys_query_response(self):
@@ -462,3 +466,28 @@ class TestClass(object):
         )
 
         assert imported_session.id == out_session.id
+
+    def test_context(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+        async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+        event_id = "$15163622445EBvZJ:localhost"
+
+        async_client.receive_response(self.encryption_sync_response)
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/rooms/{}/"
+            "context/{}?access_token=abc123".format(
+                TEST_ROOM_ID,
+                event_id
+            ),
+            status=200,
+            payload=self.context_response
+        )
+
+        response = loop.run_until_complete(
+            async_client.room_context(TEST_ROOM_ID, event_id)
+        )
+
+        assert isinstance(response, RoomContextResponse)
