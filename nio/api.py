@@ -919,3 +919,30 @@ class Api(object):
         path = "account/whoami"
 
         return "GET", Api._build_path(path, query_parameters)
+
+    @staticmethod
+    def room_context(access_token, room_id, event_id, limit=None):
+        # type (str) -> Tuple[str, str]
+        """Fetch a number of events that happened before and after an event.
+        This allows clients to get the context surrounding an event.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room_id of the room that contains the event and
+                its context.
+            event_id (str): The event_id of the event that we wish to get the
+                context for.
+            limit(int, optional): The maximum number of events to request.
+        """
+        query_parameters = {"access_token": access_token}
+
+        if limit:
+            query_parameters["limit"] = limit
+
+        path = "rooms/{room}/context/{event_id}".format(
+            room=room_id, event_id=event_id
+        )
+
+        return "GET", Api._build_path(path, query_parameters)
