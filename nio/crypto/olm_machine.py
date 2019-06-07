@@ -758,15 +758,17 @@ class Olm(object):
             )
             return None
 
-    def decrypt_megolm_event(self, event):
-        # type (MegolmEvent) -> Union[Event, BadEvent]
-        if not event.room_id:
+    def decrypt_megolm_event(self, event, room_id=None):
+        # type (MegolmEvent, Optional[str]) -> Union[Event, BadEvent]
+        room_id = room_id or event.room_id
+
+        if not room_id:
             raise EncryptionError("Event doens't contain a room id")
 
         verified = False
 
         session = self.inbound_group_store.get(
-            event.room_id,
+            room_id,
             event.sender_key,
             event.session_id
         )
@@ -776,7 +778,7 @@ class Olm(object):
                 "Error decrypting megolm event, no session found "
                 "with session id {} for room {}".format(
                     event.session_id,
-                    event.room_id
+                    room_id
                 )
             )
             logger.warn(message)
@@ -856,12 +858,14 @@ class Olm(object):
         new_event.verified = verified
         new_event.sender_key = event.sender_key
         new_event.session_id = event.session_id
+        new_event.room_id = room_id
 
         return new_event
 
     def decrypt_event(
         self,
-        event  # type: RoomEncryptedEvent
+        event,  # type: RoomEncryptedEvent
+        room_id=None  # type: str
     ):
         # type: (...) -> Union[Event, BadEventType, RoomKeyEvent, None]
         logger.debug("Decrypting event of type {}".format(
@@ -888,7 +892,7 @@ class Olm(object):
 
         elif isinstance(event, MegolmEvent):
             try:
-                return self.decrypt_megolm_event(event)
+                return self.decrypt_megolm_event(event, room_id)
             except EncryptionError:
                 return None
 

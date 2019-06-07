@@ -32,7 +32,7 @@ from ..responses import (ErrorResponse, JoinedMembersResponse,
                          PartialSyncResponse, Response, RoomForgetResponse,
                          RoomKeyRequestResponse, RoomMessagesResponse,
                          ShareGroupSessionResponse, SyncResponse, SyncType,
-                         ToDeviceResponse)
+                         ToDeviceResponse, RoomContextResponse)
 from ..rooms import MatrixInvitedRoom, MatrixRoom
 
 if ENCRYPTION_ENABLED:
@@ -669,6 +669,33 @@ class Client(object):
 
             self.olm.add_changed_users(changed_users)
 
+    def _decrypt_event_array(self, array):
+        if not self.olm:
+            return
+
+        decrypted_events = []
+
+        for index, event in enumerate(array):
+            if isinstance(event, MegolmEvent):
+                new_event = self.olm.decrypt_event(event)
+                if new_event:
+                    decrypted_events.append((index, new_event))
+
+        for decrypted_event in decrypted_events:
+            index, event = decrypted_event
+            array[index] = event
+
+    def _handle_context_response(self, response):
+        assert isinstance(response, RoomContextResponse)
+
+        if isinstance(response.event, MegolmEvent):
+            if self.olm:
+                decrypted_event = self.olm.decrypt_event(response.event)
+                response.event = decrypted_event
+
+        self._decrypt_event_array(response.events_after)
+        self._decrypt_event_array(response.events_before)
+
     def _handle_messages_response(self, response):
         decrypted_events = []
 
@@ -763,6 +790,8 @@ class Client(object):
             self._handle_sync(response)
         elif isinstance(response, RoomMessagesResponse):
             self._handle_messages_response(response)
+        elif isinstance(response, RoomContextResponse):
+            self._handle_context_response(response)
         elif isinstance(response, KeysUploadResponse):
             self._handle_olm_response(response)
         elif isinstance(response, KeysQueryResponse):
