@@ -157,6 +157,8 @@ class Api(object):
         # type: (str, dict, str) -> str
         path = ("{api}/{path}").format(api=api_path, path=path)
 
+        path = quote(path)
+
         if query_parameters:
             path += "?{}".format(urlencode(query_parameters))
 
