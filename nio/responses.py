@@ -930,8 +930,7 @@ class RoomContextResponse(Response):
     start = attr.ib(type=str)
     end = attr.ib(type=str)
 
-
-    event = attr.ib(type=Union[Event, BadEventType])
+    event = attr.ib()
 
     events_before = attr.ib(type=List[Union[Event, BadEventType]])
     events_after = attr.ib(type=List[Union[Event, BadEventType]])
@@ -940,8 +939,12 @@ class RoomContextResponse(Response):
 
     @classmethod
     @verify(Schemas.room_context, RoomContextError)
-    def from_dict(cls, parsed_dict, room_id):
-        # type: (Dict[Any, Any]) -> Union[RoomContextResponse, ErrorResponse]
+    def from_dict(
+        cls,
+        parsed_dict,  # Dict[Any, Any]
+        room_id       # str
+    ):
+        # type: (...) -> Union[RoomContextResponse, ErrorResponse]
         _, events_before = SyncResponse._get_room_events(
             parsed_dict["events_before"]
         )
