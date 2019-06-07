@@ -37,7 +37,8 @@ from ..responses import (JoinedMembersError, JoinedMembersResponse,
                          Response, RoomKeyRequestError, RoomKeyRequestResponse,
                          RoomSendResponse, ShareGroupSessionError,
                          ShareGroupSessionResponse, SyncError, SyncResponse,
-                         ToDeviceError, ToDeviceResponse)
+                         ToDeviceError, ToDeviceResponse, RoomContextResponse,
+                         RoomContextError)
 
 if False:
     from ..events import MegolmEvent
@@ -886,3 +887,32 @@ class AsyncClient(Client):
             # the end
             if self.olm.inbound_group_store.add(session):
                 self.store.save_inbound_group_session(session)
+
+    @logged_in
+    async def room_context(
+            self,
+            room_id,     # type: str
+            event_id,    # type: str
+            limit=None,  # type: Optional[int]
+    ):
+        # type: (...) -> Union[RoomContextResponse, RoomContextError]
+        """Fetch a number of events that happened before and after an event.
+
+        This allows clients to get the context surrounding an event.
+
+        Returns either a `RoomContextResponse` if the request was successful or
+        a `RoomContextError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room_id of the room that contains the event and
+                its context.
+            event_id (str): The event_id of the event that we wish to get the
+                context for.
+            limit(int, optional): The maximum number of events to request.
+        """
+
+        method, path = Api.room_context(self.access_token, room_id, event_id,
+                                        limit)
+
+        return await self._send(RoomContextResponse, method, path,
+                                response_data=(room_id, ))
