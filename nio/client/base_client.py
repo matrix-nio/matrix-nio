@@ -29,10 +29,10 @@ from ..log import logger_group
 from ..responses import (ErrorResponse, JoinedMembersResponse,
                          KeysClaimResponse, KeysQueryResponse,
                          KeysUploadResponse, LoginResponse,
-                         PartialSyncResponse, Response, RoomForgetResponse,
-                         RoomKeyRequestResponse, RoomMessagesResponse,
-                         ShareGroupSessionResponse, SyncResponse, SyncType,
-                         ToDeviceResponse, RoomContextResponse)
+                         PartialSyncResponse, Response, RoomContextResponse,
+                         RoomForgetResponse, RoomKeyRequestResponse,
+                         RoomMessagesResponse, ShareGroupSessionResponse,
+                         SyncResponse, SyncType, ToDeviceResponse)
 from ..rooms import MatrixInvitedRoom, MatrixRoom
 
 if ENCRYPTION_ENABLED:

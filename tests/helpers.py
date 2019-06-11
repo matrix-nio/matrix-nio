@@ -8,7 +8,7 @@ This module contains helpers for the nio tests.
 
 import os
 from random import choice
-from string import ascii_uppercase, ascii_letters
+from string import ascii_letters, ascii_uppercase
 
 from faker import Faker
 from faker.providers import BaseProvider
@@ -20,7 +20,6 @@ from hyperframe.frame import (AltSvcFrame, ContinuationFrame, DataFrame,
 
 from nio.crypto import OlmAccount, OlmDevice
 from nio.store import Ed25519Key
-
 
 SAMPLE_SETTINGS = {
     SettingsFrame.HEADER_TABLE_SIZE: 4096,

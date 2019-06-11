@@ -8,9 +8,10 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, GroupEncryptionError,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginError,
                  LoginResponse, MegolmEvent, MembersSyncError, OlmTrustError,
-                 RoomEncryptionEvent, RoomInfo, RoomMemberEvent, Rooms,
+                 RoomContextResponse, RoomEncryptionEvent, RoomInfo,
+                 RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
-                 SyncResponse, Timeline, RoomContextResponse)
+                 SyncResponse, Timeline)
 from nio.crypto import OlmDevice
 
 TEST_ROOM_ID = "!testroom:example.org"

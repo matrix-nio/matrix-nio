@@ -27,18 +27,19 @@ from aiohttp import ClientResponse, ClientSession, ContentTypeError
 from aiohttp.client_exceptions import ClientConnectionError
 
 from . import Client, ClientConfig, logged_in, store_loaded
-from ..api import Api
+from ..api import Api, MessageDirection
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
 from ..messages import ToDeviceMessage
 from ..responses import (JoinedMembersError, JoinedMembersResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
                          KeysUploadResponse, LoginError, LoginResponse,
-                         Response, RoomKeyRequestError, RoomKeyRequestResponse,
+                         Response, RoomContextError, RoomContextResponse,
+                         RoomKeyRequestError, RoomKeyRequestResponse,
+                         RoomMessagesError, RoomMessagesResponse,
                          RoomSendResponse, ShareGroupSessionError,
                          ShareGroupSessionResponse, SyncError, SyncResponse,
-                         ToDeviceError, ToDeviceResponse, RoomContextResponse,
-                         RoomContextError)
+                         ToDeviceError, ToDeviceResponse)
 
 if False:
     from ..events import MegolmEvent
@@ -328,7 +329,6 @@ class AsyncClient(Client):
             filter (Dict[Any, Any], optional): A filter that should be used for
                 this sync request.
         """
-
         while True:
             try:
                 responses = []

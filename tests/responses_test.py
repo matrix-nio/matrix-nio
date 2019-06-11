@@ -10,11 +10,11 @@ from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
                            KeysQueryResponse, KeysUploadResponse, LoginError,
                            LoginResponse, PartialSyncResponse,
                            ProfileGetAvatarResponse,
-                           ProfileGetDisplayNameResponse, RoomKeyRequestError,
+                           ProfileGetDisplayNameResponse, RoomContextError,
+                           RoomContextResponse, RoomKeyRequestError,
                            RoomKeyRequestResponse, RoomMessagesResponse,
                            SyncError, SyncResponse, ToDeviceError,
-                           ToDeviceResponse, UploadResponse,
-                           RoomContextResponse, RoomContextError)
+                           ToDeviceResponse, UploadResponse)
 
 TEST_ROOM_ID = "!test:example.org"
 
