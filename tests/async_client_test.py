@@ -48,6 +48,10 @@ class TestClass(object):
         return self._load_response("tests/data/context.json")
 
     @property
+    def messages_response(self):
+        return self._load_response("tests/data/room_messages.json")
+
+    @property
     def keys_query_response(self):
         return self._load_response(
             "tests/data/keys_query.json")
@@ -441,9 +445,9 @@ class TestClass(object):
         out_session = async_client.olm.outbound_group_sessions[TEST_ROOM_ID]
 
         assert async_client.olm.inbound_group_store.get(
-                TEST_ROOM_ID,
-                async_client.olm.account.identity_keys["curve25519"],
-                out_session.id
+            TEST_ROOM_ID,
+            async_client.olm.account.identity_keys["curve25519"],
+            out_session.id
         )
         loop = asyncio.get_event_loop()
         loop.run_until_complete(async_client.export_keys(file, "pass"))
@@ -461,9 +465,9 @@ class TestClass(object):
         loop.run_until_complete(alice_client.import_keys(file, "pass"))
 
         imported_session = alice_client.olm.inbound_group_store.get(
-                TEST_ROOM_ID,
-                async_client.olm.account.identity_keys["curve25519"],
-                out_session.id
+            TEST_ROOM_ID,
+            async_client.olm.account.identity_keys["curve25519"],
+            out_session.id
         )
 
         assert imported_session.id == out_session.id
@@ -492,3 +496,26 @@ class TestClass(object):
         )
 
         assert isinstance(response, RoomContextResponse)
+
+    def test_room_messages(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+        async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+
+        async_client.receive_response(self.encryption_sync_response)
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/rooms/{}/"
+            "messages?access_token=abc123"
+            "&dir=b&from=start_token&limit=10".format(
+                TEST_ROOM_ID
+            ),
+            status=200,
+            payload=self.messages_response
+        )
+
+        response = loop.run_until_complete(
+            async_client.room_messages(TEST_ROOM_ID, "start_token")
+        )
+
+        assert isinstance(response, RoomMessagesResponse)
