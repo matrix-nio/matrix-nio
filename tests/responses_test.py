@@ -46,7 +46,7 @@ class TestClass(object):
     def test_room_messages(self):
         parsed_dict = TestClass._load_response(
             "tests/data/room_messages.json")
-        response = RoomMessagesResponse.from_dict(parsed_dict)
+        response = RoomMessagesResponse.from_dict(parsed_dict, TEST_ROOM_ID)
         assert isinstance(response, RoomMessagesResponse)
 
     def test_keys_upload(self):

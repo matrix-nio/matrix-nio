@@ -378,7 +378,10 @@ class HttpClient(Client):
                 limit=limit
             )
         )
-        return self._send(request, RequestInfo(RoomMessagesResponse))
+        return self._send(
+            request,
+            RequestInfo(RoomMessagesResponse, (room_id,))
+        )
 
     @connected
     @logged_in

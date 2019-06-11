@@ -332,7 +332,7 @@ class RoomForgetError(_ErrorWithRoomId):
     pass
 
 
-class RoomMessagesError(ErrorResponse):
+class RoomMessagesError(_ErrorWithRoomId):
     pass
 
 
@@ -637,17 +637,19 @@ class DeleteDevicesResponse(EmptyResponse):
 
 @attr.s
 class RoomMessagesResponse(Response):
+    room_id = attr.ib(type=str)
+
     chunk = attr.ib(type=List[Union[Event, BadEventType]])
     start = attr.ib(type=str)
     end = attr.ib(type=str)
 
     @classmethod
     @verify(Schemas.room_messages, RoomMessagesError)
-    def from_dict(cls, parsed_dict):
+    def from_dict(cls, parsed_dict, room_id):
         # type: (Dict[Any, Any]) -> Union[RoomMessagesResponse, ErrorResponse]
         chunk = []  # type: List[Union[Event, BadEventType]]
         _, chunk = SyncResponse._get_room_events(parsed_dict["chunk"])
-        return cls(chunk, parsed_dict["start"], parsed_dict["end"])
+        return cls(room_id, chunk, parsed_dict["start"], parsed_dict["end"])
 
 
 @attr.s

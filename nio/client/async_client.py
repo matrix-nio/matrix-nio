@@ -916,3 +916,59 @@ class AsyncClient(Client):
 
         return await self._send(RoomContextResponse, method, path,
                                 response_data=(room_id, ))
+
+    @logged_in
+    async def room_messages(
+            self,
+            room_id,                          # type: str
+            start,                            # type: str
+            end=None,                         # type: Optional[str]
+            direction=MessageDirection.back,  # type: MessageDirection
+            limit=10                          # type: int
+    ):
+        # type: (...) -> Union[RoomMessagesResponse, RoomMessagesError]
+        """Fetch a list of message and state events for a room.
+
+        It uses pagination query parameters to paginate history in the room.
+
+        Args:
+            room_id (str): The room_id of the room for which we would like to
+                fetch the messages.
+            start (str): The token to start returning events from. This token
+                can be obtained from a prev_batch token returned for each room
+                by the sync API, or from a start or end token returned by a
+                previous request to this endpoint.
+            end (str, optional): The token to stop returning events at. This
+                token can be obtained from a prev_batch token returned for
+                each room by the sync endpoint, or from a start or end token
+                returned by a previous request to this endpoint.
+            direction (MessageDirection, optional): The direction to return
+                events from. Defaults to MessageDirection.back.
+            limit (int, optional): The maximum number of events to return.
+                Defaults to 10.
+
+        Returns either a `RoomContextResponse` if the request was successful or
+        a `RoomContextError` if there was an error with the request.
+
+        Example:
+            >>> response = await client.room_messages(room_id, previous_batch)
+            >>> next_response = await client.room_messages(room_id,
+            ...                                            response.end)
+
+
+        """
+        method, path = Api.room_messages(
+            self.access_token,
+            room_id,
+            start,
+            end=end,
+            direction=direction,
+            limit=limit
+        )
+
+        return await self._send(
+            RoomMessagesResponse,
+            method,
+            path,
+            response_data=(room_id, )
+        )
