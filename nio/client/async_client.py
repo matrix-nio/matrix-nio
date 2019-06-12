@@ -271,8 +271,8 @@ class AsyncClient(Client):
             timeout(int, optional): The maximum time that the server should
                 wait for new events before it should return the request
                 anyways, in milliseconds.
-            filter (Dict[Any, Any], optional): A filter that should be used for
-                this sync request.
+            sync_filter (Dict[Any, Any], optional): A filter that should be
+                used for this sync request.
             full_state(bool, optional): Controls whether to include the full
                 state for all rooms the user is a member of. If this is set to
                 true, then all state events will be returned, even if since is
@@ -324,27 +324,51 @@ class AsyncClient(Client):
                     await cb.func(response)
 
     @logged_in
-    async def sync_forever(self, timeout=None, filter=None):
+    async def sync_forever(
+            self,
+            timeout=None,      # type: Optional[int]
+            sync_filter=None,  # type: Optional[Dict[Any, Any]]
+            since=None,        # type: Optional[str]
+            full_state=None    # type: Optional[bool]
+    ):
+        # type: (...) -> None
         """Continuously sync with the configured homeserver.
 
         This method calls the sync method in a loop. To react to events event
         callbacks should be configured.
 
         The loop also makes sure to handle other required requests between
-        syncs. To react to the responses a request callback should be added.
+        syncs. To react to the responses a response callback should be added.
 
         Args:
             timeout(int, optional): The maximum time that the server should
                 wait for new events before it should return the request
                 anyways, in milliseconds.
-            filter (Dict[Any, Any], optional): A filter that should be used for
-                this sync request.
+            sync_filter (Dict[Any, Any], optional): A filter that should be
+                used for this sync request.
+            full_state(bool, optional): Controls whether to include the full
+                state for all rooms the user is a member of. If this is set to
+                true, then all state events will be returned, even if since is
+                non-empty. The timeline will still be limited by the since
+                parameter. This argument will be used only for the first sync
+                request.
+            since(str, otpional): A token specifying a point in time where to
+                continue the sync from. Defaults to the last sync token we
+                received from the server using this API call. This argument
+                will be used only for the first sync request, the subsequent
+                sync requests will use the token from the last sync response.
+
         """
         while True:
             try:
                 responses = []
 
-                responses.append(await self.sync(timeout, filter))
+                responses.append(
+                    await self.sync(timeout, sync_filter, since, full_state)
+                )
+
+                full_state = None
+                since = None
 
                 responses += await self.send_to_device_messages()
 
