@@ -645,8 +645,12 @@ class RoomMessagesResponse(Response):
 
     @classmethod
     @verify(Schemas.room_messages, RoomMessagesError)
-    def from_dict(cls, parsed_dict, room_id):
-        # type: (Dict[Any, Any]) -> Union[RoomMessagesResponse, ErrorResponse]
+    def from_dict(
+        cls,
+        parsed_dict,  # type: Dict[Any, Any]
+        room_id       # type: str
+    ):
+        # type: (...) -> Union[RoomMessagesResponse, ErrorResponse]
         chunk = []  # type: List[Union[Event, BadEventType]]
         _, chunk = SyncResponse._get_room_events(parsed_dict["chunk"])
         return cls(room_id, chunk, parsed_dict["start"], parsed_dict["end"])
