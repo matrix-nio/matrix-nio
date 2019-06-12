@@ -208,6 +208,7 @@ class Api(object):
         since=None,       # type: Optional[str]
         timeout=None,     # type: Optional[int]
         filter=None,      # type: Optional[Dict[Any, Any]]
+        full_state=None   # type: Optional[bool]
     ):
         # type: (...) -> Tuple[str, str]
         """Synchronise the client's state with the latest state on the server.
@@ -227,6 +228,9 @@ class Api(object):
 
         if since:
             query_parameters["since"] = since
+
+        if full_state is not None:
+            query_parameters["full_state"] = str(full_state).lower()
 
         if timeout is not None:
             query_parameters["timeout"] = str(timeout)

@@ -271,15 +271,24 @@ class AsyncClient(Client):
                 anyways, in milliseconds.
             filter (Dict[Any, Any], optional): A filter that should be used for
                 this sync request.
+            full_state(bool, optional): Controls whether to include the full
+                state for all rooms the user is a member of. If this is set to
+                true, then all state events will be returned, even if since is
+                non-empty. The timeline will still be limited by the since
+                parameter.
+            since(str, otpional): A token specifying a point in time where to
+                continue the sync from. Defaults to the last sync token we
+                received from the server using this API call.
 
         Returns either a `SyncResponse` if the request was successful or
         a `SyncError` if there was an error with the request.
         """
         method, path = Api.sync(
             self.access_token,
-            since=self.next_batch,
+            since=since or self.next_batch,
             timeout=timeout,
-            filter=sync_filter
+            filter=sync_filter,
+            full_state=full_state
         )
 
         response = await self._send(SyncResponse, method, path)
