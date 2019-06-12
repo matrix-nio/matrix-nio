@@ -123,9 +123,9 @@ class AsyncClient(Client):
         super().__init__(user, device_id, store_path, config)
 
     def add_response_callback(
-        self,
-        func,           # type: Coroutine[Any, Any, Response]
-        cb_filter=None  # type: Union[Tuple[Type], Type, None]
+            self,
+            func,           # type: Coroutine[Any, Any, Response]
+            cb_filter=None  # type: Union[Tuple[Type], Type, None]
     ):
         # type: (...) -> None
         """Add a coroutine that will be called if a response is received.
@@ -259,8 +259,10 @@ class AsyncClient(Client):
     @logged_in
     async def sync(
             self,
-            timeout=None,     # type: Optional[int]
-            sync_filter=None  # type: Optional[Dict[Any, Any]]
+            timeout=None,      # type: Optional[int]
+            sync_filter=None,  # type: Optional[Dict[Any, Any]]
+            since=None,        # type: Optional[str]
+            full_state=None    # type: Optional[bool]
     ):
         # type: (...) -> Union[SyncResponse, SyncError]
         """Synchronise the client's state with the latest state on the server.
@@ -368,9 +370,9 @@ class AsyncClient(Client):
     @logged_in
     @store_loaded
     async def start_key_verification(
-        self,
-        device,     # type: OlmDevice
-        tx_id=None  # type: Optional[str]
+            self,
+            device,     # type: OlmDevice
+            tx_id=None  # type: Optional[str]
     ):
         # type: (...) -> Union[ToDeviceResponse, ToDeviceError]
         """Start a interactive key verification with the given device.
@@ -388,10 +390,10 @@ class AsyncClient(Client):
     @logged_in
     @store_loaded
     async def cancel_key_verification(
-        self,
-        transaction_id,     # type: OlmDevice
-        reject=False,       # type: bool
-        tx_id=None          # type: Optional[str]
+            self,
+            transaction_id,     # type: OlmDevice
+            reject=False,       # type: bool
+            tx_id=None          # type: Optional[str]
     ):
         # type: (...) -> Union[ToDeviceResponse, ToDeviceError]
         """Cancel a interactive key verification with the given device.
@@ -582,12 +584,12 @@ class AsyncClient(Client):
 
     @logged_in
     async def room_send(
-        self,
-        room_id,
-        message_type,
-        content,
-        tx_id=None,
-        ignore_unverified_devices=False
+            self,
+            room_id,
+            message_type,
+            content,
+            tx_id=None,
+            ignore_unverified_devices=False
     ):
         """Send a message to a room.
 
