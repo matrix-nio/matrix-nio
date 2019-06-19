@@ -202,21 +202,27 @@ class OutboundGroupSession(olm.OutboundGroupSession):
         return super().encrypt(plaintext)
 
 
+@attr.s
 class OlmDevice(object):
-    def __init__(
-        self,
-        user_id,          # type: str
-        device_id,        # type: str
-        keys,             # type: Dict[str, str]
-        display_name="",  # type: str
-        deleted=False,    # type: bool
-    ):
-        # type: (...) -> None
-        self.user_id = user_id
-        self.id = device_id
-        self.keys = keys
-        self.display_name = display_name
-        self.deleted = deleted
+    """Class holding info about users Olm devices.
+
+    Attributes:
+        user_id (str): The id of the user that the device belongs to.
+        id (str): The device id that combined with the user id uniquely
+            identifies the device.
+        keys (Dict): A dictionary containing the type and the public part
+            of this devices encryption keys.
+        display_name (str): The human readable name of this device.
+        deleted (bool): A boolean signaling if this device has been deleted by
+            its owner.
+
+    """
+
+    user_id = attr.ib(type=str)
+    id = attr.ib(type=str)
+    keys = attr.ib(type=Dict[str, str])
+    display_name = attr.ib(type=str, default="")
+    deleted = attr.ib(type=bool, default=False)
 
     @property
     def ed25519(self):
