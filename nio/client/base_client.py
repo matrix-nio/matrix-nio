@@ -21,18 +21,36 @@ import attr
 from logbook import Logger
 
 from ..crypto import ENCRYPTION_ENABLED
-from ..events import (BadEventType, Event, KeyVerificationEvent, MegolmEvent,
-                      RoomEncryptedEvent, RoomEncryptionEvent, RoomMemberEvent,
-                      ToDeviceEvent)
+from ..events import (
+    BadEventType,
+    Event,
+    KeyVerificationEvent,
+    MegolmEvent,
+    RoomEncryptedEvent,
+    RoomEncryptionEvent,
+    RoomMemberEvent,
+    ToDeviceEvent,
+)
 from ..exceptions import LocalProtocolError, MembersSyncError
 from ..log import logger_group
-from ..responses import (ErrorResponse, JoinedMembersResponse,
-                         KeysClaimResponse, KeysQueryResponse,
-                         KeysUploadResponse, LoginResponse,
-                         PartialSyncResponse, Response, RoomContextResponse,
-                         RoomForgetResponse, RoomKeyRequestResponse,
-                         RoomMessagesResponse, ShareGroupSessionResponse,
-                         SyncResponse, SyncType, ToDeviceResponse)
+from ..responses import (
+    ErrorResponse,
+    JoinedMembersResponse,
+    KeysClaimResponse,
+    KeysQueryResponse,
+    KeysUploadResponse,
+    LoginResponse,
+    PartialSyncResponse,
+    Response,
+    RoomContextResponse,
+    RoomForgetResponse,
+    RoomKeyRequestResponse,
+    RoomMessagesResponse,
+    ShareGroupSessionResponse,
+    SyncResponse,
+    SyncType,
+    ToDeviceResponse,
+)
 from ..rooms import MatrixInvitedRoom, MatrixRoom
 
 if ENCRYPTION_ENABLED:
@@ -60,6 +78,7 @@ def logged_in(func):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
         return func(self, *args, **kwargs)
+
     return wrapper
 
 
@@ -67,9 +86,11 @@ def store_loaded(fn):
     @wraps(fn)
     def inner(self, *args, **kwargs):
         if not self.store or not self.olm:
-            raise LocalProtocolError("Matrix store and olm account is not "
-                                     "loaded.")
+            raise LocalProtocolError(
+                "Matrix store and olm account is not " "loaded."
+            )
         return fn(self, *args, **kwargs)
+
     return inner
 
 
@@ -112,9 +133,11 @@ class ClientConfig(object):
 
     def __attrs_post_init__(self):
         if not ENCRYPTION_ENABLED and self.encryption_enabled:
-            raise ImportWarning("Encryption is enabled in the client "
-                                "configuration but dependencies for E2E "
-                                "encrytpion aren't installed.")
+            raise ImportWarning(
+                "Encryption is enabled in the client "
+                "configuration but dependencies for E2E "
+                "encrytpion aren't installed."
+            )
 
 
 class Client(object):
@@ -143,16 +166,16 @@ class Client(object):
 
     def __init__(
         self,
-        user,            # type: str
+        user,  # type: str
         device_id=None,  # type: Optional[str]
         store_path="",  # type: Optional[str]
-        config=None,     # type: Optional[ClientConfig]
+        config=None,  # type: Optional[ClientConfig]
     ):
         # type: (...) -> None
         self.user = user
         self.device_id = device_id
         self.store_path = store_path
-        self.olm = None    # type: Optional[Olm]
+        self.olm = None  # type: Optional[Olm]
         self.store = None  # type: Optional[MatrixStore]
         self.config = config or ClientConfig()
 
@@ -164,7 +187,7 @@ class Client(object):
         self.invited_rooms = dict()  # type: Dict[str, MatrixRoom]
         self.encrypted_rooms = set()  # type: Set[str]
 
-        self.event_callbacks = []      # type: List[ClientCallback]
+        self.event_callbacks = []  # type: List[ClientCallback]
         self.ephemeral_callbacks = []  # type: List[ClientCallback]
         self.to_device_callbacks = []  # type: List[ClientCallback]
 
@@ -288,8 +311,9 @@ class Client(object):
             raise LocalProtocolError("Device id is not set")
 
         if not self.config.store:
-            raise LocalProtocolError("No store class was provided in the "
-                                     "config.")
+            raise LocalProtocolError(
+                "No store class was provided in the " "config."
+            )
 
         if self.config.encryption_enabled:
             self.store = self.config.store(
@@ -297,7 +321,7 @@ class Client(object):
                 self.device_id,
                 self.store_path,
                 self.config.pickle_key,
-                self.config.store_name
+                self.config.store_name,
             )
             assert self.store
 
@@ -345,10 +369,7 @@ class Client(object):
             room_id (str): Room id for the room the encryption keys should be
                 removed.
         """
-        session = self.olm.outbound_group_sessions.pop(
-            room_id,
-            None
-        )
+        session = self.olm.outbound_group_sessions.pop(room_id, None)
 
         # There is no need to invalidate the session if it was never
         # shared, put it back where it was.
@@ -500,8 +521,7 @@ class Client(object):
 
     @store_loaded
     def decrypt_event(
-        self,
-        event  # type: MegolmEvent
+        self, event  # type: MegolmEvent
     ):
         # type: (...) -> Union[Event, BadEventType]
         """Try to decrypt an undecrypted megolm event.
@@ -513,8 +533,9 @@ class Client(object):
         error while decrypting.
         """
         if not isinstance(event, MegolmEvent):
-            raise ValueError("Invalid event, this function can only decrypt "
-                             "MegolmEvents")
+            raise ValueError(
+                "Invalid event, this function can only decrypt " "MegolmEvents"
+            )
 
         assert self.olm
         return self.olm.decrypt_megolm_event(event)
@@ -545,8 +566,7 @@ class Client(object):
                     self.olm.handle_key_verification(to_device_event)
 
             for cb in self.to_device_callbacks:
-                if (cb.filter is None
-                        or isinstance(to_device_event, cb.filter)):
+                if cb.filter is None or isinstance(to_device_event, cb.filter):
                     cb.func(to_device_event)
 
         # Replace the encrypted to_device events with decrypted ones
@@ -575,9 +595,7 @@ class Client(object):
             if room_id not in self.rooms:
                 logger.info("New joined room {}".format(room_id))
                 self.rooms[room_id] = MatrixRoom(
-                    room_id,
-                    self.user_id,
-                    room_id in self.encrypted_rooms
+                    room_id, self.user_id, room_id in self.encrypted_rooms
                 )
 
             room = self.rooms[room_id]
@@ -615,7 +633,7 @@ class Client(object):
                     room.handle_event(event)
 
                 for cb in self.event_callbacks:
-                    if (cb.filter is None or isinstance(event, cb.filter)):
+                    if cb.filter is None or isinstance(event, cb.filter):
                         cb.func(room, event)
 
             # Replace the Megolm events with decrypted ones
@@ -627,7 +645,7 @@ class Client(object):
                 room.handle_ephemeral_event(event)
 
                 for cb in self.ephemeral_callbacks:
-                    if (cb.filter is None or isinstance(event, cb.filter)):
+                    if cb.filter is None or isinstance(event, cb.filter):
                         cb.func(room, event)
 
             if room.encrypted and self.olm is not None:
@@ -643,13 +661,13 @@ class Client(object):
 
             for event in expired_verifications:
                 for cb in self.to_device_callbacks:
-                    if (cb.filter is None
-                            or isinstance(event, cb.filter)):
+                    if cb.filter is None or isinstance(event, cb.filter):
                         cb.func(event)
 
             changed_users = set()
             self.olm.uploaded_key_count = (
-                response.device_key_count.signed_curve25519)
+                response.device_key_count.signed_curve25519
+            )
 
             for user in response.device_list.changed:
                 for room in self.rooms.values():
@@ -730,12 +748,16 @@ class Client(object):
             for user_id in users:
                 for device in self.device_store.active_user_devices(user_id):
                     user = (user_id, device.id)
-                    if (user not in session.users_shared_with
-                            and user not in session.users_ignored):
+                    if (
+                        user not in session.users_shared_with
+                        and user not in session.users_ignored
+                    ):
                         return
 
-            logger.info("Marking outbound group session for room {} "
-                        "as shared".format(room_id))
+            logger.info(
+                "Marking outbound group session for room {} "
+                "as shared".format(room_id)
+            )
             session.shared = True
 
         elif isinstance(response, KeysQueryResponse):
@@ -863,14 +885,15 @@ class Client(object):
         assert self.olm
 
         if room_id not in self.rooms:
-            raise LocalProtocolError("No room found with room id {}".format(
-                room_id
-            ))
+            raise LocalProtocolError(
+                "No room found with room id {}".format(room_id)
+            )
         room = self.rooms[room_id]
 
         if not room.encrypted:
-            raise LocalProtocolError("Room with id {} is not encrypted".format(
-                                     room_id))
+            raise LocalProtocolError(
+                "Room with id {} is not encrypted".format(room_id)
+            )
 
         return self.olm.get_missing_sessions(list(room.users))
 
@@ -910,15 +933,12 @@ class Client(object):
             )
 
         if not room.members_synced:
-            raise MembersSyncError("The room is encrypted and the members "
-                                   "aren't fully synced.")
+            raise MembersSyncError(
+                "The room is encrypted and the members " "aren't fully synced."
+            )
 
         content = self.olm.group_encrypt(
-            room_id,
-            {
-                "content": content,
-                "type": message_type
-            },
+            room_id, {"content": content, "type": message_type}
         )
         message_type = "m.room.encrypted"
 
@@ -939,7 +959,7 @@ class Client(object):
         cb = ClientCallback(callback, filter)
         self.event_callbacks.append(cb)
 
-    def add_ephermeral_callback(self, callback, filter):
+    def add_ephemeral_callback(self, callback, filter):
         # type: (Callable[[MatrixRoom, Event], None], Tuple[Type]) -> None
         """Add a callback that will be executed on ephemeral room events.
 
@@ -953,6 +973,15 @@ class Client(object):
         """
         cb = ClientCallback(callback, filter)
         self.ephemeral_callbacks.append(cb)
+
+    def add_ephermeral_callback(self, callback, filter):
+        """
+        Deprecated: typo of method
+        """
+        logger.warn(
+            "add_ephermeral_callback is deprecated. Call add_ephemeral_callback"
+        )
+        self.add.ephemeral_callback(callback, filter)
 
     def add_to_device_callback(self, callback, filter):
         # type: (Callable[[ToDeviceEvent], None], Tuple[Type]) -> None
@@ -998,10 +1027,10 @@ class Client(object):
         verification process.
         """
         if transaction_id not in self.key_verifications:
-            raise LocalProtocolError("Key verification with the transaction "
-                                     "id {} does not exist.".format(
-                                         transaction_id
-                                     ))
+            raise LocalProtocolError(
+                "Key verification with the transaction "
+                "id {} does not exist.".format(transaction_id)
+            )
 
         sas = self.key_verifications[transaction_id]
 
