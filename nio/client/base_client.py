@@ -940,6 +940,14 @@ class Client(object):
         self.event_callbacks.append(cb)
 
     def add_ephermeral_callback(self, callback, filter):
+        """
+        Deprecated: typo in function name
+        """
+        logger.warn(
+                "add_ephermeral_callback is deprecated. Use add_ephemeral_callback.")
+        self.add_ephemeral_callback(callback, filter)
+
+    def add_ephemeral_callback(self, callback, filter):
         # type: (Callable[[MatrixRoom, Event], None], Tuple[Type]) -> None
         """Add a callback that will be executed on ephemeral room events.
 
