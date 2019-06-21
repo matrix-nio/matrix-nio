@@ -37,6 +37,8 @@ class AccountDataEvent(object):
 
         if event_dict["type"] == "m.fully_read":
             return FullyReadEvent.from_dict(event_dict)
+        if event_dict["type"] == "m.tag":
+            return TagEvent.from_dict(event_dict)
 
         return UnknownAccountDataEvent.from_dict(event_dict)
 
@@ -64,6 +66,28 @@ class FullyReadEvent(AccountDataEvent):
         content = event_dict.pop("content")
         return cls(
             content["event_id"],
+        )
+
+
+@attr.s
+class TagEvent(AccountDataEvent):
+    """Tag event.
+
+    Informs the client tags of a room.
+
+    Attributes:
+        tags (Dict): The tags of the room
+    """
+
+    tags = attr.ib()
+
+    @classmethod
+    @verify(Schemas.tags)
+    def from_dict(cls, event_dict):
+        """Construct a TagEvent from a dictionary."""
+        content = event_dict.pop("content")
+        return cls(
+            content["tags"]
         )
 
 
