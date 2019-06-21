@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
 import attr
 from logbook import Logger
+import warnings
 
 from ..crypto import ENCRYPTION_ENABLED
 from ..events import (BadEventType, Event, KeyVerificationEvent, MegolmEvent,
@@ -943,8 +944,10 @@ class Client(object):
         """
         Deprecated: typo in function name
         """
-        logger.warn(
-                "add_ephermeral_callback is deprecated. Use add_ephemeral_callback.")
+        warnings.warn(
+            "deprecated. Use add_ephemeral_callback.",
+            DeprecationWarning
+        )
         self.add_ephemeral_callback(callback, filter)
 
     def add_ephemeral_callback(self, callback, filter):
