@@ -1194,6 +1194,22 @@ class Schemas(object):
         ],
     }
 
+    tags = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "tags": {"type:": "object"},
+                },
+                "required": [
+                    "tags",
+                ],
+            }
+        }
+    }
+
     upload = {
         "type": "object",
         "properties": {"content_uri": {"type": "string"}},
