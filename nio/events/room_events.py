@@ -79,6 +79,8 @@ class Event(object):
             return RoomNameEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.topic":
             return RoomTopicEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.room.avatar":
+            return RoomAvatarEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.power_levels":
             return PowerLevelsEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.encryption":
@@ -341,6 +343,19 @@ class RoomTopicEvent(Event):
         canonical_alias = parsed_dict["content"]["topic"]
 
         return cls(parsed_dict, canonical_alias)
+
+
+@attr.s
+class RoomAvatarEvent(Event):
+    avatar_url = attr.ib()
+
+    @classmethod
+    @verify(Schemas.room_avatar)
+    def from_dict(cls, parsed_dict):
+        # type (Dict[Any, Any]) -> Union[RoomAvatarEvent, BadEventType]
+        room_avatar_url = parsed_dict["content"]["url"]
+
+        return cls(parsed_dict, room_avatar_url)
 
 
 @attr.s
