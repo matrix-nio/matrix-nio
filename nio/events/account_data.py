@@ -37,7 +37,7 @@ class AccountDataEvent(object):
 
         if event_dict["type"] == "m.fully_read":
             return FullyReadEvent.from_dict(event_dict)
-        if event_dict["type"] == "m.tag":
+        elif event_dict["type"] == "m.tag":
             return TagEvent.from_dict(event_dict)
 
         return UnknownAccountDataEvent.from_dict(event_dict)
