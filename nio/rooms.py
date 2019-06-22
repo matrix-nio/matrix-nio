@@ -28,7 +28,7 @@ from .events import (Event, InviteAliasEvent, InviteMemberEvent,
                      RoomAliasEvent, RoomCreateEvent, RoomEncryptionEvent,
                      RoomGuestAccessEvent, RoomHistoryVisibilityEvent,
                      RoomJoinRulesEvent, RoomMemberEvent, RoomNameEvent,
-                     RoomTopicEvent)
+                     RoomTopicEvent, RoomAvatarEvent)
 from .log import logger_group
 from .responses import RoomSummary, TypingNoticeEvent
 
@@ -60,6 +60,7 @@ class MatrixRoom(object):
         self.power_levels = PowerLevels()  # type: PowerLevels
         self.typing_users = []        # type: List[str]
         self.summary = None           # type: Optional[RoomSummary]
+        self.room_avatar_url = None        # type: Optional[str]
         # yapf: enable
 
     @property
@@ -151,6 +152,22 @@ class MatrixRoom(object):
             return None
 
         return self.users[user_id].avatar_url
+
+    @property
+    def get_avatar_url(self):
+        """
+        Calculate the room avatar_url
+
+        Either the room.avatar_url or the avatar_url of the first user
+        not myself
+        """
+        if self.room_avatar_url:
+            return self.room_avatar_url
+        elif self.is_group:
+            for user in self.users:
+                if user != self.own_user_id:
+                    return self.avatar_url(user)
+        return None
 
     @property
     def machine_name(self):
@@ -273,6 +290,9 @@ class MatrixRoom(object):
 
         elif isinstance(event, RoomTopicEvent):
             self.topic = event.topic
+
+        elif isinstance(event, RoomAvatarEvent):
+            self.room_avatar_url = event.avatar_url
 
         elif isinstance(event, RoomEncryptionEvent):
             self.encrypted = True

@@ -7,3 +7,5 @@ __pycache__
 *.pyc
 .hypothesis/
 .tox/
+doc/build
+matrix_nio.egg-info/

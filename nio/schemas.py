@@ -717,6 +717,25 @@ class Schemas(object):
         "required": ["type", "sender", "content"],
     }
 
+    room_avatar = {
+        type: "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "info": {
+                    "h": {"type": "integer"},
+                    "w": {"type": "integer"},
+                    "mimetype": {"type", "string"},
+                    "size": {"type": "integer"},
+                },
+                "url": {"type": "string"},
+            },
+        },
+        "required": ["type", "sender", "content"]
+    }
+
     room_power_levels = {
         "type": "object",
         "properties": {
