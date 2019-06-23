@@ -154,7 +154,7 @@ class MatrixRoom(object):
         return self.users[user_id].avatar_url
 
     @property
-    def get_avatar_url(self):
+    def gen_avatar_url(self):
         """
         Calculate the room avatar_url
 
@@ -164,9 +164,12 @@ class MatrixRoom(object):
         if self.room_avatar_url:
             return self.room_avatar_url
         elif self.is_group:
-            for user in self.users:
-                if user != self.own_user_id:
-                    return self.avatar_url(user)
+            user = next(
+                (u for u in self.users if u != self.own_user_id),
+                None
+            )
+            return self.avatar_url(user)
+
         return None
 
     @property
