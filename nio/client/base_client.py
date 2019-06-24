@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
 import attr
 from logbook import Logger
+import warnings
 
 from ..crypto import ENCRYPTION_ENABLED
 from ..events import (BadEventType, Event, KeyVerificationEvent, MegolmEvent,
@@ -940,6 +941,16 @@ class Client(object):
         self.event_callbacks.append(cb)
 
     def add_ephermeral_callback(self, callback, filter):
+        """
+        Deprecated: typo in function name
+        """
+        warnings.warn(
+            "deprecated. Use add_ephemeral_callback.",
+            DeprecationWarning
+        )
+        self.add_ephemeral_callback(callback, filter)
+
+    def add_ephemeral_callback(self, callback, filter):
         # type: (Callable[[MatrixRoom, Event], None], Tuple[Type]) -> None
         """Add a callback that will be executed on ephemeral room events.
 
