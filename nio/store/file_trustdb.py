@@ -158,7 +158,6 @@ class KeyStore(object):
                     raise OlmTrustError(message)
 
         self._entries.append(key)
-        self._save()
         return True
 
     @_save_store
@@ -166,7 +165,6 @@ class KeyStore(object):
         # type: (Key) -> bool
         if key in self._entries:
             self._entries.remove(key)
-            self._save()
             return True
 
         return False
