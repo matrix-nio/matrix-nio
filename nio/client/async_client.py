@@ -383,7 +383,7 @@ class AsyncClient(Client):
             except asyncio.CancelledError:
                 break
 
-            except ClientConnectionError:
+            except (ClientConnectionError, TimeoutError):
                 await self.run_response_callbacks(responses)
 
                 try:
