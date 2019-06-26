@@ -396,6 +396,52 @@ class LegacyMatrixStore(object):
         # type: (OlmDevice) -> bool
         raise NotImplementedError
 
+    def ignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        """Mark a device as ignored.
+
+        Args:
+            device (OlmDevice): The device that will be ignored.
+
+        Returns True if the device has been ignored, False if it already has
+        been ignored before.
+        """
+        raise NotImplementedError
+
+    def unignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        """Unmark a device as ignored.
+
+        Args:
+            device (OlmDevice): The device that will be unignored.
+
+        Returns True if the device has been unignored, False if it wasn't
+        ignored in the first place.
+        """
+        raise NotImplementedError
+
+    def is_device_ignored(self, device):
+        # type: (OlmDevice) -> bool
+        """Check if a device is ignored.
+
+        Args:
+            device (OlmDevice): The device that will be checked if it is
+                ignored.
+
+        Returns True if the device is ignored, False otherwise.
+        """
+        raise NotImplementedError
+
+    def ignore_devices(self, devices):
+        # type: (List[OlmDevice]) -> None
+        """Mark multiple devices as ignored.
+
+        Args:
+            devices (List[OlmDevice]): The devices that will be makred as
+                ignored.
+        """
+        raise NotImplementedError
+
 
 @attr.s
 class MatrixStore(object):
