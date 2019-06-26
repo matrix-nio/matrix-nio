@@ -14,10 +14,10 @@
 import os
 from builtins import super
 from functools import wraps
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import attr
-from peewee import DoesNotExist, SqliteDatabase, RawQuery
+from peewee import DoesNotExist, SqliteDatabase
 
 from . import (Accounts, DeviceKeys, DeviceKeys_v1, DeviceTrustState,
                EncryptedRooms, ForwardedChains, Key, Keys, KeyStore,
@@ -1194,31 +1194,44 @@ class SqliteStore(MatrixStore):
         if not acc:
             return None
 
-        values = ", ".join(map(str, [(d.user_id, d.id) for d in devices]))
+        tuple_values = [(d.user_id, d.id) for d in devices]
+        values = [item for sublist in tuple_values for item in sublist]
 
-        query = DeviceKeys.raw(
-            "SELECT devicekeys.* from devicekeys "
-            "JOIN accounts ON devicekeys.account_id=accounts.id "
-            "WHERE accounts.id == ? AND "
-            "(devicekeys.user_id, devicekeys.device_id) IN (VALUES {})".format(
-                values
-            ),
-            acc.id
-        ).execute()
+        total_rows = []  # type: List[Dict[str, str]]
 
-        rows = [
-            {
-                "device_id": device_key.id,
-                "state": TrustState.ignored
-            } for device_key in query
-        ]
+        for idx in range(0, len(values), 300):
+            data = values[idx:idx + 300]
 
-        if not rows:
+            query_string = (
+                "SELECT devicekeys.* from devicekeys "
+                "JOIN accounts ON devicekeys.account_id=accounts.id "
+                "WHERE accounts.id == ? AND "
+                "(devicekeys.user_id, devicekeys.device_id) IN "
+                "(VALUES {})".format(",".join(["(?, ?)"] * (len(data) // 2))))
+
+            query = DeviceKeys.raw(
+                query_string,
+                acc.id,
+                *data
+            )
+
+            rows = [
+                {
+                    "device_id": device_key.id,
+                    "state": TrustState.ignored
+                } for device_key in query
+            ]
+
+            total_rows += rows
+
+        if not total_rows:
             return
 
-        for idx in range(0, len(rows), 100):
-            data = rows[idx:idx + 100]
-            DeviceTrustState.replace_many(data).execute()
+        assert len(total_rows) == len(devices)
+
+        for idx in range(0, len(total_rows), 100):
+            trust_data = total_rows[idx:idx + 100]
+            DeviceTrustState.replace_many(trust_data).execute()
 
     @use_database
     def is_device_ignored(self, device):
