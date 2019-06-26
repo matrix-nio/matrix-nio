@@ -565,6 +565,10 @@ class Client(object):
             room = self.invited_rooms[room_id]
 
             for event in info.invite_state:
+                for cb in self.event_callbacks:
+                    if (cb.filter is None or isinstance(event, cb.filter)):
+                        cb.func(room, event)
+
                 room.handle_event(event)
 
         # Handle joined rooms
