@@ -173,6 +173,27 @@ class TestClass(object):
         for key in keys:
             assert key in store2
 
+    def test_key_store_remove_many(self, tempdir):
+        store_path = os.path.join(tempdir, "test_store")
+        store = KeyStore(os.path.join(tempdir, "test_store"))
+
+        keys = [
+            faker.ed25519_key(),
+            faker.ed25519_key(),
+            faker.ed25519_key(),
+            faker.ed25519_key(),
+        ]
+        store.add_many(keys)
+
+        for key in keys:
+            assert key in store
+
+        store.remove_many(keys)
+        store2 = KeyStore(os.path.join(tempdir, "test_store"))
+
+        for key in keys:
+            assert key not in store2
+
     @ephemeral
     def test_store_opening(self):
         store = self.ephemeral_store

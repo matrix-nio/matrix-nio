@@ -170,6 +170,13 @@ class KeyStore(object):
         return self._add_without_save(key)
 
     @_save_store
+    def remove_many(self, keys):
+        # type: (List[Key]) -> None
+        for key in keys:
+            if key in self._entries:
+                self._entries.remove(key)
+
+    @_save_store
     def remove(self, key):
         # type: (Key) -> bool
         if key in self._entries:
