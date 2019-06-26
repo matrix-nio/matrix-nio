@@ -943,6 +943,10 @@ class MatrixStore(object):
         # type: (OlmDevice) -> bool
         raise NotImplementedError
 
+    def ignore_devices(self, devices):
+        # type: (List[OlmDevice]) -> None
+        raise NotImplementedError
+
     def is_device_ignored(self, device):
         # type: (OlmDevice) -> bool
         raise NotImplementedError
