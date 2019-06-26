@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import os
+import sqlite3
 from builtins import super
 from functools import wraps
 from typing import Optional, List, Dict
@@ -1186,13 +1187,24 @@ class SqliteStore(MatrixStore):
 
         return True
 
-    @use_database_atomic
-    def ignore_devices(self, devices):
-        # type: (List[OlmDevice]) -> None
-        acc = self._get_account()
+    def _legacy_get_device_ids(self, account, devices):
+        device_ids = []
 
-        if not acc:
-            return None
+        for device in devices:
+            d = DeviceKeys.get_or_none(
+                DeviceKeys.account == account.id,
+                DeviceKeys.user_id == device.user_id,
+                DeviceKeys.device_id == device.id,
+            )
+
+            assert d
+
+            device_ids.append(d.id)
+
+        return device_ids
+
+    def _get_device_ids(self, account, devices):
+        device_ids = []
 
         tuple_values = [(d.user_id, d.id) for d in devices]
         values = [item for sublist in tuple_values for item in sublist]
@@ -1211,26 +1223,38 @@ class SqliteStore(MatrixStore):
 
             query = DeviceKeys.raw(
                 query_string,
-                acc.id,
+                account.id,
                 *data
             )
 
-            rows = [
-                {
-                    "device_id": device_key.id,
-                    "state": TrustState.ignored
-                } for device_key in query
-            ]
+            device_ids += [device_key.id for device_key in query]
 
-            total_rows += rows
+        return device_ids
 
-        if not total_rows:
-            return
+    @use_database_atomic
+    def ignore_devices(self, devices):
+        # type: (List[OlmDevice]) -> None
+        acc = self._get_account()
 
-        assert len(total_rows) == len(devices)
+        if not acc:
+            return None
 
-        for idx in range(0, len(total_rows), 100):
-            trust_data = total_rows[idx:idx + 100]
+        if sqlite3.sqlite_version_info >= (3, 15, 2):
+            device_ids = self._get_device_ids(acc, devices)
+        else:
+            device_ids = self._legacy_get_device_ids(acc, devices)
+
+        rows = [
+            {
+                "device_id": device_id,
+                "state": TrustState.ignored
+            } for device_id in device_ids
+        ]
+
+        assert len(rows) == len(devices)
+
+        for idx in range(0, len(rows), 100):
+            trust_data = rows[idx:idx + 100]
             DeviceTrustState.replace_many(trust_data).execute()
 
     @use_database
