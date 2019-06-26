@@ -14,10 +14,10 @@
 import os
 from builtins import super
 from functools import wraps
-from typing import Optional
+from typing import Optional, List
 
 import attr
-from peewee import DoesNotExist, SqliteDatabase
+from peewee import DoesNotExist, SqliteDatabase, RawQuery
 
 from . import (Accounts, DeviceKeys, DeviceKeys_v1, DeviceTrustState,
                EncryptedRooms, ForwardedChains, Key, Keys, KeyStore,
@@ -979,6 +979,16 @@ class DefaultStore(MatrixStore):
         key = Key.from_olmdevice(device)
         return self.ignore_db.remove(key)
 
+    def ignore_devices(self, devices):
+        # type: (List[OlmDevice]) -> None
+        keys = [Key.from_olmdevice(device) for device in devices]
+
+        self.blacklist_db.remove_many(keys)
+        self.trust_db.remove_many(keys)
+        self.ignore_db.add_many(keys)
+
+        return
+
     def is_device_ignored(self, device):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
@@ -1129,6 +1139,40 @@ class SqliteStore(MatrixStore):
         ).execute()
 
         return True
+
+    @use_database_atomic
+    def ignore_devices(self, devices):
+        # type: (List[OlmDevice]) -> None
+        acc = self._get_account()
+
+        if not acc:
+            return None
+
+        values = ", ".join(map(str, [(d.user_id, d.id) for d in devices]))
+
+        query = DeviceKeys.raw(
+            "SELECT devicekeys.* from devicekeys "
+            "JOIN accounts ON devicekeys.account_id=accounts.id "
+            "WHERE accounts.id == ? AND "
+            "(devicekeys.user_id, devicekeys.device_id) IN (VALUES {})".format(
+                values
+            ),
+            acc.id
+        ).execute()
+
+        rows = [
+            {
+                "device_id": device_key.id,
+                "state": TrustState.ignored
+            } for device_key in query
+        ]
+
+        if not rows:
+            return
+
+        for idx in range(0, len(rows), 100):
+            data = rows[idx:idx + 100]
+            DeviceTrustState.replace_many(data).execute()
 
     @use_database
     def is_device_ignored(self, device):
