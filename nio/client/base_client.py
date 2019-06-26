@@ -933,10 +933,14 @@ class Client(object):
         # type: (Callable[[MatrixRoom, Event], None], Tuple[Type]) -> None
         """Add a callback that will be executed on room events.
 
+        The callback can be used on joined rooms as well as on invited rooms.
+        The room parameter for the callback will have a different type
+        depending on if the room is joined or invited.
+
         Args:
-            callback (Callable[MatrixRoom, Event]): A function that will be
-                called if the event type in the filter argument is found in a
-                room timeline.
+            callback (Callable[Union[MatrixRoom, MatrixInvitedRoom, Event]): A
+                function that will be called if the event type in the filter
+                argument is found in a room timeline.
             filter (Type, Tuple[Type]): The event type or a tuple containing
                 multiple types for which the function will be called.
 
@@ -945,9 +949,7 @@ class Client(object):
         self.event_callbacks.append(cb)
 
     def add_ephermeral_callback(self, callback, filter):
-        """
-        Deprecated: typo in function name
-        """
+        """Deprecated: typo in function name."""
         warnings.warn(
             "deprecated. Use add_ephemeral_callback.",
             DeprecationWarning
