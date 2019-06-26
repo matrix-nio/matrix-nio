@@ -1061,6 +1061,7 @@ class Olm(object):
         ignored_set = group_session.users_ignored
 
         user_map = []
+        mark_as_ignored = []
 
         for user_id in users:
             for device in self.device_store.active_user_devices(user_id):
@@ -1093,7 +1094,7 @@ class Olm(object):
                     if self.is_device_ignored(device):
                         pass
                     elif ignore_unverified_devices:
-                        self.ignore_device(device)
+                        mark_as_ignored.append(device)
                     else:
                         raise OlmTrustError("Device {} for user {} is not "
                                             "verified or blacklisted.".format(
@@ -1110,6 +1111,9 @@ class Olm(object):
                 break
 
         sharing_with = set()
+
+        if mark_as_ignored:
+            self.store.ignore_devices(mark_as_ignored)
 
         for user_id, device, session in user_map:
             # No need to share the session with our own device

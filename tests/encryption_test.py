@@ -17,6 +17,8 @@ from nio.responses import (KeysClaimResponse, KeysQueryResponse,
                            KeysUploadResponse)
 from nio.store import DefaultStore, Ed25519Key, Key, KeyStore
 
+from helpers import faker
+
 AliceId = "@alice:example.org"
 Alice_device = "ALDEVICE"
 
@@ -42,6 +44,25 @@ def ephemeral(func):
             ))
         return ret
     return wrapper
+
+
+@pytest.fixture
+def olm_account(tempdir):
+    return Olm(
+        faker.mx_id(),
+        faker.device_id(),
+        DefaultStore("ephemeral", "DEVICEID", tempdir)
+    )
+
+
+@pytest.fixture
+def bob_account(tempdir):
+    return Olm(
+        faker.mx_id(),
+        faker.device_id(),
+        DefaultStore("ephemeral", "DEVICEID", tempdir)
+    )
+
 
 class TestClass(object):
     @staticmethod
@@ -799,3 +820,37 @@ class TestClass(object):
             ephemeral_dir,
             "{}_{}.db".format(BobId, Bob_device)
         ))
+
+    def test_group_session_sharing(self, olm_account, bob_account):
+        alice = olm_account
+        bob = bob_account
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.account.identity_keys
+        )
+
+        alice.device_store.add(bob_device)
+        bob.device_store.add(alice_device)
+
+        bob.account.generate_one_time_keys(1)
+        one_time = list(bob.account.one_time_keys["curve25519"].values())[0]
+        bob.account.mark_keys_as_published()
+
+        alice.create_session(one_time, bob_device.curve25519)
+
+        sharing_with, to_device = alice.share_group_session(
+            "!test:example.org",
+            [bob.user_id],
+            ignore_unverified_devices=True
+        )
+
+        assert len(sharing_with) == 1
+        assert alice.outbound_group_sessions["!test:example.org"]
+        assert alice.is_device_ignored(bob_device)
