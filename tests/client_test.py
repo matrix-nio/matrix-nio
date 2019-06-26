@@ -12,7 +12,7 @@ from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
                  RoomForgetResponse, RoomInfo, RoomKeyRequestResponse,
                  RoomMember, RoomMemberEvent, Rooms, RoomSummary,
                  ShareGroupSessionResponse, SyncResponse, Timeline,
-                 TransportType, TypingNoticeEvent)
+                 TransportType, TypingNoticeEvent, InviteMemberEvent, InviteInfo)
 from nio.messages import ToDeviceMessage
 
 HOST = "example.org"
@@ -170,6 +170,35 @@ class TestClass(object):
                     }
                 )
             ]
+        )
+
+    @property
+    def sync_invite_response(self):
+        state = [
+            InviteMemberEvent(
+                "@BOB:example.org",
+                ALICE_ID,
+                {
+                    "membership": "invite",
+                    "display_name": None,
+                }
+            )
+        ]
+
+        test_room_info = InviteInfo(state)
+        rooms = Rooms(
+            {
+                TEST_ROOM_ID: test_room_info
+            },
+            {},
+            {}
+        )
+        return SyncResponse(
+            "token123",
+            rooms,
+            DeviceOneTimeKeyCount(49, 50),
+            DeviceList([ALICE_ID], []),
+            []
         )
 
     @property
@@ -742,3 +771,17 @@ class TestClass(object):
             client_no_e2e.invalidate_outbound_session(room.room_id)
 
         client_no_e2e.receive_response(self.keys_query_response)
+
+    def test_event_cb_for_invited_rooms(self, client):
+        client.receive_response(self.login_response)
+
+        class CallbackException(Exception):
+            pass
+
+        def cb(_, event):
+            raise CallbackException()
+
+        client.add_event_callback(cb, InviteMemberEvent)
+
+        with pytest.raises(CallbackException):
+            client.receive_response(self.sync_invite_response)
