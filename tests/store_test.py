@@ -14,7 +14,7 @@ from nio.crypto import (InboundGroupSession, OlmAccount, OlmDevice,
                         OutgoingKeyRequest)
 from nio.exceptions import OlmTrustError
 from nio.store import (Ed25519Key, Key, KeyStore, LegacyMatrixStore,
-                       MatrixStore, SqliteMemoryStore, SqliteStore)
+                       MatrixStore, DefaultStore, SqliteMemoryStore, SqliteStore)
 
 BOB_ID = "@bob:example.org"
 BOB_DEVICE = "AGMTSWVYML"
@@ -33,7 +33,7 @@ def matrix_store(tempdir):
 
 @pytest.fixture
 def store(tempdir):
-    store = MatrixStore("ephemeral", "DEVICEID", tempdir)
+    store = DefaultStore("ephemeral", "DEVICEID", tempdir)
     account = OlmAccount()
     store.save_account(account)
     return store
@@ -650,3 +650,29 @@ class TestClass(object):
         bob_device.deleted = True
         sqlstore.save_device_keys(device_store)
         sqlstore.save_device_keys(devices)
+
+    def test_ignoring_many(self, store):
+        devices = self.example_devices
+
+        device_list = [
+            device for d in devices.values() for device in d.values()
+        ]
+
+        store.save_device_keys(devices)
+        store.ignore_devices(device_list)
+
+        for device in device_list:
+            assert store.is_device_ignored(device)
+
+    def test_ignoring_many_sqlite(self, sqlstore):
+        devices = self.example_devices
+
+        device_list = [
+            device for d in devices.values() for device in d.values()
+        ]
+
+        sqlstore.save_device_keys(devices)
+        sqlstore.ignore_devices(device_list)
+
+        for device in device_list:
+            assert sqlstore.is_device_ignored(device)
