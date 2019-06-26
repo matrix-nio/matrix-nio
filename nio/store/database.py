@@ -989,7 +989,6 @@ class DefaultStore(MatrixStore):
 class SqliteStore(MatrixStore):
     models = MatrixStore.models + [DeviceTrustState]
 
-    @use_database
     def _get_device(self, device):
         acc = self._get_account()
 
@@ -1005,6 +1004,7 @@ class SqliteStore(MatrixStore):
         except DoesNotExist:
             return None
 
+    @use_database
     def verify_device(self, device):
         # type: (OlmDevice) -> bool
         if self.is_device_verified(device):
@@ -1020,6 +1020,7 @@ class SqliteStore(MatrixStore):
 
         return True
 
+    @use_database
     def unverify_device(self, device):
         # type: (OlmDevice) -> bool
         if not self.is_device_verified(device):
@@ -1035,6 +1036,7 @@ class SqliteStore(MatrixStore):
 
         return True
 
+    @use_database
     def is_device_verified(self, device):
         # type: (OlmDevice) -> bool
         d = self._get_device(device)
@@ -1049,6 +1051,7 @@ class SqliteStore(MatrixStore):
 
         return trust_state == TrustState.verified
 
+    @use_database
     def blacklist_device(self, device):
         # type: (OlmDevice) -> bool
         if self.is_device_blacklisted(device):
@@ -1064,6 +1067,7 @@ class SqliteStore(MatrixStore):
 
         return True
 
+    @use_database
     def unblacklist_device(self, device):
         # type: (OlmDevice) -> bool
         if not self.is_device_blacklisted(device):
@@ -1079,6 +1083,7 @@ class SqliteStore(MatrixStore):
 
         return True
 
+    @use_database
     def is_device_blacklisted(self, device):
         # type: (OlmDevice) -> bool
         d = self._get_device(device)
@@ -1093,6 +1098,7 @@ class SqliteStore(MatrixStore):
 
         return trust_state == TrustState.blacklisted
 
+    @use_database
     def ignore_device(self, device):
         # type: (OlmDevice) -> bool
         if self.is_device_ignored(device):
@@ -1108,6 +1114,7 @@ class SqliteStore(MatrixStore):
 
         return True
 
+    @use_database
     def unignore_device(self, device):
         # type: (OlmDevice) -> bool
         if not self.is_device_ignored(device):
@@ -1123,6 +1130,7 @@ class SqliteStore(MatrixStore):
 
         return True
 
+    @use_database
     def is_device_ignored(self, device):
         # type: (OlmDevice) -> bool
         d = self._get_device(device)
