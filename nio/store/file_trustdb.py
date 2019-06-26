@@ -137,8 +137,12 @@ class KeyStore(object):
                 f.write(line)
 
     @_save_store
-    def add(self, key):
-        # type: (Key) -> bool
+    def add_many(self, keys):
+        # type: (List[Key]) -> None
+        for key in keys:
+            self._add_without_save(key)
+
+    def _add_without_save(self, key):
         existing_key = self.get_key(key.user_id, key.device_id)
 
         if existing_key:
@@ -159,6 +163,11 @@ class KeyStore(object):
 
         self._entries.append(key)
         return True
+
+    @_save_store
+    def add(self, key):
+        # type: (Key) -> bool
+        return self._add_without_save(key)
 
     @_save_store
     def remove(self, key):

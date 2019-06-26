@@ -155,6 +155,24 @@ class TestClass(object):
         assert fake_key not in store
         assert key in store
 
+    def test_key_store_add_many(self, tempdir):
+        store_path = os.path.join(tempdir, "test_store")
+        store = KeyStore(os.path.join(tempdir, "test_store"))
+
+        keys = [
+            faker.ed25519_key(),
+            faker.ed25519_key(),
+            faker.ed25519_key(),
+            faker.ed25519_key(),
+        ]
+
+        store.add_many(keys)
+
+        store2 = KeyStore(os.path.join(tempdir, "test_store"))
+
+        for key in keys:
+            assert key in store2
+
     @ephemeral
     def test_store_opening(self):
         store = self.ephemeral_store
