@@ -1213,8 +1213,6 @@ class SqliteStore(MatrixStore):
         tuple_values = [(d.user_id, d.id) for d in devices]
         values = [item for sublist in tuple_values for item in sublist]
 
-        total_rows = []  # type: List[Dict[str, str]]
-
         for idx in range(0, len(values), 300):
             data = values[idx:idx + 300]
 
