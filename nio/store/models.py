@@ -249,6 +249,7 @@ class DeviceTrustState(Model):
         model=DeviceKeys,
         primary_key=True,
         backref="trust_state",
+        column_name="device_id",
     )
 
 
