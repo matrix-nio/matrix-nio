@@ -167,6 +167,7 @@ class TestClass(object):
             "tests/data/get_profile_response.json")
         response = ProfileGetResponse.from_dict(parsed_dict)
         assert isinstance(response, ProfileGetResponse)
+        assert response.other_info == {"something_else": 123}
 
     def test_get_displayname(self):
         parsed_dict = TestClass._load_response(
