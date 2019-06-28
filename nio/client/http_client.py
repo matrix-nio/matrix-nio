@@ -662,7 +662,7 @@ class HttpClient(Client):
     @connected
     @logged_in
     def get_displayname(self, user_id=None):
-        # type: (str) -> Tuple[UUID, bytes]
+        # type: (Optional[str]) -> Tuple[UUID, bytes]
         """Get an user's display name.
 
         This queries the display name of an user from the server.
@@ -711,7 +711,7 @@ class HttpClient(Client):
     @connected
     @logged_in
     def get_avatar(self, user_id=None):
-        # type: (str) -> Tuple[UUID, bytes]
+        # type: (Optional[str]) -> Tuple[UUID, bytes]
         """Get an user's avatar URL.
 
         This queries the avatar matrix content URI of an user from the server.
