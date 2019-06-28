@@ -847,7 +847,7 @@ class Api(object):
 
     @staticmethod
     def profile_get_displayname(access_token, user_id):
-        # type (str, str) -> Tuple[str, str, str]
+        # type (str, str) -> Tuple[str, str]
         """Get display name.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -859,11 +859,7 @@ class Api(object):
         query_parameters = {"access_token": access_token}
         path = "profile/{user}/displayname".format(user=user_id)
 
-        return (
-            "GET",
-            Api._build_path(path, query_parameters),
-            ""
-        )
+        return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
     def profile_set_displayname(access_token, user_id, display_name):
@@ -889,7 +885,7 @@ class Api(object):
 
     @staticmethod
     def profile_get_avatar(access_token, user_id):
-        # type (str, str) -> Tuple[str, str, str]
+        # type (str, str) -> Tuple[str, str]
         """Get avatar URL.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -901,11 +897,7 @@ class Api(object):
         query_parameters = {"access_token": access_token}
         path = "profile/{user}/avatar_url".format(user=user_id)
 
-        return (
-            "GET",
-            Api._build_path(path, query_parameters),
-            ""
-        )
+        return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
     def profile_set_avatar(access_token, user_id, avatar_url):
