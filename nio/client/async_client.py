@@ -34,6 +34,10 @@ from ..messages import ToDeviceMessage
 from ..responses import (JoinedMembersError, JoinedMembersResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
                          KeysUploadResponse, LoginError, LoginResponse,
+                         ProfileGetAvatarResponse,
+                         ProfileGetDisplayNameResponse,
+                         ProfileSetAvatarResponse,
+                         ProfileSetDisplayNameResponse,
                          Response, RoomContextError, RoomContextResponse,
                          RoomKeyRequestError, RoomKeyRequestResponse,
                          RoomMessagesError, RoomMessagesResponse,
@@ -1124,4 +1128,118 @@ class AsyncClient(Client):
             method,
             path,
             response_data=(room_id, )
+        )
+
+    @logged_in
+    async def get_displayname(
+            self,
+            user_id=None  # type: Optional[str]
+    ):
+        # type: (...) -> Union[ProfileGetDisplayNameResponse, ProfileGetDisplayNameError]
+        """Get an user's display name.
+
+        This queries the display name of an user from the server.
+        The currently logged in user is queried if no user is specified.
+
+        Returns either a `ProfileGetDisplayNameResponse` if the request was
+        successful or a `ProfileGetDisplayNameError` if there was an error
+        with the request.
+
+        Args:
+            user_id (str): User id of the user to get the display name for.
+        """
+        method, path = Api.profile_get_displayname(
+            self.access_token,
+            user_id or self.user_id
+        )
+
+        return await self._send(
+            ProfileGetDisplayNameResponse,
+            method,
+            path,
+        )
+
+    @logged_in
+    async def set_displayname(self, displayname):
+        # type: (str) -> Union[ProfileSetDisplayNameResponse, ProfileSetDisplayNameError]
+        """Set user's display name.
+
+        This tells the server to set display name of currently logged
+        in user to supplied string.
+
+        Returns either a `ProfileSetDisplayNameResponse` if the request was
+        successful or a `ProfileSetDisplayNameError` if there was an error
+        with the request.
+
+        Args:
+            displayname (str): Display name to set.
+        """
+        method, path, data = Api.profile_set_displayname(
+            self.access_token,
+            self.user_id,
+            displayname
+        )
+
+        return await self._send(
+            ProfileSetDisplayNameResponse,
+            method,
+            path,
+            data,
+        )
+
+    @logged_in
+    async def get_avatar(
+            self,
+            user_id=None  # type: Optional[str]
+    ):
+        # type: (...) -> Union[ProfileGetAvatarResponse, ProfileGetAvatarError]
+        """Get an user's avatar URL.
+
+        This queries the avatar matrix content URI of an user from the server.
+        The currently logged in user is queried if no user is specified.
+
+        Returns either a `ProfileGetAvatarResponse` if the request was
+        successful or a `ProfileGetAvatarError` if there was an error
+        with the request.
+
+        Args:
+            user_id (str): User id of the user to get the avatar for.
+        """
+        method, path = Api.profile_get_avatar(
+            self.access_token,
+            user_id or self.user_id
+        )
+
+        return await self._send(
+            ProfileGetAvatarResponse,
+            method,
+            path,
+        )
+
+    @logged_in
+    async def set_avatar(self, avatar_url):
+        # type: (str) -> Union[ProfileSetAvatarResponse, ProfileSetAvatarError]
+        """Set user's avatar URL.
+
+        This tells the server to set avatar of the currently logged
+        in user to supplied matrix content URI.
+
+        Returns either a `ProfileSetAvatarResponse` if the request was
+        successful or a `ProfileSetAvatarError` if there was an error
+        with the request.
+
+        Args:
+            avatar_url (str): matrix content URI of the avatar to set.
+        """
+        method, path, data = Api.profile_set_avatar(
+            self.access_token,
+            self.user_id,
+            avatar_url
+        )
+
+        return await self._send(
+            ProfileSetAvatarResponse,
+            method,
+            path,
+            data,
         )
