@@ -730,7 +730,7 @@ class TestClass(object):
         def cb(_, event):
             raise CallbackException()
 
-        client.add_ephermeral_callback(cb, TypingNoticeEvent)
+        client.add_ephemeral_callback(cb, TypingNoticeEvent)
 
         with pytest.raises(CallbackException):
             client.receive_response(self.sync_response)
