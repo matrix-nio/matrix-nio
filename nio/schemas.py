@@ -1252,6 +1252,15 @@ class Schemas(object):
         }
     }
 
+    get_profile = {
+        "type": "object",
+        "properties": {
+            "displayname": {"type": ["string", "null"]},
+            "avatar_url": {"type": ["string", "null"]},
+        },
+        "required": ["displayname", "avatar_url"]
+    }
+
     get_displayname = {
         "type": "object",
         "properties": {

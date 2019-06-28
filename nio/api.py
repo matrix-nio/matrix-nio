@@ -846,11 +846,27 @@ class Api(object):
         )
 
     @staticmethod
+    def profile_get(access_token, user_id):
+        # type (str, str) -> Tuple[str, str]
+        """Get combined profile information for user.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            user_id (str): User id to get the profile for.
+        """
+        query_parameters = {"access_token": access_token}
+        path = "profile/{user}".format(user=user_id)
+
+        return "GET", Api._build_path(path, query_parameters)
+
+    @staticmethod
     def profile_get_displayname(access_token, user_id):
         # type (str, str) -> Tuple[str, str]
         """Get display name.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP method and HTTP path for the request.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -888,7 +904,7 @@ class Api(object):
         # type (str, str) -> Tuple[str, str]
         """Get avatar URL.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP method and HTTP path for the request.
 
         Args:
             access_token (str): The access token to be used with the request.

@@ -35,7 +35,7 @@ from ..responses import (JoinedMembersError, JoinedMembersResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
                          KeysUploadResponse, LoginError, LoginResponse,
                          ProfileGetAvatarResponse,
-                         ProfileGetDisplayNameResponse,
+                         ProfileGetDisplayNameResponse, ProfileGetResponse,
                          ProfileSetAvatarResponse,
                          ProfileSetDisplayNameResponse,
                          Response, RoomContextError, RoomContextResponse,
@@ -1128,6 +1128,33 @@ class AsyncClient(Client):
             method,
             path,
             response_data=(room_id, )
+        )
+
+    @logged_in
+    async def get_profile(self, user_id=None):
+        # type: (Optional[str]) -> Union[ProfileGetResponse, ProfileGetError]
+        """Get an user's combined profile information.
+
+        This queries the display name and avatar matrix content URI of an user
+        from the server. Additional profile information may be present.
+        The currently logged in user is queried if no user is specified.
+
+        Returns either a `ProfileGetResponse` if the request was
+        successful or a `ProfileGetError` if there was an error
+        with the request.
+
+        Args:
+            user_id (str): User id of the user to get the profile for.
+        """
+        method, path = Api.profile_get(
+            self.access_token,
+            user_id or self.user_id
+        )
+
+        return await self._send(
+            ProfileGetResponse,
+            method,
+            path,
         )
 
     @logged_in

@@ -45,7 +45,7 @@ from ..responses import (DeleteDevicesAuthResponse, DeleteDevicesResponse,
                          KeysClaimResponse, KeysQueryResponse, KeysUploadError,
                          KeysUploadResponse, LoginResponse,
                          PartialSyncResponse, ProfileGetAvatarResponse,
-                         ProfileGetDisplayNameResponse,
+                         ProfileGetDisplayNameResponse, ProfileGetResponse,
                          ProfileSetAvatarResponse,
                          ProfileSetDisplayNameResponse, Response,
                          RoomForgetResponse, RoomInviteResponse,
@@ -657,6 +657,31 @@ class HttpClient(Client):
         return self._send(
             request,
             RequestInfo(JoinedMembersResponse, (room_id, ))
+        )
+
+    @connected
+    @logged_in
+    def get_profile(self, user_id=None):
+        # type: (Optional[str]) -> Tuple[UUID, bytes]
+        """Get an user's combined profile information.
+
+        This queries the display name and avatar matrix content URI of an user
+        from the server. Additional profile information may be present.
+        The currently logged in user is queried if no user is specified.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            user_id (str): User id of the user to get the profile for.
+        """
+        request = self._build_request(Api.profile_get(
+            self.access_token,
+            user_id or self.user_id
+        ))
+        return self._send(
+            request,
+            RequestInfo(ProfileGetResponse)
         )
 
     @connected

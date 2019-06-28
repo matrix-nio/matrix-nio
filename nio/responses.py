@@ -93,6 +93,8 @@ __all__ = [
     "RoomReadMarkersError",
     "UploadResponse",
     "UploadError",
+    "ProfileGetResponse",
+    "ProfileGetError",
     "ProfileGetDisplayNameResponse",
     "ProfileGetDisplayNameError",
     "ProfileSetDisplayNameResponse",
@@ -384,6 +386,10 @@ class UpdateDeviceError(ErrorResponse):
 
 
 class JoinedMembersError(_ErrorWithRoomId):
+    pass
+
+
+class ProfileGetError(ErrorResponse):
     pass
 
 
@@ -816,6 +822,43 @@ class UpdateDeviceResponse(EmptyResponse):
 
 
 @attr.s
+class ProfileGetResponse(Response):
+    """Response representing a successful get profile request.
+
+    Attributes:
+        displayname (str, optional): The display name of the user.
+            None if the user doesn't have a display name.
+        avatar_url (str, optional): The matrix content URI for the user's
+            avatar. None if the user doesn't have an avatar.
+        other_info (dict): Contains any other information returned for the
+            user's profile.
+    """
+
+    displayname = attr.ib(type=Optional[str], default=None)
+    avatar_url = attr.ib(type=Optional[str], default=None)
+    other_info = attr.ib(type=Dict[Any, Any], factory=dict)
+
+    def __str__(self):
+        # type: () -> str
+        return "Display name: {}, avatar URL: {}, other info: {}".format(
+            self.displayname,
+            self.avatar_url,
+            self.other_info,
+        )
+
+    @classmethod
+    @verify(Schemas.get_profile, ProfileGetError)
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[ProfileGetResponse, ErrorResponse]
+        return cls(
+            parsed_dict.get("displayname"),
+            parsed_dict.get("avatar_url"),
+            {k: v for k, v in parsed_dict.items()
+             if k not in ("displayname", "avatar_url")},
+        )
+
+
+@attr.s
 class ProfileGetDisplayNameResponse(Response):
     """Response representing a successful get display name request.
 
@@ -852,7 +895,7 @@ class ProfileGetAvatarResponse(Response):
 
     Attributes:
         avatar_url (str, optional): The matrix content URI for the user's
-            avatae. None if the user doesn't have an avatar.
+            avatar. None if the user doesn't have an avatar.
     """
 
     avatar_url = attr.ib(type=Optional[str], default=None)

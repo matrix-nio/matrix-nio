@@ -10,11 +10,12 @@ from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
                            KeysQueryResponse, KeysUploadResponse, LoginError,
                            LoginResponse, PartialSyncResponse,
                            ProfileGetAvatarResponse,
-                           ProfileGetDisplayNameResponse, RoomContextError,
-                           RoomContextResponse, RoomKeyRequestError,
-                           RoomKeyRequestResponse, RoomMessagesResponse,
-                           SyncError, SyncResponse, ToDeviceError,
-                           ToDeviceResponse, UploadResponse)
+                           ProfileGetDisplayNameResponse, ProfileGetResponse,
+                           RoomContextError, RoomContextResponse,
+                           RoomKeyRequestError, RoomKeyRequestResponse,
+                           RoomMessagesResponse, SyncError,
+                           SyncResponse, ToDeviceError, ToDeviceResponse,
+                           UploadResponse)
 
 TEST_ROOM_ID = "!test:example.org"
 
@@ -160,6 +161,12 @@ class TestClass(object):
                 "!SVkFJHzfwvuaIEawgC:localhost"
             ].timeline.events
         ) == 1
+
+    def test_get_profile(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/get_profile_response.json")
+        response = ProfileGetResponse.from_dict(parsed_dict)
+        assert isinstance(response, ProfileGetResponse)
 
     def test_get_displayname(self):
         parsed_dict = TestClass._load_response(
