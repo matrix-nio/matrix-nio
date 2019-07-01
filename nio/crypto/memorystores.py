@@ -112,6 +112,9 @@ class DeviceStore(object):
     def items(self):
         return self._entries.items()
 
+    def values(self):
+        return self._entries.values()
+
     def active_user_devices(self, user_id):
         # type: (str) -> Iterator[OlmDevice]
         for device in self._entries[user_id].values():
