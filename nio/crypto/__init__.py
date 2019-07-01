@@ -10,7 +10,8 @@ if package_installed("olm"):
         OutboundGroupSession,
         InboundGroupSession,
         OlmDevice,
-        OutgoingKeyRequest
+        OutgoingKeyRequest,
+        TrustState
     )
 
     from .memorystores import (

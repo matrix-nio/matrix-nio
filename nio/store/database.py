@@ -26,10 +26,10 @@ from . import (Accounts, DeviceKeys, DeviceKeys_v1, DeviceTrustState,
                LegacyForwardedChains, LegacyMegolmInboundSessions,
                LegacyOlmSessions, LegacyOutgoingKeyRequests,
                MegolmInboundSessions, OlmSessions, OutgoingKeyRequests,
-               StoreVersion, TrustState)
+               StoreVersion)
 from ..crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
                       OlmAccount, OlmDevice, OutgoingKeyRequest, Session,
-                      SessionStore)
+                      SessionStore, TrustState)
 
 
 def use_database(fn):

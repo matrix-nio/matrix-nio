@@ -14,17 +14,11 @@
 import time
 from builtins import bytes
 from datetime import datetime
-from enum import Enum
 
 from peewee import (SQL, BlobField, BooleanField, CompositeKey,
                     ForeignKeyField, IntegerField, Model, TextField)
 
-
-class TrustState(Enum):
-    unset = 0
-    verified = 1
-    blacklisted = 2
-    ignored = 3
+from ..crypto import TrustState
 
 
 class ByteField(BlobField):

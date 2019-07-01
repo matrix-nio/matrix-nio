@@ -22,7 +22,6 @@ if package_installed("olm"):
         DeviceTrustState,
         DeviceTrustField,
         StoreVersion,
-        TrustState,
         Keys
     )
     from .database import (

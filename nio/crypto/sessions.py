@@ -17,6 +17,7 @@
 
 from builtins import super
 from datetime import datetime, timedelta
+from enum import Enum
 from typing import Dict, List, Optional, Set, Tuple
 
 import attr
@@ -202,6 +203,19 @@ class OutboundGroupSession(olm.OutboundGroupSession):
         return super().encrypt(plaintext)
 
 
+# TODO document the values better.
+class TrustState(Enum):
+    """The device trust state.
+
+    An Enum holding differing values that a device trust state can be in.
+    """
+
+    unset = 0
+    verified = 1
+    blacklisted = 2
+    ignored = 3
+
+
 @attr.s
 class OlmDevice(object):
     """Class holding info about users Olm devices.
@@ -215,6 +229,7 @@ class OlmDevice(object):
         display_name (str): The human readable name of this device.
         deleted (bool): A boolean signaling if this device has been deleted by
             its owner.
+        trust_state (TrustState): The trust state of this device.
 
     """
 
@@ -223,6 +238,7 @@ class OlmDevice(object):
     keys = attr.ib(type=Dict[str, str])
     display_name = attr.ib(type=str, default="")
     deleted = attr.ib(type=bool, default=False)
+    trust_state = attr.ib(type=TrustState, default=TrustState.unset)
 
     @property
     def ed25519(self):
