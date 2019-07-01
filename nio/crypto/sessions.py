@@ -234,11 +234,15 @@ class OlmDevice(object):
     """
 
     user_id = attr.ib(type=str)
-    id = attr.ib(type=str)
+    device_id = attr.ib(type=str)
     keys = attr.ib(type=Dict[str, str])
     display_name = attr.ib(type=str, default="")
     deleted = attr.ib(type=bool, default=False)
     trust_state = attr.ib(type=TrustState, default=TrustState.unset)
+
+    @property
+    def id(self):
+        return self.device_id
 
     @property
     def ed25519(self):
