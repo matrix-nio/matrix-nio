@@ -11,7 +11,7 @@ import pytest
 from helpers import ephemeral, ephemeral_dir, faker
 from nio.crypto import (InboundGroupSession, OlmAccount, OlmDevice,
                         OutboundGroupSession, OutboundSession,
-                        OutgoingKeyRequest)
+                        OutgoingKeyRequest, TrustState)
 from nio.exceptions import OlmTrustError
 from nio.store import (Ed25519Key, Key, KeyStore, LegacyMatrixStore,
                        MatrixStore, DefaultStore, SqliteMemoryStore, SqliteStore)
@@ -676,3 +676,63 @@ class TestClass(object):
 
         for device in device_list:
             assert sqlstore.is_device_ignored(device)
+
+    def test_trust_state_updating_sqlite(self, sqlstore):
+        devices = self.example_devices
+        bob_device = devices[BOB_ID][BOB_DEVICE]
+
+        device_list = [
+            device for d in devices.values() for device in d.values()
+        ]
+
+        sqlstore.save_device_keys(devices)
+
+        assert bob_device.trust_state == TrustState.unset
+        sqlstore.verify_device(bob_device)
+        assert bob_device.trust_state == TrustState.verified
+        sqlstore.unverify_device(bob_device)
+        assert bob_device.trust_state == TrustState.unset
+
+        sqlstore.blacklist_device(bob_device)
+        assert bob_device.trust_state == TrustState.blacklisted
+        sqlstore.unblacklist_device(bob_device)
+        assert bob_device.trust_state == TrustState.unset
+
+        sqlstore.ignore_device(bob_device)
+        assert bob_device.trust_state == TrustState.ignored
+        sqlstore.unignore_device(bob_device)
+        assert bob_device.trust_state == TrustState.unset
+
+        sqlstore.ignore_devices(device_list)
+        for device in device_list:
+            assert device.trust_state == TrustState.ignored
+
+    def test_trust_state_updating_default(self, store):
+        devices = self.example_devices
+        bob_device = devices[BOB_ID][BOB_DEVICE]
+
+        device_list = [
+            device for d in devices.values() for device in d.values()
+        ]
+
+        store.save_device_keys(devices)
+
+        assert bob_device.trust_state == TrustState.unset
+        store.verify_device(bob_device)
+        assert bob_device.trust_state == TrustState.verified
+        store.unverify_device(bob_device)
+        assert bob_device.trust_state == TrustState.unset
+
+        store.blacklist_device(bob_device)
+        assert bob_device.trust_state == TrustState.blacklisted
+        store.unblacklist_device(bob_device)
+        assert bob_device.trust_state == TrustState.unset
+
+        store.ignore_device(bob_device)
+        assert bob_device.trust_state == TrustState.ignored
+        store.unignore_device(bob_device)
+        assert bob_device.trust_state == TrustState.unset
+
+        store.ignore_devices(device_list)
+        for device in device_list:
+            assert device.trust_state == TrustState.ignored

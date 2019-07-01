@@ -953,7 +953,45 @@ class MatrixStore(object):
 
 
 @attr.s
-class DefaultStore(MatrixStore):
+class _MatrixStore(MatrixStore):
+    def blacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        device.trust_state = TrustState.blacklisted
+        return True
+
+    def unblacklist_device(self, device):
+        # type: (OlmDevice) -> bool
+        device.trust_state = TrustState.unset
+        return True
+
+    def verify_device(self, device):
+        # type: (OlmDevice) -> bool
+        device.trust_state = TrustState.verified
+        return True
+
+    def unverify_device(self, device):
+        # type: (OlmDevice) -> bool
+        device.trust_state = TrustState.unset
+        return True
+
+    def ignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        device.trust_state = TrustState.ignored
+        return True
+
+    def unignore_device(self, device):
+        # type: (OlmDevice) -> bool
+        device.trust_state = TrustState.unset
+        return True
+
+    def ignore_devices(self, devices):
+        # type: (List[OlmDevice]) -> None
+        for device in devices:
+            device.trust_state = TrustState.ignored
+
+
+@attr.s
+class DefaultStore(_MatrixStore):
     trust_db = attr.ib(type=KeyStore, init=False)
     blacklist_db = attr.ib(type=KeyStore, init=False)
 
@@ -989,18 +1027,25 @@ class DefaultStore(MatrixStore):
         key = Key.from_olmdevice(device)
         self.trust_db.remove(key)
         self.ignore_db.remove(key)
+        super().blacklist_device(device)
         return self.blacklist_db.add(key)
 
     def unblacklist_device(self, device):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
-        return self.blacklist_db.remove(key)
+
+        if self.blacklist_db.remove(key):
+            super().unblacklist_device(device)
+            return True
+
+        return False
 
     def verify_device(self, device):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
         self.blacklist_db.remove(key)
         self.ignore_db.remove(key)
+        super().verify_device(device)
         return self.trust_db.add(key)
 
     def is_device_verified(self, device):
@@ -1016,19 +1061,30 @@ class DefaultStore(MatrixStore):
     def unverify_device(self, device):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
-        return self.trust_db.remove(key)
+
+        if self.trust_db.remove(key):
+            super().unverify_device(device)
+            return True
+
+        return False
 
     def ignore_device(self, device):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
         self.blacklist_db.remove(key)
         self.trust_db.remove(key)
+        super().ignore_device(device)
         return self.ignore_db.add(key)
 
     def unignore_device(self, device):
         # type: (OlmDevice) -> bool
         key = Key.from_olmdevice(device)
-        return self.ignore_db.remove(key)
+
+        if self.ignore_db.remove(key):
+            super().unignore_device(device)
+            return True
+
+        return False
 
     def ignore_devices(self, devices):
         # type: (List[OlmDevice]) -> None
@@ -1037,6 +1093,8 @@ class DefaultStore(MatrixStore):
         self.blacklist_db.remove_many(keys)
         self.trust_db.remove_many(keys)
         self.ignore_db.add_many(keys)
+
+        super().ignore_devices(devices)
 
         return
 
@@ -1047,7 +1105,7 @@ class DefaultStore(MatrixStore):
 
 
 @attr.s
-class SqliteStore(MatrixStore):
+class SqliteStore(_MatrixStore):
     models = MatrixStore.models + [DeviceTrustState]
 
     def _get_device(self, device):
@@ -1079,6 +1137,8 @@ class SqliteStore(MatrixStore):
             state=TrustState.verified
         ).execute()
 
+        super().verify_device(device)
+
         return True
 
     @use_database
@@ -1094,6 +1154,8 @@ class SqliteStore(MatrixStore):
             device=d,
             state=TrustState.unset
         ).execute()
+
+        super().unverify_device(device)
 
         return True
 
@@ -1126,6 +1188,8 @@ class SqliteStore(MatrixStore):
             state=TrustState.blacklisted
         ).execute()
 
+        super().blacklist_device(device)
+
         return True
 
     @use_database
@@ -1141,6 +1205,8 @@ class SqliteStore(MatrixStore):
             device=d,
             state=TrustState.unset
         ).execute()
+
+        super().unblacklist_device(device)
 
         return True
 
@@ -1173,6 +1239,8 @@ class SqliteStore(MatrixStore):
             state=TrustState.ignored
         ).execute()
 
+        super().ignore_device(device)
+
         return True
 
     @use_database
@@ -1188,6 +1256,8 @@ class SqliteStore(MatrixStore):
             device=d,
             state=TrustState.unset
         ).execute()
+
+        super().unignore_device(device)
 
         return True
 
@@ -1258,6 +1328,8 @@ class SqliteStore(MatrixStore):
         for idx in range(0, len(rows), 100):
             trust_data = rows[idx:idx + 100]
             DeviceTrustState.replace_many(trust_data).execute()
+
+        super().ignore_devices(devices)
 
     @use_database
     def is_device_ignored(self, device):
