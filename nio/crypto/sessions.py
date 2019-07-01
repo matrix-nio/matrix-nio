@@ -222,7 +222,7 @@ class OlmDevice(object):
 
     Attributes:
         user_id (str): The id of the user that the device belongs to.
-        id (str): The device id that combined with the user id uniquely
+        device_id (str): The device id that combined with the user id uniquely
             identifies the device.
         keys (Dict): A dictionary containing the type and the public part
             of this devices encryption keys.
@@ -242,6 +242,10 @@ class OlmDevice(object):
 
     @property
     def id(self):
+        """The device id.
+
+        Same as the device_id attribute.
+        """
         return self.device_id
 
     @property
