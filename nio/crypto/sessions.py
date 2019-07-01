@@ -264,6 +264,13 @@ class OlmDevice(object):
     def curve25519(self, new_value):
         self.keys["curve25519"] = new_value
 
+    def as_dict(self):
+        """Convert the OlmDevice into a dictionary."""
+        device = attr.asdict(self)
+        device["trust_state"] = self.trust_state.name
+
+        return device
+
 
 @attr.s
 class OutgoingKeyRequest(object):
