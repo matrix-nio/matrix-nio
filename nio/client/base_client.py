@@ -521,50 +521,57 @@ class Client(object):
         assert self.olm
         return self.olm.decrypt_megolm_event(event)
 
-    def _handle_sync(self, response):
-        # type: (SyncType) -> None
-        # We already recieved such a sync response, do nothing in that case.
-        if self.next_batch == response.next_batch:
-            return
+    def _handle_decrypt_to_device(self, to_device_event):
+        decrypted_event = None
 
-        if isinstance(response, SyncResponse):
-            self.next_batch = response.next_batch
+        if isinstance(to_device_event, RoomEncryptedEvent):
+            if self.olm:
+                decrypted_event = self.olm.decrypt_event(to_device_event)
 
-        encrypted_rooms = set()
-        decrypted_to_device = []  # type: ignore
-
-        for index, to_device_event in enumerate(response.to_device_events):
-            if isinstance(to_device_event, RoomEncryptedEvent):
-                if self.olm:
-                    event = self.olm.decrypt_event(to_device_event)
-
-                    if event:
-                        decrypted_to_device.append((index, event))
-                        to_device_event = event
+                if decrypted_event:
+                    to_device_event = decrypted_event
 
             elif isinstance(to_device_event, KeyVerificationEvent):
                 if self.olm:
                     self.olm.handle_key_verification(to_device_event)
+
+        return decrypted_event
+
+    def _replace_decrypted_to_device(self, decrypted_events, response):
+        # Replace the encrypted to_device events with decrypted ones
+        for decrypted_event in decrypted_events:
+            index, event = decrypted_event
+            response.to_device_events[index] = event
+
+    def _handle_to_device(self, response):
+        decrypted_to_device = []  # type: ignore
+
+        for index, to_device_event in enumerate(response.to_device_events):
+            decrypted_event = self._handle_decrypt_to_device(to_device_event)
+
+            if decrypted_event:
+                decrypted_to_device.append((index, decrypted_event))
+                to_device_event = decrypted_event
 
             for cb in self.to_device_callbacks:
                 if (cb.filter is None
                         or isinstance(to_device_event, cb.filter)):
                     cb.func(to_device_event)
 
-        # Replace the encrypted to_device events with decrypted ones
-        for decrypted_event in decrypted_to_device:
-            index, event = decrypted_event
-            response.to_device_events[index] = event
+        self._replace_decrypted_to_device(decrypted_to_device, response)
 
-        # Handle invited rooms
+    def _get_invited_room(self, room_id):
+        if room_id not in self.invited_rooms:
+            logger.info("New invited room {}".format(room_id))
+            self.invited_rooms[room_id] = MatrixInvitedRoom(
+                room_id, self.user_id
+            )
+
+        return self.invited_rooms[room_id]
+
+    def _handle_invited_rooms(self, response):
         for room_id, info in response.rooms.invite.items():
-            if room_id not in self.invited_rooms:
-                logger.info("New invited room {}".format(room_id))
-                self.invited_rooms[room_id] = MatrixInvitedRoom(
-                    room_id, self.user_id
-                )
-
-            room = self.invited_rooms[room_id]
+            room = self._get_invited_room(room_id)
 
             for event in info.invite_state:
                 for cb in self.event_callbacks:
@@ -573,52 +580,74 @@ class Client(object):
 
                 room.handle_event(event)
 
-        # Handle joined rooms
-        for room_id, join_info in response.rooms.join.items():
-            if room_id in self.invited_rooms:
-                del self.invited_rooms[room_id]
+    def _handle_joined_state(self, room_id, join_info, encrypted_rooms):
+        if room_id in self.invited_rooms:
+            del self.invited_rooms[room_id]
 
-            if room_id not in self.rooms:
-                logger.info("New joined room {}".format(room_id))
-                self.rooms[room_id] = MatrixRoom(
-                    room_id,
-                    self.user_id,
-                    room_id in self.encrypted_rooms
-                )
+        if room_id not in self.rooms:
+            logger.info("New joined room {}".format(room_id))
+            self.rooms[room_id] = MatrixRoom(
+                room_id,
+                self.user_id,
+                room_id in self.encrypted_rooms
+            )
+
+        room = self.rooms[room_id]
+
+        for event in join_info.state:
+            if isinstance(event, RoomEncryptionEvent):
+                encrypted_rooms.add(room_id)
+
+            if isinstance(event, RoomMemberEvent):
+                if room.handle_membership(event):
+                    self._invalidate_session_for_member_event(room_id)
+            else:
+                room.handle_event(event)
+
+        if join_info.summary:
+            room.update_summary(join_info.summary)
+
+    def _handle_timeline_event(self, event, room_id, room, encrypted_rooms):
+        decrypted_event = None
+
+        if isinstance(event, MegolmEvent) and self.olm:
+            event.room_id = room_id
+            decrypted_event = self.olm.decrypt_event(event)
+
+            if decrypted_event:
+                event = decrypted_event
+
+        elif isinstance(event, RoomEncryptionEvent):
+            encrypted_rooms.add(room_id)
+
+        if isinstance(event, RoomMemberEvent):
+            if room.handle_membership(event):
+                self._invalidate_session_for_member_event(room_id)
+        else:
+            room.handle_event(event)
+
+        return decrypted_event
+
+    def _handle_joined_rooms(self, response):
+        encrypted_rooms = set()
+
+        for room_id, join_info in response.rooms.join.items():
+            self._handle_joined_state(room_id, join_info, encrypted_rooms)
 
             room = self.rooms[room_id]
-
-            for event in join_info.state:
-                if isinstance(event, RoomEncryptionEvent):
-                    encrypted_rooms.add(room_id)
-
-                if isinstance(event, RoomMemberEvent):
-                    if room.handle_membership(event):
-                        self._invalidate_session_for_member_event(room_id)
-                else:
-                    room.handle_event(event)
-
-            if join_info.summary:
-                room.update_summary(join_info.summary)
-
             decrypted_events = []
 
             for index, event in enumerate(join_info.timeline.events):
-                if isinstance(event, MegolmEvent) and self.olm:
-                    event.room_id = room_id
-                    new_event = self.olm.decrypt_event(event)
-                    if new_event:
-                        event = new_event
-                        decrypted_events.append((index, new_event))
+                decrypted_event = self._handle_timeline_event(
+                    event,
+                    room_id,
+                    room,
+                    encrypted_rooms
+                )
 
-                elif isinstance(event, RoomEncryptionEvent):
-                    encrypted_rooms.add(room_id)
-
-                if isinstance(event, RoomMemberEvent):
-                    if room.handle_membership(event):
-                        self._invalidate_session_for_member_event(room_id)
-                else:
-                    room.handle_event(event)
+                if decrypted_event:
+                    event = decrypted_event
+                    decrypted_events.append((index, decrypted_event))
 
                 for cb in self.event_callbacks:
                     if (cb.filter is None or isinstance(event, cb.filter)):
@@ -644,36 +673,56 @@ class Client(object):
         if self.store:
             self.store.save_encrypted_rooms(encrypted_rooms)
 
+    def _handle_expired_verifications(self):
+        expired_verifications = self.olm.clear_verifications()
+
+        for event in expired_verifications:
+            for cb in self.to_device_callbacks:
+                if (cb.filter is None
+                        or isinstance(event, cb.filter)):
+                    cb.func(event)
+
+    def _handle_olm_events(self, response):
+        changed_users = set()
+        self.olm.uploaded_key_count = (
+            response.device_key_count.signed_curve25519)
+
+        for user in response.device_list.changed:
+            for room in self.rooms.values():
+                if not room.encrypted:
+                    continue
+
+                if user in room.users:
+                    changed_users.add(user)
+
+        for user in response.device_list.left:
+            for room in self.rooms.values():
+                if not room.encrypted:
+                    continue
+
+                if user in room.users:
+                    changed_users.add(user)
+
+        self.olm.add_changed_users(changed_users)
+
+    def _handle_sync(self, response):
+        # type: (SyncType) -> None
+        # We already recieved such a sync response, do nothing in that case.
+        if self.next_batch == response.next_batch:
+            return
+
+        if isinstance(response, SyncResponse):
+            self.next_batch = response.next_batch
+
+        self._handle_to_device(response)
+
+        self._handle_invited_rooms(response)
+
+        self._handle_joined_rooms(response)
+
         if self.olm:
-            expired_verifications = self.olm.clear_verifications()
-
-            for event in expired_verifications:
-                for cb in self.to_device_callbacks:
-                    if (cb.filter is None
-                            or isinstance(event, cb.filter)):
-                        cb.func(event)
-
-            changed_users = set()
-            self.olm.uploaded_key_count = (
-                response.device_key_count.signed_curve25519)
-
-            for user in response.device_list.changed:
-                for room in self.rooms.values():
-                    if not room.encrypted:
-                        continue
-
-                    if user in room.users:
-                        changed_users.add(user)
-
-            for user in response.device_list.left:
-                for room in self.rooms.values():
-                    if not room.encrypted:
-                        continue
-
-                    if user in room.users:
-                        changed_users.add(user)
-
-            self.olm.add_changed_users(changed_users)
+            self._handle_expired_verifications()
+            self._handle_olm_events(response)
 
     def _decrypt_event_array(self, array):
         if not self.olm:
