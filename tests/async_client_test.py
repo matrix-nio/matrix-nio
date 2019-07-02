@@ -10,7 +10,7 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, GroupEncryptionError,
                  KeysUploadResponse, LocalProtocolError, LoginError,
                  LoginResponse, MegolmEvent, MembersSyncError, OlmTrustError,
                  RoomContextResponse, ProfileGetAvatarResponse,
-                 ProfileGetDisplayNameResponse,
+                 ProfileGetDisplayNameResponse, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
                  RoomEncryptionEvent, RoomInfo,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
@@ -111,6 +111,10 @@ class TestClass(object):
             DeviceList([ALICE_ID], []),
             []
         )
+
+    @staticmethod
+    def get_profile_response(displayname, avatar_url):
+        return {"displayname": displayname, "avatar_url": avatar_url}
 
     @staticmethod
     def get_displayname_response(displayname):
@@ -527,6 +531,28 @@ class TestClass(object):
 
         with pytest.raises(CallbackException):
             await async_client.receive_response(self.encryption_sync_response)
+
+    async def test_get_profile(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        base_url = "https://example.org/_matrix/client/r0"
+        name = faker.name()
+        avatar = faker.avatar_url().replace("#auto", "")
+
+        aioresponse.get(
+            "{}/profile/{}?access_token={}".format(
+                base_url, async_client.user_id, async_client.access_token
+            ),
+            status=200,
+            payload=self.get_profile_response(name, avatar)
+        )
+        resp = await async_client.get_profile()
+        assert isinstance(resp, ProfileGetResponse)
+        assert resp.displayname == name
+        assert resp.avatar_url.replace("#auto", "") == avatar
 
     async def test_get_set_displayname(self, async_client, aioresponse):
         await async_client.receive_response(
