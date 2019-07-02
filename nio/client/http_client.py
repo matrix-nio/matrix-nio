@@ -27,6 +27,12 @@ import h2
 import h11
 from logbook import Logger
 
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse  # type: ignore
+
+
 from . import Client, ClientConfig, logged_in, store_loaded
 from ..api import Api, MessageDirection
 from ..events import MegolmEvent
@@ -82,16 +88,14 @@ class RequestInfo(object):
 class HttpClient(Client):
     def __init__(
         self,
-        host,  # type: str
+        homeserver,  # type: str
         user="",  # type: str
         device_id="",  # type: Optional[str]
         store_path="",  # type: Optional[str]
         config=None,  # type: Optional[ClientConfig]
-        extra_path=""
     ):
         # type: (...) -> None
-        self.host = host
-        self.extra_path = extra_path.strip("/")
+        self.host, self.extra_path = HttpClient._parse_homeserver(homeserver)
         self.requests_made = {}  # type: Dict[UUID, RequestInfo]
         self.parse_queue = deque()  \
             # type: Deque[Tuple[RequestInfo, TransportResponse]]
@@ -101,6 +105,28 @@ class HttpClient(Client):
             # type: Optional[Union[HttpConnection, Http2Connection]]
 
         super().__init__(user, device_id, store_path, config)
+
+    @staticmethod
+    def _parse_homeserver(homeserver):
+        if not homeserver.startswith("http"):
+            homeserver = "https://{}".format(homeserver)
+
+        homeserver = urlparse(homeserver)
+
+        if homeserver.port:
+            port = homeserver.port
+        else:
+            if homeserver.scheme == "https":
+                port = 443
+            elif homeserver.scheme == "http":
+                port = 80
+            else:
+                raise ValueError("Invalid URI scheme for Homeserver")
+
+        host = "{}:{}".format(homeserver.hostname, port)
+        extra_path = homeserver.path.strip("/")
+
+        return host, extra_path
 
     @connected
     def _send(
