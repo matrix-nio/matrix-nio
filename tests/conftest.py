@@ -62,25 +62,16 @@ def alice_client(tempdir):
 
 
 if sys.version_info >= (3, 5):
-    from nio import AsyncClient
-    from aioresponses import aioresponses
+    from conftest_async import async_client, aioresponse
 
-    @pytest.fixture
-    async def async_client(tempdir, loop):
-        client = AsyncClient(
-            "https://example.org",
-            "ephemeral",
-            "DEVICEID",
-            tempdir
-        )
-        yield client
+if sys.version_info <= (3, 4):
+    def pytest_ignore_collect(path, config):
+        basename = path.basename
 
-        await client.close()
+        if "async" in basename:
+            return True
 
-    @pytest.fixture
-    def aioresponse():
-        with aioresponses() as m:
-            yield m
+        return False
 
 
 @pytest.fixture
