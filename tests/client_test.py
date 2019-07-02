@@ -748,42 +748,32 @@ class TestClass(object):
         http_client.connect(TransportType.HTTP2)
 
         _, _ = http_client.login("1234")
-
         http_client.receive(self.login_byte_response)
         response = http_client.next_response()
-
         assert isinstance(response, LoginResponse)
         assert http_client.access_token == "ABCD"
 
         _, _ = http_client.sync()
-
         http_client.receive(self.sync_byte_response)
         response = http_client.next_response()
-
         assert isinstance(response, SyncResponse)
         assert http_client.access_token == "ABCD"
 
         _, _ = http_client.get_avatar()
-
         http_client.receive(self.get_avatar_byte_response(None, 5))
         response = http_client.next_response()
-
         assert isinstance(response, ProfileGetAvatarResponse)
         assert not response.avatar_url
 
         new_avatar = faker.avatar_url().replace("#auto", "")
         _, _ = http_client.set_avatar(new_avatar)
-
         http_client.receive(self.empty_response(7))
         response = http_client.next_response()
-
         assert isinstance(response, ProfileSetAvatarResponse)
 
         _, _ = http_client.get_avatar()
-
         http_client.receive(self.get_avatar_byte_response(new_avatar, 9))
         response = http_client.next_response()
-
         assert isinstance(response, ProfileGetAvatarResponse)
         assert response.avatar_url.replace("#auto", "") == new_avatar
 
