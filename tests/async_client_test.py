@@ -10,7 +10,9 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, GroupEncryptionError,
                  KeysUploadResponse, LocalProtocolError, LoginError,
                  LoginResponse, MegolmEvent, MembersSyncError, OlmTrustError,
                  RoomContextResponse, ProfileGetAvatarResponse,
-                 ProfileSetAvatarResponse, RoomEncryptionEvent, RoomInfo,
+                 ProfileGetDisplayNameResponse,
+                 ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
+                 RoomEncryptionEvent, RoomInfo,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
                  SyncResponse, Timeline)
@@ -110,7 +112,12 @@ class TestClass(object):
             []
         )
 
-    def get_avatar_response(self, avatar_url):
+    @staticmethod
+    def get_displayname_response(displayname):
+        return {"displayname": displayname}
+
+    @staticmethod
+    def get_avatar_response(avatar_url):
         return {"avatar_url": avatar_url}
 
     def test_login(self, async_client, aioresponse):
@@ -520,6 +527,47 @@ class TestClass(object):
 
         with pytest.raises(CallbackException):
             await async_client.receive_response(self.encryption_sync_response)
+
+    async def test_get_set_displayname(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        base_url = "https://example.org/_matrix/client/r0"
+
+        aioresponse.get(
+            "{}/profile/{}/displayname?access_token={}".format(
+                base_url, async_client.user_id, async_client.access_token
+            ),
+            status=200,
+            payload=self.get_displayname_response(None)
+        )
+        resp = await async_client.get_displayname()
+        assert isinstance(resp, ProfileGetDisplayNameResponse)
+        assert not resp.displayname
+
+        aioresponse.put(
+            "{}/profile/{}/displayname?access_token={}".format(
+                base_url, async_client.user_id, async_client.access_token
+            ),
+            status=200,
+            payload={}
+        )
+        new_name = faker.name()
+        resp2 = await async_client.set_displayname(new_name)
+        assert isinstance(resp2, ProfileSetDisplayNameResponse)
+
+        aioresponse.get(
+            "{}/profile/{}/displayname?access_token={}".format(
+                base_url, async_client.user_id, async_client.access_token
+            ),
+            status=200,
+            payload=self.get_displayname_response(new_name)
+        )
+        resp3 = await async_client.get_displayname()
+        assert isinstance(resp3, ProfileGetDisplayNameResponse)
+        assert resp3.displayname == new_name
 
     async def test_get_set_avatar(self, async_client, aioresponse):
         await async_client.receive_response(
