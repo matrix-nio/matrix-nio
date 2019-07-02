@@ -743,3 +743,18 @@ class TestClass(object):
         store.ignore_devices(device_list)
         for device in device_list:
             assert device.trust_state == TrustState.ignored
+
+    def test_trust_state_loading(self, store):
+        devices = self.example_devices
+        bob_device = devices[BOB_ID][BOB_DEVICE]
+        store.save_device_keys(devices)
+        assert not bob_device.verified
+        store.verify_device(bob_device)
+        assert bob_device.verified
+
+        store2 = DefaultStore(store.user_id, store.device_id, store.store_path)
+        loaded_devices = store2.load_device_keys()
+
+        bob_device = loaded_devices[BOB_ID][BOB_DEVICE]
+
+        assert bob_device.verified

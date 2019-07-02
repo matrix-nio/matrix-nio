@@ -1103,6 +1103,40 @@ class DefaultStore(_MatrixStore):
         key = Key.from_olmdevice(device)
         return key in self.ignore_db
 
+    @use_database
+    def load_device_keys(self):
+        # type: () -> DeviceStore
+        store = DeviceStore()
+        account = self._get_account()
+
+        if not account:
+            return store
+
+        for d in account.device_keys:
+            device = OlmDevice(
+                d.user_id,
+                d.device_id,
+                {k.key_type: k.key for k in d.keys},
+                display_name=d.display_name,
+                deleted=d.deleted,
+            )
+
+            trust_state = TrustState.unset
+            key = Key.from_olmdevice(device)
+
+            if key in self.trust_db:
+                trust_state = TrustState.verified
+            elif key in self.blacklist_db:
+                trust_state = TrustState.blacklisted
+            elif key in self.ignore_db:
+                trust_state = TrustState.ignored
+
+            device.trust_state = trust_state
+
+            store.add(device)
+
+        return store
+
 
 @attr.s
 class SqliteStore(_MatrixStore):
