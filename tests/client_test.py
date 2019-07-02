@@ -7,12 +7,14 @@ from helpers import FrameFactory, ephemeral, ephemeral_dir, faker
 from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
                  HttpClient, JoinedMembersResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginResponse,
-                 MegolmEvent, ProfileGetAvatarResponse, ProfileGetResponse,
-                 ProfileSetAvatarResponse, RoomEncryptionEvent,
-                 RoomForgetResponse, RoomInfo, RoomKeyRequestResponse,
-                 RoomMember, RoomMemberEvent, Rooms, RoomSummary,
-                 ShareGroupSessionResponse, SyncResponse, Timeline,
-                 TransportType, TypingNoticeEvent, InviteMemberEvent, InviteInfo)
+                 MegolmEvent, ProfileGetAvatarResponse,
+                 ProfileGetDisplayNameResponse, ProfileGetResponse,
+                 ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
+                 RoomEncryptionEvent, RoomForgetResponse, RoomInfo,
+                 RoomKeyRequestResponse, RoomMember, RoomMemberEvent, Rooms,
+                 RoomSummary, ShareGroupSessionResponse, SyncResponse,
+                 Timeline, TransportType, TypingNoticeEvent,
+                 InviteMemberEvent, InviteInfo)
 from nio.messages import ToDeviceMessage
 
 HOST = "example.org"
@@ -94,6 +96,23 @@ class TestClass(object):
         )
 
         body = b"{}"
+
+        data = frame_factory.build_data_frame(
+            data=body,
+            stream_id=stream_id,
+            flags=['END_STREAM']
+        )
+
+        return f.serialize() + data.serialize()
+
+    def get_displayname_byte_response(self, displayname, stream_id=5):
+        frame_factory = FrameFactory()
+
+        f = frame_factory.build_headers_frame(
+            headers=self.example_response_headers, stream_id=stream_id
+        )
+
+        body = json.dumps({"displayname": displayname}).encode("utf-8")
 
         data = frame_factory.build_data_frame(
             data=body,
@@ -692,6 +711,38 @@ class TestClass(object):
         assert response.displayname == name
         assert response.avatar_url.replace("#auto", "") == avatar
 
+    def test_http_client_get_set_displayname(self, http_client):
+        http_client.connect(TransportType.HTTP2)
+
+        _, _ = http_client.login("1234")
+        http_client.receive(self.login_byte_response)
+        response = http_client.next_response()
+        assert isinstance(response, LoginResponse)
+        assert http_client.access_token == "ABCD"
+
+        _, _ = http_client.sync()
+        http_client.receive(self.sync_byte_response)
+        response = http_client.next_response()
+        assert isinstance(response, SyncResponse)
+        assert http_client.access_token == "ABCD"
+
+        _, _ = http_client.get_displayname()
+        http_client.receive(self.get_displayname_byte_response(None, 5))
+        response = http_client.next_response()
+        assert isinstance(response, ProfileGetDisplayNameResponse)
+        assert not response.displayname
+
+        new_name = faker.name()
+        _, _ = http_client.set_displayname(new_name)
+        http_client.receive(self.empty_response(7))
+        response = http_client.next_response()
+        assert isinstance(response, ProfileSetDisplayNameResponse)
+
+        _, _ = http_client.get_displayname()
+        http_client.receive(self.get_displayname_byte_response(new_name, 9))
+        response = http_client.next_response()
+        assert isinstance(response, ProfileGetDisplayNameResponse)
+        assert response.displayname == new_name
 
     def test_http_client_get_set_avatar(self, http_client):
         http_client.connect(TransportType.HTTP2)
