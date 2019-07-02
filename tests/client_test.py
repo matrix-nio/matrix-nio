@@ -804,3 +804,17 @@ class TestClass(object):
         )
         assert host == "example.org:8008"
         assert path == "_matrix"
+
+    def test_room_devices(self, client):
+        client.receive_response(self.login_response)
+        client.receive_response(self.sync_response)
+        client.receive_response(self.keys_query_response)
+
+        room_devices = client.room_devices(TEST_ROOM_ID)
+
+        assert ALICE_ID in room_devices
+        assert ALICE_DEVICE_ID in room_devices[ALICE_ID]
+
+        alice_device = room_devices[ALICE_ID][ALICE_DEVICE_ID]
+
+        assert alice_device

@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
 import attr
 from logbook import Logger
+from collections import defaultdict
 import warnings
 
 from ..crypto import ENCRYPTION_ENABLED
@@ -1029,3 +1030,37 @@ class Client(object):
             self.verify_device(sas.other_olm_device)
 
         return message
+
+    def room_devices(self, room_id):
+        # type (str) -> Dict[str, Dict[str, OlmDevice]]
+        """Get all Olm devices participating in a room.
+
+        Args:
+            room_id (str): The id of the room for which we would like to
+                collect all the devices.
+
+        Returns a dictionary holding the user as the key and a dictionary of
+        the device id as the key and OlmDevice as the value.
+
+        Raises LocalProtocolError if no room is found with the given room_id.
+        """
+        devices = defaultdict(dict)
+
+        if not self.olm:
+            return devices
+
+        try:
+            room = self.rooms[room_id]
+        except KeyError:
+            LocalProtocolError("No room found with room id {}".format(room_id))
+
+        if not room.encrypted:
+            return devices
+
+        users = room.users.keys()
+
+        for user in users:
+            user_devices = self.device_store.active_user_devices(user)
+            devices[user] = {d.id: d for d in user_devices}
+
+        return devices
