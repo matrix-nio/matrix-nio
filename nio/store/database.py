@@ -286,7 +286,7 @@ class LegacyMatrixStore(object):
 
         Args:
             device_keys (Dict[str, Dict[str, OlmDevice]]): A dictionary
-                containing a mapping from an user id to a dictionary containing
+                containing a mapping from a user id to a dictionary containing
                 a mapping of a device id to a OlmDevice.
         """
         rows = []
@@ -781,7 +781,7 @@ class MatrixStore(object):
 
         Args:
             device_keys (Dict[str, Dict[str, OlmDevice]]): A dictionary
-                containing a mapping from an user id to a dictionary containing
+                containing a mapping from a user id to a dictionary containing
                 a mapping of a device id to a OlmDevice.
         """
         account = self._get_account()

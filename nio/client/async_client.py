@@ -1133,9 +1133,9 @@ class AsyncClient(Client):
     @logged_in
     async def get_profile(self, user_id=None):
         # type: (Optional[str]) -> Union[ProfileGetResponse, ProfileGetError]
-        """Get an user's combined profile information.
+        """Get a user's combined profile information.
 
-        This queries the display name and avatar matrix content URI of an user
+        This queries the display name and avatar matrix content URI of a user
         from the server. Additional profile information may be present.
         The currently logged in user is queried if no user is specified.
 
@@ -1163,9 +1163,9 @@ class AsyncClient(Client):
             user_id=None  # type: Optional[str]
     ):
         # type: (...) -> Union[ProfileGetDisplayNameResponse, ProfileGetDisplayNameError]
-        """Get an user's display name.
+        """Get a user's display name.
 
-        This queries the display name of an user from the server.
+        This queries the display name of a user from the server.
         The currently logged in user is queried if no user is specified.
 
         Returns either a `ProfileGetDisplayNameResponse` if the request was
@@ -1220,9 +1220,9 @@ class AsyncClient(Client):
             user_id=None  # type: Optional[str]
     ):
         # type: (...) -> Union[ProfileGetAvatarResponse, ProfileGetAvatarError]
-        """Get an user's avatar URL.
+        """Get a user's avatar URL.
 
-        This queries the avatar matrix content URI of an user from the server.
+        This queries the avatar matrix content URI of a user from the server.
         The currently logged in user is queried if no user is specified.
 
         Returns either a `ProfileGetAvatarResponse` if the request was
