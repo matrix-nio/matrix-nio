@@ -786,7 +786,7 @@ class TestClass(object):
         with pytest.raises(CallbackException):
             client.receive_response(self.sync_invite_response)
 
-    def test_homeserver_ulr_parsing(self):
+    def test_homeserver_url_parsing(self):
         host, path = HttpClient._parse_homeserver("https://example.org:8080")
         assert host == "example.org:8080"
         assert path == ""
