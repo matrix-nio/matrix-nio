@@ -1191,8 +1191,8 @@ class AsyncClient(Client):
         # type: (str) -> Union[ProfileSetDisplayNameResponse, ProfileSetDisplayNameError]
         """Set user's display name.
 
-        This tells the server to set display name of currently logged
-        in user to supplied string.
+        This tells the server to set display name of the currently logged
+        in user to the supplied string.
 
         Returns either a `ProfileSetDisplayNameResponse` if the request was
         successful or a `ProfileSetDisplayNameError` if there was an error
@@ -1246,9 +1246,9 @@ class AsyncClient(Client):
     @logged_in
     async def set_avatar(self, avatar_url):
         # type: (str) -> Union[ProfileSetAvatarResponse, ProfileSetAvatarError]
-        """Set user's avatar URL.
+        """Set the user's avatar URL.
 
-        This tells the server to set avatar of the currently logged
+        This tells the server to set the avatar of the currently logged
         in user to supplied matrix content URI.
 
         Returns either a `ProfileSetAvatarResponse` if the request was

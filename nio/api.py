@@ -848,7 +848,7 @@ class Api(object):
     @staticmethod
     def profile_get(access_token, user_id):
         # type (str, str) -> Tuple[str, str]
-        """Get combined profile information for user.
+        """Get the combined profile information for a user.
 
         Returns the HTTP method and HTTP path for the request.
 

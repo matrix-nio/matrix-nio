@@ -712,9 +712,9 @@ class HttpClient(Client):
     @logged_in
     def set_displayname(self, displayname):
         # type: (str) -> Tuple[UUID, bytes]
-        """Set user's display name.
+        """Set the user's display name.
 
-        This tells the server to set display name of currently logged
+        This tells the server to set the display name of the currently logged
         in user to supplied string.
 
         Returns a unique uuid that identifies the request and the bytes that
@@ -761,7 +761,7 @@ class HttpClient(Client):
     @logged_in
     def set_avatar(self, avatar_url):
         # type: (str) -> Tuple[UUID, bytes]
-        """Set user's avatar URL.
+        """Set the user's avatar URL.
 
         This tells the server to set avatar of the currently logged
         in user to supplied matrix content URI.
