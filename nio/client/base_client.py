@@ -531,9 +531,9 @@ class Client(object):
                 if decrypted_event:
                     to_device_event = decrypted_event
 
-            elif isinstance(to_device_event, KeyVerificationEvent):
-                if self.olm:
-                    self.olm.handle_key_verification(to_device_event)
+        elif isinstance(to_device_event, KeyVerificationEvent):
+            if self.olm:
+                self.olm.handle_key_verification(to_device_event)
 
         return decrypted_event
 
