@@ -9,3 +9,4 @@ __pycache__
 .tox/
 doc/build
 matrix_nio.egg-info/
+dist
