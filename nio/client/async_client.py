@@ -34,11 +34,13 @@ from ..messages import ToDeviceMessage
 from ..responses import (JoinedMembersError, JoinedMembersResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
                          KeysUploadResponse, LoginError, LoginResponse,
-                         ProfileGetAvatarResponse,
-                         ProfileGetDisplayNameResponse, ProfileGetResponse,
-                         ProfileSetAvatarResponse,
-                         ProfileSetDisplayNameResponse,
-                         Response, RoomContextError, RoomContextResponse,
+                         ProfileGetAvatarResponse, ProfileGetAvatarError,
+                         ProfileGetDisplayNameResponse,
+                         ProfileGetDisplayNameError, ProfileGetResponse,
+                         ProfileGetError, ProfileSetAvatarResponse,
+                         ProfileSetAvatarError, ProfileSetDisplayNameResponse,
+                         ProfileSetDisplayNameError, Response,
+                         RoomContextError, RoomContextResponse,
                          RoomKeyRequestError, RoomKeyRequestResponse,
                          RoomMessagesError, RoomMessagesResponse,
                          RoomSendResponse, ShareGroupSessionError,
@@ -50,6 +52,15 @@ if False:
     from .crypto import OlmDevice
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
+
+_ProfileGetDisplayNameT = Union[
+    ProfileGetDisplayNameResponse,
+    ProfileGetDisplayNameError
+]
+_ProfileSetDisplayNameT = Union[
+    ProfileSetDisplayNameResponse,
+    ProfileSetDisplayNameError
+]
 
 
 @attr.s
@@ -1162,7 +1173,7 @@ class AsyncClient(Client):
             self,
             user_id=None  # type: Optional[str]
     ):
-        # type: (...) -> Union[ProfileGetDisplayNameResponse, ProfileGetDisplayNameError]
+        # type: (...) -> _ProfileGetDisplayNameT
         """Get a user's display name.
 
         This queries the display name of a user from the server.
@@ -1188,7 +1199,7 @@ class AsyncClient(Client):
 
     @logged_in
     async def set_displayname(self, displayname):
-        # type: (str) -> Union[ProfileSetDisplayNameResponse, ProfileSetDisplayNameError]
+        # type: (str) -> _ProfileSetDisplayNameT
         """Set user's display name.
 
         This tells the server to set display name of the currently logged
