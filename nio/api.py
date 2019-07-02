@@ -90,7 +90,7 @@ class Api(object):
         return "m.file"
 
     @staticmethod
-    def mxc_to_http(mxc):
+    def mxc_to_http(mxc, homeserver=None):
         # type: (str) -> Optional[str]
         """Convert a matrix content URI to a HTTP URI."""
         url = urlparse(mxc)
@@ -101,15 +101,24 @@ class Api(object):
         if not url.netloc or not url.path:
             return None
 
+        homeserver = urlparse(homeserver) if homeserver else None
+
         http_url = (
-            "https://{host}/_matrix/media/r0/download/"
+            "{homeserver}/_matrix/media/r0/download/"
             "{server_name}{mediaId}"
-        ).format(host=url.netloc, server_name=url.netloc, mediaId=url.path)
+        ).format(
+            homeserver=(
+                homeserver.geturl() if homeserver
+                else "https://{}".format(url.netloc)
+            ),
+            server_name=url.hostname,
+            mediaId=url.path
+        )
 
         return http_url
 
     @staticmethod
-    def encrypted_mxc_to_plumb(mxc, key, hash, iv):
+    def encrypted_mxc_to_plumb(mxc, key, hash, iv, homeserver=None):
         # type: (str, str, str, str) -> Optional[str]
         """Convert a matrix content URI to a encrypted mxc URI.
 
@@ -137,10 +146,19 @@ class Api(object):
         if not url.netloc or not url.path:
             return None
 
+        homeserver = urlparse(homeserver) if homeserver else None
+
+        host = (homeserver._replace(scheme="emxc").geturl()
+                if homeserver else None)
+
         plumb_url = (
-            "emxc://{host}/_matrix/media/r0/download/"
+            "{homeserver}/_matrix/media/r0/download/"
             "{server_name}{mediaId}"
-        ).format(host=url.netloc, server_name=url.netloc, mediaId=url.path)
+        ).format(
+            homeserver=host if host else "emxc://{}".format(url.netloc),
+            server_name=url.hostname,
+            mediaId=url.path
+        )
 
         query_parameters = {
             "key": key,
