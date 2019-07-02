@@ -4,11 +4,13 @@ from os import path
 
 import pytest
 
+from helpers import faker
 from nio import (DeviceList, DeviceOneTimeKeyCount, GroupEncryptionError,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginError,
                  LoginResponse, MegolmEvent, MembersSyncError, OlmTrustError,
-                 RoomContextResponse, RoomEncryptionEvent, RoomInfo,
+                 RoomContextResponse, ProfileGetAvatarResponse,
+                 ProfileSetAvatarResponse, RoomEncryptionEvent, RoomInfo,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
                  SyncResponse, Timeline)
@@ -107,6 +109,9 @@ class TestClass(object):
             DeviceList([ALICE_ID], []),
             []
         )
+
+    def get_avatar_response(self, avatar_url):
+        return {"avatar_url": avatar_url}
 
     def test_login(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
@@ -515,3 +520,47 @@ class TestClass(object):
 
         with pytest.raises(CallbackException):
             await async_client.receive_response(self.encryption_sync_response)
+
+    async def test_get_set_avatar(self, async_client, aioresponse):
+        base_url = "https://example.org/_matrix/client/r0"
+
+        aioresponse.post(
+            "{}/login".format(base_url),
+            status=200,
+            payload=self.login_response
+        )
+        await async_client.login("wordpass")
+        assert async_client.logged_in
+
+        aioresponse.get(
+            "{}/profile/{}/avatar_url?access_token={}".format(
+                base_url, async_client.user_id, async_client.access_token
+            ),
+            status=200,
+            payload=self.get_avatar_response(None)
+        )
+        resp = await async_client.get_avatar()
+        assert isinstance(resp, ProfileGetAvatarResponse)
+        assert not resp.avatar_url
+
+        aioresponse.put(
+            "{}/profile/{}/avatar_url?access_token={}".format(
+                base_url, async_client.user_id, async_client.access_token
+            ),
+            status=200,
+            payload={}
+        )
+        new_avatar = faker.avatar_url().replace("#auto", "")
+        resp2 = await async_client.set_avatar(new_avatar)
+        assert isinstance(resp2, ProfileSetAvatarResponse)
+
+        aioresponse.get(
+            "{}/profile/{}/avatar_url?access_token={}".format(
+                base_url, async_client.user_id, async_client.access_token
+            ),
+            status=200,
+            payload=self.get_avatar_response(new_avatar)
+        )
+        resp3 = await async_client.get_avatar()
+        assert isinstance(resp3, ProfileGetAvatarResponse)
+        assert resp3.avatar_url.replace("#auto", "") == new_avatar
