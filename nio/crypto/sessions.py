@@ -271,6 +271,24 @@ class OlmDevice(object):
 
         return device
 
+    @property
+    def verified(self):
+        # type: () -> bool
+        """Is the device verified."""
+        return self.trust_state == TrustState.verified
+
+    @property
+    def ignored(self):
+        # type: () -> bool
+        """Is the device ignored."""
+        return self.trust_state == TrustState.ignored
+
+    @property
+    def blacklisted(self):
+        # type: () -> bool
+        """Is the device blacklisted."""
+        return self.trust_state == TrustState.blacklisted
+
 
 @attr.s
 class OutgoingKeyRequest(object):

@@ -718,20 +718,27 @@ class TestClass(object):
         store.save_device_keys(devices)
 
         assert bob_device.trust_state == TrustState.unset
+        assert not bob_device.verified
         store.verify_device(bob_device)
         assert bob_device.trust_state == TrustState.verified
+        assert bob_device.verified
         store.unverify_device(bob_device)
         assert bob_device.trust_state == TrustState.unset
+        assert not bob_device.verified
 
         store.blacklist_device(bob_device)
         assert bob_device.trust_state == TrustState.blacklisted
+        assert bob_device.blacklisted
         store.unblacklist_device(bob_device)
         assert bob_device.trust_state == TrustState.unset
+        assert not bob_device.blacklisted
 
         store.ignore_device(bob_device)
         assert bob_device.trust_state == TrustState.ignored
+        assert bob_device.ignored
         store.unignore_device(bob_device)
         assert bob_device.trust_state == TrustState.unset
+        assert not bob_device.ignored
 
         store.ignore_devices(device_list)
         for device in device_list:
