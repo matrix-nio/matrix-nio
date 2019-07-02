@@ -755,12 +755,12 @@ class TestClass(object):
         with pytest.raises(LocalProtocolError):
             client_no_e2e.olm_account_shared
 
-        not client_no_e2e.should_query_keys
+        assert not client_no_e2e.should_query_keys
 
-        not client_no_e2e.users_for_key_query
-        not client_no_e2e.key_verifications
-        not client_no_e2e.outgoing_to_device_messages
-        not client_no_e2e.get_active_sas(ALICE_ID, ALICE_DEVICE_ID)
+        assert not client_no_e2e.users_for_key_query
+        assert not client_no_e2e.key_verifications
+        assert not client_no_e2e.outgoing_to_device_messages
+        assert not client_no_e2e.get_active_sas(ALICE_ID, ALICE_DEVICE_ID)
 
         to_device = ToDeviceMessage("m.test", ALICE_ID, ALICE_DEVICE_ID, {})
         client_no_e2e._mark_to_device_message_as_sent(to_device)
