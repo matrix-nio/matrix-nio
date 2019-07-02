@@ -1380,6 +1380,32 @@ class SqliteStore(_MatrixStore):
 
         return trust_state == TrustState.ignored
 
+    @use_database
+    def load_device_keys(self):
+        # type: () -> DeviceStore
+        store = DeviceStore()
+        account = self._get_account()
+
+        if not account:
+            return store
+
+        for d in account.device_keys:
+            try:
+                trust_state = d.trust_state[0].state
+            except IndexError:
+                trust_state = TrustState.unset
+
+            store.add(OlmDevice(
+                d.user_id,
+                d.device_id,
+                {k.key_type: k.key for k in d.keys},
+                display_name=d.display_name,
+                deleted=d.deleted,
+                trust_state=trust_state
+            ))
+
+        return store
+
 
 class SqliteMemoryStore(SqliteStore):
     def __init__(self, user_id, device_id, pickle_key=""):

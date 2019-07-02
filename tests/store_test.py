@@ -758,3 +758,22 @@ class TestClass(object):
         bob_device = loaded_devices[BOB_ID][BOB_DEVICE]
 
         assert bob_device.verified
+
+    def test_trust_state_loading_sql(self, sqlstore):
+        devices = self.example_devices
+        bob_device = devices[BOB_ID][BOB_DEVICE]
+        sqlstore.save_device_keys(devices)
+        assert not bob_device.verified
+        sqlstore.verify_device(bob_device)
+        assert bob_device.verified
+
+        store2 = SqliteStore(
+            sqlstore.user_id,
+            sqlstore.device_id,
+            sqlstore.store_path
+        )
+        loaded_devices = store2.load_device_keys()
+
+        bob_device = loaded_devices[BOB_ID][BOB_DEVICE]
+
+        assert bob_device.verified
