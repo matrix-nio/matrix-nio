@@ -522,15 +522,12 @@ class TestClass(object):
             await async_client.receive_response(self.encryption_sync_response)
 
     async def test_get_set_avatar(self, async_client, aioresponse):
-        base_url = "https://example.org/_matrix/client/r0"
-
-        aioresponse.post(
-            "{}/login".format(base_url),
-            status=200,
-            payload=self.login_response
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
         )
-        await async_client.login("wordpass")
         assert async_client.logged_in
+
+        base_url = "https://example.org/_matrix/client/r0"
 
         aioresponse.get(
             "{}/profile/{}/avatar_url?access_token={}".format(
