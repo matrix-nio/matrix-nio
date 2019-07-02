@@ -66,13 +66,16 @@ if sys.version_info >= (3, 5):
     from aioresponses import aioresponses
 
     @pytest.fixture
-    def async_client(tempdir):
-        return AsyncClient(
+    async def async_client(tempdir, loop):
+        client = AsyncClient(
             "https://example.org",
             "ephemeral",
             "DEVICEID",
             tempdir
         )
+        yield client
+
+        await client.close()
 
     @pytest.fixture
     def aioresponse():

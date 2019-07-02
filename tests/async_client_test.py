@@ -195,8 +195,7 @@ class TestClass(object):
         assert async_client.olm_account_shared
         assert async_client.should_upload_keys
 
-    def test_keys_query(self, async_client, aioresponse):
-        loop = asyncio.get_event_loop()
+    async def test_keys_query(self, async_client, aioresponse):
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
@@ -208,17 +207,16 @@ class TestClass(object):
             payload=self.keys_query_response
         )
 
-        loop.run_until_complete(async_client.login("wordpass"))
+        await async_client.login("wordpass")
         assert not async_client.should_query_keys
 
-        async_client.receive_response(self.encryption_sync_response)
+        await async_client.receive_response(self.encryption_sync_response)
         assert async_client.should_query_keys
 
-        loop.run_until_complete(async_client.keys_query())
+        await async_client.keys_query()
         assert not async_client.should_query_keys
 
-    def test_message_sending(self, async_client, aioresponse):
-        loop = asyncio.get_event_loop()
+    async def test_message_sending(self, async_client, aioresponse):
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
@@ -241,25 +239,20 @@ class TestClass(object):
             payload=self.keys_query_response
         )
 
+        await async_client.login("wordpass")
 
-        loop.run_until_complete(async_client.login("wordpass"))
+        await async_client.receive_response(self.encryption_sync_response)
 
-        async_client.receive_response(self.encryption_sync_response)
-
-        response = loop.run_until_complete(
-            async_client.joined_members(TEST_ROOM_ID)
-        )
+        response = await async_client.joined_members(TEST_ROOM_ID)
 
         async_client.olm.create_outbound_group_session(TEST_ROOM_ID)
         async_client.olm.outbound_group_sessions[TEST_ROOM_ID].shared = True
 
-        response = loop.run_until_complete(
-            async_client.room_send(
-                TEST_ROOM_ID,
-                "m.room.message",
-                {"body": "hello"},
-                "1"
-            )
+        response = await async_client.room_send(
+            TEST_ROOM_ID,
+            "m.room.message",
+            {"body": "hello"},
+            "1"
         )
 
         assert isinstance(response, RoomSendResponse)
@@ -277,14 +270,13 @@ class TestClass(object):
         }
 
 
-    def test_key_claiming(self, alice_client, async_client, aioresponse):
-        loop = asyncio.get_event_loop()
-        async_client.receive_response(
+    async def test_key_claiming(self, alice_client, async_client, aioresponse):
+        await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
         assert async_client.logged_in
 
-        async_client.receive_response(self.encryption_sync_response)
+        await async_client.receive_response(self.encryption_sync_response)
 
         alice_client.load_store()
         alice_device = OlmDevice(
@@ -305,22 +297,19 @@ class TestClass(object):
             payload=self.keys_claim_dict(alice_client)
         )
 
-        response = loop.run_until_complete(
-            async_client.keys_claim(missing)
-        )
+        response = await async_client.keys_claim(missing)
 
         assert isinstance(response, KeysClaimResponse)
         assert not async_client.get_missing_sessions(TEST_ROOM_ID)
         assert async_client.olm.session_store.get(alice_device.curve25519)
 
-    def test_session_sharing(self, alice_client, async_client, aioresponse):
-        loop = asyncio.get_event_loop()
-        async_client.receive_response(
+    async def test_session_sharing(self, alice_client, async_client, aioresponse):
+        await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
         assert async_client.logged_in
 
-        async_client.receive_response(self.encryption_sync_response)
+        await async_client.receive_response(self.encryption_sync_response)
 
         alice_client.load_store()
         alice_device = OlmDevice(
@@ -364,9 +353,7 @@ class TestClass(object):
         with pytest.raises(KeyError):
             session = async_client.olm.outbound_group_sessions[TEST_ROOM_ID]
 
-        response = loop.run_until_complete(
-            async_client.share_group_session(TEST_ROOM_ID, "1")
-        )
+        response = await async_client.share_group_session(TEST_ROOM_ID, "1")
 
         session = async_client.olm.outbound_group_sessions[TEST_ROOM_ID]
         assert session.shared
@@ -375,14 +362,13 @@ class TestClass(object):
         assert not async_client.get_missing_sessions(TEST_ROOM_ID)
         assert async_client.olm.session_store.get(alice_device.curve25519)
 
-    def test_joined_members(self, async_client, aioresponse):
-        loop = asyncio.get_event_loop()
-        async_client.receive_response(
+    async def test_joined_members(self, async_client, aioresponse):
+        await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
         assert async_client.logged_in
 
-        async_client.receive_response(self.encryption_sync_response)
+        await async_client.receive_response(self.encryption_sync_response)
         aioresponse.get(
             "https://example.org/_matrix/client/r0/rooms/{}/"
             "joined_members?access_token=abc123".format(TEST_ROOM_ID),
@@ -393,21 +379,18 @@ class TestClass(object):
         room = async_client.rooms[TEST_ROOM_ID]
         assert not room.members_synced
 
-        response = loop.run_until_complete(
-            async_client.joined_members(TEST_ROOM_ID)
-        )
+        response = await async_client.joined_members(TEST_ROOM_ID)
 
         assert isinstance(response, JoinedMembersResponse)
         assert room.members_synced
 
-    def test_session_sharing(self, alice_client, async_client, aioresponse):
-        loop = asyncio.get_event_loop()
-        async_client.receive_response(
+    async def test_session_sharing(self, alice_client, async_client, aioresponse):
+        await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
         assert async_client.logged_in
 
-        async_client.receive_response(self.encryption_sync_response)
+        await async_client.receive_response(self.encryption_sync_response)
 
         alice_client.load_store()
 
@@ -429,14 +412,14 @@ class TestClass(object):
             TEST_ROOM_ID,
         )
 
-        loop.run_until_complete(async_client.request_room_key(event, "1"))
+        await async_client.request_room_key(event, "1")
 
         assert "session_id_123" in async_client.outgoing_key_requests
 
-    def test_key_exports(self, async_client, tempdir):
+    async def test_key_exports(self, async_client, tempdir):
         file = path.join(tempdir, "keys_file")
 
-        async_client.receive_response(
+        await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
 
@@ -449,8 +432,7 @@ class TestClass(object):
             async_client.olm.account.identity_keys["curve25519"],
             out_session.id
         )
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(async_client.export_keys(file, "pass"))
+        await async_client.export_keys(file, "pass")
 
         alice_client = AsyncClient(
             "https://example.org",
@@ -462,7 +444,7 @@ class TestClass(object):
         alice_client.user_id = ALICE_ID
         alice_client.load_store()
 
-        loop.run_until_complete(alice_client.import_keys(file, "pass"))
+        await alice_client.import_keys(file, "pass")
 
         imported_session = alice_client.olm.inbound_group_store.get(
             TEST_ROOM_ID,
@@ -472,15 +454,14 @@ class TestClass(object):
 
         assert imported_session.id == out_session.id
 
-    def test_context(self, async_client, aioresponse):
-        loop = asyncio.get_event_loop()
-        async_client.receive_response(
+    async def test_context(self, async_client, aioresponse):
+        await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
         assert async_client.logged_in
         event_id = "$15163622445EBvZJ:localhost"
 
-        async_client.receive_response(self.encryption_sync_response)
+        await async_client.receive_response(self.encryption_sync_response)
         aioresponse.get(
             "https://example.org/_matrix/client/r0/rooms/{}/"
             "context/{}?access_token=abc123".format(
@@ -491,19 +472,16 @@ class TestClass(object):
             payload=self.context_response
         )
 
-        response = loop.run_until_complete(
-            async_client.room_context(TEST_ROOM_ID, event_id)
-        )
+        response = await async_client.room_context(TEST_ROOM_ID, event_id)
 
         assert isinstance(response, RoomContextResponse)
 
-    def test_room_messages(self, async_client, aioresponse):
-        loop = asyncio.get_event_loop()
-        async_client.receive_response(
+    async def test_room_messages(self, async_client, aioresponse):
+        await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
 
-        async_client.receive_response(self.encryption_sync_response)
+        await async_client.receive_response(self.encryption_sync_response)
         aioresponse.get(
             "https://example.org/_matrix/client/r0/rooms/{}/"
             "messages?access_token=abc123"
@@ -514,8 +492,26 @@ class TestClass(object):
             payload=self.messages_response
         )
 
-        response = loop.run_until_complete(
-            async_client.room_messages(TEST_ROOM_ID, "start_token")
-        )
+        response = await async_client.room_messages(TEST_ROOM_ID, "start_token")
 
         assert isinstance(response, RoomMessagesResponse)
+
+    async def test_event_callback(self, async_client):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+
+        class CallbackException(Exception):
+            pass
+
+        async def cb(_, event):
+            if isinstance(event, RoomMemberEvent):
+                raise CallbackException()
+
+        async_client.add_event_callback(
+            cb,
+            (RoomMemberEvent, RoomEncryptionEvent)
+        )
+
+        with pytest.raises(CallbackException):
+            await async_client.receive_response(self.encryption_sync_response)

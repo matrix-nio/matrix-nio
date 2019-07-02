@@ -39,7 +39,7 @@ from ..responses import (JoinedMembersError, JoinedMembersResponse,
                          RoomMessagesError, RoomMessagesResponse,
                          RoomSendResponse, ShareGroupSessionError,
                          ShareGroupSessionResponse, SyncError, SyncResponse,
-                         ToDeviceError, ToDeviceResponse)
+                         ToDeviceError, ToDeviceResponse, PartialSyncResponse)
 
 if False:
     from ..events import MegolmEvent
@@ -185,6 +185,124 @@ class AsyncClient(Client):
         response.transport_response = transport_response
         return response
 
+    async def _handle_to_device(self, response):
+        decrypted_to_device = []  # type: ignore
+
+        for index, to_device_event in enumerate(response.to_device_events):
+            decrypted_event = self._handle_decrypt_to_device(to_device_event)
+
+            if decrypted_event:
+                decrypted_to_device.append((index, decrypted_event))
+                to_device_event = decrypted_event
+
+            for cb in self.to_device_callbacks:
+                if (cb.filter is None
+                        or isinstance(to_device_event, cb.filter)):
+                    await asyncio.coroutine(cb.func)(to_device_event)
+
+        self._replace_decrypted_to_device(decrypted_to_device, response)
+
+    async def _handle_invited_rooms(self, response):
+        for room_id, info in response.rooms.invite.items():
+            room = self._get_invited_room(room_id)
+
+            for event in info.invite_state:
+                for cb in self.event_callbacks:
+                    if (cb.filter is None or isinstance(event, cb.filter)):
+                        await asyncio.coroutine(cb.func)(room, event)
+
+                room.handle_event(event)
+
+    async def _handle_joined_rooms(self, response):
+        encrypted_rooms = set()
+
+        for room_id, join_info in response.rooms.join.items():
+            self._handle_joined_state(room_id, join_info, encrypted_rooms)
+
+            room = self.rooms[room_id]
+            decrypted_events = []
+
+            for index, event in enumerate(join_info.timeline.events):
+                decrypted_event = self._handle_timeline_event(
+                    event,
+                    room_id,
+                    room,
+                    encrypted_rooms
+                )
+
+                if decrypted_event:
+                    event = decrypted_event
+                    decrypted_events.append((index, decrypted_event))
+
+                for cb in self.event_callbacks:
+                    if (cb.filter is None or isinstance(event, cb.filter)):
+                        await asyncio.coroutine(cb.func)(room, event)
+
+            # Replace the Megolm events with decrypted ones
+            for decrypted_event in decrypted_events:
+                index, event = decrypted_event
+                join_info.timeline.events[index] = event
+
+            for event in join_info.ephemeral:
+                room.handle_ephemeral_event(event)
+
+                for cb in self.ephemeral_callbacks:
+                    if (cb.filter is None or isinstance(event, cb.filter)):
+                        await asyncio.coroutine(cb.func)(room, event)
+
+            if room.encrypted and self.olm is not None:
+                self.olm.update_tracked_users(room)
+
+        self.encrypted_rooms.update(encrypted_rooms)
+
+        if self.store:
+            self.store.save_encrypted_rooms(encrypted_rooms)
+
+    async def _handle_expired_verifications(self):
+        expired_verifications = self.olm.clear_verifications()
+
+        for event in expired_verifications:
+            for cb in self.to_device_callbacks:
+                if (cb.filter is None
+                        or isinstance(event, cb.filter)):
+                    await asyncio.coroutine(cb.func)(event)
+
+    async def _handle_sync(self, response):
+        # We already recieved such a sync response, do nothing in that case.
+        if self.next_batch == response.next_batch:
+            return
+
+        if isinstance(response, SyncResponse):
+            self.next_batch = response.next_batch
+
+        await self._handle_to_device(response)
+
+        await self._handle_invited_rooms(response)
+
+        await self._handle_joined_rooms(response)
+
+        if self.olm:
+            await self._handle_expired_verifications()
+            self._handle_olm_events(response)
+
+    async def receive_response(self, response):
+        """Receive a Matrix Response and change the client state accordingly.
+
+        Some responses will get edited for the callers convenience e.g. sync
+        responses that contain encrypted messages. The encrypted messages will
+        be replaced by decrypted ones if decryption is possible.
+
+        Args:
+            response (Response): the response that we wish the client to handle
+        """
+        if not isinstance(response, Response):
+            raise ValueError("Invalid response received")
+
+        if isinstance(response, (SyncResponse, PartialSyncResponse)):
+            await self._handle_sync(response)
+        else:
+            super().receive_response(response)
+
     async def _send(
             self,
             response_class,
@@ -200,7 +318,7 @@ class AsyncClient(Client):
             transport_response,
             response_data
         )
-        self.receive_response(response)
+        await self.receive_response(response)
 
         return response
 
