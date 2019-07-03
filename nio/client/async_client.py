@@ -459,10 +459,11 @@ class AsyncClient(Client):
     @logged_in
     async def sync_forever(
             self,
-            timeout=None,      # type: Optional[int]
-            sync_filter=None,  # type: Optional[Dict[Any, Any]]
-            since=None,        # type: Optional[str]
-            full_state=None    # type: Optional[bool]
+            timeout=None,         # type: Optional[int]
+            sync_filter=None,     # type: Optional[Dict[Any, Any]]
+            since=None,           # type: Optional[str]
+            full_state=None,      # type: Optional[bool]
+            loop_sleep_time=None  # type: Optional[int]
     ):
         # type: (...) -> None
         """Continuously sync with the configured homeserver.
@@ -474,22 +475,24 @@ class AsyncClient(Client):
         syncs. To react to the responses a response callback should be added.
 
         Args:
-            timeout(int, optional): The maximum time that the server should
+            timeout (int, optional): The maximum time that the server should
                 wait for new events before it should return the request
                 anyways, in milliseconds.
             sync_filter (Dict[Any, Any], optional): A filter that should be
                 used for this sync request.
-            full_state(bool, optional): Controls whether to include the full
+            full_state (bool, optional): Controls whether to include the full
                 state for all rooms the user is a member of. If this is set to
                 true, then all state events will be returned, even if since is
                 non-empty. The timeline will still be limited by the since
                 parameter. This argument will be used only for the first sync
                 request.
-            since(str, otpional): A token specifying a point in time where to
+            since (str, otpional): A token specifying a point in time where to
                 continue the sync from. Defaults to the last sync token we
                 received from the server using this API call. This argument
                 will be used only for the first sync request, the subsequent
                 sync requests will use the token from the last sync response.
+            loop_sleep_time (int, optional): The sleep time if any between
+                successful sync loop iterations in milliseconds.
 
         """
         while True:
@@ -512,6 +515,9 @@ class AsyncClient(Client):
                     responses.append(await self.keys_query())
 
                 await self.run_response_callbacks(responses)
+
+                if loop_sleep_time:
+                    await asyncio.sleep(loop_sleep_time / 1000)
 
             except asyncio.CancelledError:
                 break
