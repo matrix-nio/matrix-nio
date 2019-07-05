@@ -1255,10 +1255,10 @@ class Schemas(object):
     get_profile = {
         "type": "object",
         "properties": {
-            "displayname": {"type": ["string", "null"]},
-            "avatar_url": {"type": ["string", "null"]},
+            "displayname": {"type": "string"},
+            "avatar_url": {"type": "string"},
         },
-        "required": ["displayname", "avatar_url"]
+        "not": {"required": ["errcode"]}
     }
 
     get_displayname = {
