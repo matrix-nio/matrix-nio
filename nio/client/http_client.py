@@ -33,7 +33,8 @@ except ImportError:
     from urlparse import urlparse  # type: ignore
 
 
-from . import Client, ClientConfig, logged_in, store_loaded
+from . import Client, ClientConfig
+from .base_client import logged_in, store_loaded
 from ..api import Api, MessageDirection
 from ..events import MegolmEvent
 from ..exceptions import LocalProtocolError, RemoteTransportError

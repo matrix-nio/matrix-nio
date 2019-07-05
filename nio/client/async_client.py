@@ -26,7 +26,8 @@ import attr
 from aiohttp import ClientResponse, ClientSession, ContentTypeError
 from aiohttp.client_exceptions import ClientConnectionError
 
-from . import Client, ClientConfig, logged_in, store_loaded
+from . import Client, ClientConfig
+from .base_client import logged_in, store_loaded
 from ..api import Api, MessageDirection
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
