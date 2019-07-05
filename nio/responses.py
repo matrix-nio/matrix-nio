@@ -274,6 +274,8 @@ class ErrorResponse(Response):
 
 @attr.s
 class LimitExceededError(ErrorResponse):
+    """A response representing a "Too many requests" error from the server."""
+
     retry_after_ms = attr.ib(default=2000, type=int)
     room_id = attr.ib(default=None, type=Optional[str])
 
