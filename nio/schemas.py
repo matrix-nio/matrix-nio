@@ -1080,7 +1080,14 @@ class Schemas(object):
                     "call_id": {"type": "string"},
                     "lifetime": {"type": "integer"},
                     "version": {"type": "integer"},
-                    "offer": {"type": "object"},
+                    "offer": {
+                        "type": "object",
+                        "properties": {
+                            "type": {"type": "string", "enum": ["offer"]},
+                            "sdp": {"type": "string"},
+                        },
+                        "required": ["type", "sdp"]
+                    },
                 },
                 "required": [
                     "call_id",
@@ -1105,7 +1112,14 @@ class Schemas(object):
                 "properties": {
                     "call_id": {"type": "string"},
                     "version": {"type": "integer"},
-                    "answer": {"type": "object"},
+                    "answer": {
+                        "type": "object",
+                        "properties": {
+                            "type": {"type": "string", "enum": ["answer"]},
+                            "sdp": {"type": "string"},
+                        },
+                        "required": ["type", "sdp"]
+                    },
                 },
                 "required": [
                     "call_id",
