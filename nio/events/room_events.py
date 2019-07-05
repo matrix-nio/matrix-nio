@@ -876,7 +876,7 @@ class RoomMessageFormatted(RoomMessage):
 
 
 @attr.s
-class RoomMessageText(RoomMessage):
+class RoomMessageText(RoomMessageFormatted):
     """A room message corresponding to the m.text msgtype.
 
     This message is the most basic message and is used to represent text.
