@@ -29,6 +29,33 @@ from .misc import BadEventType, UnknownBadEvent, validate_or_badevent, verify
 
 @attr.s
 class Event(object):
+    """Matrix Event class.
+
+    This is the base event class, most events inherit from this class.
+
+    Attributes:
+        source (dict): The source dictionary of the event. This allows access
+            to all the event fields in a non-secure way.
+        event_id (str): A globally unique event identifier.
+        sender (str): The fully-qualified ID of the user who sent this
+            event.
+        server_timestamp (int): Timestamp in milliseconds on originating
+            homeserver when this event was sent.
+        decrypted (bool): A flag signaling if the event was decrypted.
+        verified (bool): A flag signaling if the event is verified, is True if
+            the event was sent from a verified device.
+        sender_key (str, optional): The public key of the sender that was used
+            to establish the encrypted session. Is only set if decrypted is
+            True, otherwise None.
+        session_id (str, optional): The unique identifier of the session that
+            was used to decrypt the message. Is only set if decrypted is True,
+            otherwise None.
+        transaction_id (str, optional): The unique identifier that was used
+            when the message was sent. Is only set if the message was sent from
+            our own device, otherwise None.
+
+    """
+
     source = attr.ib()
 
     event_id = attr.ib(init=False)
@@ -49,6 +76,12 @@ class Event(object):
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[Event, BadEventType]
+        """Create an Event from a dictionary.
+
+        Args:
+            parsed_dict (dict): The dictionary representation of the event.
+
+        """
         return cls(parsed_dict)
 
     @classmethod
@@ -57,6 +90,22 @@ class Event(object):
         event_dict,  # type: Dict[Any, Any]
     ):
         # type: (...) -> Union[Event, BadEventType]
+        """Parse a Matrix event and create a higher level event object.
+
+        This function parses the type of the Matrix event and produces a higher
+        level event object representing the parsed event.
+
+        The event structure is checked for correctness and the event fields are
+        type-checked. If this validation process fails for an event an BadEvent
+        will be produced.
+
+        If the type of the event is now known an UnknownEvent will be produced.
+
+        Args:
+            event_dict (dict): The dictionary representation of the event.
+
+        """
+
         if "unsigned" in event_dict:
             if "redacted_because" in event_dict["unsigned"]:
                 return RedactedEvent.from_dict(event_dict)
@@ -97,6 +146,17 @@ class Event(object):
 
 @attr.s
 class UnknownEvent(Event):
+    """An Event which we do not understand.
+
+    This event is created every time nio tries to parse an event of an unknown
+    type. Since custom and extensible events are a feature of Matrix this
+    allows clients to use custom events but care should be taken that the
+    clients will be responsible to validate and type check the event.
+
+    Attributes:
+        type (str): The type of the event.
+
+    """
     type = attr.ib()
 
     @classmethod
@@ -127,11 +187,35 @@ class EncryptedEvent(Event):
 
 @attr.s
 class CallEvent(Event):
+    """Base Class for Matrix call signalling events.
+
+    Attributes:
+        call_id (str): The unique identifier of the call.
+        version (int): The version of the VoIP specification this message
+            adheres to.
+
+    """
+
     call_id = attr.ib()
     version = attr.ib()
 
     @staticmethod
     def parse_event(event_dict):
+        """Parse a Matrix event and create a higher level event object.
+
+        This function parses the type of the Matrix event and produces a
+        higher level CallEvent object representing the parsed event.
+
+        The event structure is checked for correctness and the event fields are
+        type checked. If this validation process fails for an event an BadEvent
+        will be produced.
+
+        If the type of the event is now known an UnknownEvent will be produced.
+
+        Args:
+            event_dict (dict): The raw matrix event dictionary.
+
+        """
         if event_dict["type"] == "m.call.candidates":
             event = CallCandidatesEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.call.invite":
@@ -148,6 +232,16 @@ class CallEvent(Event):
 
 @attr.s
 class CallCandidatesEvent(CallEvent):
+    """Call event holding additional VoIP ICE candidates.
+
+    This event is sent by callers after sending an invite and by the callee
+    after answering. Its purpose is to give the other party additional ICE
+    candidates to try using to communicate.
+
+    Args:
+        candidates (list): A list of dictionaries describing the candidates.
+    """
+
     candidates = attr.ib()
 
     @classmethod
@@ -164,6 +258,19 @@ class CallCandidatesEvent(CallEvent):
 
 @attr.s
 class CallInviteEvent(CallEvent):
+    """Event representing an invitation to a VoIP call.
+
+    This event is sent by a caller when they wish to establish a call.
+
+    Attributes:
+        lifetime (integer): The time in milliseconds that the invite is valid
+            for.
+        offer (dict): The session description object. A dictionary containing
+            the keys "type" which must be "offer" for this event and "sdp"
+            which contains the SDP text of the session description.
+
+    """
+
     lifetime = attr.ib()
     offer = attr.ib()
 
@@ -188,6 +295,17 @@ class CallInviteEvent(CallEvent):
 
 @attr.s
 class CallAnswerEvent(CallEvent):
+    """Event representing the answer to a VoIP call.
+
+    This event is sent by the callee when they wish to answer the call.
+
+    Attributes:
+        answer (dict): The session description object. A dictionary containing
+            the keys "type" which must be "answer" for this event and "sdp"
+            which contains the SDP text of the session description.
+
+    """
+
     answer = attr.ib()
 
     @classmethod
@@ -204,6 +322,14 @@ class CallAnswerEvent(CallEvent):
 
 @attr.s
 class CallHangupEvent(CallEvent):
+    """An event representing the end of a VoIP call.
+
+    Sent by either party to signal their termination of the call. This can be
+    sent either once the call has has been established or before to abort the
+    call.
+
+    """
+
     @classmethod
     @verify(Schemas.call_hangup)
     def from_dict(cls, event_dict):
@@ -217,15 +343,31 @@ class CallHangupEvent(CallEvent):
 
 @attr.s
 class RedactedEvent(Event):
-    event_type = attr.ib()
-    redacter = attr.ib()
-    reason = attr.ib()
+    """An event that has been redacted.
+
+    Attributes:
+        type (str): The type of the event that has been redacted.
+        redacter (str): The fully-qualified ID of the user who redacted the
+            event.
+        reason (str, optional): A string describing why the event was redacted,
+            can be None.
+
+    """
+
+    type = attr.ib(type=str)
+    redacter = attr.ib(type=str)
+    reason = attr.ib(type=Optional[str])
 
     def __str__(self):
         reason = ", reason: {}".format(self.reason) if self.reason else ""
         return "Redacted event of type {}, by {}{}.".format(
-            self.event_type, self.redacter, reason
+            self.type, self.redacter, reason
         )
+
+    @property
+    def event_type(self):
+        """Type of the event."""
+        return self.type
 
     @classmethod
     @verify(Schemas.redacted_event)
@@ -245,14 +387,25 @@ class RedactedEvent(Event):
 
 @attr.s
 class RoomEncryptionEvent(Event):
-    pass
+    """An event signaling that encryption has been enabled in a room."""
 
 
 @attr.s
 class RoomCreateEvent(Event):
-    creator = attr.ib()
-    federate = attr.ib(default=True)
-    room_version = attr.ib(default="1")
+    """The first event in a room, signaling that the room was created.
+
+    Attributes:
+        creator (str): The fully-qualified ID of the user who created the room.
+        federate (bool): A boolean flag telling us whether users on other
+            homeservers are able to join this room.
+        room_version (str): The version of the room. Different room versions
+        will have different event formats. Clients shouldn't worry about this
+        too much unless they want to perform room upgrades.
+
+    """
+    creator = attr.ib(type=str)
+    federate = attr.ib(type=bool, default=True)
+    room_version = attr.ib(type=str, default="1")
 
     @classmethod
     @verify(Schemas.room_create)
@@ -267,7 +420,15 @@ class RoomCreateEvent(Event):
 
 @attr.s
 class RoomGuestAccessEvent(Event):
-    guest_access = attr.ib(default="forbidden")
+    """Event signaling whether guest users are allowed to join rooms.
+
+    Attributes:
+        guest_access (str): A string describing the guest access policy of the
+            room. Can be one of "can_join" or "forbidden".
+
+    """
+
+    guest_access = attr.ib(type=str, default="forbidden")
 
     @classmethod
     @verify(Schemas.room_guest_access)
@@ -280,7 +441,17 @@ class RoomGuestAccessEvent(Event):
 
 @attr.s
 class RoomJoinRulesEvent(Event):
-    join_rule = attr.ib(default="invite")
+    """An event telling us how users can join the room.
+
+    Attributes:
+        join_rule (str): A string telling us how users may join the room, can
+            be one of "public" meaning anyone can join the room without any
+            restrictions or "invite" meaning users can only join if they have
+            been previously invited.
+
+    """
+
+    join_rule = attr.ib(type=str, default="invite")
 
     @classmethod
     @verify(Schemas.room_join_rules)
@@ -293,6 +464,33 @@ class RoomJoinRulesEvent(Event):
 
 @attr.s
 class RoomHistoryVisibilityEvent(Event):
+    """An event telling whether users can read the room history.
+
+    Room history visibility can be set up in multiple ways in Matrix:
+
+    * world_readable
+        All events value may be shared by any participating
+        homeserver with anyone, regardless of whether they have ever joined
+        the room.
+    * shared
+        Previous events are always accessible to newly joined
+        members. All events in the room are accessible, even those sent
+        when the member was not a part of the room.
+    * invited
+        Events are accessible to newly joined members from the
+        point they were invited onwards. Events stop being accessible when
+        the member's state changes to something other than invite or join.
+    * joined
+        Events are only accessible to members from the point on they
+        joined to the room and stop being accessible when they aren't
+        joined anymore.
+
+    Attributes:
+        history_visibility (str): A string describing who can read the room
+            history. One of "invited", "joined", "shared", "world_readable".
+
+    """
+
     history_visibility = attr.ib(default="shared")
 
     @classmethod
@@ -308,6 +506,13 @@ class RoomHistoryVisibilityEvent(Event):
 
 @attr.s
 class RoomAliasEvent(Event):
+    """An event informing us about which alias should be prefered.
+
+    Attributes:
+        canonical_alias (str): The alias that is considered canonical.
+
+    """
+
     canonical_alias = attr.ib()
 
     @classmethod
@@ -321,6 +526,17 @@ class RoomAliasEvent(Event):
 
 @attr.s
 class RoomNameEvent(Event):
+    """Event holding the name of the room.
+
+    The room name is a human-friendly string designed to be displayed to the
+    end-user. The room name is not unique, as multiple rooms can have the same
+    room name set.
+
+    Attributes:
+        name (str): The name of the room.
+
+    """
+
     name = attr.ib()
 
     @classmethod
@@ -334,6 +550,17 @@ class RoomNameEvent(Event):
 
 @attr.s
 class RoomTopicEvent(Event):
+    """Event holding the topic of a room.
+
+    A topic is a short message detailing what is currently being discussed in
+    the room. It can also be used as a way to display extra information about
+    the room, which may not be suitable for the room name.
+
+    Attributes:
+        topic (str): The topic of the room.
+
+    """
+
     topic = attr.ib()
 
     @classmethod
@@ -347,6 +574,13 @@ class RoomTopicEvent(Event):
 
 @attr.s
 class RoomAvatarEvent(Event):
+    """Event holding a picture that is associated with the room.
+
+    Attributes:
+        avatar_url (str): The URL to the picture.
+
+    """
+
     avatar_url = attr.ib()
 
     @classmethod
@@ -360,6 +594,14 @@ class RoomAvatarEvent(Event):
 
 @attr.s
 class RoomMessage(Event):
+    """Abstract room message class.
+
+    This class corespondents to a Matrix event of the m.room.message type. It
+    is used when messages are sent to the room.
+
+    The class has one child class per msgtype.
+    """
+
     @classmethod
     @verify(Schemas.room_message)
     def parse_event(cls, parsed_dict):
@@ -392,6 +634,16 @@ class RoomMessage(Event):
 
 @attr.s
 class RoomEncryptedMessage(RoomMessage):
+    """An abstract class representing encrypted messages.
+
+    Some room message types might have a different event format if they are
+    sent in an encrypted room, if so they are a child of this class.
+
+    Most prominently m.file, m.video, m.audio and m.image will have decryption
+    keys for the file in the content repository that their URI is pointing to.
+
+    """
+
     @classmethod
     @verify(Schemas.room_message)
     def parse_event(cls, parsed_dict):
@@ -418,6 +670,14 @@ class RoomEncryptedMessage(RoomMessage):
 
 @attr.s
 class RoomMessageMedia(RoomMessage):
+    """Base class for room messages containing a URI.
+
+    Attributes:
+        url (str): The URL of the file.
+        body (str): The description of the message.
+
+    """
+
     url = attr.ib()
     body = attr.ib()
 
@@ -433,6 +693,18 @@ class RoomMessageMedia(RoomMessage):
 
 @attr.s
 class RoomEncryptedMedia(RoomMessage):
+    """Base class for encrypted room messages containing an URI.
+
+    Attributes:
+        url (str): The URL of the file.
+        body (str): The description of the message.
+        key (str): The key that can be used to decrypt the file.
+        hashes (dict): A mapping from an algorithm name to a hash of the
+            ciphertext encoded as base64.
+        iv (str): The initialisation vector that was used to encrypt the file.
+
+    """
+
     url = attr.ib()
     body = attr.ib()
     key = attr.ib()
@@ -454,47 +726,63 @@ class RoomEncryptedMedia(RoomMessage):
 
 @attr.s
 class RoomEncryptedImage(RoomEncryptedMedia):
-    pass
+    """A room message containing an image where the file is encrypted."""
 
 
 @attr.s
 class RoomEncryptedAudio(RoomEncryptedMedia):
-    pass
+    """A room message containing an audio clip where the file is encrypted."""
 
 
 @attr.s
 class RoomEncryptedVideo(RoomEncryptedMedia):
-    pass
+    """A room message containing a video clip where the file is encrypted."""
 
 
 @attr.s
 class RoomEncryptedFile(RoomEncryptedMedia):
-    pass
+    """A room message containing a generic encrypted file."""
 
 
 @attr.s
 class RoomMessageImage(RoomMessageMedia):
-    pass
+    """A room message containing an image."""
 
 
 @attr.s
 class RoomMessageAudio(RoomMessageMedia):
-    pass
+    """A room message containing an audio clip."""
 
 
 @attr.s
 class RoomMessageVideo(RoomMessageMedia):
-    pass
+    """A room message containing a video clip."""
 
 
 @attr.s
 class RoomMessageFile(RoomMessageMedia):
-    pass
+    """A room message containing a generic file."""
 
 
 @attr.s
 class RoomMessageUnknown(RoomMessage):
-    type = attr.ib()
+    """A m.room.message which we do not understand.
+
+    This event is created every time nio tries to parse a room message of an
+    unknown msgtype. Since custom and extensible events are a feature of Matrix
+    this allows clients to use custom messages but care should be taken that
+    the clients will be responsible to validate and type check the content of
+    the message.
+
+    Attributes:
+        msgtype (str): The msgtype of the room message.
+        content (dict): The dictionary holding the content of the room message.
+            The keys and values of this dictionary will differ depending on the
+            msgtype.
+
+    """
+
+    msgtype = attr.ib(type=str)
     content = attr.ib()
 
     @classmethod
@@ -506,10 +794,25 @@ class RoomMessageUnknown(RoomMessage):
             parsed_dict.pop("content"),
         )
 
+    @property
+    def type(self):
+        """Get the msgtype of the room message."""
+        return self.msgtype
+
 
 @attr.s
 class RoomMessageNotice(RoomMessage):
-    body = attr.ib()
+    """A room message corresponding to the m.notice msgtype.
+
+    Room notices are primarily intended for responses from automated
+    clients.
+
+    Attributes:
+        body (str): The text of the notice.
+
+    """
+
+    body = attr.ib(type=str)
 
     @classmethod
     @verify(Schemas.room_message_notice)
@@ -521,10 +824,22 @@ class RoomMessageNotice(RoomMessage):
 
 
 @attr.s
-class RoomMessageText(RoomMessage):
-    body = attr.ib()
-    formatted_body = attr.ib()
-    format = attr.ib()
+class RoomMessageFormatted(RoomMessage):
+    """Base abstract class for room messages that can have formatted bodies.
+
+    Attributes:
+        body (str): The textual body of the message.
+        formatted_body (str, optional): The formatted version of the body. Can
+            be None if the message doesn't contain a formatted version of the
+            body.
+        format (str, optional): The format used in the formatted_body. This
+            specifies how the formatted_body should be interpreted.
+
+    """
+
+    body = attr.ib(type=str)
+    formatted_body = attr.ib(type=Optional[str])
+    format = attr.ib(type=Optional[str])
 
     def __str__(self):
         # type: () -> str
@@ -532,8 +847,7 @@ class RoomMessageText(RoomMessage):
 
     @staticmethod
     def _validate(parsed_dict):
-        # type: (Dict[Any, Any]) -> Optional[BadEventType]
-        return validate_or_badevent(parsed_dict, Schemas.room_message_text)
+        raise NotImplementedError()
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -544,16 +858,14 @@ class RoomMessageText(RoomMessage):
             return bad
 
         body = parsed_dict["content"]["body"]
-        formatted_body = (
-            parsed_dict["content"]["formatted_body"]
-            if "formatted_body" in parsed_dict["content"]
-            else None
-        )
-        body_format = (
-            parsed_dict["content"]["format"]
-            if "format" in parsed_dict["content"]
-            else None
-        )
+        body_format = parsed_dict["content"].get("format")
+
+        # Only try to find the formatted body if the format is specified. It is
+        # required by the spec to have both or none specified.
+        if body_format:
+            formatted_body = parsed_dict["content"].get("formatted_body")
+        else:
+            formatted_body = None
 
         return cls(
             parsed_dict,
@@ -564,7 +876,44 @@ class RoomMessageText(RoomMessage):
 
 
 @attr.s
-class RoomMessageEmote(RoomMessageText):
+class RoomMessageText(RoomMessage):
+    """A room message corresponding to the m.text msgtype.
+
+    This message is the most basic message and is used to represent text.
+
+    Attributes:
+        body (str): The textual body of the message.
+        formatted_body (str, optional): The formatted version of the body. Can
+            be None if the message doesn't contain a formatted version of the
+            body.
+        format (str, optional): The format used in the formatted_body. This
+            specifies how the formatted_body should be interpreted.
+
+    """
+
+    @staticmethod
+    def _validate(parsed_dict):
+        # type: (Dict[Any, Any]) -> Optional[BadEventType]
+        return validate_or_badevent(parsed_dict, Schemas.room_message_text)
+
+
+@attr.s
+class RoomMessageEmote(RoomMessageFormatted):
+    """A room message coresponding to the m.emote msgtype.
+
+    This message is similar to m.text except that the sender is 'performing'
+    the action contained in the body key, similar to /me in IRC.
+
+    Attributes:
+        body (str): The textual body of the message.
+        formatted_body (str, optional): The formatted version of the body. Can
+            be None if the message doesn't contain a formatted version of the
+            body.
+        format (str, optional): The format used in the formatted_body. This
+            specifies how the formatted_body should be interpreted.
+
+    """
+
     @staticmethod
     def _validate(parsed_dict):
         # type: (Dict[Any, Any]) -> Optional[BadEventType]
@@ -573,6 +922,22 @@ class RoomMessageEmote(RoomMessageText):
 
 @attr.s
 class DefaultLevels(object):
+    """Class holding information about default power levels of a room.
+
+    Attributes:
+        ban (int): The level required to ban a user.
+        invite (int): The level required to invite a user.
+        kick (int): The level required to kick a user.
+        redact (int): The level required to redact events.
+        state_default (int): The level required to send state events. This can
+            be overridden by the events power level mapping.
+        events_default (int): The level required to send message events. This
+            can be overridden by the events power level mapping.
+        users_default (int): The default power level for every user in the
+            room. This can be overridden by the users power level mapping.
+
+    """
+
     ban = attr.ib(default=50, type=int)
     invite = attr.ib(default=50, type=int)
     kick = attr.ib(default=50, type=int)
@@ -583,6 +948,15 @@ class DefaultLevels(object):
 
     @classmethod
     def from_dict(cls, parsed_dict):
+        """Create a DefaultLevels object from a dictionary.
+
+        This creates the DefaultLevels object from a dictionary containing a
+        m.room.power_levels event. The event structure isn't checked in this
+        method.
+
+        This shouldn't be used directly, the `PowerLevelsEvent` method will
+        call this method to construct the DefaultLevels object.
+        """
         content = parsed_dict["content"]
         return cls(
             content["ban"],
@@ -597,18 +971,43 @@ class DefaultLevels(object):
 
 @attr.s
 class PowerLevels(object):
+    """Class holding information of room power levels.
+
+    Attributes:
+        defaults (DefaultLevels): The default power levels of the room.
+        users (dict): The power levels for specific users. This is a mapping
+            from user_id to power level for that user.
+        events (dict): The level required to send specific event types. This is
+            a mapping from event type to power level required.
+
+    """
+
     defaults = attr.ib(default=attr.Factory(DefaultLevels))
     users = attr.ib(default=attr.Factory(dict), type=Dict[str, int])
     events = attr.ib(default=attr.Factory(dict), type=Dict[str, int])
 
     def get_user_level(self, user_id):
         # type: (str) -> int
+        """Get the power level of a user.
+
+        Args:
+            user_id (str): The fully-qualified ID of the user for whom we would
+                like to get the power level.
+
+        Returns the integer representing the user power level.
+        """
         if user_id in self.users:
             return self.users[user_id]
 
         return self.defaults.users_default
 
     def update(self, new_levels):
+        """Update the power levels object with new levels.
+
+        Args:
+            new_levels (PowerLevels): A new PowerLevels object that we received
+                from a newer PowerLevelsEvent.
+        """
         if not isinstance(new_levels, PowerLevels):
             return
 
@@ -619,6 +1018,16 @@ class PowerLevels(object):
 
 @attr.s
 class PowerLevelsEvent(Event):
+    """Class representing a m.room.power_levels event.
+
+    This event specifies the minimum level a user must have in order to perform
+    a certain action. It also specifies the levels of each user in the room.
+
+    Attributes:
+        power_levels (PowerLevels): The PowerLevels object holding information
+            of the power levels of the room.
+
+    """
     power_levels = attr.ib()
 
     @classmethod
@@ -639,6 +1048,18 @@ class PowerLevelsEvent(Event):
 
 @attr.s
 class RedactionEvent(Event):
+    """An event signaling that another event has been redacted.
+
+    Events can be redacted by either room or server administrators. Redacting
+    an event means that all keys not required by the protocol are stripped off.
+
+    Attributes:
+        redacts (str): The event id of the event that has been redacted.
+        reason (str, optional): A string describing why the event was redacted,
+            can be None.
+
+    """
+
     redacts = attr.ib()
     reason = attr.ib(default=None)
 
