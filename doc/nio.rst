@@ -33,14 +33,24 @@ HttpClient
     :undoc-members:
     :show-inheritance:
 
-nio.events module
+Rooms
+----------------
+
+.. automodule:: nio.rooms
+    :members:
+    :undoc-members:
+
+Events
 -----------------
 
 .. automodule:: nio.events
     :members:
     :undoc-members:
+    :show-inheritance:
+    :imported-members:
+    :exclude-members: Schemas, super, validate_or_badevent, verify, ToDeviceMessage, ValidationError, validate_json, wraps
 
-nio.exceptions module
+Exceptions
 ---------------------
 
 .. automodule:: nio.exceptions
@@ -48,16 +58,9 @@ nio.exceptions module
     :undoc-members:
     :show-inheritance:
 
-nio.responses module
+Responses
 --------------------
 
 .. automodule:: nio.responses
-    :members:
-    :undoc-members:
-
-nio.rooms module
-----------------
-
-.. automodule:: nio.rooms
     :members:
     :undoc-members:
