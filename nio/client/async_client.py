@@ -492,7 +492,7 @@ class AsyncClient(Client):
                 received from the server using this API call. This argument
                 will be used only for the first sync request, the subsequent
                 sync requests will use the token from the last sync response.
-            loop_sleep_time (int, optional): The sleep time if any between
+            loop_sleep_time (int, optional): The sleep time, if any, between
                 successful sync loop iterations in milliseconds.
 
         """
