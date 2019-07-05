@@ -34,9 +34,9 @@ from ..exceptions import (GroupEncryptionError, LocalProtocolError,
 from ..messages import ToDeviceMessage
 from ..responses import (JoinedMembersError, JoinedMembersResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
-                         KeysUploadResponse, LoginError, LoginResponse,
-                         ProfileGetAvatarResponse, ProfileGetAvatarError,
-                         ProfileGetDisplayNameResponse,
+                         KeysUploadResponse, LimitExceededError, LoginError,
+                         LoginResponse, ProfileGetAvatarResponse,
+                         ProfileGetAvatarError, ProfileGetDisplayNameResponse,
                          ProfileGetDisplayNameError, ProfileGetResponse,
                          ProfileGetError, ProfileSetAvatarResponse,
                          ProfileSetAvatarError, ProfileSetDisplayNameResponse,
@@ -327,13 +327,21 @@ class AsyncClient(Client):
             data=None,
             response_data=None
     ):
-        transport_response = await self.send(method, path, data)
+        while True:
+            transport_response = await self.send(method, path, data)
 
-        response = await self.create_matrix_response(
-            response_class,
-            transport_response,
-            response_data
-        )
+            response = await self.create_matrix_response(
+                response_class,
+                transport_response,
+                response_data
+            )
+
+            if isinstance(response, LimitExceededError):
+                await self.run_response_callbacks([response])
+                await asyncio.sleep(response.retry_after_ms / 1000)
+            else:
+                break
+
         await self.receive_response(response)
 
         return response

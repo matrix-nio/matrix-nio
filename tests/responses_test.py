@@ -7,15 +7,15 @@ import json
 from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
                            ErrorResponse, JoinedMembersError,
                            JoinedMembersResponse, KeysClaimResponse,
-                           KeysQueryResponse, KeysUploadResponse, LoginError,
-                           LoginResponse, PartialSyncResponse,
-                           ProfileGetAvatarResponse,
+                           KeysQueryResponse, KeysUploadResponse,
+                           LimitExceededError, LoginError, LoginResponse,
+                           PartialSyncResponse, ProfileGetAvatarResponse,
                            ProfileGetDisplayNameResponse, ProfileGetResponse,
                            RoomContextError, RoomContextResponse,
                            RoomKeyRequestError, RoomKeyRequestResponse,
                            RoomMessagesResponse, SyncError,
                            SyncResponse, ToDeviceError, ToDeviceResponse,
-                           UploadResponse)
+                           UploadResponse, _ErrorWithRoomId)
 
 TEST_ROOM_ID = "!test:example.org"
 
@@ -115,9 +115,7 @@ class TestClass(object):
 
     def test_keyshare_request(self):
         parsed_dict = {
-            "errcode": "M_LIMIT_EXCEEDED",
-            "error": "Too many requests",
-            "retry_after_ms": 2000
+            "errcode": "M_NOT_FOUND",
         }
         response = RoomKeyRequestResponse.from_dict(
             parsed_dict, "1", "1", TEST_ROOM_ID, "megolm.v1"
@@ -206,3 +204,17 @@ class TestClass(object):
         assert not response.events_before
         assert len(response.events_after) == 1
         assert len(response.state) == 9
+
+
+    def test_limit_exceeded_error(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/limit_exceeded_error.json")
+
+        response = ErrorResponse.from_dict(parsed_dict)
+        assert isinstance(response, LimitExceededError)
+        assert response.room_id is None
+
+        room_id = "!SVkFJHzfwvuaIEawgC:localhost"
+        response2 = _ErrorWithRoomId.from_dict(parsed_dict, room_id)
+        assert isinstance(response2, LimitExceededError)
+        assert response2.room_id == room_id

@@ -222,6 +222,16 @@ class Schemas(object):
         "required": ["error", "errcode"],
     }
 
+    limit_exceeded_error = {
+        "type": "object",
+        "properties": {
+            "error": {"type": "string"},
+            "errcode": {"type": "string", "enum": ["M_LIMIT_EXCEEDED"]},
+            "retry_after_ms": {"type": "integer"},
+        },
+        "required": ["error", "errcode", "retry_after_ms"],
+    }
+
     room_timeline = {
         "type": "object",
         "properties": {

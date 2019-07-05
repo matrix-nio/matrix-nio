@@ -55,6 +55,7 @@ __all__ = [
     "KeysQueryError",
     "KeysUploadResponse",
     "KeysUploadError",
+    "LimitExceededError",
     "LoginResponse",
     "LoginError",
     "Response",
@@ -265,7 +266,37 @@ class ErrorResponse(Response):
         except (SchemaError, ValidationError):
             return cls("unknown error")
 
+        if parsed_dict["errcode"] == "M_LIMIT_EXCEEDED":
+            return LimitExceededError.from_dict(parsed_dict)
+
         return cls(parsed_dict["error"], parsed_dict["errcode"])
+
+
+@attr.s
+class LimitExceededError(ErrorResponse):
+    retry_after_ms = attr.ib(default=2000, type=int)
+    room_id = attr.ib(default=None, type=Optional[str])
+
+    def __str__(self):
+        # type: () -> str
+        return "{} {} - Retry after {}ms".format(
+            self.status_code, self.message, self.retry_after_ms
+        )
+
+    @classmethod
+    def from_dict(cls, parsed_dict, room_id=None):
+        # type: (Dict[Any, Any], Optional[str]) -> ErrorResponse
+        try:
+            validate_json(parsed_dict, Schemas.limit_exceeded_error)
+        except (SchemaError, ValidationError):
+            return ErrorResponse("unknown error")
+
+        return cls(
+            parsed_dict["error"],
+            parsed_dict["errcode"],
+            parsed_dict["retry_after_ms"],
+            room_id
+        )
 
 
 @attr.s
@@ -278,6 +309,9 @@ class _ErrorWithRoomId(ErrorResponse):
             validate_json(parsed_dict, Schemas.error)
         except (SchemaError, ValidationError):
             return cls("unknown error")
+
+        if parsed_dict["errcode"] == "M_LIMIT_EXCEEDED":
+            return LimitExceededError.from_dict(parsed_dict, room_id)
 
         return cls(parsed_dict["error"], parsed_dict["errcode"], room_id)
 
