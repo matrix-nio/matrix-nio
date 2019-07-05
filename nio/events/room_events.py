@@ -658,7 +658,26 @@ class RedactionEvent(Event):
 
 @attr.s
 class RoomMemberEvent(Event):
+    """Class representing to an m.room.member event.
+
+    Attributes:
+        state_key (str): The user_id this membership event relates to. In all
+            cases except for when membership is join, the user ID in the sender
+            attribute does not need to match the user ID in the state_key.
+        membership (str): The membership state of the user. One of "invite",
+            "join", "leave", "ban".
+        prev_membership (str, optional): The previous membership state that
+            this one is overwriting. Can be None in which case the membership
+            state is assumed to have been "leave".
+        content (dict): The content of the of the membership event.
+        prev_content(dict, optional): The content of a previous membership
+            event that this one is overwriting.
+
+    """
+
     state_key = attr.ib()
+    membership = attr.ib(type=str)
+    prev_membership = attr.ib(type=Optional[str])
     content = attr.ib()
     prev_content = attr.ib(default=None)
 
@@ -670,9 +689,16 @@ class RoomMemberEvent(Event):
         unsigned = parsed_dict.get("unsigned", {})
         prev_content = unsigned.get("prev_content", None)
 
+        membership = content["membership"]
+        prev_membership = (
+            prev_content.get("membership") if prev_content else None
+        )
+
         return cls(
             parsed_dict,
             parsed_dict["state_key"],
+            membership,
+            prev_membership,
             content,
             prev_content,
         )

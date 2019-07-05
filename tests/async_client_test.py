@@ -83,6 +83,8 @@ class TestClass(object):
                      "sender": ALICE_ID,
                      "origin_server_ts": 1516809890615},
                     ALICE_ID,
+                    "join",
+                    None,
                     {"membership": "join"}
                 ),
                 RoomEncryptionEvent(
