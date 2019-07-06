@@ -214,10 +214,10 @@ class TestClass(object):
 
         response = ErrorResponse.from_dict(parsed_dict)
         assert isinstance(response, ErrorResponse)
-        assert response.retry_after_ms == 2000
+        assert response.retry_after_ms == parsed_dict["retry_after_ms"]
 
         room_id = "!SVkFJHzfwvuaIEawgC:localhost"
         response2 = _ErrorWithRoomId.from_dict(parsed_dict, room_id)
         assert isinstance(response2, _ErrorWithRoomId)
-        assert response.retry_after_ms == 2000
+        assert response.retry_after_ms == parsed_dict["retry_after_ms"]
         assert response2.room_id == room_id

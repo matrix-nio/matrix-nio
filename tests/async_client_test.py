@@ -5,7 +5,8 @@ from os import path
 import pytest
 
 from helpers import faker
-from nio import (DeviceList, DeviceOneTimeKeyCount, GroupEncryptionError,
+from nio import (DeviceList, DeviceOneTimeKeyCount, ErrorResponse,
+                 GroupEncryptionError,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginError,
                  LoginResponse, MegolmEvent, MembersSyncError, OlmTrustError,
@@ -113,6 +114,11 @@ class TestClass(object):
             DeviceList([ALICE_ID], []),
             []
         )
+
+    @property
+    def limit_exceeded_error_response(self):
+        return self._load_response(
+            "tests/data/limit_exceeded_error.json")
 
     @staticmethod
     def get_profile_response(displayname, avatar_url):
@@ -637,3 +643,31 @@ class TestClass(object):
         resp3 = await async_client.get_avatar()
         assert isinstance(resp3, ProfileGetAvatarResponse)
         assert resp3.avatar_url.replace("#auto", "") == new_avatar
+
+    async def test_limit_exceeded(self, async_client, aioresponse):
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/login",
+            status=429,
+            payload=self.limit_exceeded_error_response
+        )
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/login",
+            status=200,
+            payload=self.login_response
+        )
+
+        got_error = []
+
+        async def on_error(resp):
+            assert isinstance(resp, ErrorResponse)
+            expected = self.limit_exceeded_error_response["retry_after_ms"]
+            assert resp.retry_after_ms == expected
+
+            got_error.append(True)
+
+        async_client.add_response_callback(on_error, ErrorResponse)
+
+        resp = await async_client.login("wordpass")
+        assert got_error == [True]
+        assert isinstance(resp, LoginResponse)
+        assert async_client.logged_in
