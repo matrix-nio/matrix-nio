@@ -337,14 +337,11 @@ class AsyncClient(Client):
                 response_data
             )
 
-            if isinstance(response, ErrorResponse):
+            if isinstance(response, ErrorResponse) and response.retry_after_ms:
                 await self.run_response_callbacks([response])
-
-                if response.retry_after_ms:
-                    await asyncio.sleep(response.retry_after_ms / 1000)
-                    continue
-
-            break
+                await asyncio.sleep(response.retry_after_ms / 1000)
+            else:
+                break
 
         await self.receive_response(response)
 
