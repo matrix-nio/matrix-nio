@@ -7,9 +7,9 @@ import json
 from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
                            ErrorResponse, JoinedMembersError,
                            JoinedMembersResponse, KeysClaimResponse,
-                           KeysQueryResponse, KeysUploadResponse,
-                           LimitExceededError, LoginError, LoginResponse,
-                           PartialSyncResponse, ProfileGetAvatarResponse,
+                           KeysQueryResponse, KeysUploadResponse, LoginError,
+                           LoginResponse, PartialSyncResponse,
+                           ProfileGetAvatarResponse,
                            ProfileGetDisplayNameResponse, ProfileGetResponse,
                            RoomContextError, RoomContextResponse,
                            RoomKeyRequestError, RoomKeyRequestResponse,
@@ -115,7 +115,9 @@ class TestClass(object):
 
     def test_keyshare_request(self):
         parsed_dict = {
-            "errcode": "M_NOT_FOUND",
+            "errcode": "M_LIMIT_EXCEEDED",
+            "error": "Too many requests",
+            "retry_after_ms": 2000
         }
         response = RoomKeyRequestResponse.from_dict(
             parsed_dict, "1", "1", TEST_ROOM_ID, "megolm.v1"
@@ -211,10 +213,11 @@ class TestClass(object):
             "tests/data/limit_exceeded_error.json")
 
         response = ErrorResponse.from_dict(parsed_dict)
-        assert isinstance(response, LimitExceededError)
-        assert response.room_id is None
+        assert isinstance(response, ErrorResponse)
+        assert response.retry_after_ms == 2000
 
         room_id = "!SVkFJHzfwvuaIEawgC:localhost"
         response2 = _ErrorWithRoomId.from_dict(parsed_dict, room_id)
-        assert isinstance(response2, LimitExceededError)
+        assert isinstance(response2, _ErrorWithRoomId)
+        assert response.retry_after_ms == 2000
         assert response2.room_id == room_id

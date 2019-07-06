@@ -32,11 +32,12 @@ from ..api import Api, MessageDirection
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
 from ..messages import ToDeviceMessage
-from ..responses import (JoinedMembersError, JoinedMembersResponse,
+from ..responses import (ErrorResponse,
+                         JoinedMembersError, JoinedMembersResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
-                         KeysUploadResponse, LimitExceededError, LoginError,
-                         LoginResponse, ProfileGetAvatarResponse,
-                         ProfileGetAvatarError, ProfileGetDisplayNameResponse,
+                         KeysUploadResponse, LoginError, LoginResponse,
+                         ProfileGetAvatarResponse, ProfileGetAvatarError,
+                         ProfileGetDisplayNameResponse,
                          ProfileGetDisplayNameError, ProfileGetResponse,
                          ProfileGetError, ProfileSetAvatarResponse,
                          ProfileSetAvatarError, ProfileSetDisplayNameResponse,
@@ -336,11 +337,14 @@ class AsyncClient(Client):
                 response_data
             )
 
-            if isinstance(response, LimitExceededError):
+            if isinstance(response, ErrorResponse):
                 await self.run_response_callbacks([response])
-                await asyncio.sleep(response.retry_after_ms / 1000)
-            else:
-                break
+
+                if response.retry_after_ms:
+                    await asyncio.sleep(response.retry_after_ms / 1000)
+                    continue
+
+            break
 
         await self.receive_response(response)
 
