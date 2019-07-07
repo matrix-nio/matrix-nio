@@ -44,6 +44,7 @@ from ..responses import (ErrorResponse,
                          ProfileSetAvatarError, ProfileSetDisplayNameResponse,
                          ProfileSetDisplayNameError, Response,
                          RoomContextError, RoomContextResponse,
+                         RoomForgetResponse, RoomForgetError,
                          RoomKeyRequestError, RoomKeyRequestResponse,
                          RoomLeaveResponse, RoomLeaveError,
                          RoomMessagesError, RoomMessagesResponse,
@@ -1107,6 +1108,30 @@ class AsyncClient(Client):
         """
         method, path, data = Api.room_leave(self.access_token, room_id)
         return await self._send(RoomLeaveResponse, method, path, data)
+
+    @logged_in
+    async def room_forget(self, room_id):
+        # type: (str) -> Union[RoomForgetResponse, RoomForgetError]
+        """Forget a room.
+
+        This tells the server to forget the given room's history for our user.
+        If all users on a homeserver forget the room, the room will be
+        eligible for deletion from that homeserver.
+
+        Returns either a `RoomForgetResponse` if the request was successful or
+        a `RoomForgetError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room to forget.
+        """
+        method, path, data = Api.room_forget(self.access_token, room_id)
+        return await self._send(
+            RoomForgetResponse,
+            method,
+            path,
+            data,
+            response_data=(room_id,)
+        )
 
     @logged_in
     async def room_context(

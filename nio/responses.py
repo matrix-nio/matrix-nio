@@ -709,8 +709,8 @@ class RoomLeaveResponse(EmptyResponse):
 class RoomForgetResponse(_EmptyResponseWithRoomId):
     """Response representing a successful forget room request."""
     @staticmethod
-    def create_error(parsed_dict):
-        return RoomForgetError.from_dict(parsed_dict)
+    def create_error(parsed_dict, room_id):
+        return RoomForgetError.from_dict(parsed_dict, room_id)
 
 
 @attr.s

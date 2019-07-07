@@ -11,7 +11,8 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, ErrorResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginError,
                  LoginResponse, MegolmEvent, MembersSyncError, OlmTrustError,
-                 RoomContextResponse, ProfileGetAvatarResponse,
+                 RoomContextResponse, RoomForgetResponse,
+                 ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
@@ -518,6 +519,27 @@ class TestClass(object):
         )
         resp = await async_client.room_leave(TEST_ROOM_ID)
         assert isinstance(resp, RoomLeaveResponse)
+
+    async def test_room_forget(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+        await async_client.receive_response(self.encryption_sync_response)
+
+        room_id = list(async_client.rooms.keys())[0]
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/rooms/{}/forget"
+            "?access_token=abc123".format(
+                room_id
+            ),
+            status=200,
+            payload={}
+        )
+        resp = await async_client.room_forget(room_id)
+        assert isinstance(resp, RoomForgetResponse)
+        assert room_id not in async_client.rooms
 
     async def test_context(self, async_client, aioresponse):
         await async_client.receive_response(

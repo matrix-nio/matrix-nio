@@ -397,7 +397,7 @@ class HttpClient(Client):
         should be sent to the socket.
 
         Args:
-            room_id (str): Room id of the room to forget.
+            room_id (str): The room id of the room to forget.
         """
         request = self._build_request(
             Api.room_forget(
