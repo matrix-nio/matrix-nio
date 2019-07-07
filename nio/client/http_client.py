@@ -345,12 +345,36 @@ class HttpClient(Client):
     @connected
     @logged_in
     def join(self, room_id):
+        # type: (str) -> Tuple[UUID, bytes]
+        """Join a room.
+
+        This tells the server to join the given room.
+        If the room is not public, the user must be invited.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            room_id: The room id or alias of the room to join.
+        """
         request = self._build_request(Api.join(self.access_token, room_id))
         return self._send(request, RequestInfo(JoinResponse))
 
     @connected
     @logged_in
     def room_leave(self, room_id):
+        # type: (str) -> Tuple[UUID, bytes]
+        """Leave a room or reject an invite.
+
+        This tells the server to leave the given room.
+        If the user was only invited, the invite is rejected.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            room_id: The room id of the room to leave.
+        """
         request = self._build_request(
             Api.room_leave(
                 self.access_token,
