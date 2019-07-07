@@ -33,6 +33,7 @@ from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
 from ..messages import ToDeviceMessage
 from ..responses import (ErrorResponse,
+                         JoinResponse, JoinError,
                          JoinedMembersError, JoinedMembersResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
                          KeysUploadResponse, LoginError, LoginResponse,
@@ -44,6 +45,7 @@ from ..responses import (ErrorResponse,
                          ProfileSetDisplayNameError, Response,
                          RoomContextError, RoomContextResponse,
                          RoomKeyRequestError, RoomKeyRequestResponse,
+                         RoomLeaveResponse, RoomLeaveError,
                          RoomMessagesError, RoomMessagesResponse,
                          RoomSendResponse, ShareGroupSessionError,
                          ShareGroupSessionResponse, SyncError, SyncResponse,
@@ -1073,6 +1075,40 @@ class AsyncClient(Client):
                 self.store.save_inbound_group_session(session)
 
     @logged_in
+    async def join(self, room_id):
+        # type: (str) -> Union[JoinResponse, JoinError]
+        """Join a room.
+
+        This tells the server to join the given room.
+        If the room is not public, the user must be invited.
+
+        Returns either a `JoinResponse` if the request was successful or
+        a `JoinError` if there was an error with the request.
+
+        Args:
+            room_id: The room id or alias of the room to join.
+        """
+        method, path, data = Api.join(self.access_token, room_id)
+        return await self._send(JoinResponse, method, path, data)
+
+    @logged_in
+    async def room_leave(self, room_id):
+        # type: (str) -> Union[RoomLeaveResponse, RoomLeaveError]
+        """Leave a room or reject an invite.
+
+        This tells the server to leave the given room.
+        If the user was only invited, the invite is rejected.
+
+        Returns either a `RoomLeaveResponse` if the request was successful or
+        a `RoomLeaveError` if there was an error with the request.
+
+        Args:
+            room_id: The room id of the room to leave.
+        """
+        method, path, data = Api.room_leave(self.access_token, room_id)
+        return await self._send(RoomLeaveResponse, method, path, data)
+
+    @logged_in
     async def room_context(
             self,
             room_id,     # type: str
@@ -1088,7 +1124,7 @@ class AsyncClient(Client):
         a `RoomContextError` if there was an error with the request.
 
         Args:
-            room_id (str): The room_id of the room that contains the event and
+            room_id (str): The room id of the room that contains the event and
                 its context.
             event_id (str): The event_id of the event that we wish to get the
                 context for.
@@ -1116,7 +1152,7 @@ class AsyncClient(Client):
         It uses pagination query parameters to paginate history in the room.
 
         Args:
-            room_id (str): The room_id of the room for which we would like to
+            room_id (str): The room id of the room for which we would like to
                 fetch the messages.
             start (str): The token to start returning events from. This token
                 can be obtained from a prev_batch token returned for each room

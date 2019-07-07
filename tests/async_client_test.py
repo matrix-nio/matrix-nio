@@ -7,13 +7,14 @@ import pytest
 from helpers import faker
 from nio import (DeviceList, DeviceOneTimeKeyCount, ErrorResponse,
                  GroupEncryptionError,
+                 JoinResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginError,
                  LoginResponse, MegolmEvent, MembersSyncError, OlmTrustError,
                  RoomContextResponse, ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
-                 RoomEncryptionEvent, RoomInfo,
+                 RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
                  SyncResponse, Timeline)
@@ -119,6 +120,10 @@ class TestClass(object):
     def limit_exceeded_error_response(self):
         return self._load_response(
             "tests/data/limit_exceeded_error.json")
+
+    @staticmethod
+    def room_id_response(room_id):
+        return {"room_id": room_id}
 
     @staticmethod
     def get_profile_response(displayname, avatar_url):
@@ -477,6 +482,42 @@ class TestClass(object):
         )
 
         assert imported_session.id == out_session.id
+
+    async def test_join(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/join/{}"
+            "?access_token=abc123".format(
+                TEST_ROOM_ID
+            ),
+            status=200,
+            payload=self.room_id_response(TEST_ROOM_ID),
+        )
+
+        resp = await async_client.join(TEST_ROOM_ID)
+        assert isinstance(resp, JoinResponse)
+        assert resp.room_id == TEST_ROOM_ID
+
+    async def test_room_leave(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/rooms/{}/leave"
+            "?access_token=abc123".format(
+                TEST_ROOM_ID
+            ),
+            status=200,
+            payload={}
+        )
+        resp = await async_client.room_leave(TEST_ROOM_ID)
+        assert isinstance(resp, RoomLeaveResponse)
 
     async def test_context(self, async_client, aioresponse):
         await async_client.receive_response(
