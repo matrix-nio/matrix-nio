@@ -6,14 +6,16 @@ import json
 
 from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
                            ErrorResponse, JoinedMembersError,
-                           JoinedMembersResponse, KeysClaimResponse,
+                           JoinedMembersResponse, JoinResponse,
+                           KeysClaimResponse,
                            KeysQueryResponse, KeysUploadResponse, LoginError,
                            LoginResponse, PartialSyncResponse,
                            ProfileGetAvatarResponse,
                            ProfileGetDisplayNameResponse, ProfileGetResponse,
                            RoomContextError, RoomContextResponse,
+                           RoomForgetResponse,
                            RoomKeyRequestError, RoomKeyRequestResponse,
-                           RoomMessagesResponse, SyncError,
+                           RoomLeaveResponse, RoomMessagesResponse, SyncError,
                            SyncResponse, ToDeviceError, ToDeviceResponse,
                            UploadResponse, _ErrorWithRoomId)
 
@@ -207,7 +209,6 @@ class TestClass(object):
         assert len(response.events_after) == 1
         assert len(response.state) == 9
 
-
     def test_limit_exceeded_error(self):
         parsed_dict = TestClass._load_response(
             "tests/data/limit_exceeded_error.json")
@@ -221,3 +222,17 @@ class TestClass(object):
         assert isinstance(response2, _ErrorWithRoomId)
         assert response.retry_after_ms == parsed_dict["retry_after_ms"]
         assert response2.room_id == room_id
+
+    def test_join(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/room_id.json")
+        response = JoinResponse.from_dict(parsed_dict)
+        assert isinstance(response, JoinResponse)
+
+    def test_room_leave(self):
+        response = RoomLeaveResponse.from_dict({})
+        assert isinstance(response, RoomLeaveResponse)
+
+    def test_room_forget(self):
+        response = RoomForgetResponse.from_dict({}, TEST_ROOM_ID)
+        assert isinstance(response, RoomForgetResponse)
