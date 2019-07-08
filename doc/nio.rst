@@ -46,6 +46,7 @@ Rooms
 .. automodule:: nio.rooms
     :members:
     :undoc-members:
+    :show-inheritance:
 
 Events
 -----------------
