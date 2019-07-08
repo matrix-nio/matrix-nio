@@ -64,3 +64,22 @@ Responses
 .. automodule:: nio.responses
     :members:
     :undoc-members:
+
+
+Storage
+-----------------------
+.. automodule:: nio.store
+    :members:
+    :undoc-members:
+
+.. autoclass:: nio.store.MatrixStore
+    :members:
+
+.. autoclass:: nio.store.DefaultStore
+    :show-inheritance:
+
+.. autoclass:: nio.store.SqliteStore
+    :show-inheritance:
+
+.. autoclass:: nio.store.SqliteMemoryStore
+    :show-inheritance:
