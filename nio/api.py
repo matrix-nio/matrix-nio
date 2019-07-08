@@ -91,7 +91,7 @@ class Api(object):
 
     @staticmethod
     def mxc_to_http(mxc, homeserver=None):
-        # type: (str) -> Optional[str]
+        # type: (str, Optional[str]) -> Optional[str]
         """Convert a matrix content URI to a HTTP URI."""
         url = urlparse(mxc)
 
@@ -101,14 +101,14 @@ class Api(object):
         if not url.netloc or not url.path:
             return None
 
-        homeserver = urlparse(homeserver) if homeserver else None
+        parsed_homeserver = urlparse(homeserver) if homeserver else None
 
         http_url = (
             "{homeserver}/_matrix/media/r0/download/"
             "{server_name}{mediaId}"
         ).format(
             homeserver=(
-                homeserver.geturl() if homeserver
+                parsed_homeserver.geturl() if parsed_homeserver
                 else "https://{}".format(url.netloc)
             ),
             server_name=url.hostname,
@@ -119,7 +119,7 @@ class Api(object):
 
     @staticmethod
     def encrypted_mxc_to_plumb(mxc, key, hash, iv, homeserver=None):
-        # type: (str, str, str, str) -> Optional[str]
+        # type: (str, str, str, str, Optional[str]) -> Optional[str]
         """Convert a matrix content URI to a encrypted mxc URI.
 
         The return value of this function will have a URI schema of emxc://.
@@ -146,10 +146,10 @@ class Api(object):
         if not url.netloc or not url.path:
             return None
 
-        homeserver = urlparse(homeserver) if homeserver else None
+        parsed_homeserver = urlparse(homeserver) if homeserver else None
 
-        host = (homeserver._replace(scheme="emxc").geturl()
-                if homeserver else None)
+        host = (parsed_homeserver._replace(scheme="emxc").geturl()
+                if parsed_homeserver else None)
 
         plumb_url = (
             "{homeserver}/_matrix/media/r0/download/"
