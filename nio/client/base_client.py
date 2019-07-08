@@ -38,7 +38,7 @@ from ..responses import (ErrorResponse, JoinedMembersResponse,
 from ..rooms import MatrixInvitedRoom, MatrixRoom
 
 if ENCRYPTION_ENABLED:
-    from ..crypto import Olm
+    from ..crypto import Olm, DeviceStore
     from ..store import DefaultStore, MatrixStore
 
 
@@ -182,7 +182,11 @@ class Client(object):
     @property  # type: ignore
     @store_loaded
     def device_store(self):
-        """Store containing known devices."""
+        # type: () -> DeviceStore
+        """Store containing known devices.
+
+        Returns a ``DeviceStore`` holding all known olm devices.
+        """
         return self.olm.device_store
 
     @property  # type: ignore
