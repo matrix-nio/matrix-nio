@@ -48,7 +48,8 @@ from ..responses import (ErrorResponse,
                          RoomKeyRequestError, RoomKeyRequestResponse,
                          RoomLeaveResponse, RoomLeaveError,
                          RoomMessagesError, RoomMessagesResponse,
-                         RoomSendResponse, ShareGroupSessionError,
+                         RoomSendResponse, RoomTypingResponse, RoomTypingError,
+                         ShareGroupSessionError,
                          ShareGroupSessionResponse, SyncError, SyncResponse,
                          ToDeviceError, ToDeviceResponse, PartialSyncResponse)
 
@@ -1215,6 +1216,46 @@ class AsyncClient(Client):
             RoomMessagesResponse,
             method,
             path,
+            response_data=(room_id, )
+        )
+
+    @logged_in
+    async def room_typing(
+        self,
+        room_id,            # type: str
+        typing_state=True,  # type: bool
+        timeout=30000       # type: int
+    ):
+        # type: (...) -> Union[RoomTypingResponse, RoomTypingError]
+        """Send a typing notice to the server.
+
+        This tells the server that the user is typing for the next N
+        milliseconds or that the user has stopped typing.
+
+        Returns either a `RoomTypingResponse` if the request was successful or
+        a `RoomTypingError` if there was an error with the request.
+
+
+        Args:
+            room_id (str): The room id of the room where the user is typing.
+            typign_state (bool): A flag representing whether the user started
+                or stopped typing.
+            timeout (int): For how long should the new typing notice be
+                valid for in milliseconds.
+        """
+        method, path, data = Api.room_typing(
+            self.access_token,
+            room_id,
+            self.user_id,
+            typing_state,
+            timeout
+        )
+
+        return await self._send(
+            RoomTypingResponse,
+            method,
+            path,
+            data,
             response_data=(room_id, )
         )
 

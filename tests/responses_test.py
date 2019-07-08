@@ -15,7 +15,8 @@ from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
                            RoomContextError, RoomContextResponse,
                            RoomForgetResponse,
                            RoomKeyRequestError, RoomKeyRequestResponse,
-                           RoomLeaveResponse, RoomMessagesResponse, SyncError,
+                           RoomLeaveResponse, RoomMessagesResponse,
+                           RoomTypingResponse, SyncError,
                            SyncResponse, ToDeviceError, ToDeviceResponse,
                            UploadResponse, _ErrorWithRoomId)
 
@@ -236,3 +237,7 @@ class TestClass(object):
     def test_room_forget(self):
         response = RoomForgetResponse.from_dict({}, TEST_ROOM_ID)
         assert isinstance(response, RoomForgetResponse)
+
+    def test_room_typing(self):
+        response = RoomTypingResponse.from_dict({}, TEST_ROOM_ID)
+        assert isinstance(response, RoomTypingResponse)

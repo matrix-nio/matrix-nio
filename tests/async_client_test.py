@@ -15,6 +15,7 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, ErrorResponse,
                  ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
+                 RoomTypingResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
@@ -582,6 +583,27 @@ class TestClass(object):
         response = await async_client.room_messages(TEST_ROOM_ID, "start_token")
 
         assert isinstance(response, RoomMessagesResponse)
+
+    async def test_room_typing(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+        await async_client.receive_response(self.encryption_sync_response)
+
+        room_id = list(async_client.rooms.keys())[0]
+
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/rooms/{}/typing/{}"
+            "?access_token=abc123".format(
+                room_id,
+                async_client.user_id
+            ),
+            status=200,
+            payload={}
+        )
+        resp = await async_client.room_typing(room_id, typing_state=True)
+        assert isinstance(resp, RoomTypingResponse)
 
     async def test_event_callback(self, async_client):
         await async_client.receive_response(
