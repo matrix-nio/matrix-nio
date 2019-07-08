@@ -382,7 +382,7 @@ class Client(object):
         room encryption keys with it.
 
         Args:
-            device (Device): The device which should be added to the trust
+            device (OlmDevice): The device which should be added to the trust
                 list.
 
         Returns true if the device was verified, false if it was already
@@ -406,7 +406,7 @@ class Client(object):
         encryption keys for rooms that the device takes part of.
 
         Args:
-            device (Device): The device which should be added to the trust
+            device (OlmDevice): The device which should be added to the trust
                 list.
 
         Returns true if the device was unverified, false if it was already
@@ -428,7 +428,7 @@ class Client(object):
         therefore won't be able to decrypt messages coming from this client.
 
         Args:
-            device (Device): The device which should be added to the
+            device (OlmDevice): The device which should be added to the
                 blacklist.
 
         Returns true if the device was added, false if it was on the blacklist
@@ -447,7 +447,7 @@ class Client(object):
         """Unmark a device as blacklisted.
 
         Args:
-            device (Device): The device which should be removed from the
+            device (OlmDevice): The device which should be removed from the
                 blacklist.
 
         Returns true if the device was removed, false if it wasn't on the
@@ -465,7 +465,7 @@ class Client(object):
         being verified.
 
         Args:
-            device (Device): the device to ignore
+            device (OlmDevice): the device to ignore
 
         Returns true if device is ignored, or false if it is already on the
         list of ignored devices.
@@ -483,7 +483,7 @@ class Client(object):
         """Unmark a device as ignored.
 
         Args:
-            device (Device): The device which should be removed from the
+            device (OlmDevice): The device which should be removed from the
                 list of ignored devices.
 
         Returns true if the device was removed, false if it wasn't on the
