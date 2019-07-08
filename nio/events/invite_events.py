@@ -115,9 +115,16 @@ class InviteMemberEvent(InviteEvent):
         unsigned = parsed_dict.get("unsigned", {})
         prev_content = unsigned.get("prev_content", None)
 
+        membership = content["membership"]
+        prev_membership = (
+            prev_content.get("membership") if prev_content else None
+        )
+
         return cls(
             parsed_dict["sender"],
             parsed_dict["state_key"],
+            membership,
+            prev_membership,
             content,
             prev_content,
         )
