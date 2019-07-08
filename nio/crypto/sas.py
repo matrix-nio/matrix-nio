@@ -55,7 +55,7 @@ class Sas(olm.Sas):
     Attributes:
         we_started_it (bool): Is true if the verification process was started
             by us, otherwise false.
-        self.sas_accepted (bool): Is true if we accepted that the short
+        sas_accepted (bool): Is true if we accepted that the short
             authentication string matches on both devices.
 
     Args:
@@ -558,7 +558,13 @@ class Sas(olm.Sas):
         self.state = SasState.key_received
 
     def receive_mac_event(self, event):
-        """Receive a KeyVerificationMac event."""
+        """Receive a KeyVerificationMac event.
+
+        Args:
+            event (KeyVerificationMac): The MAC event that was received for
+                this SAS session.
+
+        """
         if self.verified:
             return
 
