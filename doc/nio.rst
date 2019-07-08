@@ -47,8 +47,35 @@ Events
     :members:
     :undoc-members:
     :show-inheritance:
-    :imported-members:
-    :exclude-members: Schemas, super, validate_or_badevent, verify, ToDeviceMessage, ValidationError, validate_json, wraps
+
+.. automodule:: nio.events.misc
+    :members:
+    :show-inheritance:
+
+Room Events
+^^^^^^^^^^^^^^^^^
+
+.. automodule:: nio.events.room_events
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Invite Room Events
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: nio.events.invite_events
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Account Data
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: nio.events.account_data
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 Exceptions
 ---------------------
