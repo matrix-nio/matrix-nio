@@ -21,7 +21,7 @@ import attr
 
 @attr.s
 class ToDeviceMessage(object):
-    """A to-device message that should be sent out.
+    """A to-device message that can be sent to the homeserver.
 
     Attributes:
         type (str): The type of the message.
