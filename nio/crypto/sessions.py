@@ -220,6 +220,17 @@ class TrustState(Enum):
 class OlmDevice(object):
     """Class holding info about users Olm devices.
 
+    OlmDevices represent user devices with which we can communicate in an
+    encrypted manner. To do so an OlmDevice needs to have its trust state set.
+    The trust state can be set to one of "verified", "ignored", or
+    "blacklisted".
+
+    Note that the trust state should never be moddified directly on an
+    OlmDevice, all the attributes here are read only.
+
+    The trust state can be changed by pasing the OlmDevice to a nio Client or a
+    MatrixStore class.
+
     Attributes:
         user_id (str): The id of the user that the device belongs to.
         device_id (str): The device id that combined with the user id uniquely
@@ -250,6 +261,7 @@ class OlmDevice(object):
 
     @property
     def ed25519(self):
+        """The ed25519 fingerprint key of the device."""
         return self.keys["ed25519"]
 
     @ed25519.setter
@@ -258,6 +270,7 @@ class OlmDevice(object):
 
     @property
     def curve25519(self):
+        """The curve25519 key of the device."""
         return self.keys["curve25519"]
 
     @curve25519.setter
