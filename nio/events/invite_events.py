@@ -42,12 +42,41 @@ class InviteEvent(object):
 
         return None
 
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        """Create an InviteEvent from a dictionary.
+
+        Args:
+            parsed_dict (dict): The dictionary representation of the event.
+
+        """
+        raise NotImplementedError()
+
 
 @attr.s
 class InviteMemberEvent(InviteEvent):
-    state_key = attr.ib()
-    content = attr.ib()
-    prev_content = attr.ib(default=None)
+    """Class representing to an m.room.member event in an invited room.
+
+    Attributes:
+        state_key (str): The user_id this membership event relates to. In all
+            cases except for when membership is join, the user ID in the sender
+            attribute does not need to match the user ID in the state_key.
+        membership (str): The membership state of the user. One of "invite",
+            "join", "leave", "ban".
+        prev_membership (str, optional): The previous membership state that
+            this one is overwriting. Can be None in which case the membership
+            state is assumed to have been "leave".
+        content (dict): The content of the of the membership event.
+        prev_content(dict, optional): The content of a previous membership
+            event that this one is overwriting.
+
+    """
+
+    state_key = attr.ib(type=str)
+    membership = attr.ib(type=str)
+    prev_membership = attr.ib(type=str)
+    content = attr.ib(type=dict)
+    prev_content = attr.ib(type=dict, default=None)
 
     @classmethod
     @verify(Schemas.room_membership)

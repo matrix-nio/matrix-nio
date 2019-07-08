@@ -239,6 +239,8 @@ class TestClass(object):
         room.handle_event(InviteMemberEvent(
             "@alice:example.org",
             BOB_ID,
+            "invite",
+            None,
             {
                 "membership": "invite"
             }

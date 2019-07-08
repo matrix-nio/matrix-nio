@@ -219,6 +219,8 @@ class TestClass(object):
             InviteMemberEvent(
                 "@BOB:example.org",
                 ALICE_ID,
+                "invite",
+                None,
                 {
                     "membership": "invite",
                     "display_name": None,
