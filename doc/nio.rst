@@ -10,14 +10,21 @@ Api
     :members:
     :undoc-members:
 
-Client
+nio Clients
 -----------------
 
+.. automodule:: nio.client
+
+.. autoclass:: nio.base_client.ClientConfig
+    :members:
+
+Client
+^^^^^^^^^^^^^^^^^
 .. autoclass:: nio.Client
     :members:
 
 AsyncClient
------------
+^^^^^^^^^^^^^^^^
 
 .. autoclass:: nio.AsyncClient
     :members:
@@ -26,7 +33,7 @@ AsyncClient
 
 
 HttpClient
------------------
+^^^^^^^^^^^^^^^^
 
 .. autoclass:: nio.HttpClient
     :members:
