@@ -124,3 +124,19 @@ Storage
 
 .. autoclass:: nio.store.SqliteMemoryStore
     :show-inheritance:
+
+Encryption
+--------------------------
+.. automodule:: nio.crypto
+
+.. autoclass:: nio.crypto.DeviceStore
+    :members:
+
+.. autoclass:: nio.crypto.OlmDevice
+    :members:
+
+.. autoclass:: nio.crypto.TrustState
+    :members:
+
+.. autoclass:: nio.crypto.Sas
+    :members:
