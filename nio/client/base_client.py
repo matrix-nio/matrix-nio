@@ -177,7 +177,7 @@ class Client(object):
 
         Returns True if the client is logged in to the server, False otherwise.
         """
-        return True if self.access_token else False
+        return bool(self.access_token)
 
     @property  # type: ignore
     @store_loaded
