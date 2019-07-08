@@ -263,6 +263,10 @@ class LegacyMatrixStore(object):
     @use_database
     def load_device_keys(self):
         # type: () -> DeviceStore
+        """Load all the device keys from the database.
+
+        Returns DeviceStore containing the OlmDevices with the device keys.
+        """
         store = DeviceStore()
         device_keys = LegacyDeviceKeys.select().join(LegacyAccounts).where(
             LegacyAccounts.device_id == self.device_id
@@ -345,7 +349,7 @@ class LegacyMatrixStore(object):
     @use_database
     def add_outgoing_key_request(self, key_request):
         # type: (OutgoingKeyRequest) -> None
-        """Add a key request to the store."""
+        """Add and store a outgoing key request to the store."""
         account = self._get_account()
         assert account
 
@@ -758,6 +762,10 @@ class MatrixStore(object):
     @use_database
     def load_device_keys(self):
         # type: () -> DeviceStore
+        """Load all the device keys from the database.
+
+        Returns DeviceStore containing the OlmDevices with the device keys.
+        """
         store = DeviceStore()
         account = self._get_account()
 
@@ -859,7 +867,7 @@ class MatrixStore(object):
     @use_database
     def add_outgoing_key_request(self, key_request):
         # type: (OutgoingKeyRequest) -> None
-        """Add a key request to the store."""
+        """Add an outgoing key request to the store."""
         account = self._get_account()
         assert account
 
@@ -905,55 +913,151 @@ class MatrixStore(object):
     @use_database
     def delete_encrypted_room(self, room):
         # type: (str) -> None
-        """Delete the room id for this account."""
+        """Delete the a encrypted room from the store."""
         db_room = EncryptedRooms.get_or_none(EncryptedRooms.room_id == room)
         if db_room:
             db_room.delete_instance()
 
     def blacklist_device(self, device):
         # type: (OlmDevice) -> bool
+        """Mark a device as blacklisted.
+
+        Args:
+            device (OlmDevice): The device that will be marked as blacklisted
+
+        Returns True if the device was blacklisted, False otherwise, e.g. if
+        the device was already blacklisted.
+
+        """
         raise NotImplementedError
 
     def unblacklist_device(self, device):
         # type: (OlmDevice) -> bool
+        """Unmark a device as blacklisted.
+
+        Args:
+            device (OlmDevice): The device that will be unmarked as blacklisted
+
+        """
         raise NotImplementedError
 
     def verify_device(self, device):
         # type: (OlmDevice) -> bool
+        """Mark a device as verified.
+
+        Args:
+            device (OlmDevice): The device that will be marked as verified
+
+        Returns True if the device was verified, False otherwise, e.g. if the
+        device was already verified.
+
+        """
         raise NotImplementedError
 
     def is_device_verified(self, device):
         # type: (OlmDevice) -> bool
+        """Check if a device is verified.
+
+        Args:
+            device (OlmDevice): The device that will be checked if it's
+                verified.
+        """
         raise NotImplementedError
 
     def is_device_blacklisted(self, device):
         # type: (OlmDevice) -> bool
+        """Check if a device is blacklisted.
+
+        Args:
+            device (OlmDevice): The device that will be checked if it's
+                blacklisted.
+        """
         raise NotImplementedError
 
     def unverify_device(self, device):
         # type: (OlmDevice) -> bool
+        """Unmark a device as verified.
+
+        Args:
+            device (OlmDevice): The device that will be unmarked as verified
+
+        Returns True if the device was unverified, False otherwise, e.g. if the
+        device wasn't verified.
+
+        """
         raise NotImplementedError
 
-    # Mark device's verified/blacklisted status as to be ignored
     def ignore_device(self, device):
         # type: (OlmDevice) -> bool
+        """Mark a device as ignored.
+
+        Args:
+            device (OlmDevice): The device that will be marked as blacklisted
+
+        Returns True if the device was ignored, False otherwise, e.g. if
+        the device was already ignored.
+        """
         raise NotImplementedError
 
     def unignore_device(self, device):
         # type: (OlmDevice) -> bool
+        """Unmark a device as ignored.
+
+        Args:
+            device (OlmDevice): The device that will be marked as blacklisted
+
+        Returns True if the device was unignored, False otherwise, e.g. if the
+        device wasn't ignored in the first place.
+        """
         raise NotImplementedError
 
     def ignore_devices(self, devices):
         # type: (List[OlmDevice]) -> None
+        """Mark a list of devices as ignored.
+
+        This is a more efficient way to mark multiple devices as ignored.
+
+        Args:
+            device (list[OlmDevice]): A list of OlmDevices that will be marked
+                as ignored.
+
+        """
         raise NotImplementedError
 
     def is_device_ignored(self, device):
         # type: (OlmDevice) -> bool
+        """Check if a device is ignored.
+
+        Args:
+            device (OlmDevice): The device that will be checked if it's
+                ignored.
+        """
         raise NotImplementedError
 
 
 @attr.s
 class DefaultStore(MatrixStore):
+    """The default nio Matrix Store.
+
+    This store uses an Sqlite database as the main storage format while device
+    trust state is stored in plaintext files using a format similar to the ssh
+    known_hosts file format. The files will be created in the same directory as
+    the main Sqlite database.
+
+    One such file is created for each of the 3 valid states (verified,
+    blacklisted, ignored). If a device isn't found in any of those files the
+    verification state is considered to be unset.
+
+    Args:
+        user_id (str): The fully-qualified ID of the user that owns the store.
+        device_id (str): The device id of the user's device.
+        store_path (str): The path where the store should be stored.
+        pickle_key (str, optional): A passphrase that will be used to encrypt
+            encryption keys while they are in storage.
+        database_name (str, optional): The file-name of the database that
+            should be used.
+    """
+
     trust_db = attr.ib(type=KeyStore, init=False)
     blacklist_db = attr.ib(type=KeyStore, init=False)
 
@@ -1103,6 +1207,21 @@ class DefaultStore(MatrixStore):
 
 @attr.s
 class SqliteStore(MatrixStore):
+    """The Sqlite only nio Matrix Store.
+
+    This store uses an Sqlite database as the main storage format as well as
+    the store format for the trust state.
+
+    Args:
+        user_id (str): The fully-qualified ID of the user that owns the store.
+        device_id (str): The device id of the user's device.
+        store_path (str): The path where the store should be stored.
+        pickle_key (str, optional): A passphrase that will be used to encrypt
+            encryption keys while they are in storage.
+        database_name (str, optional): The file-name of the database that
+            should be used.
+    """
+
     models = MatrixStore.models + [DeviceTrustState]
 
     def _get_device(self, device):
@@ -1372,6 +1491,19 @@ class SqliteStore(MatrixStore):
 
 
 class SqliteMemoryStore(SqliteStore):
+    """The Sqlite only nio Matrix Store.
+
+    This store uses an Sqlite database as the main storage format as well as
+    the store format for the trust state. The Sqlite database will be stored
+    only in memory and all the data will be lost after the object is deleted.
+
+    Args:
+        user_id (str): The fully-qualified ID of the user that owns the store.
+        device_id (str): The device id of the user's device.
+        pickle_key (str, optional): A passphrase that will be used to encrypt
+            encryption keys while they are in storage.
+    """
+
     def __init__(self, user_id, device_id, pickle_key=""):
         super().__init__(user_id, device_id, "", pickle_key=pickle_key)
 
