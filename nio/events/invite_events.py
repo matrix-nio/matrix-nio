@@ -24,11 +24,40 @@ from .misc import BadEventType, verify
 
 @attr.s
 class InviteEvent(object):
+    """Matrix Event class for events in invited rooms.
+
+    Events for invited rooms will have a stripped down version of their
+    counterparts for joined rooms.
+
+    Such events will be missing the event id and origin server timestamp.
+    Since all of the events in an invited room will be state events they will
+    never be encrypted.
+
+    Attributes:
+        source (dict): The source dictionary of the event. This allows access
+            to all the event fields in a non-secure way.
+        sender (str): The fully-qualified ID of the user who sent this
+            event.
+    """
+
     sender = attr.ib()
 
     @classmethod
     def parse_event(cls, event_dict):
         # type: (Dict[Any, Any]) -> Optional[Union[InviteEvent, BadEventType]]
+        """Parse a Matrix invite event and create a higher level event object.
+
+        This function parses the type of the Matrix event and produces a higher
+        level event object representing the parsed event.
+
+        The event structure is checked for correctness and the event fields are
+        type-checked. If this validation process fails for an event None will
+        be returned.
+
+        Args:
+            event_dict (dict): The dictionary representation of the event.
+
+        """
         if "unsigned" in event_dict:
             if "redacted_because" in event_dict["unsigned"]:
                 return None
@@ -96,6 +125,15 @@ class InviteMemberEvent(InviteEvent):
 
 @attr.s
 class InviteAliasEvent(InviteEvent):
+    """An event informing us about which alias should be prefered.
+
+    This is the RoomAliasEvent equivalent for invited rooms.
+
+    Attributes:
+        canonical_alias (str): The alias that is considered canonical.
+
+    """
+
     canonical_alias = attr.ib()
 
     @classmethod
@@ -110,6 +148,19 @@ class InviteAliasEvent(InviteEvent):
 
 @attr.s
 class InviteNameEvent(InviteEvent):
+    """Event holding the name of the invited room.
+
+    This is the RoomNameEvent equivalent for invited rooms.
+
+    The room name is a human-friendly string designed to be displayed to the
+    end-user. The room name is not unique, as multiple rooms can have the same
+    room name set.
+
+    Attributes:
+        name (str): The name of the room.
+
+    """
+
     name = attr.ib()
 
     @classmethod
