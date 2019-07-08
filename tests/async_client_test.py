@@ -1,5 +1,6 @@
 import json
 import sys
+import re
 from os import path
 
 import pytest
@@ -117,6 +118,38 @@ class TestClass(object):
             DeviceList([ALICE_ID], []),
             []
         )
+
+    @property
+    def empty_sync(self):
+        return {
+            "account_data": {
+                "events": []
+            },
+            "device_lists": {
+                "changed": [],
+                "left": []
+            },
+            "device_one_time_keys_count": {
+                "signed_curve25519": 50
+            },
+            "groups": {
+                "invite": {},
+                "join": {},
+                "leave": {}
+            },
+            "next_batch": "s1059_133339_44_763_246_1_586_12411_1",
+            "presence": {
+                "events": []
+            },
+            "rooms": {
+                "invite": {},
+                "join": {},
+                "leave": {}
+            },
+            "to_device": {
+                "events": []
+            }
+        }
 
     @property
     def limit_exceeded_error_response(self):
@@ -756,3 +789,51 @@ class TestClass(object):
         assert got_error == [True]
         assert isinstance(resp, LoginResponse)
         assert async_client.logged_in
+
+    async def test_sync_forever(self, async_client, aioresponse, loop):
+        sync_url = re.compile(
+            r'^https://example\.org/_matrix/client/r0/sync\?access_token=.*'
+        )
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_response,
+        )
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.empty_sync,
+            repeat=True
+        )
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/upload?access_token=abc123",
+            status=200,
+            payload=self.keys_upload_response,
+            repeat=True
+        )
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/query?access_token=abc123",
+            status=200,
+            payload=self.keys_query_response,
+            repeat=True
+        )
+
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+
+        assert async_client.should_upload_keys
+
+        task = loop.create_task(async_client.sync_forever(loop_sleep_time=100))
+
+        await async_client.synced.wait()
+        await async_client.synced.wait()
+
+        assert not async_client.should_upload_keys
+
+        task.cancel()
+        await task
