@@ -15,7 +15,7 @@ nio Clients
 
 .. automodule:: nio.client
 
-.. autoclass:: nio.base_client.ClientConfig
+.. autoclass:: nio.ClientConfig
     :members:
 
 Client
