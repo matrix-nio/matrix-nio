@@ -870,9 +870,10 @@ class Client(object):
         """Export all the Megolm decryption keys of this device.
 
         The keys will be encrypted using the passphrase.
-        NOTE:
-            This does not save other information such as the private identity
-            keys of the device.
+
+        Note that this does not save other information such as the private
+        identity keys of the device.
+
         Args:
             outfile (str): The file to write the keys to.
             passphrase (str): The encryption passphrase.
