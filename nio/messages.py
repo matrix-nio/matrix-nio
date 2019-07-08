@@ -19,6 +19,16 @@ from typing import Dict
 import attr
 
 
+"""Matrix messages module.
+
+This module contains classes that can be used to send events to a Matrix
+homeserver.
+
+They ease the creation of a propper message structure.
+
+"""
+
+
 @attr.s
 class ToDeviceMessage(object):
     """A to-device message that can be sent to the homeserver.
