@@ -35,6 +35,12 @@ from .responses import RoomSummary, TypingNoticeEvent
 logger = Logger("nio.rooms")
 logger_group.add_logger(logger)
 
+__all__ = [
+    "MatrixRoom",
+    "MatrixInvitedRoom",
+    "MatrixUser",
+]
+
 
 class MatrixRoom(object):
     """Represents a Matrix room."""
