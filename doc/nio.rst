@@ -85,6 +85,12 @@ Account Data
     :show-inheritance:
 
 
+Messages
+---------------------
+.. automodule:: nio.messages
+    :members:
+
+
 Exceptions
 ---------------------
 
