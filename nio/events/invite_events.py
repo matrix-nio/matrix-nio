@@ -14,6 +14,21 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+"""Matrix Invite Events.
+
+Events for invited rooms will have a stripped down version of their
+counterparts for joined rooms.
+
+Such events will be missing the event id and origin server timestamp.
+Since all of the events in an invited room will be state events they will
+never be encrypted.
+
+These events help set up the state of an invited room so more information can
+be displayed to users if they are invited to a room.
+
+"""
+
+
 from typing import Any, Dict, Optional, Union
 
 import attr
