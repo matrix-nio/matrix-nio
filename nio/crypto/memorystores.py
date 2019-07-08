@@ -94,6 +94,19 @@ class GroupSessionStore(object):
 
 
 class DeviceStore(object):
+    """A store that holds olm devices in memory.
+
+    The DeviceStore class implements the iter method, devices can be iterated
+    over normaly using:
+        >>> for device in device_store:
+        ...    print(device.user_id, device.device_id)
+
+    To get only non-deleted devices of a user the active_user_devices method
+    can be used:
+        >>> for device in device_store.active_user_devices("@bob:example.org"):
+        ...    print(device.user_id, device.device_id)
+
+    """
     def __init__(self):
         # type: () -> None
         self._entries = defaultdict(dict)  \
@@ -110,20 +123,33 @@ class DeviceStore(object):
         return self._entries[user_id]
 
     def items(self):
+        """List of tuples in the form (user id, dict(device_id, OlmDevice)."""
         return self._entries.items()
 
     def values(self):
+        """List of devices in the form of a dict(device_id, OlmDevice)."""
         return self._entries.values()
 
     def active_user_devices(self, user_id):
         # type: (str) -> Iterator[OlmDevice]
+        """Get all the non-deleted devices of a user.
+
+        Args:
+            user_id (str): The user for which we would like to get the devices
+                for.
+
+        This returns an iterator over all the non-deleted devices of the given
+        user.
+
+        """
         for device in self._entries[user_id].values():
             if not device.deleted:
                 yield device
 
     @property
     def users(self):
-        # type () -> str
+        # type () -> List[str]
+        """Get the list of users that the device store knows about."""
         return self._entries.keys()
 
     def devices(self, user_id):
@@ -132,6 +158,14 @@ class DeviceStore(object):
 
     def add(self, device):
         # type: (OlmDevice) -> bool
+        """Add the given device to the store.
+
+        Args:
+            device (OlmDevice): The device that should be added to the store.
+
+        Returns True if the device was added to the store, False if it already
+        was in the store.
+        """
         if device in self:
             return False
 
