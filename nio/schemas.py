@@ -73,6 +73,7 @@ class Schemas(object):
                 "required": ["msgtype"],
             }
         },
+        "not": {"required": ["state_key"]}
     }
 
     room_message_text = {
@@ -201,6 +202,7 @@ class Schemas(object):
             }
         },
         "required": ["unsigned"],
+        "not": {"required": ["state_key"]}
     }
 
     login = {
@@ -597,6 +599,7 @@ class Schemas(object):
         "type": "object",
         "properties": {
             "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
             "type": {"type": "string"},
             "content": {
                 "type": "object",
@@ -608,13 +611,14 @@ class Schemas(object):
                 "required": ["creator"],
             },
         },
-        "required": ["type", "sender", "content"],
+        "required": ["type", "sender", "content", "state_key"],
     }
 
     room_guest_access = {
         "type": "object",
         "properties": {
             "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
             "type": {"type": "string"},
             "content": {
                 "type": "object",
@@ -628,13 +632,14 @@ class Schemas(object):
                 "required": ["guest_access"],
             },
         },
-        "required": ["type", "sender", "content"],
+        "required": ["type", "sender", "content", "state_key"],
     }
 
     room_join_rules = {
         "type": "object",
         "properties": {
             "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
             "type": {"type": "string"},
             "content": {
                 "type": "object",
@@ -648,13 +653,14 @@ class Schemas(object):
                 "required": ["join_rule"],
             },
         },
-        "required": ["type", "sender", "content"],
+        "required": ["type", "sender", "content", "state_key"],
     }
 
     room_history_visibility = {
         "type": "object",
         "properties": {
             "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
             "type": {"type": "string"},
             "content": {
                 "type": "object",
@@ -673,13 +679,14 @@ class Schemas(object):
                 "required": ["history_visibility"],
             },
         },
-        "required": ["type", "sender", "content"],
+        "required": ["type", "sender", "content", "state_key"],
     }
 
     room_canonical_alias = {
         "type": "object",
         "properties": {
             "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
             "type": {"type": "string"},
             "content": {
                 "type": "object",
@@ -687,13 +694,14 @@ class Schemas(object):
                 "required": [],
             },
         },
-        "required": ["type", "sender", "content"],
+        "required": ["type", "sender", "content", "state_key"],
     }
 
     room_name = {
         "type": "object",
         "properties": {
             "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
             "type": {"type": "string"},
             "content": {
                 "type": "object",
@@ -701,13 +709,27 @@ class Schemas(object):
                 "required": ["name"],
             },
         },
-        "required": ["type", "sender", "content"],
+        "required": ["type", "sender", "content", "state_key"],
+    }
+
+    room_encryption = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+            },
+        },
+        "required": ["type", "sender", "content", "state_key"],
     }
 
     room_topic = {
         "type": "object",
         "properties": {
             "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
             "type": {"type": "string"},
             "content": {
                 "type": "object",
@@ -715,13 +737,14 @@ class Schemas(object):
                 "required": ["topic"],
             },
         },
-        "required": ["type", "sender", "content"],
+        "required": ["type", "sender", "content", "state_key"],
     }
 
     room_avatar = {
-        type: "object",
+        "type": "object",
         "properties": {
             "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
             "type": {"type": "string"},
             "content": {
                 "type": "object",
@@ -734,13 +757,14 @@ class Schemas(object):
                 "url": {"type": "string"},
             },
         },
-        "required": ["type", "sender", "content"]
+        "required": ["type", "sender", "content", "state_key"]
     }
 
     room_power_levels = {
         "type": "object",
         "properties": {
             "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
             "type": {"type": "string"},
             "content": {
                 "type": "object",
@@ -771,7 +795,7 @@ class Schemas(object):
                 },
             },
         },
-        "required": ["type", "sender", "content"],
+        "required": ["type", "sender", "content", "state_key"],
     }
 
     room_membership = {

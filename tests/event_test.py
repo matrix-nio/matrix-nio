@@ -11,7 +11,7 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         RoomJoinRulesEvent, RoomMemberEvent, RoomMessageEmote,
                         RoomMessageNotice, RoomMessageText, RoomNameEvent,
                         RoomTopicEvent, RoomAvatarEvent, ToDeviceEvent,
-                        UnknownBadEvent)
+                        UnknownBadEvent, Event, RoomEncryptionEvent)
 
 
 class TestClass(object):
@@ -127,3 +127,33 @@ class TestClass(object):
         parsed_dict = {}
         response = RedactedEvent.from_dict(parsed_dict)
         assert isinstance(response, UnknownBadEvent)
+
+    def test_room_encryption(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/room_encryption.json")
+        event = Event.parse_event(parsed_dict)
+        assert isinstance(event, RoomEncryptionEvent)
+
+    def test_invalid_state_event(self):
+        for event_type, event_file in [
+                ("m.room.create", "create.json"),
+                ("m.room.guest_access", "guest_access.json"),
+                ("m.room.join_rules", "join_rules.json"),
+                ("m.room.history_visibility", "history_visibility.json"),
+                ("m.room.member", "member.json"),
+                ("m.room.canonical_alias", "alias.json"),
+                ("m.room.name", "name.json"),
+                ("m.room.topic", "topic.json"),
+                ("m.room.avatar", "room_avatar.json"),
+                ("m.room.power_levels", "power_levels.json"),
+                ("m.room.encryption", "room_encryption.json"),
+        ]:
+            parsed_dict = TestClass._load_response(
+                "tests/data/events/{}".format(event_file)
+            )
+            parsed_dict.pop("state_key")
+
+            event = Event.parse_event(parsed_dict)
+
+            assert isinstance(event, BadEvent)
+            assert event.source["type"] == event_type

@@ -389,6 +389,11 @@ class RedactedEvent(Event):
 class RoomEncryptionEvent(Event):
     """An event signaling that encryption has been enabled in a room."""
 
+    @classmethod
+    @verify(Schemas.room_encryption)
+    def from_dict(cls, parsed_dict):
+        return cls(parsed_dict)
+
 
 @attr.s
 class RoomCreateEvent(Event):
