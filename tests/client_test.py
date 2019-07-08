@@ -12,7 +12,8 @@ from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
                  RoomEncryptionEvent, RoomForgetResponse, RoomInfo,
                  RoomKeyRequestResponse, RoomMember, RoomMemberEvent, Rooms,
-                 RoomSummary, ShareGroupSessionResponse, SyncResponse,
+                 RoomSummary, RoomTypingResponse,
+                 ShareGroupSessionResponse, SyncResponse,
                  Timeline, TransportType, TypingNoticeEvent,
                  InviteMemberEvent, InviteInfo)
 from nio.messages import ToDeviceMessage
@@ -691,6 +692,34 @@ class TestClass(object):
 
         assert isinstance(response, RoomForgetResponse)
         assert room_id not in http_client.rooms
+
+    def test_http_client_room_typing(self, http_client):
+        http_client.connect(TransportType.HTTP2)
+
+        _, _ = http_client.login("1234")
+
+        http_client.receive(self.login_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, LoginResponse)
+        assert http_client.access_token == "ABCD"
+
+        _, _ = http_client.sync()
+
+        http_client.receive(self.sync_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, SyncResponse)
+        assert http_client.access_token == "ABCD"
+
+        assert http_client.rooms
+        room_id = list(http_client.rooms.keys())[0]
+        _, _ = http_client.room_typing(room_id, typing_state=False)
+
+        http_client.receive(self.empty_response(5))
+        response = http_client.next_response()
+
+        assert isinstance(response, RoomTypingResponse)
 
     def test_http_client_get_profile(self, http_client):
         http_client.connect(TransportType.HTTP2)
