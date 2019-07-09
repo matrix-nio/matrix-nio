@@ -543,7 +543,7 @@ class HttpClient(Client):
                 This is to prevent routing loops where the server contacts
                 itself.
         """
-        request= self._build_request(
+        request = self._build_request(
             Api.thumbnail(
                 self.access_token,
                 server_name,
