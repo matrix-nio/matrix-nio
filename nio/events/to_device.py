@@ -25,16 +25,36 @@ from .misc import BadEventType, verify
 
 @attr.s
 class ToDeviceEvent(object):
+    """Base Event class for events that are sent using the to-device endpoint.
+
+    Attributes:
+        source (dict): The source dictionary of the event. This allows access
+            to all the event fields in a non-secure way.
+        sender (str): The fully-qualified ID of the user who sent this
+            event.
+
+    """
+
     source = attr.ib()
     sender = attr.ib()
 
     @classmethod
     @verify(Schemas.to_device)
-    def parse_event(
-        cls,
-        event_dict  # type: Dict[Any, Any]
-    ):
-        # type: (...) -> Optional[Union[ToDeviceEvent, BadEventType]]
+    def parse_event(cls, event_dict):
+        # type: (Dict) -> Optional[Union[ToDeviceEvent, BadEventType]]
+        """Parse a to-device event and create a higher level event object.
+
+        This function parses the type of the to-device event and produces a
+        higher level event object representing the parsed event.
+
+        The event structure is checked for correctness and the event fields are
+        type-checked. If this validation process fails for an event None will
+        be returned.
+
+        Args:
+            event_dict (dict): The dictionary representation of the event.
+
+        """
         # A redacted event will have an empty content.
         if not event_dict["content"]:
             return None
