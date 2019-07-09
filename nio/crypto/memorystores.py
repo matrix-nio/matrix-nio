@@ -98,13 +98,15 @@ class DeviceStore(object):
 
     The DeviceStore class implements the iter method, devices can be iterated
     over normaly using:
-        >>> for device in device_store:
-        ...    print(device.user_id, device.device_id)
+
+    >>> for device in device_store:
+    ...    print(device.user_id, device.device_id)
 
     To get only non-deleted devices of a user the active_user_devices method
     can be used:
-        >>> for device in device_store.active_user_devices("@bob:example.org"):
-        ...    print(device.user_id, device.device_id)
+
+    >>> for device in device_store.active_user_devices("@bob:example.org"):
+    ...    print(device.user_id, device.device_id)
 
     """
     def __init__(self):
