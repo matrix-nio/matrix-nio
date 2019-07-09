@@ -13,7 +13,8 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         RoomTopicEvent, RoomAvatarEvent, ToDeviceEvent,
                         UnknownBadEvent, Event, RoomEncryptionEvent,
                         InviteEvent, RoomKeyEvent, ForwardedRoomKeyEvent,
-                        MegolmEvent,  UnknownEncryptedEvent)
+                        MegolmEvent, UnknownEncryptedEvent, InviteMemberEvent,
+                        InviteAliasEvent, InviteNameEvent)
 
 
 class TestClass(object):
@@ -196,6 +197,18 @@ class TestClass(object):
 
             assert isinstance(event, BadEvent)
             assert event.source["type"] == event_type
+
+    def test_invite_events(self):
+        for event_type, event_file in [
+                (InviteMemberEvent, "member.json"),
+                (InviteAliasEvent, "alias.json"),
+                (InviteNameEvent, "name.json"),
+        ]:
+            parsed_dict = TestClass._load_response(
+                "tests/data/events/{}".format(event_file)
+            )
+            event = InviteEvent.parse_event(parsed_dict)
+            assert isinstance(event, event_type)
 
     def test_megolm_event(self):
         parsed_dict = TestClass._load_response(
