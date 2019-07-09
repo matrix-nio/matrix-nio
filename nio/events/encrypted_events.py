@@ -40,6 +40,28 @@ class RoomEncryptedEvent(object):
 
 @attr.s
 class OlmEvent(RoomEncryptedEvent):
+    """An Olm encrypted event.
+
+    Olm events are used to exchange end to end encrypted messages between two
+    devices. They will mostly contain encryption keys to establish a Megolm
+    session for a room.
+
+    nio users will never see such an event under normal circumstances since
+    decrypting this event will produce an event of another type.
+
+    Attributes:
+        sender (str): The fully-qualified ID of the user who sent this
+            event.
+        sender_key (str, optional): The public key of the sender that was used
+            to establish the encrypted session. Is only set if decrypted is
+            True, otherwise None.
+        ciphertext (str): The undecrypted ciphertext of the event.
+        transaction_id (str, optional): The unique identifier that was used
+            when the message was sent. Is only set if the message was sent from
+            our own device, otherwise None.
+
+    """
+
     sender = attr.ib()
     sender_key = attr.ib()
     ciphertext = attr.ib()
