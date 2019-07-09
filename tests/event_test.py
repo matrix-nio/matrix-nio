@@ -11,7 +11,8 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         RoomJoinRulesEvent, RoomMemberEvent, RoomMessageEmote,
                         RoomMessageNotice, RoomMessageText, RoomNameEvent,
                         RoomTopicEvent, RoomAvatarEvent, TagEvent,
-                        AccountDataEvent, ToDeviceEvent, UnknownBadEvent)
+                        AccountDataEvent, ToDeviceEvent, RoomTopicEvent,
+                        RoomAvatarEvent, ToDeviceEvent, UnknownBadEvent)
 
 
 class TestClass(object):
