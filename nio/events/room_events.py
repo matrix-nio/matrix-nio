@@ -24,7 +24,8 @@ import attr
 
 from ..schemas import Schemas
 from .encrypted_events import RoomEncryptedEvent
-from .misc import BadEventType, UnknownBadEvent, validate_or_badevent, verify
+from .misc import (BadEventType, UnknownBadEvent, validate_or_badevent, verify,
+                   BadEvent)
 
 
 @attr.s
@@ -169,16 +170,27 @@ class UnknownEvent(Event):
 
 @attr.s
 class EncryptedEvent(Event):
+    """Base parsing class for events that were encrypted."""
+
     @classmethod
-    def parse_event(
-        cls,
-        event_dict,  # type: Dict[Any, Any]
-    ):
-        # type: (...) -> Union[Event, BadEventType]
+    def parse_event(cls, event_dict):
+        # type: (Dict[Any, Any]) -> Union[Event, BadEventType]
+        """Parse a decrypted event and create a higher level event object.
+
+        Args:
+            event_dict (dict): The dictionary representation of the event.
+        """
         if "unsigned" in event_dict:
             if "redacted_because" in event_dict["unsigned"]:
                 return RedactedEvent.from_dict(event_dict)
 
+        # Events shouldn't be encrypted twice, this would lead to a loop in the
+        # parser path.
+        if event_dict["type"] == "m.room.encrypted":
+            try:
+                return BadEvent.from_dict(event_dict)
+            except KeyError:
+                return UnknownBadEvent(event_dict)
         if event_dict["type"] == "m.room.message":
             return RoomEncryptedMessage.parse_event(event_dict)
 
