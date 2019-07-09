@@ -12,7 +12,7 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         RoomMessageNotice, RoomMessageText, RoomNameEvent,
                         RoomTopicEvent, RoomAvatarEvent, ToDeviceEvent,
                         UnknownBadEvent, Event, RoomEncryptionEvent,
-                        InviteEvent)
+                        InviteEvent, RoomKeyEvent, ForwardedRoomKeyEvent)
 
 
 class TestClass(object):
@@ -134,6 +134,27 @@ class TestClass(object):
             "tests/data/events/room_encryption.json")
         event = Event.parse_event(parsed_dict)
         assert isinstance(event, RoomEncryptionEvent)
+
+    def test_room_key(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/room_key.json")
+        event = RoomKeyEvent.from_dict(
+            parsed_dict,
+            "@alice:example.org",
+            "alice_key"
+        )
+        assert isinstance(event, RoomKeyEvent)
+
+    def test_forwarded_room_key(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/forwarded_room_key.json")
+        event = ForwardedRoomKeyEvent.from_dict(
+            parsed_dict,
+            "@alice:example.org",
+            "alice_key"
+        )
+        assert isinstance(event, RoomKeyEvent)
+
 
     def test_invalid_state_event(self):
         for event_type, event_file in [
