@@ -1221,12 +1221,22 @@ class Schemas(object):
                 "type": "object",
                 "properties": {
                     "tags": {"type:": "object"},
+                    "properties": {
+                        "order": {"type": "float"}
+                    },
+                    "required": [
+                        "type"
+                    ],
                 },
                 "required": [
                     "tags",
                 ],
             }
-        }
+        },
+        "required": [
+            "type",
+            "content",
+        ],
     }
 
     upload = {
