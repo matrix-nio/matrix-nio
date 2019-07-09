@@ -17,13 +17,19 @@ from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
                            RoomKeyRequestError, RoomKeyRequestResponse,
                            RoomLeaveResponse, RoomMessagesResponse,
                            RoomTypingResponse, SyncError,
-                           SyncResponse, ToDeviceError, ToDeviceResponse,
+                           SyncResponse, ThumbnailResponse, ThumbnailError,
+                           ToDeviceError, ToDeviceResponse,
                            UploadResponse, _ErrorWithRoomId)
 
 TEST_ROOM_ID = "!test:example.org"
 
 
 class TestClass(object):
+    @staticmethod
+    def _load_bytes(filename):
+        with open(filename, "rb") as f:
+            return f.read()
+
     @staticmethod
     def _load_response(filename):
         with open(filename) as f:
@@ -104,6 +110,20 @@ class TestClass(object):
             "tests/data/upload_response.json")
         response = UploadResponse.from_dict(parsed_dict)
         assert isinstance(response, UploadResponse)
+
+    def test_thumbnail(self):
+        data = TestClass._load_bytes("tests/data/file_response")
+        response = ThumbnailResponse.from_data(data, "image/png")
+        assert isinstance(response, ThumbnailResponse)
+        assert response.body == data
+
+        data = TestClass._load_response("tests/data/limit_exceeded_error.json")
+        response = ThumbnailResponse.from_data(data, "image/png")
+        assert isinstance(response, ThumbnailError)
+        assert response.status_code == data["errcode"]
+
+        response = ThumbnailResponse.from_data("123", "image/png")
+        assert isinstance(response, ThumbnailError)
 
     def test_sync_fail(self):
         parsed_dict = {}
