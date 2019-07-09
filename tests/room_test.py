@@ -237,6 +237,7 @@ class TestClass(object):
     def test_invited_room(self):
         room = MatrixInvitedRoom(TEST_ROOM, BOB_ID)
         room.handle_event(InviteMemberEvent(
+            {},
             "@alice:example.org",
             BOB_ID,
             "invite",
@@ -248,9 +249,9 @@ class TestClass(object):
         assert room.inviter == "@alice:example.org"
         assert not room.name
 
-        room.handle_event(InviteNameEvent(BOB_ID, "test name"))
+        room.handle_event(InviteNameEvent({}, BOB_ID, "test name"))
         assert room.name == "test name"
 
         assert not room.canonical_alias
-        room.handle_event(InviteAliasEvent(BOB_ID, "test alias"))
+        room.handle_event(InviteAliasEvent({}, BOB_ID, "test alias"))
         assert room.canonical_alias == "test alias"

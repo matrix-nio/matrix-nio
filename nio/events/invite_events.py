@@ -53,9 +53,11 @@ class InviteEvent(object):
             to all the event fields in a non-secure way.
         sender (str): The fully-qualified ID of the user who sent this
             event.
+
     """
 
-    sender = attr.ib()
+    source = attr.ib(type=Dict)
+    sender = attr.ib(type=str)
 
     @classmethod
     def parse_event(cls, event_dict):
@@ -136,6 +138,7 @@ class InviteMemberEvent(InviteEvent):
         )
 
         return cls(
+            parsed_dict,
             parsed_dict["sender"],
             parsed_dict["state_key"],
             membership,
@@ -165,7 +168,7 @@ class InviteAliasEvent(InviteEvent):
         sender = parsed_dict["sender"]
         canonical_alias = parsed_dict["content"].get("alias")
 
-        return cls(sender, canonical_alias)
+        return cls(parsed_dict, sender, canonical_alias)
 
 
 @attr.s
@@ -192,4 +195,4 @@ class InviteNameEvent(InviteEvent):
         sender = parsed_dict["sender"]
         canonical_alias = parsed_dict["content"]["name"]
 
-        return cls(sender, canonical_alias)
+        return cls(parsed_dict, sender, canonical_alias)

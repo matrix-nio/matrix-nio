@@ -217,6 +217,7 @@ class TestClass(object):
     def sync_invite_response(self):
         state = [
             InviteMemberEvent(
+                {},
                 "@BOB:example.org",
                 ALICE_ID,
                 "invite",

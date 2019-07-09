@@ -11,7 +11,8 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         RoomJoinRulesEvent, RoomMemberEvent, RoomMessageEmote,
                         RoomMessageNotice, RoomMessageText, RoomNameEvent,
                         RoomTopicEvent, RoomAvatarEvent, ToDeviceEvent,
-                        UnknownBadEvent, Event, RoomEncryptionEvent)
+                        UnknownBadEvent, Event, RoomEncryptionEvent,
+                        InviteEvent)
 
 
 class TestClass(object):
@@ -154,6 +155,22 @@ class TestClass(object):
             parsed_dict.pop("state_key")
 
             event = Event.parse_event(parsed_dict)
+
+            assert isinstance(event, BadEvent)
+            assert event.source["type"] == event_type
+
+    def test_invalid_invite_state_events(self):
+        for event_type, event_file in [
+                ("m.room.member", "member.json"),
+                ("m.room.canonical_alias", "alias.json"),
+                ("m.room.name", "name.json"),
+        ]:
+            parsed_dict = TestClass._load_response(
+                "tests/data/events/{}".format(event_file)
+            )
+            parsed_dict.pop("state_key")
+
+            event = InviteEvent.parse_event(parsed_dict)
 
             assert isinstance(event, BadEvent)
             assert event.source["type"] == event_type
