@@ -140,9 +140,49 @@ class ForwardedRoomKeyEvent(RoomKeyEvent):
 
 @attr.s
 class MegolmEvent(RoomEncryptedEvent):
+    """An undecrypted Megolm event.
+
+    MegolmEvents are presented to library users only if the library fails
+    to decrypt the event because of a missing session key.
+
+    MegolmEvents can be stored for later use. If a RoomKeyEvent is later on
+    received with a session id that matches the session_id of this event
+    decryption can be retried.
+
+    Attributes:
+        event_id (str): A globally unique event identifier.
+        sender (str): The fully-qualified ID of the user who sent this
+            event.
+        server_timestamp (int): Timestamp in milliseconds on originating
+            homeserver when this event was sent.
+        sender_key (str, optional): The public key of the sender that was used
+            to establish the encrypted session. Is only set if decrypted is
+            True, otherwise None.
+        device_id (str): The unique identifier of the device that was used to
+            encrypt the event.
+        session_id (str): The unique identifier of the session that
+            was used to encrypt the message.
+        ciphertext (str): The undecrypted ciphertext of the event.
+        algorithm (str): The encryption algorithm that was used to encrypt the
+            message.
+        room_id (str): The unique identifier of the room in which the message
+            was sent.
+        transaction_id (str, optional): The unique identifier that was used
+            when the message was sent. Is only set if the message was sent from
+            our own device, otherwise None.
+        decrypted (bool, optional): Boolean deciding if the event was
+            decrypted, always false. Only here to be consistent with room
+            events.
+        verified (bool, optional): Boolean deciding if the event was sent from
+            a verified device and passed verification, always false. Only here
+            to be consistent with room events.
+
+    """
+
     event_id = attr.ib()
     sender = attr.ib()
     server_timestamp = attr.ib()
+
     sender_key = attr.ib()
     device_id = attr.ib()
     session_id = attr.ib()
@@ -193,6 +233,13 @@ class MegolmEvent(RoomEncryptedEvent):
     def as_key_request(self, user_id, requesting_device_id, request_id=None):
         # type: (str, str, Optional[str]) -> ToDeviceMessage
         """Make a to-device message for a room key request.
+
+        MegolmEvents are presented to library users only if the library fails
+        to decrypt the event because of a missing session key.
+
+        A missing key can be requested later on by sending a key request, this
+        method creates a ToDeviceMessage that can be sent out if such a request
+        should be made.
 
         Args:
             user_id (str): The user id of the user that should receive the key
