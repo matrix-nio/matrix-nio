@@ -83,6 +83,18 @@ class OlmEvent(RoomEncryptedEvent):
 
 @attr.s
 class RoomKeyEvent(object):
+    """Event containing a megolm room key that got sent to us.
+
+    Attributes:
+        sender (str): The sender of the event.
+        sender_key (str): The key of the sender that sent the event.
+        room_id (str): The room ID of the room to which the session key
+            belongs to.
+        session_id (str): The session id of the session key.
+        algorithm: (str): The algorithm of the session key.
+
+    """
+
     sender = attr.ib(type=str)
     sender_key = attr.ib(type=str)
     room_id = attr.ib(type=str)
