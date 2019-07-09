@@ -77,6 +77,12 @@ class TestClass(object):
         event = RoomAvatarEvent.from_dict(parsed_dict)
         assert isinstance(event, RoomAvatarEvent)
 
+    def test_tag_event(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/tag.json")
+        event = AccountDataEvent.parse_event(parsed_dict)
+        assert isinstance(event, TagEvent)
+
     def test_name_event(self):
         parsed_dict = TestClass._load_response(
             "tests/data/events/name.json")
