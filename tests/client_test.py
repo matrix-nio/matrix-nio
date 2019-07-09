@@ -14,7 +14,7 @@ from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
                  RoomKeyRequestResponse, RoomMember, RoomMemberEvent, Rooms,
                  RoomSummary, RoomTypingResponse,
                  ShareGroupSessionResponse, SyncResponse,
-                 Timeline, TransportType, TypingNoticeEvent,
+                 Timeline, ThumbnailResponse, TransportType, TypingNoticeEvent,
                  InviteMemberEvent, InviteInfo)
 from nio.messages import ToDeviceMessage
 
@@ -84,6 +84,27 @@ class TestClass(object):
         data = frame_factory.build_data_frame(
             data=body,
             stream_id=3,
+            flags=['END_STREAM']
+        )
+
+        return f.serialize() + data.serialize()
+
+    def file_byte_response(self, stream_id=5):
+        frame_factory = FrameFactory()
+
+        headers = self.example_response_headers + [
+            ("content-type", "image/png")
+        ]
+
+        f = frame_factory.build_headers_frame(
+            headers=headers, stream_id=stream_id
+        )
+
+        body = self._load_byte_response("tests/data/file_response")
+
+        data = frame_factory.build_data_frame(
+            data=body,
+            stream_id=stream_id,
             flags=['END_STREAM']
         )
 
@@ -716,6 +737,35 @@ class TestClass(object):
         response = http_client.next_response()
 
         assert isinstance(response, RoomTypingResponse)
+
+    def test_http_client_thumbnail(self, http_client):
+        http_client.connect(TransportType.HTTP2)
+
+        _, _ = http_client.login("1234")
+
+        http_client.receive(self.login_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, LoginResponse)
+        assert http_client.access_token == "ABCD"
+
+        _, _ = http_client.thumbnail(
+            "example.org",
+            "ascERGshawAWawugaAcauga",
+            32,
+            32,
+            allow_remote=False
+        )
+
+        http_client.receive(self.file_byte_response(3))
+        response = http_client.next_response()
+
+        assert isinstance(response, ThumbnailResponse)
+        assert response.body == self._load_byte_response(
+            "tests/data/file_response"
+        )
+        assert response.content_type == "image/png"
+
 
     def test_http_client_get_profile(self, http_client):
         http_client.connect(TransportType.HTTP2)

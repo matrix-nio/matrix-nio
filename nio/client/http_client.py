@@ -35,14 +35,15 @@ except ImportError:
 
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
-from ..api import Api, MessageDirection
+from ..api import Api, MessageDirection, ResizingMethod
 from ..events import MegolmEvent
 from ..exceptions import LocalProtocolError, RemoteTransportError
 from ..http import (Http2Connection, Http2Request, HttpConnection, HttpRequest,
                     TransportRequest, TransportResponse, TransportType)
 from ..log import logger_group
 from ..responses import (DeleteDevicesAuthResponse, DeleteDevicesResponse,
-                         DevicesResponse, JoinedMembersResponse, JoinResponse,
+                         DevicesResponse, FileResponse,
+                         JoinedMembersResponse, JoinResponse,
                          KeysClaimResponse, KeysQueryResponse, KeysUploadError,
                          KeysUploadResponse, LoginResponse,
                          PartialSyncResponse, ProfileGetAvatarResponse,
@@ -55,7 +56,8 @@ from ..responses import (DeleteDevicesAuthResponse, DeleteDevicesResponse,
                          RoomPutStateResponse, RoomReadMarkersResponse,
                          RoomRedactResponse, RoomSendResponse,
                          RoomTypingResponse, ShareGroupSessionResponse,
-                         SyncResponse, ToDeviceResponse, UpdateDeviceResponse)
+                         SyncResponse, ThumbnailResponse,
+                         ToDeviceResponse, UpdateDeviceResponse)
 
 if False:
     from .messages import ToDeviceMessage
@@ -509,6 +511,50 @@ class HttpClient(Client):
             RoomReadMarkersResponse,
             (room_id, )
         ))
+
+    @connected
+    @logged_in
+    def thumbnail(
+        self,
+        server_name,                  # type: str
+        media_id,                     # type: str
+        width,                        # type: int
+        height,                       # type: int
+        method=ResizingMethod.scale,  # ŧype: ResizingMethod
+        allow_remote=True,            # type: bool
+    ):
+        # type: (...) -> Tuple[UUID, bytes]
+        """Get the thumbnail of a file from the content repository.
+
+        Note: The actual thumbnail may be larger than the size specified.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            server_name (str): The server name from the mxc:// URI.
+            media_id (str): The media ID from the mxc:// URI.
+            width (int): The desired width of the thumbnail.
+            height (int): The desired height of the thumbnail.
+            method (ResizingMethod): The desired resizing method.
+            allow_remote (bool): Indicates to the server that it should not
+                attempt to fetch the media if it is deemed remote.
+                This is to prevent routing loops where the server contacts
+                itself.
+        """
+        request= self._build_request(
+            Api.thumbnail(
+                self.access_token,
+                server_name,
+                media_id,
+                width,
+                height,
+                method,
+                allow_remote
+            )
+        )
+
+        return self._send(request, RequestInfo(ThumbnailResponse))
 
     @connected
     @logged_in
@@ -988,22 +1034,27 @@ class HttpClient(Client):
     @staticmethod
     def _create_response(request_info, transport_response, max_events=0):
         request_class = request_info.request_class
-        try:
-            parsed_dict = json.loads(transport_response.text, encoding="utf-8")
-        except JSONDecodeError:
-            parsed_dict = {}
+        extra_data = request_info.extra_data or ()
 
-        if (transport_response.status_code == 401
-                and request_class == DeleteDevicesResponse):
-            response = DeleteDevicesAuthResponse.from_dict(parsed_dict)
-
-        elif request_info.extra_data:
-            response = request_class.from_dict(
-                parsed_dict,
-                *request_info.extra_data
+        if issubclass(request_class, FileResponse):
+            body = transport_response.content
+            content_type = str(
+                transport_response.headers[b"content-type"], "utf-8"
             )
+            response = request_class.from_data(body, content_type, *extra_data)
         else:
-            response = request_class.from_dict(parsed_dict)
+            try:
+                parsed_dict = json.loads(
+                    transport_response.text, encoding="utf-8"
+                )
+            except JSONDecodeError:
+                parsed_dict = {}
+
+            if (transport_response.status_code == 401
+                    and request_class == DeleteDevicesResponse):
+                response = DeleteDevicesAuthResponse.from_dict(parsed_dict)
+
+            response = request_class.from_dict(parsed_dict, *extra_data)
 
         assert response
 
