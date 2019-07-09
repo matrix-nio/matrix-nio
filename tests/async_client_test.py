@@ -464,21 +464,14 @@ class TestClass(object):
             payload={}
         )
 
-        event = MegolmEvent(
-            "1",
-            ALICE_ID,
-            1,
-            "sender_key_123",
-            ALICE_DEVICE_ID,
-            "session_id_123",
-            "secret",
-            "m.megolm.v1.aes-sha2",
-            TEST_ROOM_ID,
+        event = MegolmEvent.from_dict(
+            self._load_response("tests/data/events/megolm.json")
         )
 
         await async_client.request_room_key(event, "1")
 
-        assert "session_id_123" in async_client.outgoing_key_requests
+        assert ("X3lUlvLELLYxeTx4yOVu6UDpasGEVO0Jbu+QFnm0cKQ" in
+                async_client.outgoing_key_requests)
 
     async def test_key_exports(self, async_client, tempdir):
         file = path.join(tempdir, "keys_file")

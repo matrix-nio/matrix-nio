@@ -14,13 +14,13 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
+from copy import deepcopy
 
 import attr
 
 from ..schemas import Schemas
-from .encrypted_events import RoomEncryptedEvent
-from .misc import BadEventType, verify
+from .misc import BadEventType, verify, logger
 
 
 @attr.s
@@ -60,7 +60,7 @@ class ToDeviceEvent(object):
             return None
 
         if event_dict["type"] == "m.room.encrypted":
-            return RoomEncryptedEvent.parse_event(event_dict)
+            return ToDeviceEvent.parse_encrypted_event(event_dict)
         elif event_dict["type"] == "m.key.verification.start":
             return KeyVerificationStart.from_dict(event_dict)
         elif event_dict["type"] == "m.key.verification.accept":
@@ -73,6 +73,44 @@ class ToDeviceEvent(object):
             return KeyVerificationCancel.from_dict(event_dict)
 
         return None
+
+    @classmethod
+    @verify(Schemas.room_encrypted)
+    def parse_encrypted_event(cls, event_dict):
+        """Parse an encrypted to-device event.
+
+        Encrypted events may have different fields depending on the algorithm
+        that was used to encrypt them.
+
+        This function checks the algorithm of the event and produces a higher
+        level event from the provided dictionary.
+
+        Args:
+            event_dict (dict): The dictionary representation of the encrypted
+                event.
+
+        Returns None if the algorithm of the event is unknown.
+
+        """
+        content = event_dict["content"]
+
+        if content["algorithm"] == "m.olm.v1.curve25519-aes-sha2":
+            return OlmEvent.from_dict(event_dict)
+
+        logger.warn("Received an encrypted event with an unknown "
+                    "algorithm {}.".format(content["algorithm"]))
+
+        return None
+
+    @classmethod
+    def from_dict(cls, parsed_dict):
+        """Create an Event from a dictionary.
+
+        Args:
+            parsed_dict (dict): The dictionary representation of the event.
+
+        """
+        raise NotImplementedError()
 
 
 @attr.s
@@ -179,4 +217,133 @@ class KeyVerificationCancel(KeyVerificationEvent):
             content["transaction_id"],
             content["code"],
             content["reason"],
+        )
+
+
+@attr.s
+class EncryptedToDeviceEvent(ToDeviceEvent):
+    pass
+
+
+@attr.s
+class OlmEvent(EncryptedToDeviceEvent):
+    """An Olm encrypted event.
+
+    Olm events are used to exchange end to end encrypted messages between two
+    devices. They will mostly contain encryption keys to establish a Megolm
+    session for a room.
+
+    nio users will never see such an event under normal circumstances since
+    decrypting this event will produce an event of another type.
+
+    Attributes:
+        sender (str): The fully-qualified ID of the user who sent this
+            event.
+        sender_key (str, optional): The public key of the sender that was used
+            to establish the encrypted session. Is only set if decrypted is
+            True, otherwise None.
+        ciphertext (str): The undecrypted ciphertext of the event.
+        transaction_id (str, optional): The unique identifier that was used
+            when the message was sent. Is only set if the message was sent from
+            our own device, otherwise None.
+
+    """
+
+    sender_key = attr.ib()
+    ciphertext = attr.ib()
+    transaction_id = attr.ib(default=None)
+
+    @classmethod
+    @verify(Schemas.room_olm_encrypted)
+    def from_dict(cls, event_dict):
+        content = event_dict["content"]
+
+        ciphertext = content["ciphertext"]
+        sender_key = content["sender_key"]
+
+        tx_id = (event_dict["unsigned"].get("transaction_id", None)
+                 if "unsigned" in event_dict else None)
+
+        return cls(
+            event_dict,
+            event_dict["sender"],
+            sender_key,
+            ciphertext,
+            tx_id
+        )
+
+
+@attr.s
+class RoomKeyEvent(ToDeviceEvent):
+    """Event containing a megolm room key that got sent to us.
+
+    Attributes:
+        sender (str): The sender of the event.
+        sender_key (str): The key of the sender that sent the event.
+        room_id (str): The room ID of the room to which the session key
+            belongs to.
+        session_id (str): The session id of the session key.
+        algorithm: (str): The algorithm of the session key.
+
+    """
+
+    sender_key = attr.ib(type=str)
+    room_id = attr.ib(type=str)
+    session_id = attr.ib(type=str)
+    algorithm = attr.ib(type=str)
+
+    @classmethod
+    @verify(Schemas.room_key_event)
+    def from_dict(cls, event_dict, sender, sender_key):
+        event_dict = deepcopy(event_dict)
+        event_dict.pop("keys")
+
+        content = event_dict["content"]
+        content.pop("session_key")
+
+        return cls(
+            event_dict,
+            sender,
+            sender_key,
+            content["room_id"],
+            content["session_id"],
+            content["algorithm"]
+        )
+
+
+@attr.s
+class ForwardedRoomKeyEvent(RoomKeyEvent):
+    """Event containing a room key that got forwarded to us.
+
+    Attributes:
+        sender (str): The sender of the event.
+        sender_key (str): The key of the sender that sent the event.
+        room_id (str): The room ID of the room to which the session key
+            belongs to.
+        session_id (str): The session id of the session key.
+        algorithm: (str): The algorithm of the session key.
+
+    """
+
+    @classmethod
+    @verify(Schemas.forwarded_room_key_event)
+    def from_dict(cls, event_dict, sender, sender_key):
+        """Create a ForwardedRoomKeyEvent from a event dictionary.
+
+        Args:
+            event_dict (Dict): The dictionary containing the event.
+            sender (str): The sender of the event.
+            sender_key (str): The key of the sender that sent the event.
+        """
+        event_dict = deepcopy(event_dict)
+        content = event_dict["content"]
+        content.pop("session_key")
+
+        return cls(
+            event_dict,
+            sender,
+            sender_key,
+            content["room_id"],
+            content["session_id"],
+            content["algorithm"]
         )

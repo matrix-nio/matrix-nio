@@ -648,16 +648,8 @@ class TestClass(object):
         assert isinstance(response, SyncResponse)
         assert http_client.access_token == "ABCD"
 
-        event = MegolmEvent(
-            "1",
-            "@ephemeral:example.org.uk",
-            0,
-            "ABCD",
-            "IDDEVICE",
-            "test_session_id",
-            "",
-            http_client.olm._megolm_algorithm,
-            TEST_ROOM_ID,
+        event = MegolmEvent.from_dict(
+            self._load_response("tests/data/events/megolm.json")
         )
 
         http_client.request_room_key(event)
@@ -665,7 +657,8 @@ class TestClass(object):
         response = http_client.next_response()
 
         assert isinstance(response, RoomKeyRequestResponse)
-        assert "test_session_id" in http_client.outgoing_key_requests
+        assert ("X3lUlvLELLYxeTx4yOVu6UDpasGEVO0Jbu+QFnm0cKQ" in
+                http_client.outgoing_key_requests)
 
     def test_http_client_room_forget(self, http_client):
         http_client.connect(TransportType.HTTP2)

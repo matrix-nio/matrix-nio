@@ -23,9 +23,9 @@ from typing import Any, Dict, Optional, Union
 import attr
 
 from ..schemas import Schemas
-from .encrypted_events import RoomEncryptedEvent
 from .misc import (BadEventType, UnknownBadEvent, validate_or_badevent, verify,
                    BadEvent)
+from ..messages import ToDeviceMessage
 
 
 @attr.s
@@ -138,11 +138,59 @@ class Event(object):
         elif event_dict["type"] == "m.room.redaction":
             return RedactionEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.encrypted":
-            return RoomEncryptedEvent.parse_event(event_dict)
+            return Event.parse_encrypted_event(event_dict)
         elif event_dict["type"].startswith("m.call"):
             return CallEvent.parse_event(event_dict)
 
         return UnknownEvent.from_dict(event_dict)
+
+    @classmethod
+    @verify(Schemas.room_encrypted)
+    def parse_encrypted_event(cls, event_dict):
+        """Parse an encrypted event.
+
+        Encrypted events may have different fields depending on the algorithm
+        that was used to encrypt them.
+
+        This function checks the algorithm of the event and produces a higher
+        level event from the provided dictionary.
+
+        Args:
+            event_dict (dict): The dictionary representation of the encrypted
+                event.
+
+        Returns None if the algorithm of the event is unknown.
+        """
+        content = event_dict["content"]
+
+        if content["algorithm"] == "m.megolm.v1.aes-sha2":
+            return MegolmEvent.from_dict(event_dict)
+
+        return UnknownEncryptedEvent.from_dict(event_dict)
+
+    @classmethod
+    def parse_decrypted_event(cls, event_dict):
+        # type: (Dict[Any, Any]) -> Union[Event, BadEventType]
+        """Parse a decrypted event and create a higher level event object.
+
+        Args:
+            event_dict (dict): The dictionary representation of the event.
+        """
+        if "unsigned" in event_dict:
+            if "redacted_because" in event_dict["unsigned"]:
+                return RedactedEvent.from_dict(event_dict)
+
+        # Events shouldn't be encrypted twice, this would lead to a loop in the
+        # parser path.
+        if event_dict["type"] == "m.room.encrypted":
+            try:
+                return BadEvent.from_dict(event_dict)
+            except KeyError:
+                return UnknownBadEvent(event_dict)
+        if event_dict["type"] == "m.room.message":
+            return RoomMessage.parse_decrypted_event(event_dict)
+
+        return Event.parse_event(event_dict)
 
 
 @attr.s
@@ -169,32 +217,140 @@ class UnknownEvent(Event):
 
 
 @attr.s
-class EncryptedEvent(Event):
-    """Base parsing class for events that were encrypted."""
+class UnknownEncryptedEvent(Event):
+    """An encrypted event which we don't know how to decrypt.
+
+    This event is created every time nio tries to parse an event encrypted
+    event that was encrypted using an unknown algorithm.
+
+    Attributes:
+        type (str): The type of the event.
+        algorithm (str): The algorithm of the event.
+
+    """
+
+    type = attr.ib()
+    algorithm = attr.ib()
 
     @classmethod
-    def parse_event(cls, event_dict):
-        # type: (Dict[Any, Any]) -> Union[Event, BadEventType]
-        """Parse a decrypted event and create a higher level event object.
+    def from_dict(cls, event_dict):
+        return cls(
+            event_dict,
+            event_dict["type"],
+            event_dict["content"]["algorithm"],
+        )
+
+
+@attr.s
+class MegolmEvent(Event):
+    """An undecrypted Megolm event.
+
+    MegolmEvents are presented to library users only if the library fails
+    to decrypt the event because of a missing session key.
+
+    MegolmEvents can be stored for later use. If a RoomKeyEvent is later on
+    received with a session id that matches the session_id of this event
+    decryption can be retried.
+
+    Attributes:
+        event_id (str): A globally unique event identifier.
+        sender (str): The fully-qualified ID of the user who sent this
+            event.
+        server_timestamp (int): Timestamp in milliseconds on originating
+            homeserver when this event was sent.
+        sender_key (str): The public key of the sender that was used
+            to establish the encrypted session. Is only set if decrypted is
+            True, otherwise None.
+        device_id (str): The unique identifier of the device that was used to
+            encrypt the event.
+        session_id (str): The unique identifier of the session that
+            was used to encrypt the message.
+        ciphertext (str): The undecrypted ciphertext of the event.
+        algorithm (str): The encryption algorithm that was used to encrypt the
+            message.
+        room_id (str): The unique identifier of the room in which the message
+            was sent.
+        transaction_id (str, optional): The unique identifier that was used
+            when the message was sent. Is only set if the message was sent from
+            our own device, otherwise None.
+
+    """
+    device_id = attr.ib()
+    ciphertext = attr.ib()
+    algorithm = attr.ib()
+    room_id = attr.ib(default="")
+
+    @classmethod
+    @verify(Schemas.room_megolm_encrypted)
+    def from_dict(cls, event_dict):
+        """Create a MegolmEvent from a dictionary.
 
         Args:
-            event_dict (dict): The dictionary representation of the event.
+            event_dict (Dict): Dictionary containing the event.
+
+        Returns a MegolmEvent if the event_dict contains a valid event or a
+        BadEvent if it's invalid.
         """
-        if "unsigned" in event_dict:
-            if "redacted_because" in event_dict["unsigned"]:
-                return RedactedEvent.from_dict(event_dict)
+        content = event_dict["content"]
 
-        # Events shouldn't be encrypted twice, this would lead to a loop in the
-        # parser path.
-        if event_dict["type"] == "m.room.encrypted":
-            try:
-                return BadEvent.from_dict(event_dict)
-            except KeyError:
-                return UnknownBadEvent(event_dict)
-        if event_dict["type"] == "m.room.message":
-            return RoomEncryptedMessage.parse_event(event_dict)
+        ciphertext = content["ciphertext"]
+        sender_key = content["sender_key"]
+        session_id = content["session_id"]
+        device_id = content["device_id"]
+        algorithm = content["algorithm"]
 
-        return super().parse_event(event_dict)
+        room_id = event_dict.get("room_id", None)
+        tx_id = (event_dict["unsigned"].get("transaction_id", None)
+                 if "unsigned" in event_dict else None)
+
+        event = cls(
+            event_dict,
+            device_id,
+            ciphertext,
+            algorithm,
+            room_id,
+        )
+
+        event.sender_key = sender_key
+        event.session_id = session_id
+        event.transaction_id = tx_id
+
+        return event
+
+    def as_key_request(self, user_id, requesting_device_id, request_id=None):
+        # type: (str, str, Optional[str]) -> ToDeviceMessage
+        """Make a to-device message for a room key request.
+
+        MegolmEvents are presented to library users only if the library fails
+        to decrypt the event because of a missing session key.
+
+        A missing key can be requested later on by sending a key request, this
+        method creates a ToDeviceMessage that can be sent out if such a request
+        should be made.
+
+        Args:
+            user_id (str): The user id of the user that should receive the key
+                request.
+
+        """
+        content = {
+            "action": "request",
+            "body": {
+                "algorithm": self.algorithm,
+                "session_id": self.session_id,
+                "room_id": self.room_id,
+                "sender_key": self.sender_key
+            },
+            "request_id": request_id or self.session_id,
+            "requesting_device_id": requesting_device_id,
+        }
+
+        return ToDeviceMessage(
+            "m.room_key_request",
+            user_id,
+            "*",
+            content
+        )
 
 
 @attr.s
@@ -648,22 +804,9 @@ class RoomMessage(Event):
 
         return event
 
-
-@attr.s
-class RoomEncryptedMessage(RoomMessage):
-    """An abstract class representing encrypted messages.
-
-    Some room message types might have a different event format if they are
-    sent in an encrypted room, if so they are a child of this class.
-
-    Most prominently m.file, m.video, m.audio and m.image will have decryption
-    keys for the file in the content repository that their URI is pointing to.
-
-    """
-
     @classmethod
     @verify(Schemas.room_message)
-    def parse_event(cls, parsed_dict):
+    def parse_decrypted_event(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomMessage, BadEventType]
         msgtype = parsed_dict["content"]["msgtype"]
 

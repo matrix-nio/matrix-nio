@@ -32,12 +32,12 @@ from . import (DeviceStore, GroupSessionStore, InboundGroupSession,
                InboundSession, OlmAccount, OlmDevice, OutboundGroupSession,
                OutboundSession, Session, SessionStore, logger)
 from ..api import Api
-from ..events import (BadEvent, BadEventType, EncryptedEvent, Event,
+from ..events import (BadEvent, BadEventType, Event,
                       ForwardedRoomKeyEvent, KeyVerificationAccept,
                       KeyVerificationCancel, KeyVerificationEvent,
                       KeyVerificationKey, KeyVerificationMac,
                       KeyVerificationStart, MegolmEvent, OlmEvent,
-                      RoomEncryptedEvent, RoomKeyEvent, UnknownBadEvent,
+                      EncryptedToDeviceEvent, RoomKeyEvent, UnknownBadEvent,
                       validate_or_badevent)
 from ..exceptions import (EncryptionError, GroupEncryptionError,
                           LocalProtocolError, OlmTrustError, VerificationError)
@@ -849,7 +849,7 @@ class Olm(object):
                 "transaction_id": event.transaction_id
             }
 
-        new_event = EncryptedEvent.parse_event(parsed_dict)
+        new_event = Event.parse_decrypted_event(parsed_dict)
 
         if isinstance(new_event, UnknownBadEvent):
             return new_event
@@ -864,10 +864,10 @@ class Olm(object):
 
     def decrypt_event(
         self,
-        event,  # type: RoomEncryptedEvent
+        event,  # type: Union[EncryptedToDeviceEvent]
         room_id=None  # type: str
     ):
-        # type: (...) -> Union[Event, BadEventType, RoomKeyEvent, None]
+        # type: (...) -> Union[Event, ToDeviceMessage, BadEventType, None]
         logger.debug("Decrypting event of type {}".format(
             type(event).__name__
         ))

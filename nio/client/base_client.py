@@ -24,8 +24,8 @@ import warnings
 
 from ..crypto import ENCRYPTION_ENABLED
 from ..events import (BadEventType, Event, KeyVerificationEvent, MegolmEvent,
-                      RoomEncryptedEvent, RoomEncryptionEvent, RoomMemberEvent,
-                      ToDeviceEvent)
+                      RoomEncryptionEvent, RoomMemberEvent,
+                      ToDeviceEvent, EncryptedToDeviceEvent)
 from ..exceptions import LocalProtocolError, MembersSyncError
 from ..log import logger_group
 from ..responses import (ErrorResponse, JoinedMembersResponse,
@@ -528,7 +528,7 @@ class Client(object):
     def _handle_decrypt_to_device(self, to_device_event):
         decrypted_event = None
 
-        if isinstance(to_device_event, RoomEncryptedEvent):
+        if isinstance(to_device_event, EncryptedToDeviceEvent):
             if self.olm:
                 decrypted_event = self.olm.decrypt_event(to_device_event)
 

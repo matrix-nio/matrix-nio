@@ -12,7 +12,8 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         RoomMessageNotice, RoomMessageText, RoomNameEvent,
                         RoomTopicEvent, RoomAvatarEvent, ToDeviceEvent,
                         UnknownBadEvent, Event, RoomEncryptionEvent,
-                        InviteEvent, RoomKeyEvent, ForwardedRoomKeyEvent)
+                        InviteEvent, RoomKeyEvent, ForwardedRoomKeyEvent,
+                        MegolmEvent,  UnknownEncryptedEvent)
 
 
 class TestClass(object):
@@ -195,3 +196,27 @@ class TestClass(object):
 
             assert isinstance(event, BadEvent)
             assert event.source["type"] == event_type
+
+    def test_megolm_event(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/megolm.json")
+        event = Event.parse_event(parsed_dict)
+
+        assert isinstance(event, MegolmEvent)
+
+        parsed_dict["content"]["algorithm"] = "m.megolm.unknown"
+        event = Event.parse_event(parsed_dict)
+
+        assert isinstance(event, UnknownEncryptedEvent)
+
+    def test_olm_event(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/olm.json")
+        event = ToDeviceEvent.parse_event(parsed_dict)
+
+        assert isinstance(event, OlmEvent)
+
+        parsed_dict["content"]["algorithm"] = "m.megolm.unknown"
+        event = ToDeviceEvent.parse_event(parsed_dict)
+
+        assert not event

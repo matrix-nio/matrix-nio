@@ -1,0 +1,20 @@
+{
+    "content": {
+        "algorithm": "m.olm.v1.curve25519-aes-sha2",
+        "ciphertext": {
+            "7qZcfnBmbEGzxxaWfBjElJuvn7BZx+lSz/SvFrDF/z8": {
+                "body": "AwogGJJzMhf/S3GQFXAOrCZ3iKyGU5ZScVtjI0KypTYrW...",
+                "type": 0
+            }
+        },
+        "sender_key": "Szl29ksW/L8yZGWAX+8dY1XyFi+i5wm+DRhTGkbMiwU"
+    },
+    "event_id": "$143273582443PhrSn:example.org",
+    "origin_server_ts": 1432735824653,
+    "room_id": "!jEsUZKDJdhlrceRyVU:example.org",
+    "sender": "@example:example.org",
+    "type": "m.room.encrypted",
+    "unsigned": {
+        "age": 1234
+    }
+}
