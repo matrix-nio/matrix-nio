@@ -17,6 +17,7 @@
 from typing import Optional
 
 import attr
+from copy import deepcopy
 
 from ..messages import ToDeviceMessage
 from ..schemas import Schemas
@@ -95,6 +96,7 @@ class RoomKeyEvent(object):
 
     """
 
+    source = attr.ib(type=str)
     sender = attr.ib(type=str)
     sender_key = attr.ib(type=str)
     room_id = attr.ib(type=str)
@@ -104,9 +106,14 @@ class RoomKeyEvent(object):
     @classmethod
     @verify(Schemas.room_key_event)
     def from_dict(cls, event_dict, sender, sender_key):
+        event_dict = deepcopy(event_dict)
+        event_dict.pop("keys")
+
         content = event_dict["content"]
+        content.pop("session_key")
 
         return cls(
+            event_dict,
             sender,
             sender_key,
             content["room_id"],
@@ -139,9 +146,12 @@ class ForwardedRoomKeyEvent(RoomKeyEvent):
             sender (str): The sender of the event.
             sender_key (str): The key of the sender that sent the event.
         """
+        event_dict = deepcopy(event_dict)
         content = event_dict["content"]
+        content.pop("session_key")
 
         return cls(
+            event_dict,
             sender,
             sender_key,
             content["room_id"],
