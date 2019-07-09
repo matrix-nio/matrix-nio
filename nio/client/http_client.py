@@ -489,14 +489,15 @@ class HttpClient(Client):
         This sets the position of the read marker for a given room,
         and optionally the read receipt's location.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
 
         Args:
             room_id (str): Room id of the room of the room where the read
                 markers should be updated
             fully_read_event (str): The event ID the read marker should be
                 located at.
-            read_event (Optiona[str]): The event ID to set the read
+            read_event (Optional[str]): The event ID to set the read
                 receipt location at.
         """
         request = self._build_request(
