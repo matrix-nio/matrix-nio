@@ -187,6 +187,7 @@ class Client(object):
 
         Returns a ``DeviceStore`` holding all known olm devices.
         """
+        assert self.olm
         return self.olm.device_store
 
     @property  # type: ignore
