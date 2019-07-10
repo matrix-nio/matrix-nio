@@ -28,11 +28,11 @@ from aiohttp.client_exceptions import ClientConnectionError
 
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
-from ..api import Api, MessageDirection
+from ..api import Api, MessageDirection, ResizingMethod
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
 from ..messages import ToDeviceMessage
-from ..responses import (ErrorResponse,
+from ..responses import (ErrorResponse, FileResponse,
                          JoinResponse, JoinError,
                          JoinedMembersError, JoinedMembersResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
@@ -51,6 +51,7 @@ from ..responses import (ErrorResponse,
                          RoomSendResponse, RoomTypingResponse, RoomTypingError,
                          ShareGroupSessionError,
                          ShareGroupSessionResponse, SyncError, SyncResponse,
+                         ThumbnailError, ThumbnailResponse,
                          ToDeviceError, ToDeviceResponse, PartialSyncResponse)
 
 if False:
@@ -196,12 +197,15 @@ class AsyncClient(Client):
         Returns a subclass of `Response` depending on the type of the
         response_class argument.
         """
-        parsed_dict = await self.parse_body(transport_response)
+        data = data or ()
 
-        if data:
-            response = response_class.from_dict(parsed_dict, *data)
+        if issubclass(response_class, FileResponse):
+            body = await transport_response.read()
+            content_type = transport_response.content_type
+            response = response_class.from_data(body, content_type, *data)
         else:
-            response = response_class.from_dict(parsed_dict)
+            parsed_dict = await self.parse_body(transport_response)
+            response = response_class.from_dict(parsed_dict, *data)
 
         response.transport_response = transport_response
         return response
@@ -1236,7 +1240,6 @@ class AsyncClient(Client):
         Returns either a `RoomTypingResponse` if the request was successful or
         a `RoomTypingError` if there was an error with the request.
 
-
         Args:
             room_id (str): The room id of the room where the user is typing.
             typign_state (bool): A flag representing whether the user started
@@ -1259,6 +1262,47 @@ class AsyncClient(Client):
             data,
             response_data=(room_id, )
         )
+
+    @logged_in
+    async def thumbnail(
+        self,
+        server_name,                  # type: str
+        media_id,                     # type: str
+        width,                        # type: int
+        height,                       # type: int
+        method=ResizingMethod.scale,  # ŧype: ResizingMethod
+        allow_remote=True,            # type: bool
+    ):
+        # type: (...) -> Union[ThumbnailResponse, ThumbnailError]
+        """Get the thumbnail of a file from the content repository.
+
+        Note: The actual thumbnail may be larger than the size specified.
+
+        Returns either a `ThumbnailResponse` if the request was successful or
+        a `ThumbnailError` if there was an error with the request.
+
+        Args:
+            server_name (str): The server name from the mxc:// URI.
+            media_id (str): The media ID from the mxc:// URI.
+            width (int): The desired width of the thumbnail.
+            height (int): The desired height of the thumbnail.
+            method (ResizingMethod): The desired resizing method.
+            allow_remote (bool): Indicates to the server that it should not
+                attempt to fetch the media if it is deemed remote.
+                This is to prevent routing loops where the server contacts
+                itself.
+        """
+        http_method, path = Api.thumbnail(
+            self.access_token,
+            server_name,
+            media_id,
+            width,
+            height,
+            method,
+            allow_remote
+        )
+
+        return await self._send(ThumbnailResponse, http_method, path)
 
     @logged_in
     async def get_profile(self, user_id=None):

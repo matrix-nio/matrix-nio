@@ -53,6 +53,18 @@ class MessageDirection(Enum):
     front = 1
 
 
+@unique
+class ResizingMethod(Enum):
+    """Enum representing the desired resizing method for a thumbnail.
+
+    "scale" maintains the original aspect ratio of the image,
+    "crop" provides an image in the aspect ratio of the requested size.
+    """
+
+    scale = "scale"
+    crop = "crop"
+
+
 class Api(object):
     """Matrix API class.
 
@@ -843,6 +855,49 @@ class Api(object):
             "POST",
             Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH),
             ""
+        )
+
+    @staticmethod
+    def thumbnail(
+        access_token,                 # type: str
+        server_name,                  # type: str
+        media_id,                     # type: str
+        width,                        # type: int
+        height,                       # type: int
+        method=ResizingMethod.scale,  # ŧype: ResizingMethod
+        allow_remote=True,            # type: bool
+    ):
+        # type: (...) -> Tuple[str, str]
+        """Get the thumbnail of a file from the content repository.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Note: The actual thumbnail may be larger than the size specified.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            server_name (str): The server name from the mxc:// URI.
+            media_id (str): The media ID from the mxc:// URI.
+            width (int): The desired width of the thumbnail.
+            height (int): The desired height of the thumbnail.
+            method (ResizingMethod): The desired resizing method.
+            allow_remote (bool): Indicates to the server that it should not
+                attempt to fetch the media if it is deemed remote.
+                This is to prevent routing loops where the server contacts
+                itself.
+        """
+        query_parameters = {
+            "access_token": access_token,
+            "width": width,
+            "height": height,
+            "method": method.value,
+            "allow_remote": "true" if allow_remote else "false",
+        }
+        path = "thumbnail/{}/{}".format(server_name, media_id)
+
+        return (
+            "GET",
+            Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH)
         )
 
     @staticmethod

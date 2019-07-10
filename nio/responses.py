@@ -35,6 +35,7 @@ logger_group.add_logger(logger)
 
 
 __all__ = [
+    "FileResponse",
     "DeleteDevicesAuthResponse",
     "DeleteDevicesResponse",
     "DeleteDevicesError",
@@ -104,6 +105,8 @@ __all__ = [
     "ProfileSetAvatarError",
     "RoomKeyRequestResponse",
     "RoomKeyRequestError",
+    "ThumbnailResponse",
+    "ThumbnailError",
     "ToDeviceResponse",
     "ToDeviceError",
     "RoomContextResponse",
@@ -231,6 +234,37 @@ class Response(object):
             return 0
         elapsed = self.end_time - self.start_time
         return max(0, elapsed - (self.timeout / 1000))
+
+
+@attr.s
+class FileResponse(Response):
+    """A response representing a successful file content request.
+
+    Attributes:
+        body (bytes): The file's content in bytes.
+        content_type (str): The content MIME type of the file,
+            e.g. "image/png".
+    """
+
+    body = attr.ib(type=bytes)
+    content_type = attr.ib(type=str)
+
+    def __str__(self):
+        return "{} bytes, content type: {}".format(
+            len(self.body),
+            self.content_type
+        )
+
+    @classmethod
+    def from_data(cls, data, content_type):
+        """Create a FileResponse from file content returned by the server.
+
+        Args:
+            data (bytes): The file's content in bytes.
+            content_type (str): The content MIME type of the file,
+                e.g. "image/png".
+        """
+        raise NotImplementedError()
 
 
 @attr.s
@@ -363,6 +397,12 @@ class UploadError(ErrorResponse):
     pass
 
 
+class ThumbnailError(ErrorResponse):
+    """A response representing a unsuccessful thumbnail request."""
+
+    pass
+
+
 @attr.s
 class ShareGroupSessionError(_ErrorWithRoomId):
     """Response representing unsuccessful group sessions sharing request."""
@@ -478,6 +518,22 @@ class UploadResponse(Response):
         return cls(
             parsed_dict["content_uri"],
         )
+
+
+@attr.s
+class ThumbnailResponse(FileResponse):
+    """A response representing a successful thumbnail request."""
+
+    @classmethod
+    def from_data(cls, data, content_type):
+        # type: (bytes, str) -> Union[ThumbnailResponse, ThumbnailError]
+        if isinstance(data, bytes):
+            return cls(body=data, content_type=content_type)
+
+        if isinstance(data, dict):
+            return ThumbnailError.from_dict(data)
+
+        return ThumbnailError("invalid data")
 
 
 @attr.s

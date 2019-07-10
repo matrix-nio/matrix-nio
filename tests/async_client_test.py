@@ -20,7 +20,8 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, ErrorResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
-                 SyncResponse, Timeline)
+                 SyncResponse, ThumbnailResponse, Timeline)
+from nio.api import ResizingMethod
 from nio.crypto import OlmDevice
 
 TEST_ROOM_ID = "!testroom:example.org"
@@ -35,6 +36,11 @@ if sys.version_info >= (3, 5):
 
 @pytest.mark.skipif(sys.version_info < (3, 5), reason="Python 3 specific asyncio tests")
 class TestClass(object):
+    @staticmethod
+    def _load_bytes(filename):
+        with open(filename, "rb") as f:
+            return f.read()
+
     @staticmethod
     def _load_response(filename):
         with open(filename) as f:
@@ -155,6 +161,10 @@ class TestClass(object):
     def limit_exceeded_error_response(self):
         return self._load_response(
             "tests/data/limit_exceeded_error.json")
+
+    @property
+    def file_response(self):
+        return self._load_bytes("tests/data/file_response")
 
     @staticmethod
     def room_id_response(room_id):
@@ -630,6 +640,39 @@ class TestClass(object):
         )
         resp = await async_client.room_typing(room_id, typing_state=True)
         assert isinstance(resp, RoomTypingResponse)
+
+    async def test_thumbnail(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        server_name = "example.org"
+        media_id = "ascERGshawAWawugaAcauga"
+        width = 32
+        height = 32
+        method = ResizingMethod.crop
+
+        aioresponse.get(
+            "https://example.org/_matrix/media/r0/thumbnail/{}/{}"
+            "?access_token=abc123&width={}&height={}&method={}"
+            "&allow_remote=true".format(
+                server_name,
+                media_id,
+                width,
+                height,
+                method.value,
+            ),
+            status=200,
+            content_type="image/png",
+            body=self.file_response,
+        )
+        resp = await async_client.thumbnail(
+            server_name, media_id, width, height, method
+        )
+        assert isinstance(resp, ThumbnailResponse)
+        assert resp.body == self.file_response
+
 
     async def test_event_callback(self, async_client):
         await async_client.receive_response(
