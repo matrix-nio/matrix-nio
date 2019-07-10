@@ -1,0 +1,16 @@
+{
+    "content": {
+        "commitment": "fQpGIW1Snz+pwLZu6sTy2aHy/DYWWTspTJRPyNp0PKkymfIsNffysMl6ObMMFdIJhk6g6pwlIqZ54rxo8SLmAg",
+        "hash": "sha256",
+        "key_agreement_protocol": "curve25519",
+        "message_authentication_code": "hkdf-hmac-sha256",
+        "method": "m.sas.v1",
+        "short_authentication_string": [
+            "decimal",
+            "emoji"
+        ],
+        "transaction_id": "S0meUniqueAndOpaqueString"
+    },
+    "type": "m.key.verification.accept",
+    "sender": "@bob:example.org"
+}

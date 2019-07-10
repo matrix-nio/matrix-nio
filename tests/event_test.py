@@ -18,13 +18,14 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         TypingNoticeEvent, AccountDataEvent,
                         UnknownAccountDataEvent, FullyReadEvent, CallEvent,
                         CallAnswerEvent, CallHangupEvent, CallInviteEvent,
-                        CallCandidatesEvent)
+                        CallCandidatesEvent, KeyVerificationStart,
+                        KeyVerificationAccept, KeyVerificationCancel,
+                        KeyVerificationKey, KeyVerificationMac)
 
 
 class TestClass(object):
     @staticmethod
     def _load_response(filename):
-        # type: (str) -> Dict[Any, Any]
         with open(filename) as f:
             return json.loads(f.read(), encoding="utf-8")
 
@@ -298,3 +299,32 @@ class TestClass(object):
             )
             event = CallEvent.parse_event(parsed_dict)
             assert isinstance(event, event_type)
+
+    def test_key_verification_events(self):
+        for event_type, event_file in [
+                (KeyVerificationStart, "key_start.json"),
+                (KeyVerificationAccept, "key_accept.json"),
+                (KeyVerificationKey, "key_key.json"),
+                (KeyVerificationMac, "key_mac.json"),
+                (KeyVerificationCancel, "key_cancel.json"),
+        ]:
+            parsed_dict = TestClass._load_response(
+                "tests/data/events/{}".format(event_file)
+            )
+            event = ToDeviceEvent.parse_event(parsed_dict)
+            assert isinstance(event, event_type)
+
+    def test_invalid_key_verification(self):
+        for _, event_file in [
+                (KeyVerificationStart, "key_start.json"),
+                (KeyVerificationAccept, "key_accept.json"),
+                (KeyVerificationKey, "key_key.json"),
+                (KeyVerificationMac, "key_mac.json"),
+                (KeyVerificationCancel, "key_cancel.json"),
+        ]:
+            parsed_dict = TestClass._load_response(
+                "tests/data/events/{}".format(event_file)
+            )
+            parsed_dict["content"].pop("transaction_id")
+            event = ToDeviceEvent.parse_event(parsed_dict)
+            assert isinstance(event, UnknownBadEvent)

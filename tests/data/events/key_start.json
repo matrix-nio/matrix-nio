@@ -1,0 +1,22 @@
+{
+    "content": {
+        "from_device": "BobDevice1",
+        "hashes": [
+            "sha256"
+        ],
+        "key_agreement_protocols": [
+            "curve25519"
+        ],
+        "message_authentication_codes": [
+            "hkdf-hmac-sha256"
+        ],
+        "method": "m.sas.v1",
+        "short_authentication_string": [
+            "decimal",
+            "emoji"
+        ],
+        "transaction_id": "S0meUniqueAndOpaqueString"
+    },
+    "type": "m.key.verification.start",
+    "sender": "@bob:example.org"
+}

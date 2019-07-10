@@ -1,0 +1,9 @@
+{
+    "content": {
+        "code": "m.user",
+        "reason": "User rejected the key verification request",
+        "transaction_id": "S0meUniqueAndOpaqueString"
+    },
+    "type": "m.key.verification.cancel",
+    "sender": "@bob:example.org"
+}
