@@ -234,3 +234,24 @@ class TestClass(object):
         event = ToDeviceEvent.parse_event(parsed_dict)
 
         assert not event
+
+    def test_ephemeral_event(self):
+        event = EphemeralEvent.parse_event({})
+
+        assert not event
+
+        event = EphemeralEvent.parse_event({
+            "type": "m.unknown",
+            "content": {}
+        })
+
+        assert not event
+
+    def test_typing_event(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/typing.json")
+        event = EphemeralEvent.parse_event(parsed_dict)
+
+        assert isinstance(event, TypingNoticeEvent)
+
+        assert "@bob:example.com" in event.users

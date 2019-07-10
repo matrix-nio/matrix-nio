@@ -914,7 +914,8 @@ class Schemas(object):
                 },
                 "required": ["user_ids"]
             },
-            "type": {"type": "string"}
+            "type": {"type": "string"},
+            "room_id": {"type": "string"}
         },
         "required": ["content", "type"],
         "additionalProperties": False,
