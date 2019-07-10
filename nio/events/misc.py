@@ -69,7 +69,6 @@ def verify_or_none(schema):
             try:
                 validate_json(event_dict, schema)
             except (ValidationError, SchemaError) as e:
-                print(e)
                 logger.error("Error validating event: {}".format(str(e)))
                 return None
 
