@@ -55,7 +55,7 @@ except ImportError:  # pragma: no cover
     JSONDecodeError = ValueError  # type: ignore
 
 
-DecryptedOlmT = Union[ForwardedRoomKeyEvent, BadEvent, UnknownBadEvent, None]
+DecryptedOlmT = Union[RoomKeyEvent, BadEvent, UnknownBadEvent, None]
 
 
 class Olm(object):
@@ -864,10 +864,10 @@ class Olm(object):
 
     def decrypt_event(
         self,
-        event,  # type: Union[EncryptedToDeviceEvent]
+        event,  # type: Union[EncryptedToDeviceEvent, MegolmEvent]
         room_id=None  # type: str
     ):
-        # type: (...) -> Union[Event, ToDeviceMessage, BadEventType, None]
+        # type: (...) -> Union[Event, RoomKeyEvent, BadEventType, None]
         logger.debug("Decrypting event of type {}".format(
             type(event).__name__
         ))
