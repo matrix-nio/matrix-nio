@@ -10,3 +10,4 @@ __pycache__
 doc/build
 matrix_nio.egg-info/
 dist
+doc/html
