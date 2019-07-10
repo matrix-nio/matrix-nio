@@ -162,14 +162,16 @@ class MatrixRoom(object):
     @property
     def gen_avatar_url(self):
         """
-        Calculate the room avatar_url
+        Get the calculated room's avatar url.
 
-        Either the room.avatar_url or the avatar_url of the first user
-        not myself
+        Either the room's avatar if one is set, or the avatar of the
+        first user that's not ourselves if the room is an unnamed group or
+        has exactly two users.
         """
         if self.room_avatar_url:
             return self.room_avatar_url
-        elif self.is_group:
+
+        if self.is_group or len(self.users) == 2:
             user = next(
                 (u for u in self.users if u != self.own_user_id),
                 None
