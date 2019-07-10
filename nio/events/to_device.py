@@ -184,7 +184,7 @@ class KeyVerificationAccept(KeyVerificationEvent):
     """Event signaling that the SAS verification start has been accepted.
 
     Attributes:
-        commitment (str): The commitment value of the
+        commitment (str): The commitment value of the verification process.
         key_agreement_protocol (str): The key agreement protocol the device is
             choosing to use
         hash (str): A list of strings specifying the hash methods the
