@@ -16,7 +16,9 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         MegolmEvent, UnknownEncryptedEvent, InviteMemberEvent,
                         InviteAliasEvent, InviteNameEvent, EphemeralEvent,
                         TypingNoticeEvent, AccountDataEvent,
-                        UnknownAccountDataEvent, FullyReadEvent)
+                        UnknownAccountDataEvent, FullyReadEvent, CallEvent,
+                        CallAnswerEvent, CallHangupEvent, CallInviteEvent,
+                        CallCandidatesEvent)
 
 
 class TestClass(object):
@@ -269,3 +271,30 @@ class TestClass(object):
         event = AccountDataEvent.parse_event(parsed_dict)
 
         assert isinstance(event, FullyReadEvent)
+
+    def test_invalid_call_events(self):
+        for _, event_file in [
+                (CallInviteEvent, "call_invite.json"),
+                (CallAnswerEvent, "call_answer.json"),
+                (CallCandidatesEvent, "call_candidates.json"),
+                (CallHangupEvent, "call_hangup.json"),
+        ]:
+            parsed_dict = TestClass._load_response(
+                "tests/data/events/{}".format(event_file)
+            )
+            parsed_dict["content"].pop("call_id")
+            event = CallEvent.parse_event(parsed_dict)
+            assert isinstance(event, BadEvent)
+
+    def test_call_events(self):
+        for event_type, event_file in [
+                (CallInviteEvent, "call_invite.json"),
+                (CallAnswerEvent, "call_answer.json"),
+                (CallCandidatesEvent, "call_candidates.json"),
+                (CallHangupEvent, "call_hangup.json"),
+        ]:
+            parsed_dict = TestClass._load_response(
+                "tests/data/events/{}".format(event_file)
+            )
+            event = CallEvent.parse_event(parsed_dict)
+            assert isinstance(event, event_type)

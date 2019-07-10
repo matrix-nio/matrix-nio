@@ -1,0 +1,19 @@
+{
+    "content": {
+        "answer": {
+            "sdp": "v=0\r\no=- 6584580628695956864 2 IN IP4 127.0.0.1[...]",
+            "type": "answer"
+        },
+        "call_id": "12345",
+        "lifetime": 60000,
+        "version": 0
+    },
+    "event_id": "$143273582443PhrSn:example.org",
+    "origin_server_ts": 1432735824653,
+    "room_id": "!jEsUZKDJdhlrceRyVU:example.org",
+    "sender": "@example:example.org",
+    "type": "m.call.answer",
+    "unsigned": {
+        "age": 1234
+    }
+}

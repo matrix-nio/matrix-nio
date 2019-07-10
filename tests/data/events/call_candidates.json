@@ -1,0 +1,21 @@
+{
+    "content": {
+        "call_id": "12345",
+        "candidates": [
+            {
+                "candidate": "candidate:863018703 1 udp 2122260223 10.9.64.156 43670 typ host generation 0",
+                "sdpMLineIndex": 0,
+                "sdpMid": "audio"
+            }
+        ],
+        "version": 0
+    },
+    "event_id": "$143273582443PhrSn:example.org",
+    "origin_server_ts": 1432735824653,
+    "room_id": "!jEsUZKDJdhlrceRyVU:example.org",
+    "sender": "@example:example.org",
+    "type": "m.call.candidates",
+    "unsigned": {
+        "age": 1234
+    }
+}
