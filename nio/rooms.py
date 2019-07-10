@@ -28,9 +28,9 @@ from .events import (Event, InviteAliasEvent, InviteMemberEvent,
                      RoomAliasEvent, RoomCreateEvent, RoomEncryptionEvent,
                      RoomGuestAccessEvent, RoomHistoryVisibilityEvent,
                      RoomJoinRulesEvent, RoomMemberEvent, RoomNameEvent,
-                     RoomTopicEvent, RoomAvatarEvent)
+                     RoomTopicEvent, RoomAvatarEvent, TypingNoticeEvent)
 from .log import logger_group
-from .responses import RoomSummary, TypingNoticeEvent
+from .responses import RoomSummary
 
 logger = Logger("nio.rooms")
 logger_group.add_logger(logger)

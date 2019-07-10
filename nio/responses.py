@@ -26,7 +26,7 @@ from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
 from .events import (AccountDataEvent, BadEventType, Event, InviteEvent,
-                     ToDeviceEvent, UnknownBadEvent)
+                     ToDeviceEvent, UnknownBadEvent, EphemeralEvent)
 from .log import logger_group
 from .schemas import Schemas, validate_json
 
@@ -84,7 +84,6 @@ __all__ = [
     "PartialSyncResponse",
     "SyncError",
     "Timeline",
-    "TypingNoticeEvent",
     "UpdateDeviceResponse",
     "UpdateDeviceError",
     "RoomTypingResponse",
@@ -161,11 +160,6 @@ class Timeline(object):
 @attr.s
 class InviteInfo(object):
     invite_state = attr.ib(type=List)
-
-
-@attr.s
-class TypingNoticeEvent(object):
-    users = attr.ib(type=List)
 
 
 @attr.s
@@ -1133,22 +1127,11 @@ class _SyncResponse(Response):
     @staticmethod
     def _get_ephemeral_events(parsed_dict):
         events = []
-        for event in parsed_dict:
-            try:
-                validate_json(event, Schemas.ephemeral_event)
-            except (SchemaError, ValidationError):
-                continue
+        for event_dict in parsed_dict:
+            event = EphemeralEvent.parse_event(event_dict)
 
-            if event["type"] == "m.typing":
-                try:
-                    validate_json(event, Schemas.m_typing)
-                except (SchemaError, ValidationError) as e:
-                    logger.error(
-                        "Error validating typing notice event: "
-                        + str(e.message)
-                    )
-                    continue
-                events.append(TypingNoticeEvent(event["content"]["user_ids"]))
+            if event:
+                events.append(event)
         return events
 
     @staticmethod

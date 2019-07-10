@@ -14,7 +14,8 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         UnknownBadEvent, Event, RoomEncryptionEvent,
                         InviteEvent, RoomKeyEvent, ForwardedRoomKeyEvent,
                         MegolmEvent, UnknownEncryptedEvent, InviteMemberEvent,
-                        InviteAliasEvent, InviteNameEvent)
+                        InviteAliasEvent, InviteNameEvent, EphemeralEvent,
+                        TypingNoticeEvent)
 
 
 class TestClass(object):

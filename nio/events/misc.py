@@ -60,6 +60,24 @@ def verify(schema):
     return decorator
 
 
+def verify_or_none(schema):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            event_dict = args[1]
+
+            try:
+                validate_json(event_dict, schema)
+            except (ValidationError, SchemaError) as e:
+                print(e)
+                logger.error("Error validating event: {}".format(str(e)))
+                return None
+
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
 @attr.s
 class UnknownBadEvent(object):
     """An event that doesn't have the minimal necessary structure.

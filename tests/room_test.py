@@ -4,8 +4,8 @@ from helpers import faker
 from nio.events import (InviteAliasEvent, InviteMemberEvent, InviteNameEvent,
                         RoomCreateEvent, RoomGuestAccessEvent,
                         RoomHistoryVisibilityEvent, RoomJoinRulesEvent,
-                        RoomNameEvent)
-from nio.responses import RoomSummary, TypingNoticeEvent
+                        RoomNameEvent, TypingNoticeEvent)
+from nio.responses import RoomSummary
 from nio.rooms import MatrixInvitedRoom, MatrixRoom
 
 TEST_ROOM = "!test:example.org"
