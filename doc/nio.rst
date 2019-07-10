@@ -76,6 +76,22 @@ Invite Room Events
     :undoc-members:
     :show-inheritance:
 
+To-device Events
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: nio.events.to_device
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Ephemeral Events
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: nio.events.ephemeral
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Account Data
 ^^^^^^^^^^^^^^^^^^^^^^
 
