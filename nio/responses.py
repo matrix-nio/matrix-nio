@@ -260,6 +260,10 @@ class FileResponse(Response):
             self.content_type
         )
 
+    @classmethod
+    def from_data(cls, data, content_type):
+        raise NotImplementedError()
+
 
 @attr.s
 class ErrorResponse(Response):
