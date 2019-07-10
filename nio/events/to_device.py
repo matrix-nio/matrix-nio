@@ -115,11 +115,36 @@ class ToDeviceEvent(object):
 
 @attr.s
 class KeyVerificationEvent(ToDeviceEvent):
+    """Base class for key verification events.
+
+    Attributes:
+        transaction_id (str): An opaque identifier for the verification
+            process. Must be unique with respect to the devices involved.
+
+    """
+
     transaction_id = attr.ib(type=str)
 
 
 @attr.s
 class KeyVerificationStart(KeyVerificationEvent):
+    """Event signaling the start of a SAS key verification process.
+
+    Attributes:
+        from_device (str): The device ID which is initiating the process.
+        method (str): The verification method to use.
+        key_agreement_protocols (list): A list of strings specifying the
+            key agreement protocols the sending device understands.
+        hashes (list): A list of strings specifying the hash methods the
+            sending device understands.
+        message_authentication_codes (list): A list of strings specifying the
+            message authentication codes that the sending device understands.
+        short_authentication_string (list): A list of strings specifying the
+            SAS methods the sending device (and the sending device's user)
+            understands.
+
+    """
+
     from_device = attr.ib(type=str)
     method = attr.ib(type=str)
     key_agreement_protocols = attr.ib(type=List[str])
@@ -146,6 +171,21 @@ class KeyVerificationStart(KeyVerificationEvent):
 
 @attr.s
 class KeyVerificationAccept(KeyVerificationEvent):
+    """Event signaling that the SAS verification start has been accepted.
+
+    Attributes:
+        commitment (str): The commitment value of the
+        key_agreement_protocol (str): The key agreement protocol the device is
+            choosing to use
+        hash (str): A list of strings specifying the hash methods the
+            sending device understands.
+        message_authentication_code (str): The message authentication code the
+            device is choosing to use.
+        short_authentication_string (list): A list of strings specifying the
+            SAS methods that can be used in the verification process.
+
+    """
+
     commitment = attr.ib(type=str)
     key_agreement_protocol = attr.ib(type=str)
     hash = attr.ib(type=str)
@@ -170,6 +210,17 @@ class KeyVerificationAccept(KeyVerificationEvent):
 
 @attr.s
 class KeyVerificationKey(KeyVerificationEvent):
+    """Event carrying a key verification key.
+
+    After this event is received the short authentication string can be shown
+    to the user.
+
+    Attributes:
+        key (str): The device's ephemeral public key, encoded as
+            unpadded base64.
+
+    """
+
     key = attr.ib(type=str)
 
     @classmethod
@@ -186,6 +237,21 @@ class KeyVerificationKey(KeyVerificationEvent):
 
 @attr.s
 class KeyVerificationMac(KeyVerificationEvent):
+    """Event holding a message authentication code of the verification process.
+
+    After this event is received the device that we are verifying will be
+    marked as verified given that we have accepted the short authentication
+    string as well.
+
+    Attributes:
+        mac (dict): A map of the key ID to the MAC of the key, using the
+            algorithm in the verification process. The MAC is encoded as
+            unpadded base64.
+        keys (str): The MAC of the comma-separated, sorted, list of key IDs
+            given in the mac property, encoded as unpadded base64.
+
+    """
+
     mac = attr.ib(type=Dict[str, str])
     keys = attr.ib(type=str)
 
@@ -204,6 +270,15 @@ class KeyVerificationMac(KeyVerificationEvent):
 
 @attr.s
 class KeyVerificationCancel(KeyVerificationEvent):
+    """Event signaling that a key verification process has been canceled.
+
+    Attributes:
+        code (str): The error code for why the process/request was cancelled by
+            the user.
+        reason (str): A human readable description of the cancelation code.
+
+    """
+
     code = attr.ib(type=str)
     reason = attr.ib(type=str)
 
