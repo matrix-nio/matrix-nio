@@ -263,6 +263,13 @@ class FileResponse(Response):
 
     @classmethod
     def from_data(cls, data, content_type):
+        """Create a FileResponse from file content returned by the server.
+
+        Args:
+            data (bytes): The file's content in bytes.
+            content_type (str): The content MIME type of the file,
+                e.g. "image/png".
+        """
         raise NotImplementedError()
 
 
@@ -526,13 +533,6 @@ class ThumbnailResponse(FileResponse):
     @classmethod
     def from_data(cls, data, content_type):
         # type: (bytes, str) -> Union[ThumbnailResponse, ThumbnailError]
-        """Create a ThumbnailResponse from file content returned by the server.
-
-        Args:
-            data (bytes): The file's content in bytes.
-            content_type (str): The content MIME type of the file,
-                e.g. "image/png".
-        """
         if isinstance(data, bytes):
             return cls(body=data, content_type=content_type)
 
