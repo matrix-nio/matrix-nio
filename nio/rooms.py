@@ -254,10 +254,11 @@ class MatrixRoom(object):
                 self.names[user.name].remove(user.user_id)
                 user.display_name = event.content["displayname"]
                 self.names[user.name].append(user.user_id)
-                return False
 
             if "avatar_url" in event.content:
                 user.avatar_url = event.content["avatar_url"]
+
+            return False
 
         elif event.content["membership"] in ["leave", "ban"]:
             return self.remove_member(event.state_key)
