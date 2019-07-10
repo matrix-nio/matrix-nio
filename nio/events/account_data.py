@@ -14,6 +14,15 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+"""nio Account data events.
+
+Clients can store custom config data for their account on their homeserver.
+
+This account data will be synced between different devices and can persist
+across installations on a particular device.
+
+"""
+
 from __future__ import unicode_literals
 
 from typing import Any, Dict
