@@ -121,12 +121,6 @@ class TestClass(object):
         event = RedactionEvent.from_dict(parsed_dict)
         assert isinstance(event, RedactionEvent)
 
-    def test_olm_event(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/events/olm_event.json")
-        event = ToDeviceEvent.parse_event(parsed_dict)
-        assert isinstance(event, OlmEvent)
-
     def test_empty_event(self):
         parsed_dict = {}
         response = RedactedEvent.from_dict(parsed_dict)
