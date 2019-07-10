@@ -15,7 +15,8 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         InviteEvent, RoomKeyEvent, ForwardedRoomKeyEvent,
                         MegolmEvent, UnknownEncryptedEvent, InviteMemberEvent,
                         InviteAliasEvent, InviteNameEvent, EphemeralEvent,
-                        TypingNoticeEvent)
+                        TypingNoticeEvent, AccountDataEvent,
+                        UnknownAccountDataEvent, FullyReadEvent)
 
 
 class TestClass(object):
@@ -249,3 +250,22 @@ class TestClass(object):
         assert isinstance(event, TypingNoticeEvent)
 
         assert "@bob:example.com" in event.users
+
+    def test_account_data_event(self):
+        event = AccountDataEvent.parse_event({})
+
+        assert isinstance(event, UnknownBadEvent)
+
+        event = AccountDataEvent.parse_event({
+            "type": "m.unknown",
+            "content": {}
+        })
+
+        assert isinstance(event, UnknownAccountDataEvent)
+
+    def test_fully_read_event(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/fully_read.json")
+        event = AccountDataEvent.parse_event(parsed_dict)
+
+        assert isinstance(event, FullyReadEvent)
