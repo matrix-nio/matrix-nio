@@ -34,7 +34,7 @@ from typing import Any, Dict, Optional, Union
 import attr
 
 from ..schemas import Schemas
-from .misc import BadEventType, verify
+from .misc import BadEventType, verify, verify_or_none
 
 
 @attr.s
