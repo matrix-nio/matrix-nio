@@ -18,7 +18,7 @@ Documentation
 =============
 
 The full API documentation for nio can be found at
-[https://matrix-nio.readthedocs.io](https://matrix-nio.readthedocs.io/index.html#api-documentation)
+[https://matrix-nio.readthedocs.io](https://matrix-nio.readthedocs.io/en/latest/#api-documentation)
 
 Installation
 ============
