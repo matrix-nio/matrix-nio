@@ -60,6 +60,7 @@ class InviteEvent(object):
     sender = attr.ib(type=str)
 
     @classmethod
+    @verify_or_none(Schemas.invite_event)
     def parse_event(cls, event_dict):
         # type: (Dict[Any, Any]) -> Optional[Union[InviteEvent, BadEventType]]
         """Parse a Matrix invite event and create a higher level event object.

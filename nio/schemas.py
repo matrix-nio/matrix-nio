@@ -892,6 +892,15 @@ class Schemas(object):
         "additionalProperties": False,
     }
 
+    invite_event = {
+        "type": "object",
+        "properties": {
+            "content": {"type": "object"},
+            "type": {"type": "string"}
+        },
+        "required": ["content", "type"],
+    }
+
     ephemeral_event = {
         "type": "object",
         "properties": {
