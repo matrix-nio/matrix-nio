@@ -36,7 +36,7 @@ After libolm has been installed the e2ee enabled version of  nio can be
 installed using pip:
 
 ```bash
-$ pip install matrix-nio[e2e]
+$ pip install "matrix-nio[e2e]"
 
 ```
 
