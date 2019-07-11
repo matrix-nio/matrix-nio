@@ -23,10 +23,9 @@ Ephemeral events are used for typing notifications and read receipts.
 
 """
 
-from typing import Any, Dict, List
+from typing import List
 
 import attr
-from jsonschema.exceptions import SchemaError, ValidationError
 
 from ..schemas import Schemas
 from .misc import verify_or_none
