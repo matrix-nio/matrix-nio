@@ -341,3 +341,8 @@ class TestClass(object):
             parsed_dict["content"].pop("transaction_id")
             event = ToDeviceEvent.parse_event(parsed_dict)
             assert isinstance(event, UnknownBadEvent)
+
+    def test_invalid_room_event(self):
+        event = Event.parse_event({"type": "m.unknown"})
+
+        assert isinstance(event, UnknownBadEvent)
