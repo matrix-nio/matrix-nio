@@ -80,14 +80,19 @@ class FullyReadEvent(AccountDataEvent):
 
 @attr.s
 class TagEvent(AccountDataEvent):
-    """Informs the client tags of a room. Room tags may include
+    """Event representing the tags of a room.
+
+       Room tags may include:
+
         - m.favourite for favourite rooms
         - m.lowpriority for low priority room
-       A tag may have an optinal order float 0 <= order <=1 for position
-       this room to other rooms.
+
+       A tag may have an order between 0 and 1, indicating the
+       room's possition towards other rooms with the same tag.
 
     Attributes:
-        tags (Dict[string, Optional[Dict[string, float]]): The tag dictionary.
+        tags (Dict[string, Optional[Dict[str, float]]): The tags of the room
+        and their contents.
     """
 
     tags = attr.ib()

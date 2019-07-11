@@ -1269,18 +1269,22 @@ class Schemas(object):
             "content": {
                 "type": "object",
                 "properties": {
-                    "tags": {"type:": "object"},
-                    "properties": {
-                        "order": {"type": "float"}
+                    "tags": {
+                        "type:": "object",
+                        "patternProperties": {
+                            r".*": {
+                                "type": "object",
+                                "properties": {
+                                    "order": {"type": "number"}
+                                },
+                            },
+                        },
                     },
-                    "required": [
-                        "type"
-                    ],
                 },
                 "required": [
-                    "tags",
+                    "tags"
                 ],
-            }
+            },
         },
         "required": [
             "type",

@@ -20,7 +20,7 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         CallAnswerEvent, CallHangupEvent, CallInviteEvent,
                         CallCandidatesEvent, KeyVerificationStart,
                         KeyVerificationAccept, KeyVerificationCancel,
-                        KeyVerificationKey, KeyVerificationMac)
+                        KeyVerificationKey, KeyVerificationMac, TagEvent)
 
 
 class TestClass(object):
