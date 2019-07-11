@@ -9,8 +9,10 @@ nio
 
 
 
-A no-IO matrix client library. Mainly developed to be used with weechat, other
-users are welcome.
+nio is a multilayered matrix client library. The underlying base layer doesn't
+do any IO on its own. On top of the base layer a no-IO HTTP client
+implementation exists as well as a full fledged batteries included asyncio
+layer using [aiohttp](https://github.com/aio-libs/aiohttp/) exists.
 
 Installation
 ============
