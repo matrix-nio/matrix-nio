@@ -10,9 +10,9 @@ nio
 
 
 nio is a multilayered matrix client library. The underlying base layer doesn't
-do any IO on its own. On top of the base layer a no-IO HTTP client
-implementation exists as well as a full fledged batteries included asyncio
-layer using [aiohttp](https://github.com/aio-libs/aiohttp/) exists.
+do any IO on its own. On top of the base layer, a no-IO HTTP client
+implementation exists, as well as a full fledged batteries included asyncio
+layer using [aiohttp](https://github.com/aio-libs/aiohttp/).
 
 Documentation
 =============
@@ -43,7 +43,7 @@ $ pip install "matrix-nio[e2e]"
 Usage
 =====
 
-Unless special requirements disallow the usage of asyncio by far the easiest
+Unless special requirements disallow the usage of asyncio, by far the easiest
 way to use nio is using the asyncio layer:
 
 ```python
@@ -52,8 +52,9 @@ from nio import (AsyncClient, RoomMessageText)
 
 async def message_cb(room, event):
     print(
-        f"Message received for room {room.display_name} | "
-        f"{room.user_name(event.sender)}: {event.body}"
+        "Message received for room {} | {}: {}".format(
+            room.display_name, room.user_name(event.sender), event.body
+        )
     )
 
 async def main():
@@ -63,8 +64,8 @@ async def main():
     await client.login("hunter1")
     await client.sync_forever(timeout=30000)
 
-asyncio.run(main())
+asyncio.get_event_loop().run_until_complete(main())
 ```
 
-Please do note that this example requires python 3.7 because of the usage of
-`asyncio.run()`, nio on the other hand works with older python versions as well.
+Please do note that this example requires python 3.5+ for the `async`/`await`
+syntax. nio on the other hand works with older python versions as well.
