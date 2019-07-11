@@ -26,7 +26,7 @@ from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
 from .events import (AccountDataEvent, BadEventType, Event, InviteEvent,
-                     ToDeviceEvent, UnknownBadEvent, EphemeralEvent)
+                     ToDeviceEvent, EphemeralEvent)
 from .log import logger_group
 from .schemas import Schemas, validate_json
 
@@ -1063,12 +1063,7 @@ class RoomContextResponse(Response):
         _, events_after = SyncResponse._get_room_events(
             parsed_dict["events_after"]
         )
-
-        try:
-            validate_json(parsed_dict["event"], Schemas.room_event)
-            event = Event.parse_event(parsed_dict["event"])
-        except (SchemaError, ValidationError):
-            event = UnknownBadEvent(parsed_dict["event"])
+        event = Event.parse_event(parsed_dict["event"])
 
         _, state = SyncResponse._get_room_events(
             parsed_dict["state"]
@@ -1114,13 +1109,6 @@ class _SyncResponse(Response):
         counter = 0
 
         for counter, event_dict in enumerate(parsed_dict, 1):
-            try:
-                validate_json(event_dict, Schemas.room_event)
-            except (SchemaError, ValidationError) as e:
-                logger.error("Error validating event: {}".format(str(e)))
-                events.append(UnknownBadEvent(event_dict))
-                continue
-
             event = Event.parse_event(event_dict)
 
             if event:

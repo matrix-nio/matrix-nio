@@ -17,7 +17,6 @@
 from __future__ import unicode_literals
 
 import time
-from builtins import super
 from typing import Any, Dict, Optional, Union
 
 import attr
@@ -86,11 +85,9 @@ class Event(object):
         return cls(parsed_dict)
 
     @classmethod
-    def parse_event(
-        cls,
-        event_dict,  # type: Dict[Any, Any]
-    ):
-        # type: (...) -> Union[Event, BadEventType]
+    @verify(Schemas.room_event)
+    def parse_event(cls, event_dict):
+        # type: (Dict[Any, Any]) -> Union[Event, BadEventType]
         """Parse a Matrix event and create a higher level event object.
 
         This function parses the type of the Matrix event and produces a higher
@@ -106,7 +103,6 @@ class Event(object):
             event_dict (dict): The dictionary representation of the event.
 
         """
-
         if "unsigned" in event_dict:
             if "redacted_because" in event_dict["unsigned"]:
                 return RedactedEvent.from_dict(event_dict)
