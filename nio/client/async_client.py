@@ -461,7 +461,7 @@ class AsyncClient(Client):
         tasks = []
 
         for message in self.outgoing_to_device_messages:
-            task = asyncio.create_task(self.to_device(message))
+            task = asyncio.ensure_future(self.to_device(message))
             tasks.append(task)
 
         return await asyncio.gather(*tasks)
