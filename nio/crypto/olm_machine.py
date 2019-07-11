@@ -809,7 +809,6 @@ class Olm(object):
                 # We don't have the device keys for this device, add them
                 # to our quey set so we fetch in the next key query.
                 self.users_for_key_query.add(event.sender)
-                pass
             else:
                 # Do not mark events decrypted using a forwarded key as
                 # verified
