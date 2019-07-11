@@ -916,7 +916,7 @@ class Olm(object):
 
         # Decryption failed with every known session or no known sessions,
         # let's try to create a new session.
-        if not plaintext:
+        if plaintext is None:
             # New sessions can only be created if it's a prekey message, we
             # can't decrypt the message if it isn't one at this point in time
             # anymore, so return early
@@ -940,7 +940,7 @@ class Olm(object):
 
         # Mypy complains that the plaintext can still be empty here,
         # realistically this can't happen but let's make mypy happy
-        if not plaintext:
+        if plaintext is None:
             logger.error("Failed to decrypt Olm message: unknown error")
             return None
 
