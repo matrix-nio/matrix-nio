@@ -14,6 +14,12 @@ do any IO on its own. On top of the base layer a no-IO HTTP client
 implementation exists as well as a full fledged batteries included asyncio
 layer using [aiohttp](https://github.com/aio-libs/aiohttp/) exists.
 
+Documentation
+=============
+
+The full API documentation for nio can be found at
+[https://matrix-nio.readthedocs.io](https://matrix-nio.readthedocs.io/index.html#api-documentation)
+
 Installation
 ============
 To install nio, simply use pip:
@@ -62,9 +68,3 @@ asyncio.run(main())
 
 Please do note that this example requires python 3.7 because of the usage of
 `asyncio.run()`, nio on the other hand works with older python versions as well.
-
-Documentation
-=============
-
-The full API documentation for nio can be found at
-[https://matrix-nio.readthedocs.io](https://matrix-nio.readthedocs.io/index.html#api-documentation)
