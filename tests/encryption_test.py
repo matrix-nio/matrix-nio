@@ -191,7 +191,7 @@ class TestClass(object):
         alice = OlmDevice(
             "example",
             "DEVICEID",
-            {"edd25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA",
+            {"ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA",
              "curve25519": "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
         )
 
