@@ -34,7 +34,37 @@ $ pip install matrix-nio[e2e]
 
 ```
 
+Usage
+=====
+
+Unless special requirements disallow the usage of asyncio by far the easiest
+way to use nio is using the asyncio layer:
+
+```python
+import asyncio
+from nio import (AsyncClient, RoomMessageText)
+
+async def message_cb(room, event):
+    print(
+        f"Message received for room {room.display_name} | "
+        f"{room.user_name(event.sender)}: {event.body}"
+    )
+
+async def main():
+    client = AsyncClient("https://example.org", "@alice:example.org")
+    client.add_event_callback(message_cb, RoomMessageText)
+
+    await client.login("hunter1")
+    await client.sync_forever(timeout=30000)
+
+asyncio.run(main())
+```
+
+Please do note that this example requires python 3.7 because of the usage of
+`asyncio.run()`, nio on the other hand works with older python versions as well.
+
 Documentation
 =============
 
-Documentation is in progress and can be found [here](https://matrix-nio.readthedocs.io/en/latest/nio.html)
+The full API documentation for nio can be found at
+[https://matrix-nio.readthedocs.io](https://matrix-nio.readthedocs.io/index.html#api-documentation)
