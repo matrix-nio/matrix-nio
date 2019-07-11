@@ -197,6 +197,19 @@ class TestClass(object):
             assert isinstance(event, BadEvent)
             assert event.source["type"] == event_type
 
+        for event_type, event_file in [
+                ("m.room.member", "member.json"),
+                ("m.room.canonical_alias", "alias.json"),
+                ("m.room.name", "name.json"),
+        ]:
+            parsed_dict = TestClass._load_response(
+                "tests/data/events/{}".format(event_file)
+            )
+            parsed_dict.pop("type")
+
+            event = InviteEvent.parse_event(parsed_dict)
+            assert not event
+
     def test_invite_events(self):
         for event_type, event_file in [
                 (InviteMemberEvent, "member.json"),
