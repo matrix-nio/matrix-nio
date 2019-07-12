@@ -4,8 +4,8 @@
 pkgbase=python-nio
 _pypiname=matrix-nio
 pkgname=('python-nio' 'python2-nio')
-pkgver=0.3
-pkgrel=2
+pkgver=0.4
+pkgrel=1
 pkgdesc='python no-IO library for the matrix chat protocol'
 arch=('any')
 url='https://github.com/poljar/matrix-nio'
