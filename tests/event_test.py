@@ -346,3 +346,10 @@ class TestClass(object):
         event = Event.parse_event({"type": "m.unknown"})
 
         assert isinstance(event, UnknownBadEvent)
+
+    def test_redacted_state_event(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/redacted_state.json")
+        event = Event.parse_event(parsed_dict)
+
+        assert isinstance(event, RedactedEvent)
