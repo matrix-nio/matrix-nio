@@ -202,7 +202,6 @@ class Schemas(object):
             }
         },
         "required": ["unsigned"],
-        "not": {"required": ["state_key"]}
     }
 
     login = {
