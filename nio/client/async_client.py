@@ -51,8 +51,10 @@ from ..responses import (ErrorResponse, FileResponse,
                          RoomSendResponse, RoomTypingResponse, RoomTypingError,
                          ShareGroupSessionError,
                          ShareGroupSessionResponse, SyncError, SyncResponse,
+                         PartialSyncResponse,
                          ThumbnailError, ThumbnailResponse,
-                         ToDeviceError, ToDeviceResponse, PartialSyncResponse)
+                         ToDeviceError, ToDeviceResponse,
+                         UploadError, UploadResponse)
 
 if False:
     from ..events import MegolmEvent
@@ -334,10 +336,13 @@ class AsyncClient(Client):
             method,
             path,
             data=None,
-            response_data=None
+            response_data=None,
+            content_type=None,
     ):
+        headers = {"content-type": content_type} if content_type else {}
+
         while True:
-            transport_response = await self.send(method, path, data)
+            transport_response = await self.send(method, path, data, headers)
 
             response = await self.create_matrix_response(
                 response_class,
@@ -1261,6 +1266,35 @@ class AsyncClient(Client):
             path,
             data,
             response_data=(room_id, )
+        )
+
+    @logged_in
+    async def upload(
+        self,
+        data,          # type: bytes
+        content_type,  # type: str
+        filename=None  # type: Optional[str]
+    ):
+        # type: (...) -> Union[UploadResponse, UploadError]
+        """Upload a file's content to the content repository.
+
+        Returns either a `UploadResponse` if the request was successful or
+        a `UploadError` if there was an error with the request.
+
+        Args:
+            data (bytes): The file's binary content.
+            content_type (str): The content MIME type of the file,
+                e.g. "image/png"
+            filename (Optional[str]): The file's original name.
+        """
+        http_method, path, _ = Api.upload(self.access_token, filename)
+
+        return await self._send(
+            UploadResponse,
+            http_method,
+            path,
+            data,
+            content_type=content_type
         )
 
     @logged_in

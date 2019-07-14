@@ -20,7 +20,7 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, ErrorResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
-                 SyncResponse, ThumbnailResponse, Timeline)
+                 SyncResponse, ThumbnailResponse, Timeline, UploadResponse)
 from nio.api import ResizingMethod
 from nio.crypto import OlmDevice
 
@@ -159,8 +159,11 @@ class TestClass(object):
 
     @property
     def limit_exceeded_error_response(self):
-        return self._load_response(
-            "tests/data/limit_exceeded_error.json")
+        return self._load_response("tests/data/limit_exceeded_error.json")
+
+    @property
+    def upload_response(self):
+        return self._load_response("tests/data/upload_response.json")
 
     @property
     def file_response(self):
@@ -640,6 +643,27 @@ class TestClass(object):
         )
         resp = await async_client.room_typing(room_id, typing_state=True)
         assert isinstance(resp, RoomTypingResponse)
+
+    async def test_upload(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            "https://example.org/_matrix/media/r0/upload"
+            "?access_token=abc123&filename=test.png",
+            status=200,
+            payload=self.upload_response,
+        )
+
+        resp = await async_client.upload(
+            self.file_response,
+            "image/png",
+            "test.png"
+        )
+        assert isinstance(resp, UploadResponse)
+
 
     async def test_thumbnail(self, async_client, aioresponse):
         await async_client.receive_response(

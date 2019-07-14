@@ -830,10 +830,10 @@ class Api(object):
     @staticmethod
     def upload(
         access_token,       # type: str
-        filename=None,      # type: str
+        filename=None,      # type: Optional[str]
     ):
         # type: (...) -> Tuple[str, str, str]
-        """Upload some content to the content repository.
+        """Upload a file's content to the content repository.
 
         Returns the HTTP method, HTTP path and empty data for the request.
         The real data should be read from the file that should be uploaded.
