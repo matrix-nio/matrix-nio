@@ -655,6 +655,7 @@ class TestClass(object):
             "?access_token=abc123&filename=test.png",
             status=200,
             payload=self.upload_response,
+            repeat=True
         )
 
         resp = await async_client.upload(
@@ -663,6 +664,14 @@ class TestClass(object):
             "test.png"
         )
         assert isinstance(resp, UploadResponse)
+
+        with open("tests/data/file_response", "rb") as file:
+            streaming_resp = await async_client.upload(
+                file,
+                "image/png",
+                "test.png"
+            )
+        assert isinstance(streaming_resp, UploadResponse)
 
 
     async def test_thumbnail(self, async_client, aioresponse):

@@ -18,8 +18,8 @@ import asyncio
 from asyncio import Event
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
-from typing import (Any, Coroutine, Dict, Iterable, List, Optional, Tuple,
-                    Type, Union)
+from typing import (Any, AsyncIterable, BinaryIO, Coroutine, Dict, Iterable,
+                    List, Optional, Tuple, Type, Union)
 from uuid import uuid4
 
 import attr
@@ -59,6 +59,8 @@ from ..responses import (ErrorResponse, FileResponse,
 if False:
     from ..events import MegolmEvent
     from .crypto import OlmDevice
+
+_UploadDataT = Union[bytes, BinaryIO, AsyncIterable[bytes]]
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
 
@@ -365,7 +367,7 @@ class AsyncClient(Client):
             self,
             method,       # type: str
             path,         # type: str
-            data=None,    # type: Optional[str]
+            data=None,    # type: Union[None, str, _UploadDataT]
             headers=None  # type: Optional[Dict[str, str]]
     ):
         # type: (...) -> ClientResponse
@@ -434,7 +436,7 @@ class AsyncClient(Client):
                 true, then all state events will be returned, even if since is
                 non-empty. The timeline will still be limited by the since
                 parameter.
-            since(str, otpional): A token specifying a point in time where to
+            since(str, optional): A token specifying a point in time where to
                 continue the sync from. Defaults to the last sync token we
                 received from the server using this API call.
 
@@ -509,7 +511,7 @@ class AsyncClient(Client):
                 non-empty. The timeline will still be limited by the since
                 parameter. This argument will be used only for the first sync
                 request.
-            since (str, otpional): A token specifying a point in time where to
+            since (str, optional): A token specifying a point in time where to
                 continue the sync from. Defaults to the last sync token we
                 received from the server using this API call. This argument
                 will be used only for the first sync request, the subsequent
@@ -1271,7 +1273,7 @@ class AsyncClient(Client):
     @logged_in
     async def upload(
         self,
-        data,          # type: bytes
+        data,          # type: _UploadDataT
         content_type,  # type: str
         filename=None  # type: Optional[str]
     ):
@@ -1282,10 +1284,17 @@ class AsyncClient(Client):
         a `UploadError` if there was an error with the request.
 
         Args:
-            data (bytes): The file's binary content.
+            data (bytes/BinaryIO/AsyncIterable[bytes]): The file's binary
+                content. Using a binary file-like object or async iterable
+                allows sending large files without reading them into memory.
             content_type (str): The content MIME type of the file,
                 e.g. "image/png"
-            filename (Optional[str]): The file's original name.
+            filename (str, optional): The file's original name.
+
+        Example:
+            >>> with open("vid.webm", "rb") as f:
+            >>>     response = await client.upload(f, "video/webm", "vid.webm")
+            >>>     http_url = nio.Api.mxc_to_http(response.content_uri)
         """
         http_method, path, _ = Api.upload(self.access_token, filename)
 
