@@ -894,7 +894,7 @@ class TestClass(object):
             payload=self.login_response
         )
 
-        async_client.config = AsyncClientConfig(max_timeouts=1)
+        async_client.config = AsyncClientConfig(max_timeouts=3)
 
         resp = await async_client.login("wordpass")
         assert isinstance(resp, LoginResponse)
@@ -910,7 +910,7 @@ class TestClass(object):
             repeat=True
         )
 
-        async_client.config = AsyncClientConfig(max_timeouts=1)
+        async_client.config = AsyncClientConfig(max_timeouts=3)
 
         try:
             resp = await async_client.login("wordpass")
@@ -918,6 +918,17 @@ class TestClass(object):
             return
 
         raise RuntimeError("Did not get asyncio.TimeoutError")
+
+    async def test_exponential_backoff(self, async_client):
+        async_client.config = AsyncClientConfig(
+            backoff_factor = 0.2,
+            max_timeout_retry_wait_time = 30
+        )
+
+        get_time = async_client.get_timeout_retry_wait_time
+        times = [await get_time(retries) for retries in range(1, 12)]
+
+        assert times == [0.0, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 30, 30, 30]
 
     async def test_sync_forever(self, async_client, aioresponse, loop):
         sync_url = re.compile(

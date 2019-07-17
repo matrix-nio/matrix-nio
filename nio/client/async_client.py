@@ -97,19 +97,31 @@ class AsyncClientConfig(ClientConfig):
     """Async nio client configuration.
 
     Attributes:
+        max_limit_exceeded (int, optional): How many 429 (Too many requests)
+            errors can a request encounter before giving up and returning
+            an ErrorResponse.
+            Default is None for unlimited.
+
         max_timeouts (int, optional): How many timeout connection errors can
             a request encounter before giving up and raising the error:
             a ClientConnectionError, TimeoutError, or asyncio.TimeoutError.
             Default is None for unlimited.
 
-        max_limit_exceeded (int, optional): How many 429 (Too many requests)
-            errors can a request encounter before giving up and returning
-            an ErrorResponse.
-            Default is None for unlimited.
+        backoff_factor (float): A backoff factor to apply between retries
+            for timeouts, starting from the second try.
+            nio will sleep for `backoff_factor * (2 ** (total_retries - 1))`
+            seconds.
+            For example, with the default backoff_factor of 0.1,
+            nio will sleep for 0.0, 0.2, 0.4, ... seconds between retries.
+
+        max_timeout_retry_wait_time (float): The maximum time to wait between
+            retries for timeouts, by default 60.
     """
 
-    max_timeouts = attr.ib(type=Optional[int], default=None)
     max_limit_exceeded = attr.ib(type=Optional[int], default=None)
+    max_timeouts = attr.ib(type=Optional[int], default=None)
+    backoff_factor = attr.ib(type=float, default=0.1)
+    max_timeout_retry_wait_time = attr.ib(type=float, default=60)
 
 
 class AsyncClient(Client):
@@ -169,6 +181,8 @@ class AsyncClient(Client):
         config = config or AsyncClientConfig()
 
         super().__init__(user, device_id, store_path, config)
+
+        self.config = config  # type: AsyncClientConfig
 
     def add_response_callback(
             self,
@@ -354,6 +368,16 @@ class AsyncClient(Client):
         else:
             super().receive_response(response)
 
+    async def get_timeout_retry_wait_time(self, got_timeouts):
+        # type: (int) -> float
+        if got_timeouts < 2:
+            return 0.0
+
+        return min(
+            self.config.backoff_factor * (2 ** (got_timeouts - 1)),
+            self.config.max_timeout_retry_wait_time
+        )
+
     async def _send(
             self,
             response_class,
@@ -398,7 +422,8 @@ class AsyncClient(Client):
                 if max_timeouts is not None and got_timeouts > max_timeouts:
                     raise
 
-                await asyncio.sleep(5)
+                wait = await self.get_timeout_retry_wait_time(got_timeouts)
+                await asyncio.sleep(wait)
 
         await self.receive_response(resp)
         return resp
