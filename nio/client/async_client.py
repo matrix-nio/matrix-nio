@@ -92,6 +92,26 @@ def client_session(func):
     return wrapper
 
 
+@attr.s(frozen=True)
+class AsyncClientConfig(ClientConfig):
+    """Async nio client configuration.
+
+    Attributes:
+        max_timeouts (int, optional): How many timeout connection errors can
+            a request encounter before giving up and raising the error:
+            a ClientConnectionError, TimeoutError, or asyncio.TimeoutError.
+            Default is None for unlimited.
+
+        max_limit_exceeded (int, optional): How many 429 (Too many requests)
+            errors can a request encounter before giving up and returning
+            an ErrorResponse.
+            Default is None for unlimited.
+    """
+
+    max_timeouts = attr.ib(type=Optional[int], default=None)
+    max_limit_exceeded = attr.ib(type=Optional[int], default=None)
+
+
 class AsyncClient(Client):
     """An async IO matrix client.
 
@@ -105,7 +125,7 @@ class AsyncClient(Client):
             log in.
         store_path (str, optional): The directory that should be used for state
             storage.
-        config (ClientConfig, optional): Configuration for the client.
+        config (AsyncClientConfig, optional): Configuration for the client.
         ssl (bool/ssl.SSLContext, optional): SSL validation mode. None for
             default SSL check (ssl.create_default_context() is used), False
             for skip SSL certificate validation connection.
@@ -130,7 +150,7 @@ class AsyncClient(Client):
             user="",        # type: str
             device_id="",   # type: Optional[str]
             store_path="",  # type: Optional[str]
-            config=None,    # type: Optional[ClientConfig]
+            config=None,    # type: Optional[AsyncClientConfig]
             ssl=None,       # type: Optional[bool]
             proxy=None,     # type: Optional[str]
     ):
@@ -145,6 +165,8 @@ class AsyncClient(Client):
         self.response_callbacks = []  # type: List[ResponseCb]
 
         self.sharing_session = dict()  # type: Dict[str, Event]
+
+        config = config or AsyncClientConfig()
 
         super().__init__(user, device_id, store_path, config)
 
@@ -343,24 +365,43 @@ class AsyncClient(Client):
     ):
         headers = {"content-type": content_type} if content_type else {}
 
+        got_429 = 0
+        max_429 = self.config.max_limit_exceeded
+
+        got_timeouts = 0
+        max_timeouts = self.config.max_timeouts
+
         while True:
-            transport_response = await self.send(method, path, data, headers)
+            try:
+                transport_resp = await self.send(method, path, data, headers)
 
-            response = await self.create_matrix_response(
-                response_class,
-                transport_response,
-                response_data
-            )
+                resp = await self.create_matrix_response(
+                    response_class,
+                    transport_resp,
+                    response_data
+                )
 
-            if isinstance(response, ErrorResponse) and response.retry_after_ms:
-                await self.run_response_callbacks([response])
-                await asyncio.sleep(response.retry_after_ms / 1000)
-            else:
-                break
+                if isinstance(resp, ErrorResponse) and resp.retry_after_ms:
+                    got_429 += 1
 
-        await self.receive_response(response)
+                    if max_429 is not None and got_429 > max_429:
+                        break
 
-        return response
+                    await self.run_response_callbacks([resp])
+                    await asyncio.sleep(resp.retry_after_ms / 1000)
+                else:
+                    break
+
+            except (ClientConnectionError, TimeoutError, asyncio.TimeoutError):
+                got_timeouts += 1
+
+                if max_timeouts is not None and got_timeouts > max_timeouts:
+                    raise
+
+                await asyncio.sleep(5)
+
+        await self.receive_response(resp)
+        return resp
 
     @client_session
     async def send(
@@ -522,38 +563,28 @@ class AsyncClient(Client):
         """
         while True:
             try:
-                responses = []
+                coros = [
+                    self.sync(timeout, sync_filter, since, full_state),
+                    self.send_to_device_messages()
+                ]
 
-                responses.append(
-                    await self.sync(timeout, sync_filter, since, full_state)
-                )
+                if self.should_upload_keys:
+                    coros.append(self.keys_upload())
+
+                if self.should_query_keys:
+                    coros.append(self.keys_query())
+
+                for response in asyncio.as_completed(coros):
+                    await self.run_response_callbacks((await response,))
 
                 full_state = None
                 since = None
-
-                responses += await self.send_to_device_messages()
-
-                if self.should_upload_keys:
-                    responses.append(await self.keys_upload())
-
-                if self.should_query_keys:
-                    responses.append(await self.keys_query())
-
-                await self.run_response_callbacks(responses)
 
                 if loop_sleep_time:
                     await asyncio.sleep(loop_sleep_time / 1000)
 
             except asyncio.CancelledError:
                 break
-
-            except (ClientConnectionError, TimeoutError, asyncio.TimeoutError):
-                await self.run_response_callbacks(responses)
-
-                try:
-                    await asyncio.sleep(5)
-                except asyncio.CancelledError:
-                    break
 
     @logged_in
     @store_loaded
