@@ -11,7 +11,7 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, ErrorResponse,
                  JoinResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginError,
-                 LoginResponse, MegolmEvent, MembersSyncError, OlmTrustError,
+                LoginResponse, MegolmEvent, MembersSyncError, OlmTrustError,
                  RoomContextResponse, RoomForgetResponse,
                  ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
@@ -31,7 +31,7 @@ ALICE_DEVICE_ID = "JLAFKJWSCS"
 
 if sys.version_info >= (3, 5):
     import asyncio
-    from nio import AsyncClient
+    from nio import AsyncClient, AsyncClientConfig
 
 
 @pytest.mark.skipif(sys.version_info < (3, 5), reason="Python 3 specific asyncio tests")
@@ -858,6 +858,28 @@ class TestClass(object):
         assert got_error == [True]
         assert isinstance(resp, LoginResponse)
         assert async_client.logged_in
+
+    async def test_max_limit_exceeded(self, async_client, aioresponse):
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/login",
+            status=429,
+            payload=self.limit_exceeded_error_response,
+            repeat=True
+        )
+
+        async_client.config = AsyncClientConfig(max_limit_exceeded=1)
+
+        got_error = []
+        async def on_error(resp):
+            got_error.append(True)
+
+        async_client.add_response_callback(on_error, ErrorResponse)
+
+        resp = await async_client.login("wordpass")
+        assert got_error == [True]
+        assert isinstance(resp, ErrorResponse)
+        assert resp.retry_after_ms
+        assert not async_client.logged_in
 
     async def test_sync_forever(self, async_client, aioresponse, loop):
         sync_url = re.compile(
