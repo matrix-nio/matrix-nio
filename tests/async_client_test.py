@@ -867,19 +867,57 @@ class TestClass(object):
             repeat=True
         )
 
-        async_client.config = AsyncClientConfig(max_limit_exceeded=1)
+        async_client.config = AsyncClientConfig(max_limit_exceeded=2)
 
         got_error = []
-        async def on_error(resp):
+        async def on_error(_):
             got_error.append(True)
 
         async_client.add_response_callback(on_error, ErrorResponse)
 
         resp = await async_client.login("wordpass")
-        assert got_error == [True]
+        assert got_error == [True, True]
         assert isinstance(resp, ErrorResponse)
         assert resp.retry_after_ms
         assert not async_client.logged_in
+
+    async def test_timeout(self, async_client, aioresponse):
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/login",
+            status=200,
+            payload=self.login_response,
+            timeout=True
+        )
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/login",
+            status=200,
+            payload=self.login_response
+        )
+
+        async_client.config = AsyncClientConfig(max_timeouts=1)
+
+        resp = await async_client.login("wordpass")
+        assert isinstance(resp, LoginResponse)
+        assert async_client.access_token
+        assert async_client.logged_in
+
+    async def test_max_timeouts(self, async_client, aioresponse):
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/login",
+            status=200,
+            payload=self.login_response,
+            timeout=True,
+            repeat=True
+        )
+
+        async_client.config = AsyncClientConfig(max_timeouts=1)
+
+        try:
+            resp = await async_client.login("wordpass")
+        except asyncio.TimeoutError:
+            return
+
+        raise RuntimeError("Did not get asyncio.TimeoutError")
 
     async def test_sync_forever(self, async_client, aioresponse, loop):
         sync_url = re.compile(
