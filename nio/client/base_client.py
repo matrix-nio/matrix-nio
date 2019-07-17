@@ -90,11 +90,11 @@ class ClientConfig(object):
     Attributes:
         store (MatrixStore, optional): The store that should be used for state
             storage.
-        store_name: (str, optional): Filename that should be used for the
+        store_name (str, optional): Filename that should be used for the
             store.
-        encryption_enabled(bool, optional): Should end to end encryption be
+        encryption_enabled (bool, optional): Should end to end encryption be
             used.
-        pickle_key: (str, optional): A passphrase that will be used to encrypt
+        pickle_key (str, optional): A passphrase that will be used to encrypt
             end to end encryption keys.
 
     Raises an ImportWarning if encryption_enabled is true but the dependencies
@@ -127,8 +127,8 @@ class Client(object):
            after logging in.
        user_id (str): The full mxid of the current user. This is set after
            logging in.
-       next_batch(str): The current sync token.
-       rooms(Dict[str, MatrixRoom)): A dictionary containing a mapping of room
+       next_batch (str): The current sync token.
+       rooms (Dict[str, MatrixRoom)): A dictionary containing a mapping of room
            ids to MatrixRoom objects. All the rooms a user is joined to will be
            here after a sync.
 

@@ -631,7 +631,7 @@ class ShareGroupSessionResponse(Response):
 
     Attributes:
         room_id (str): The room id of the group session.
-        users_shared_with: (Set[Tuple[str, str]]): A set containing a tuple of
+        users_shared_with (Set[Tuple[str, str]]): A set containing a tuple of
             user id device id pairs with whom we shared the group session in
             this request.
 
@@ -655,7 +655,7 @@ class ShareGroupSessionResponse(Response):
            parsed_dict (Dict): The dict containing the raw json response.
            room_id (str): The room id of the room to which the group session
                belongs to.
-           users_shared_with: (Set[Tuple[str, str]]): A set containing a tuple
+           users_shared_with (Set[Tuple[str, str]]): A set containing a tuple
                of user id device id pairs with whom we shared the group
                session in this request.
         """

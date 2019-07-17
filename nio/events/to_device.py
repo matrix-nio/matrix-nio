@@ -368,7 +368,7 @@ class RoomKeyEvent(ToDeviceEvent):
         room_id (str): The room ID of the room to which the session key
             belongs to.
         session_id (str): The session id of the session key.
-        algorithm: (str): The algorithm of the session key.
+        algorithm (str): The algorithm of the session key.
 
     """
 
@@ -406,7 +406,7 @@ class ForwardedRoomKeyEvent(RoomKeyEvent):
         room_id (str): The room ID of the room to which the session key
             belongs to.
         session_id (str): The session id of the session key.
-        algorithm: (str): The algorithm of the session key.
+        algorithm (str): The algorithm of the session key.
 
     """
 
