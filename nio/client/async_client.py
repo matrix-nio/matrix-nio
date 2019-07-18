@@ -15,6 +15,7 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import asyncio
+import warnings
 from asyncio import Event
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
@@ -178,11 +179,16 @@ class AsyncClient(Client):
 
         self.sharing_session = dict()  # type: Dict[str, Event]
 
-        config = config or AsyncClientConfig()
+        if isinstance(config, ClientConfig):
+            warnings.warn(
+                "Pass an AsyncClientConfig instead of ClientConfig.",
+                DeprecationWarning
+            )
+            config = AsyncClientConfig(**config.__dict__)
 
-        super().__init__(user, device_id, store_path, config)
+        self.config = config or AsyncClientConfig()  # type: AsyncClientConfig
 
-        self.config = config  # type: AsyncClientConfig
+        super().__init__(user, device_id, store_path, self.config)
 
     def add_response_callback(
             self,
