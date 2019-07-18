@@ -594,18 +594,20 @@ class AsyncClient(Client):
         """
         while True:
             try:
-                coros = [
-                    self.sync(timeout, sync_filter, since, full_state),
-                    self.send_to_device_messages()
+                tasks = [
+                    asyncio.ensure_future(coro) for coro in (
+                        self.sync(timeout, sync_filter, since, full_state),
+                        self.send_to_device_messages()
+                    )
                 ]
 
                 if self.should_upload_keys:
-                    coros.append(self.keys_upload())
+                    tasks.append(asyncio.ensure_future(self.keys_upload()))
 
                 if self.should_query_keys:
-                    coros.append(self.keys_query())
+                    tasks.append(asyncio.ensure_future(self.keys_query()))
 
-                for response in asyncio.as_completed(coros):
+                for response in asyncio.as_completed(tasks):
                     await self.run_response_callbacks((await response,))
 
                 full_state = None
@@ -615,6 +617,9 @@ class AsyncClient(Client):
                     await asyncio.sleep(loop_sleep_time / 1000)
 
             except asyncio.CancelledError:
+                for task in tasks:
+                    task.cancel()
+
                 break
 
     @logged_in
