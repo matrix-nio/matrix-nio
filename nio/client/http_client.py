@@ -45,7 +45,7 @@ from ..responses import (DeleteDevicesAuthResponse, DeleteDevicesResponse,
                          DevicesResponse, FileResponse,
                          JoinedMembersResponse, JoinResponse,
                          KeysClaimResponse, KeysQueryResponse, KeysUploadError,
-                         KeysUploadResponse, LoginResponse,
+                         KeysUploadResponse, LoginResponse, LogoutResponse,
                          PartialSyncResponse, ProfileGetAvatarResponse,
                          ProfileGetDisplayNameResponse, ProfileGetResponse,
                          ProfileSetAvatarResponse,
@@ -236,6 +236,17 @@ class HttpClient(Client):
         )
 
         return self._send(request, RequestInfo(LoginResponse))
+
+    @connected
+    @logged_in
+    def logout(self):
+        request = self._build_request(
+            Api.logout(
+                self.access_token
+            )
+        )
+
+        return self.send(request, RequestInfo(LogoutResponse))
 
     @connected
     @logged_in

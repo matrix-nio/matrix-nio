@@ -30,7 +30,7 @@ from ..exceptions import LocalProtocolError, MembersSyncError
 from ..log import logger_group
 from ..responses import (ErrorResponse, JoinedMembersResponse,
                          KeysClaimResponse, KeysQueryResponse,
-                         KeysUploadResponse, LoginResponse,
+                         KeysUploadResponse, LoginResponse, LogoutResponse,
                          PartialSyncResponse, Response, RoomContextResponse,
                          RoomForgetResponse, RoomKeyRequestResponse,
                          RoomMessagesResponse, ShareGroupSessionResponse,
@@ -513,6 +513,13 @@ class Client(object):
         if self.store_path and not (self.store and self.olm):
             self.load_store()
 
+    def _handle_logout(self, response):
+        # type: (Union[LoginResponse, ErrorResponse]) -> None
+        if isinstance(response, ErrorResponse):
+            return
+
+        self.access_token = ""
+
     @store_loaded
     def decrypt_event(
         self,
@@ -859,6 +866,8 @@ class Client(object):
 
         if isinstance(response, LoginResponse):
             self._handle_login(response)
+        elif isinstance(response, LogoutResponse):
+            self._handle_logout(response)
         elif isinstance(response, (SyncResponse, PartialSyncResponse)):
             self._handle_sync(response)
         elif isinstance(response, RoomMessagesResponse):

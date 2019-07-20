@@ -13,7 +13,8 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, ErrorResponse,
                  JoinResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginError,
-                 LoginResponse, MegolmEvent, MembersSyncError, OlmTrustError,
+                 LoginResponse, LogoutError, LogoutResponse,
+                 MegolmEvent, MembersSyncError, OlmTrustError,
                  RoomContextResponse, RoomForgetResponse,
                  ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
@@ -65,6 +66,10 @@ class TestClass(object):
     @property
     def login_response(self):
         return self._load_response("tests/data/login_response.json")
+
+    @property
+    def logout_response(self):
+        return self._load_response("tests/data/logout_response.json")
 
     @property
     def keys_upload_response(self):
@@ -312,6 +317,27 @@ class TestClass(object):
         assert async_client.client_session
         loop.run_until_complete(async_client.close())
         assert not async_client.client_session
+
+    def no_test_logout(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/login",
+            status=200,
+            payload=self.login_response
+        )
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/logout",
+            status=200,
+            payload=self.logout_response
+        )
+
+        resp = loop.run_until_complete(async_client.login("wordpass"))
+        resp2 = loop.run_until_complete(async_client.logout())
+
+        assert isinstance(resp, LoginResponse)
+        assert isinstance(resp2, LogoutResponse)
 
     def test_sync(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()

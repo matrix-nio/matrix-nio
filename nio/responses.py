@@ -58,6 +58,8 @@ __all__ = [
     "KeysUploadError",
     "LoginResponse",
     "LoginError",
+    "LogoutResponse",
+    "LogoutError",
     "Response",
     "RoomInfo",
     "RoomInviteResponse",
@@ -327,6 +329,10 @@ class LoginError(ErrorResponse):
     pass
 
 
+class LogoutError(ErrorResponse):
+    pass
+
+
 class SyncError(ErrorResponse):
     pass
 
@@ -477,6 +483,20 @@ class LoginResponse(Response):
             parsed_dict["device_id"],
             parsed_dict["access_token"],
         )
+
+
+@attr.s
+class LogoutResponse(Response):
+    def __str__(self):
+        # type: () -> str
+        return "Logged out"
+
+    @classmethod
+    @verify(Schemas.empty, LogoutError)
+    def from_dict(cls, parsed_dict):
+        # type: () -> Union[LogoutResponse, ErrorResponse]
+        """Create a response for logout response from server."""
+        return cls()
 
 
 @attr.s

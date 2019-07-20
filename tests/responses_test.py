@@ -9,8 +9,8 @@ from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
                            JoinedMembersResponse, JoinResponse,
                            KeysClaimResponse,
                            KeysQueryResponse, KeysUploadResponse, LoginError,
-                           LoginResponse, PartialSyncResponse,
-                           ProfileGetAvatarResponse,
+                           LoginResponse, LogoutError, LogoutResponse,
+                           PartialSyncResponse, ProfileGetAvatarResponse,
                            ProfileGetDisplayNameResponse, ProfileGetResponse,
                            RoomContextError, RoomContextResponse,
                            RoomForgetResponse,
@@ -52,6 +52,12 @@ class TestClass(object):
             "tests/data/login_invalid_format.json")
         response = LoginResponse.from_dict(parsed_dict)
         assert isinstance(response, ErrorResponse)
+
+    def test_logout_parse(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/logout_response.json")
+        response = LogoutResponse.from_dict(parsed_dict)
+        assert isinstance(response, LogoutResponse)
 
     def test_room_messages(self):
         parsed_dict = TestClass._load_response(

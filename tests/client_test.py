@@ -7,7 +7,7 @@ from helpers import FrameFactory, ephemeral, ephemeral_dir, faker
 from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
                  HttpClient, JoinedMembersResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginResponse,
-                 MegolmEvent, ProfileGetAvatarResponse,
+                 LogoutResponse, MegolmEvent, ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
                  RoomEncryptionEvent, RoomForgetResponse, RoomInfo,
@@ -38,6 +38,10 @@ class TestClass(object):
     @property
     def login_response(self):
         return LoginResponse("@ephemeral:example.org", "DEVICEID", "abc123")
+
+    @property
+    def logout_response(self):
+        return LogoutResponse()
 
     @staticmethod
     def _load_response(filename):
@@ -412,6 +416,14 @@ class TestClass(object):
         assert client.access_token
         assert client.store
         assert client.olm
+
+    def test_client_logout(self, client):
+        client.receive_response(self.login_response)
+        assert client.access_token
+
+        client.receive_response(self.logout_response)
+
+        assert client.access_token == ""
 
     def test_client_account_sharing(self, client):
         client.receive_response(self.login_response)

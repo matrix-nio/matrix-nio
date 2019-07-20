@@ -233,6 +233,26 @@ class Api(object):
         return "POST", path, Api.to_json(content_dict)
 
     @staticmethod
+    def logout(
+        access_token,     # type: str
+    ):
+        """Logout the session.
+
+        Returns nothing.
+
+        Args:
+            access_token (str): the access token to be used with the request.
+        """
+        query_parameters = {"access_token": access_token}
+
+        content_dict = {}
+        return (
+            "POST",
+            Api._build_path("logout", query_parameters),
+            Api.to_json(content_dict)
+        )
+
+    @staticmethod
     def sync(
         access_token,     # type: str
         since=None,       # type: Optional[str]

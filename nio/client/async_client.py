@@ -39,6 +39,7 @@ from ..responses import (ErrorResponse, FileResponse,
                          JoinedMembersError, JoinedMembersResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
                          KeysUploadResponse, LoginError, LoginResponse,
+                         LogoutError, LogoutResponse,
                          ProfileGetAvatarResponse, ProfileGetAvatarError,
                          ProfileGetDisplayNameResponse,
                          ProfileGetDisplayNameError, ProfileGetResponse,
@@ -506,6 +507,19 @@ class AsyncClient(Client):
         )
 
         return await self._send(LoginResponse, method, path, data)
+
+    @logged_in
+    async def logout(self):
+        """Logout from the homeserver.
+
+        Returns either 'LogoutResponse' if the request was successful or
+        a `Logouterror` if there was an error with the request.
+        """
+        method, path, data = Api.logout(
+            self.access_token
+        )
+
+        return await self._send(LogoutResponse, method, path, data)
 
     @logged_in
     async def sync(
