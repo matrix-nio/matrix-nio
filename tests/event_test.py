@@ -20,7 +20,7 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         CallAnswerEvent, CallHangupEvent, CallInviteEvent,
                         CallCandidatesEvent, KeyVerificationStart,
                         KeyVerificationAccept, KeyVerificationCancel,
-                        KeyVerificationKey, KeyVerificationMac)
+                        KeyVerificationKey, KeyVerificationMac, TagEvent)
 
 
 class TestClass(object):
@@ -76,6 +76,12 @@ class TestClass(object):
             "tests/data/events/room_avatar.json")
         event = RoomAvatarEvent.from_dict(parsed_dict)
         assert isinstance(event, RoomAvatarEvent)
+
+    def test_tag_event(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/tag.json")
+        event = AccountDataEvent.parse_event(parsed_dict)
+        assert isinstance(event, TagEvent)
 
     def test_name_event(self):
         parsed_dict = TestClass._load_response(
