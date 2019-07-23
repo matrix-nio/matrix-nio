@@ -1,8 +1,9 @@
 import pytest
+import time
 
 from nio import EncryptionError
 from nio.crypto import (InboundGroupSession, OlmAccount, OutboundGroupSession,
-                        OutboundSession, Session)
+                        OutboundSession, Session, InboundSession)
 
 BOB_ID = "@bob:example.org"
 BOB_DEVICE = "AGMTSWVYML"
@@ -26,6 +27,49 @@ class TestClass(object):
             session.creation_time
         ).id
         assert not session.expired
+
+    def test_olm_session_encryption(self):
+        alice = OlmAccount()
+        bob = OlmAccount()
+        plaintext = "It's a secret to everybody"
+        bob_curve = bob.identity_keys["curve25519"]
+
+        bob.generate_one_time_keys(1)
+        bob_onetime = list(bob.one_time_keys["curve25519"].values())[0]
+
+        session = OutboundSession(alice, bob_curve, bob_onetime)
+        creation_time = session.use_time
+
+        # Encrypt a message and check that the use time increased.
+        message = session.encrypt(plaintext)
+        assert session.use_time > creation_time
+
+        inbound = InboundSession(bob, message)
+        creation_time = inbound.use_time
+
+        # Decrypt a message and check that the use time increased.
+        decrypted_plaintext = inbound.decrypt(message)
+        assert inbound.use_time > creation_time
+
+        assert decrypted_plaintext == plaintext
+
+        pickle = inbound.pickle("")
+
+        unpickled = Session.from_pickle(pickle, inbound.creation_time, "",
+                                        inbound.use_time)
+
+        use_time = unpickled.use_time
+        message = unpickled.encrypt(plaintext)
+
+        assert unpickled.use_time > use_time
+
+        pickle = session.pickle("")
+        unpickled = Session.from_pickle(pickle, session.creation_time, "",
+                                        session.use_time)
+        use_time = unpickled.use_time
+        decrypted_plaintext = unpickled.decrypt(message)
+        assert unpickled.use_time > use_time
+        assert decrypted_plaintext == plaintext
 
     def test_outbound_group_session(self):
         session = OutboundGroupSession()

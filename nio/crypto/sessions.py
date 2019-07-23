@@ -75,6 +75,14 @@ class Session(olm.Session, _SessionExpirationMixin):
         session.use_time = use_time or creation_time
         return session
 
+    def decrypt(self, ciphertext):
+        self.use_time = datetime.now()
+        return super().decrypt(ciphertext)
+
+    def encrypt(self, plaintext):
+        self.use_time = datetime.now()
+        return super().encrypt(plaintext)
+
 
 class InboundSession(olm.InboundSession, _SessionExpirationMixin):
     def __new__(cls, *args):
@@ -85,6 +93,14 @@ class InboundSession(olm.InboundSession, _SessionExpirationMixin):
         self.creation_time = datetime.now()
         self.use_time = datetime.now()
 
+    def decrypt(self, ciphertext):
+        self.use_time = datetime.now()
+        return super().decrypt(ciphertext)
+
+    def encrypt(self, plaintext):
+        self.use_time = datetime.now()
+        return super().encrypt(plaintext)
+
 
 class OutboundSession(olm.OutboundSession, _SessionExpirationMixin):
     def __new__(cls, *args):
@@ -94,6 +110,14 @@ class OutboundSession(olm.OutboundSession, _SessionExpirationMixin):
         super().__init__(account, identity_key, one_time_key)
         self.creation_time = datetime.now()
         self.use_time = datetime.now()
+
+    def decrypt(self, ciphertext):
+        self.use_time = datetime.now()
+        return super().decrypt(ciphertext)
+
+    def encrypt(self, plaintext):
+        self.use_time = datetime.now()
+        return super().encrypt(plaintext)
 
 
 class InboundGroupSession(olm.InboundGroupSession):
