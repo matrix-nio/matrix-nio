@@ -601,7 +601,6 @@ class Olm(object):
                         sender, sender_key, str(e)
                     )
                 )
-                pass
 
         return None
 
