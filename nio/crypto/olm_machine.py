@@ -488,7 +488,7 @@ class Olm(object):
         return self.store.is_device_ignored(device)
 
     def create_session(self, one_time_key, curve_key):
-        # type: (str, str) -> None
+        # type: (str, str) -> OutboundSession
         # TODO this can fail
         session = OutboundSession(self.account, curve_key, one_time_key)
         # Save the account, add the session to the store and save it to the
@@ -496,6 +496,8 @@ class Olm(object):
         self.save_account()
         self.session_store.add(curve_key, session)
         self.save_session(curve_key, session)
+
+        return session
 
     def create_group_session(
         self, sender_key, sender_fp_key, room_id, session_id, session_key
