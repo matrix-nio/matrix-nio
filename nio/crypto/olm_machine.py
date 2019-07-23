@@ -95,6 +95,8 @@ class Olm(object):
         self.outgoing_key_requests = dict()  \
             # type: Dict[str, OutgoingKeyRequest]
 
+        self.wedged_devices = list()  # type: List[OlmDevice]
+
         self.key_verifications = dict()  # type: Dict[str, Sas]
         self.outgoing_to_device_messages = []  # type: List[ToDeviceMessage]
 
@@ -542,6 +544,22 @@ class Olm(object):
 
         return missing
 
+    def _mark_device_for_unwedging(self, sender, sender_key):
+        device = self.device_store.device_from_sender_key(sender, sender_key)
+
+        if not device:
+            # TODO we should probably mark this user for a key query.
+            logger.warn("Attempted to mark a device for Olm session "
+                        "unwedging, but no device was found for user {} with "
+                        "sender key {}".format(sender, sender_key))
+            return
+
+        # TODO check when we created the last Olm session, if it's too recent
+        # don't mark the device to be unwedged.
+
+        if device not in self.wedged_devices:
+            self.wedged_devices.append(device)
+
     def _try_decrypt(
         self,
         sender,  # type: str
@@ -910,6 +928,8 @@ class Olm(object):
         except EncryptionError:
             # We found a matching session for a prekey message but decryption
             # failed, don't try to decrypt any further.
+            # Mark the device for unwedging instead.
+            self._mark_device_for_unwedging(sender, sender_key)
             return None
 
         # Decryption failed with every known session or no known sessions,
@@ -919,6 +939,7 @@ class Olm(object):
             # can't decrypt the message if it isn't one at this point in time
             # anymore, so return early
             if not isinstance(message, OlmPreKeyMessage):
+                self._mark_device_for_unwedging(sender, sender_key)
                 return None
 
             try:
