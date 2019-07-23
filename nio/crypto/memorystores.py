@@ -148,6 +148,21 @@ class DeviceStore(object):
             if not device.deleted:
                 yield device
 
+    def device_from_sender_key(self, user_id, sender_key):
+        # type (str, str) -> Optional[OlmDevice]
+        """Get a non-deleted device of a user with the matching sender key.
+
+        Args:
+            user_id (str): The user id of the device owner.
+            sender_key (str): The encryption key that is owned by the device,
+            usually a curve25519 public key.
+        """
+        for device in self.active_user_devices(user_id):
+            if device.curve25519 == sender_key:
+                return device
+
+        return None
+
     @property
     def users(self):
         # type () -> List[str]
