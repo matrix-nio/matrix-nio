@@ -19,6 +19,7 @@ from typing import Optional, List, Dict
 
 import attr
 from peewee import DoesNotExist, SqliteDatabase
+from playhouse.sqliteq import SqliteQueueDatabase
 
 from . import (Accounts, DeviceKeys, DeviceKeys_v1, DeviceTrustState,
                EncryptedRooms, ForwardedChains, Key, Keys, KeyStore,
@@ -49,11 +50,15 @@ def use_database_atomic(fn):
 
     This also ensures that the database transaction will be atomic.
     """
+
     @wraps(fn)
     def inner(self, *args, **kwargs):
         with self.database.bind_ctx(self.models):
-            with self.database.atomic():
+            if isinstance(self.database, SqliteQueueDatabase):
                 return fn(self, *args, **kwargs)
+            else:
+                with self.database.atomic():
+                    return fn(self, *args, **kwargs)
     return inner
 
 
