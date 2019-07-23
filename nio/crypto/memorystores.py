@@ -33,7 +33,7 @@ class SessionStore(object):
             return False
 
         self._entries[sender_key].append(session)
-        self._entries[sender_key].sort(key=lambda x: x.id)
+        self._entries[sender_key].sort(key=lambda x: x.use_time, reverse=True)
         return True
 
     def __iter__(self):

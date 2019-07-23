@@ -182,7 +182,7 @@ class TestClass(object):
         store.add(curve_key, s)
         store.add(curve_key, s2)
 
-        if s.id < s2.id:
+        if s.use_time > s2.use_time:
             assert s == store.get(curve_key)
         else:
             assert s2 == store.get(curve_key)
