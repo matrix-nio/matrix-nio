@@ -1,6 +1,7 @@
 from helpers import ephemeral, ephemeral_dir, faker
 from nio.crypto import (GroupSessionStore, InboundGroupSession, OlmAccount,
-                        OutboundGroupSession, OutboundSession, SessionStore)
+                        OutboundGroupSession, OutboundSession, SessionStore,
+                        DeviceStore)
 from nio.exceptions import OlmTrustError
 from nio.store import Ed25519Key, Key, KeyStore, MatrixStore
 
@@ -59,6 +60,21 @@ class TestClass(object):
         session_a, session_b = store[bob_curve]
 
         assert session_a.use_time > session_b.use_time
+
+    def test_device_get_by_sender_key(self):
+        store = DeviceStore()
+
+        for _ in range(10):
+            store.add(faker.olm_device())
+
+        device = faker.olm_device()
+
+        store.add(device)
+
+        fetched_device = store.device_from_sender_key(device.user_id,
+                                                      device.curve25519)
+
+        assert fetched_device == device
 
     def test_group_session_store(self):
         store = GroupSessionStore()
