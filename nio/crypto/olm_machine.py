@@ -231,6 +231,21 @@ class Olm(object):
 
         return content
 
+    def _olm_encrypt(self, session, payload, recipient_device):
+        olm_message = session.encrypt(Api.to_json(payload))
+        self.store.save_session(recipient_device.curve25519, session)
+
+        return {
+            "algorithm": self._olm_algorithm,
+            "sender_key": self.account.identity_keys["curve25519"],
+            "ciphertext": {
+                recipient_device.curve25519: {
+                    "type": olm_message.message_type,
+                    "body": olm_message.ciphertext,
+                }
+            },
+        }
+
     def _handle_key_claiming(self, response):
         keys = response.one_time_keys
 
@@ -1142,22 +1157,7 @@ class Olm(object):
                 "ed25519": device.ed25519
             }
 
-            olm_message = session.encrypt(
-                Api.to_json(device_payload_dict)
-            )
-            self.store.save_session(device.curve25519, session)
-
-            olm_dict = {
-                "algorithm": self._olm_algorithm,
-                "sender_key": self.account.identity_keys["curve25519"],
-                "ciphertext": {
-                    device.curve25519: {
-                        "type": olm_message.message_type,
-                        "body": olm_message.ciphertext,
-                    }
-                },
-            }
-
+            olm_dict = self._olm_encrypt(session, device_payload_dict, device)
             sharing_with.add((user_id, device.id))
 
             if user_id not in to_device_dict["messages"]:
