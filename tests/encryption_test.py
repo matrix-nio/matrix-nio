@@ -9,9 +9,10 @@ from olm import Account, OlmMessage, OlmPreKeyMessage, OutboundGroupSession
 
 from nio.crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
                         Olm, OlmDevice, OutboundSession, OutgoingKeyRequest,
-                        SessionStore)
+                        SessionStore, Session)
 from nio.events import (ForwardedRoomKeyEvent, MegolmEvent, OlmEvent,
-                        RoomKeyEvent, RoomMessageText, UnknownBadEvent)
+                        RoomKeyEvent, RoomMessageText, UnknownBadEvent,
+                        ToDeviceEvent)
 from nio.exceptions import EncryptionError, GroupEncryptionError, OlmTrustError
 from nio.responses import (KeysClaimResponse, KeysQueryResponse,
                            KeysUploadResponse)
@@ -854,3 +855,109 @@ class TestClass(object):
         assert len(sharing_with) == 1
         assert alice.outbound_group_sessions["!test:example.org"]
         assert alice.is_device_ignored(bob_device)
+
+    def test_session_unwedging(self, olm_account, bob_account):
+        def olm_message_to_event(message_dict, recipient, sender):
+            olm_content = message_dict["messages"][recipient.user_id][recipient.device_id]
+
+            return {
+                "sender": sender.user_id,
+                "type": "m.room.encrypted",
+                "content": olm_content,
+            }
+
+        alice = olm_account
+        bob = bob_account
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.account.identity_keys
+        )
+
+        alice.device_store.add(bob_device)
+        bob.device_store.add(alice_device)
+
+        bob.account.generate_one_time_keys(1)
+        one_time = list(bob.account.one_time_keys["curve25519"].values())[0]
+        bob.account.mark_keys_as_published()
+
+        alice.create_session(one_time, bob_device.curve25519)
+
+        # Let us pickle our session with bob here so we can later unpickle it
+        # and wedge our session.
+        alice_pickle = alice.session_store[bob_device.curve25519][0].pickle("")
+
+        # Share a initial olm encrypted message
+        _, to_device = alice.share_group_session(
+            TEST_ROOM,
+            [bob.user_id],
+            ignore_unverified_devices=True
+        )
+
+        outbound_session = alice.outbound_group_sessions[TEST_ROOM]
+
+        olm_message = olm_message_to_event(to_device, bob, alice)
+
+        # Pass the to-device event to bob and make sure we get the right events
+        event = ToDeviceEvent.parse_event(olm_message)
+        assert isinstance(event, OlmEvent)
+        decrypted_event = bob.decrypt_event(event)
+        assert isinstance(decrypted_event, RoomKeyEvent)
+
+        # Make sure bob got the room-key
+        assert bob.inbound_group_store
+        bob_session = bob.inbound_group_store.get(
+            TEST_ROOM,
+            alice_device.curve25519,
+            outbound_session.id
+        )
+
+        assert bob_session.id == outbound_session.id
+
+        # Now bob shares a room-key with alice
+        _, to_device = bob.share_group_session(
+            TEST_ROOM,
+            [alice.user_id],
+            ignore_unverified_devices=True
+        )
+
+        olm_message = olm_message_to_event(to_device, alice, bob)
+        event = ToDeviceEvent.parse_event(olm_message)
+        assert isinstance(event, OlmEvent)
+        decrypted_event = alice.decrypt_event(event)
+        assert isinstance(decrypted_event, RoomKeyEvent)
+
+        # Let us wedge the session now
+        session = alice.session_store[bob_device.curve25519][0]
+        alice.session_store[bob_device.curve25519][0] = (
+            Session.from_pickle(alice_pickle, session.creation_time, "",
+                                session.use_time))
+
+        alice.rotate_outbound_group_session(TEST_ROOM)
+
+        # Try to share a room-key now
+        _, to_device = alice.share_group_session(
+            TEST_ROOM,
+            [bob.user_id],
+            ignore_unverified_devices=True
+        )
+
+        olm_message = olm_message_to_event(to_device, bob, alice)
+        # Pass the to-device event to bob and make sure we get the right events
+        event = ToDeviceEvent.parse_event(olm_message)
+        assert isinstance(event, OlmEvent)
+        decrypted_event = bob.decrypt_event(event)
+
+        # Make sure that decryption failed
+        assert decrypted_event is None
+
+        # Make sure that we have queued a m.dummy message to be sent out as a
+        # to-device message
+
+        assert alice_device in bob.wedged_devices
