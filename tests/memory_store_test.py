@@ -32,6 +32,34 @@ class TestClass(object):
 
         assert (BOB_CURVE, [session]) == list(store.items())[0]
 
+    def test_session_store_order(self):
+        alice = OlmAccount()
+        bob = OlmAccount()
+        bob_curve = bob.identity_keys["curve25519"]
+        bob.generate_one_time_keys(2)
+
+        store = SessionStore()
+
+        first, second = bob.one_time_keys["curve25519"].values()
+
+        session2 = OutboundSession(alice, bob_curve, second)
+        session = OutboundSession(alice, bob_curve, first)
+
+        assert session.id != session2.id
+
+        assert session not in store
+
+        assert store.add(bob_curve, session)
+        assert len(store[bob_curve]) == 1
+        assert session in store
+        assert store.add(bob_curve, session2) is True
+        print(store.values())
+        assert len(store[bob_curve]) == 2
+
+        session_a, session_b = store[bob_curve]
+
+        assert session_a.use_time > session_b.use_time
+
     def test_group_session_store(self):
         store = GroupSessionStore()
         account = OlmAccount()
