@@ -246,6 +246,23 @@ class Olm(object):
             },
         }
 
+    def _queue_dummy_message(self, session, device):
+        dummy = {
+            "content": {},
+            "type": "m.dummy"
+        }
+
+        olm_dict = self._olm_encrypt(session, dummy, device)
+
+        self.outgoing_to_device_messages.append(
+            ToDeviceMessage(
+                "m.room.encrypted",
+                device.user_id,
+                device.device_id,
+                olm_dict
+            )
+        )
+
     def _handle_key_claiming(self, response):
         keys = response.one_time_keys
 
@@ -278,7 +295,12 @@ class Olm(object):
                                     device_id, user_id))
                     logger.info("Creating Outbound Session for device {} of "
                                 "user {}".format(device_id, user_id))
-                    self.create_session(key_object["key"], device.curve25519)
+                    session = self.create_session(key_object["key"],
+                                                  device.curve25519)
+
+                    if device in self.wedged_devices:
+                        self.wedged_devices.remove(device)
+                        self._queue_dummy_message(session, device)
                 else:
                     logger.warn("Signature verification for one-time key of "
                                 "device {} of user {} failed, could not start "
