@@ -590,7 +590,7 @@ class Olm(object):
                         "sender key {}".format(sender, sender_key)
                     )
                     raise EncryptionError(
-                        "Decryption failed for matching " "session"
+                        "Decryption failed for matching session"
                     )
 
                 # Decryption failed, we'll try another session in the next
