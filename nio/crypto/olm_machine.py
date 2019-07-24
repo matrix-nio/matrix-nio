@@ -254,9 +254,27 @@ class Olm(object):
 
         return content
 
-    def _olm_encrypt(self, session, payload, recipient_device):
-        olm_message = session.encrypt(Api.to_json(payload))
+    def _olm_encrypt(self, session, recipient_device, message_type, content):
         self.store.save_session(recipient_device.curve25519, session)
+
+        payload = {
+            "sender": self.user_id,
+            "sender_device": self.device_id,
+
+            "keys": {
+                "ed25519": self.account.identity_keys["ed25519"]
+            },
+
+            "recipient": recipient_device.user_id,
+            "recipient_keys": {
+                "ed25519": recipient_device.ed25519,
+            },
+
+            "type": message_type,
+            "content": content
+        }
+
+        olm_message = session.encrypt(Api.to_json(payload))
 
         return {
             "algorithm": self._olm_algorithm,
@@ -270,12 +288,7 @@ class Olm(object):
         }
 
     def _queue_dummy_message(self, session, device):
-        dummy = {
-            "content": {},
-            "type": "m.dummy"
-        }
-
-        olm_dict = self._olm_encrypt(session, dummy, device)
+        olm_dict = self._olm_encrypt(session, device, "m.dummy", {})
 
         self.outgoing_to_device_messages.append(
             ToDeviceMessage(
@@ -1129,14 +1142,6 @@ class Olm(object):
             "chain_index": group_session.message_index,
         }
 
-        payload_dict = {
-            "type": "m.room_key",
-            "content": key_content,
-            "sender": self.user_id,
-            "sender_device": self.device_id,
-            "keys": {"ed25519": self.account.identity_keys["ed25519"]},
-        }
-
         to_device_dict = {"messages": {}}  # type: Dict[str, Any]
 
         already_shared_set = group_session.users_shared_with
@@ -1198,14 +1203,8 @@ class Olm(object):
             self.store.ignore_devices(mark_as_ignored)
 
         for user_id, device, session in user_map:
-            # No need to share the session with our own device
-            device_payload_dict = payload_dict.copy()
-            device_payload_dict["recipient"] = user_id
-            device_payload_dict["recipient_keys"] = {
-                "ed25519": device.ed25519
-            }
-
-            olm_dict = self._olm_encrypt(session, device_payload_dict, device)
+            olm_dict = self._olm_encrypt(session, device, "m.room_key",
+                                         key_content)
             sharing_with.add((user_id, device.id))
 
             if user_id not in to_device_dict["messages"]:
