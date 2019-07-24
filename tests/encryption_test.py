@@ -12,7 +12,7 @@ from nio.crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
                         SessionStore, Session)
 from nio.events import (ForwardedRoomKeyEvent, MegolmEvent, OlmEvent,
                         RoomKeyEvent, RoomMessageText, UnknownBadEvent,
-                        ToDeviceEvent)
+                        ToDeviceEvent, DummyEvent)
 from nio.exceptions import EncryptionError, GroupEncryptionError, OlmTrustError
 from nio.responses import (KeysClaimResponse, KeysQueryResponse,
                            KeysUploadResponse)
@@ -992,3 +992,22 @@ class TestClass(object):
         assert message.type == "m.room.encrypted"
         assert message.recipient == alice.user_id
         assert message.recipient_device == alice.device_id
+
+        # Forward the message to alice.
+        event = ToDeviceEvent.parse_event(
+            olm_message_to_event(message.as_dict(), alice, bob)
+        )
+
+        assert isinstance(event, OlmEvent)
+
+        # Take out our currently used session for bob.
+        wedged_session = alice.session_store.get(bob_device.curve25519)
+        decrypted_event = alice.decrypt_event(event)
+
+        assert isinstance(decrypted_event, DummyEvent)
+
+        # Check that the dummy event created a new Olm session and that it is
+        # the preferred one.
+        new_session = alice.session_store.get(bob_device.curve25519)
+        assert wedged_session.use_time < new_session.use_time
+        assert wedged_session != new_session
