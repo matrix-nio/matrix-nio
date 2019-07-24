@@ -80,11 +80,26 @@ class Olm(object):
 
         # A store holding all the Olm devices of differing users we know about.
         self.device_store = DeviceStore()
-        # Dict[curve25519_key, List[Session]]
+
+        # A store holding all our 1on1 Olm sessions. These sessions are used to
+        # exchange encrypted messages between two devices (e.g. encryption keys
+        # for room message encryption are shared this way).
         self.session_store = SessionStore()
-        # Dict[RoomId, Dict[curve25519_key, Dict[session id, Session]]]
+
+        # This store holds all the encryption keys that are used to decrypt
+        # room messages. An encryption key gets added to the store either if we
+        # add our own locally or if it gets shared usin 1on1 Olm sessions with
+        # a to-device message with the m.room.encrypted type.
         self.inbound_group_store = GroupSessionStore()
 
+        # This dictionary holds the current encryption key that will be used to
+        # encrypt messages for a room. When such a key is created it will be
+        # transformed to a InboundGroupSession and stored in the
+        # inbound_group_store as well (it will be used to decrypt the messages
+        # there). These keys will not be stored permanently, they get rotated
+        # relatively frequently. These keys need to be shared with all the
+        # users/devices in a room before they can be used to encrypt a room
+        # message.
         # Dict of outbound Megolm sessions Dict[room_id]
         self.outbound_group_sessions = {} \
             # type: Dict[str, OutboundGroupSession]
@@ -93,9 +108,19 @@ class Olm(object):
         self.outgoing_key_requests = dict()  \
             # type: Dict[str, OutgoingKeyRequest]
 
+        # A list of devices for which we need to start a new Olm session.
+        # Matrix clients need to do a one-time key claiming request for the
+        # devices in this list. After a new session is created with the device
+        # it will be removed from this list and a dummy encrypted message will
+        # be queued to be sent as a to-device message.
         self.wedged_devices = list()  # type: List[OlmDevice]
 
         self.key_verifications = dict()  # type: Dict[str, Sas]
+
+        # A list of to-device messages that need to be sent to the homeserver
+        # by the client. This will get populated by common to-device messages
+        # for key-requests, interactive device verification and Olm session
+        # unwedging.
         self.outgoing_to_device_messages = []  # type: List[ToDeviceMessage]
 
         self.store = store
