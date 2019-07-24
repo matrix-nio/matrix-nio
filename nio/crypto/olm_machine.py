@@ -74,13 +74,11 @@ class Olm(object):
         # type: (...) -> None
         self.user_id = user_id
         self.device_id = device_id
+
         self.uploaded_key_count = None  # type: Optional[int]
         self.users_for_key_query = set()   # type: Set[str]
 
-        # List of group session ids that we shared with people
-        self.shared_sessions = []  # type: List[str]
-
-        # Dict[user_id, Dict[device_id, OlmDevice]]
+        # A store holding all the Olm devices of differing users we know about.
         self.device_store = DeviceStore()
         # Dict[curve25519_key, List[Session]]
         self.session_store = SessionStore()
