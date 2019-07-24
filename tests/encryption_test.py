@@ -961,3 +961,34 @@ class TestClass(object):
         # to-device message
 
         assert alice_device in bob.wedged_devices
+
+        # Bob should now claim new keys from alice, we're simulating this over
+        # here since the olm machine doesn't know how to do requests.
+        to_share = alice.share_keys()
+        one_time_key = list(to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                alice.user_id: {
+                    alice.device_id: {one_time_key[0]: one_time_key[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        response = KeysClaimResponse.from_dict(key_claim_dict, TEST_ROOM)
+
+        assert not bob.outgoing_to_device_messages
+
+        assert isinstance(response, KeysClaimResponse)
+        bob.handle_response(response)
+
+        # After we claimed the keys a new Olm session will be created and a
+        # to-device message will be prepared for alice.
+        assert bob.outgoing_to_device_messages
+
+        message = bob.outgoing_to_device_messages[0]
+
+        assert message.type == "m.room.encrypted"
+        assert message.recipient == alice.user_id
+        assert message.recipient_device == alice.device_id
