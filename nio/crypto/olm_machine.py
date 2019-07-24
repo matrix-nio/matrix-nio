@@ -38,6 +38,7 @@ from ..events import (BadEvent, BadEventType, Event,
                       KeyVerificationKey, KeyVerificationMac,
                       KeyVerificationStart, MegolmEvent, OlmEvent,
                       EncryptedToDeviceEvent, RoomKeyEvent, UnknownBadEvent,
+                      DummyEvent,
                       validate_or_badevent)
 from ..exceptions import (EncryptionError, GroupEncryptionError,
                           LocalProtocolError, OlmTrustError, VerificationError)
@@ -841,6 +842,9 @@ class Olm(object):
                 sender_key,
                 payload
             )
+
+        elif payload["type"] == "m.dummy":
+            return DummyEvent.from_dict(payload, sender, sender_key)
 
         else:
             logger.warn(
