@@ -73,10 +73,19 @@ class Olm(object):
         store,      # type: MatrixStore
     ):
         # type: (...) -> None
+
+        # Our own user id and device id. A tuple of user_id/device_id is
+        # guaranteed to be unique.
         self.user_id = user_id
         self.device_id = device_id
 
+        # The number of one-time keys we have uploaded on the server. If this
+        # is None no action will be taken. After a sync request the client will
+        # set this for us and depending on the count we will suggest the client
+        # to upload new keys.
         self.uploaded_key_count = None  # type: Optional[int]
+
+        # A set of users for which we need to query their device keys.
         self.users_for_key_query = set()   # type: Set[str]
 
         # A store holding all the Olm devices of differing users we know about.
@@ -116,6 +125,8 @@ class Olm(object):
         # be queued to be sent as a to-device message.
         self.wedged_devices = list()  # type: List[OlmDevice]
 
+        # A mapping from a transaction id to a Sas key verification object. The
+        # transaction id uniquely identifies the key verification session.
         self.key_verifications = dict()  # type: Dict[str, Sas]
 
         # A list of to-device messages that need to be sent to the homeserver
@@ -126,11 +137,16 @@ class Olm(object):
 
         self.store = store
 
+        # Try to load an account for this user_id/device id tuple from the
+        # store.
         account = self.store.load_account()  # type: ignore
 
+        # If no account was found for this user/device create a new one.
+        # Otherwise load all the Olm/Megolm sessions and other relevant account
+        # data from the store as well.
         if not account:
             logger.info("Creating new Olm account for {} on device {}".format(
-                        self.user_id, self.device_id))
+                self.user_id, self.device_id))
             account = OlmAccount()
             self.save_account(account)
         else:
