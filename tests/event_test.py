@@ -20,7 +20,8 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         CallAnswerEvent, CallHangupEvent, CallInviteEvent,
                         CallCandidatesEvent, KeyVerificationStart,
                         KeyVerificationAccept, KeyVerificationCancel,
-                        KeyVerificationKey, KeyVerificationMac, TagEvent)
+                        KeyVerificationKey, KeyVerificationMac, TagEvent,
+                        DummyEvent)
 
 
 class TestClass(object):
@@ -160,8 +161,7 @@ class TestClass(object):
             "@alice:example.org",
             "alice_key"
         )
-        assert isinstance(event, RoomKeyEvent)
-
+        assert isinstance(event, ForwardedRoomKeyEvent)
 
     def test_invalid_state_event(self):
         for event_type, event_file in [
@@ -359,3 +359,11 @@ class TestClass(object):
         event = Event.parse_event(parsed_dict)
 
         assert isinstance(event, RedactedEvent)
+
+    def test_dummy_event(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/dummy.json")
+        event = DummyEvent.from_dict(parsed_dict, "@alice:example.org",
+                                     "alice_key")
+
+        assert isinstance(event, DummyEvent)

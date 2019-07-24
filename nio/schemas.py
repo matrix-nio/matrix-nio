@@ -533,6 +533,20 @@ class Schemas(object):
         ],
     }
 
+    dummy_event = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "sender_device": {"type": "string"},
+            "type": {"type": "string", "enum": ["m.dummy"]},
+            "content": {
+                "type": "object",
+            },
+            "keys": {"type": "object"},
+        },
+        "required": ["type", "sender", "keys", "sender_device"],
+    }
+
     room_key_event = {
         "type": "object",
         "properties": {

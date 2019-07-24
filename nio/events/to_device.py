@@ -359,6 +359,33 @@ class OlmEvent(EncryptedToDeviceEvent):
 
 
 @attr.s
+class DummyEvent(ToDeviceEvent):
+    """Event containing a dummy message.
+
+    This event type is used start a new Olm session with a device. The event
+    has no content.
+
+    Attributes:
+        sender (str): The sender of the event.
+        sender_key (str): The key of the sender that sent the event.
+
+    """
+
+    sender_key = attr.ib()
+    sender_device = attr.ib()
+
+    @classmethod
+    @verify(Schemas.dummy_event)
+    def from_dict(cls, event_dict, sender, sender_key):
+        return cls(
+            event_dict,
+            sender,
+            sender_key,
+            event_dict["sender_device"]
+        )
+
+
+@attr.s
 class RoomKeyEvent(ToDeviceEvent):
     """Event containing a megolm room key that got sent to us.
 

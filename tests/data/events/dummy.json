@@ -1,0 +1,8 @@
+{
+    "content": {
+    },
+    "sender": "@alice:example.org",
+    "sender_device": "DEVICEID",
+    "keys": {},
+    "type": "m.dummy"
+}
