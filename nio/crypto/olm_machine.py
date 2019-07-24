@@ -994,6 +994,7 @@ class Olm(object):
                     "Failed to create new session from prekey"
                     "message: {}".format(str(e))
                 )
+                self._mark_device_for_unwedging(sender, sender_key)
                 return None
 
         # Mypy complains that the plaintext can still be empty here,
