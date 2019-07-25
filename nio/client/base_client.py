@@ -231,6 +231,21 @@ class Client(object):
         return self.olm.should_query_keys
 
     @property
+    def should_unwedge_sessions(self):
+        """Check if the client should claim one-time keys to unwedge sessions.
+
+        This should be periodically checked and if true a keys claim request
+        should be made with the return value of a `get_wedged_sessions()` call
+        as the payload.
+
+        Returns True if a key query is necessary, false otherwise.
+        """
+        if not self.olm:
+            return False
+
+        return bool(self.olm.wedged_devices)
+
+    @property
     def outgoing_key_requests(self):
         # type: () -> Dict[str, OutgoingKeyRequest]
         """Our active key requests that we made."""
