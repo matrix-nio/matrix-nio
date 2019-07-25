@@ -16,6 +16,9 @@
               "@alice:example.org": {
                   "ed25519:JLAFKJWSCS": "m53Wkbh2HXkc3vFApZvCrfXcX3AI51GsDHustMhKwlv3TuOJMj4wistcOTM8q2+e/Ro7rWFUb9ZfnNbwptSUBA"
               }
+          },
+          "unsigned": {
+              "device_display_name": "Alice's mobile phone"
           }
       }
     }

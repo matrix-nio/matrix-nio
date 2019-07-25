@@ -1011,3 +1011,24 @@ class TestClass(object):
         new_session = alice.session_store.get(bob_device.curve25519)
         assert wedged_session.use_time < new_session.use_time
         assert wedged_session != new_session
+
+    def test_device_renaming(self, olm_account):
+        parsed_dict = TestClass._load_response(
+            "tests/data/keys_query.json")
+        response = KeysQueryResponse.from_dict(parsed_dict)
+
+        assert isinstance(response, KeysQueryResponse)
+
+        olm_account.handle_response(response)
+        device = olm_account.device_store["@alice:example.org"]["JLAFKJWSCS"]
+
+        assert (
+            device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
+        )
+        assert device.display_name == "Alice's mobile phone"
+
+        parsed_dict["device_keys"]["@alice:example.org"]["JLAFKJWSCS"]["unsigned"]["device_display_name"] = "Phoney"
+
+        response = KeysQueryResponse.from_dict(parsed_dict)
+        olm_account.handle_response(response)
+        assert device.display_name == "Phoney"
