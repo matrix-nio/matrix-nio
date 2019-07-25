@@ -265,19 +265,6 @@ class Client(object):
 
         return self.olm.get_active_sas(user_id, device_id)
 
-    def _mark_to_device_message_as_sent(self, message):
-        """Mark a to-device message as sent.
-
-        This removes the to-device message from our outgoing to-device list.
-        """
-        if not self.olm:
-            return
-
-        try:
-            self.olm.outgoing_to_device_messages.remove(message)
-        except ValueError:
-            pass
-
     def load_store(self):
         # type: () -> None
         """Load the session store and olm account.
@@ -867,7 +854,7 @@ class Client(object):
         elif isinstance(response, RoomForgetResponse):
             self._handle_room_forget_response(response)
         elif isinstance(response, ToDeviceResponse):
-            self._mark_to_device_message_as_sent(response.to_device_message)
+            self._handle_olm_response(response)
 
     @store_loaded
     def export_keys(self, outfile, passphrase, count=10000):

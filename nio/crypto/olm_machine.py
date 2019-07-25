@@ -43,7 +43,8 @@ from ..events import (BadEvent, BadEventType, Event,
 from ..exceptions import (EncryptionError, GroupEncryptionError,
                           LocalProtocolError, OlmTrustError, VerificationError)
 from ..responses import (KeysClaimResponse, KeysQueryResponse,
-                         KeysUploadResponse, RoomKeyRequestResponse)
+                         KeysUploadResponse, RoomKeyRequestResponse,
+                         ToDeviceResponse)
 from ..schemas import Schemas, validate_json
 from ..store import MatrixStore
 from .key_export import decrypt_and_read, encrypt_and_save
@@ -489,6 +490,16 @@ class Olm(object):
         self.store.save_device_keys(changed)
         response.changed = changed
 
+    def _mark_to_device_message_as_sent(self, message):
+        """Mark a to-device message as sent.
+
+        This removes the to-device message from our outgoing to-device list.
+        """
+        try:
+            self.outgoing_to_device_messages.remove(message)
+        except ValueError:
+            pass
+
     def handle_response(self, response):
         if isinstance(response, KeysUploadResponse):
             self.account.shared = True
@@ -506,6 +517,9 @@ class Olm(object):
             key_request = OutgoingKeyRequest.from_response(response)
             self.outgoing_key_requests[response.request_id] = key_request
             self.store.add_outgoing_key_request(key_request)
+
+        elif isinstance(response, ToDeviceResponse):
+            self._mark_to_device_message_as_sent(response.to_device_message)
 
     def _create_inbound_session(
         self,

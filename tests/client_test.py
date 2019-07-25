@@ -930,7 +930,6 @@ class TestClass(object):
         assert not client_no_e2e.get_active_sas(ALICE_ID, ALICE_DEVICE_ID)
 
         to_device = ToDeviceMessage("m.test", ALICE_ID, ALICE_DEVICE_ID, {})
-        client_no_e2e._mark_to_device_message_as_sent(to_device)
 
         client_no_e2e.room_contains_unverified(room.room_id)
 
