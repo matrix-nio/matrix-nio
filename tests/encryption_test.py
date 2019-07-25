@@ -822,7 +822,7 @@ class TestClass(object):
             "{}_{}.db".format(BobId, Bob_device)
         ))
 
-    def test_group_session_sharing(self, olm_account, bob_account):
+    def test_group_session_sharing_new(self, olm_account, bob_account):
         alice = olm_account
         bob = bob_account
 
