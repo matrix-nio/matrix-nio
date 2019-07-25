@@ -375,7 +375,7 @@ class Olm(object):
             self.tracked_users.add(user_id)
 
             for device_id, payload in device_dict.items():
-                if device_id == self.device_id:
+                if user_id == self.user_id and device_id == self.device_id:
                     continue
 
                 if (payload['user_id'] != user_id
