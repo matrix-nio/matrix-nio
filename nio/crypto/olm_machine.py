@@ -649,6 +649,25 @@ class Olm(object):
 
         return missing
 
+    def get_wedged_sessions(self):
+        # type: () -> Dict[str, List[str]]
+        """Get the content for a key query to unwedge Olm sessions.
+
+        Returns a dictionary containing users as the keys and a list of devices
+        for which we will claim one-time keys.
+
+        Raises a LocalProtocolError if there are no wedged sessions.
+        """
+        if not self.wedged_devices:
+            raise LocalProtocolError("No wedged sessions found.")
+
+        wedged = defaultdict(list)  # type: DefaultDict[str, List[str]]
+
+        for device in self.wedged_devices:
+            wedged[device.user_id].append(device.device_id)
+
+        return wedged
+
     def _mark_device_for_unwedging(self, sender, sender_key):
         device = self.device_store.device_from_sender_key(sender, sender_key)
 

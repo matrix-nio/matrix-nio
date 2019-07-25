@@ -923,6 +923,19 @@ class Client(object):
         return self.olm.get_missing_sessions(list(room.users))
 
     @store_loaded
+    def get_wedged_sessions(self):
+        # type: () -> Dict[str, List[str]]
+        """Get the content for a key query to unwedge Olm sessions.
+
+        Returns a dictionary containing users as the keys and a list of devices
+        for which we will claim one-time keys.
+
+        Raises a LocalProtocolError if there are no wedged sessions.
+        """
+        assert self.olm
+        return self.olm.get_wedged_sessions()
+
+    @store_loaded
     def encrypt(self, room_id, message_type, content):
         # type: (str, str, Dict[Any, Any]) -> Tuple[str, Dict[str, str]]
         """Encrypt a message to be sent to the provided room.
