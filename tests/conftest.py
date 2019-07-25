@@ -62,7 +62,7 @@ def alice_client(tempdir):
 
 
 if sys.version_info >= (3, 5):
-    from conftest_async import async_client, aioresponse
+    from conftest_async import async_client, aioresponse, async_client_pair
 
 if sys.version_info <= (3, 4):
     def pytest_ignore_collect(path, config):

@@ -22,7 +22,9 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, ErrorResponse,
                  RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
                  SyncResponse, ThumbnailResponse, Timeline, UploadResponse)
 from nio.api import ResizingMethod
-from nio.crypto import OlmDevice
+from nio.crypto import OlmDevice, Session
+
+from aioresponses import CallbackResult
 
 TEST_ROOM_ID = "!testroom:example.org"
 
@@ -125,6 +127,54 @@ class TestClass(object):
             []
         )
 
+    def synce_response_for(self, own_user, other_user):
+        timeline = Timeline(
+            [
+                RoomMemberEvent(
+                    {"event_id": "event_id_1",
+                     "sender": own_user,
+                     "origin_server_ts": 1516809890615},
+                    own_user,
+                    "join",
+                    None,
+                    {"membership": "join"}
+                ),
+                RoomMemberEvent(
+                    {"event_id": "event_id_1",
+                     "sender": other_user,
+                     "origin_server_ts": 1516809890615},
+                    other_user,
+                    "join",
+                    None,
+                    {"membership": "join"}
+                ),
+                RoomEncryptionEvent(
+                    {
+                        "event_id": "event_id_2",
+                        "sender": other_user,
+                        "origin_server_ts": 1516809890615
+                    }
+                )
+            ],
+            False,
+            "prev_batch_token"
+        )
+        test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(0, 2, []))
+        rooms = Rooms(
+            {},
+            {
+                TEST_ROOM_ID: test_room_info
+            },
+            {}
+        )
+        return SyncResponse(
+            "token123",
+            rooms,
+            DeviceOneTimeKeyCount(50, 50),
+            DeviceList([other_user], []),
+            []
+        )
+
     @property
     def empty_sync(self):
         return {
@@ -156,6 +206,15 @@ class TestClass(object):
                 "events": []
             }
         }
+
+    def sync_with_to_device_events(self, event, sync_token=None):
+        response = self.empty_sync
+        response["to_device"]["events"].append(event)
+
+        if sync_token:
+            response["next_batch"] += sync_token
+
+        return response
 
     @property
     def limit_exceeded_error_response(self):
@@ -977,3 +1036,193 @@ class TestClass(object):
 
         task.cancel()
         await task
+
+    async def test_session_unwedging(self, async_client_pair, aioresponse, loop):
+        alice, bob = async_client_pair
+
+        def olm_message_to_event(message_dict, recipient, sender):
+            olm_content = message_dict["messages"][recipient.user_id][recipient.device_id]
+
+            return {
+                "sender": sender.user_id,
+                "type": "m.room.encrypted",
+                "content": olm_content,
+            }
+
+        assert alice.logged_in
+        assert bob.logged_in
+
+        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.olm.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.olm.account.identity_keys
+        )
+
+        alice.olm.device_store.add(bob_device)
+        bob.olm.device_store.add(alice_device)
+
+        alice_to_share = alice.olm.share_keys()
+        alice_one_time = list(alice_to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                alice.user_id: {
+                    alice.device_id: {alice_one_time[0]: alice_one_time[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        to_device_for_alice = None
+        to_device_for_bob = None
+
+        sync_url = re.compile(
+            r"^https://example\.org/_matrix/client/r0/sync\?access_token=.*"
+        )
+
+        bob_to_device_url = re.compile(
+            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.room.encrypted/[0-9]\?access_token=bob_1234",
+        )
+
+        alice_to_device_url = re.compile(
+            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.room.encrypted/[0-9]\?access_token=alice_1234",
+        )
+
+        def alice_to_device_cb(url, data, **kwargs):
+            nonlocal to_device_for_alice
+            to_device_for_alice = json.loads(data)
+            return CallbackResult(status=200, payload={})
+
+        def bob_to_device_cb(url, data, **kwargs):
+            nonlocal to_device_for_bob
+            to_device_for_bob = json.loads(data)
+            return CallbackResult(status=200, payload={})
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
+            status=200,
+            payload=key_claim_dict
+        )
+
+        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb,
+                        repeat=True)
+        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb,
+                        repeat=True)
+
+        session = alice.olm.session_store.get(bob_device.curve25519)
+        assert not session
+
+        # Share a group session for the room we're sharing with Alice.
+        # This implicitly claims one-time keys since we don't have an Olm
+        # session with Alice
+        response = await bob.share_group_session(TEST_ROOM_ID, "1", True)
+        assert isinstance(response, ShareGroupSessionResponse)
+
+        # Check that the group session is indeed marked as shared.
+        group_session = bob.olm.outbound_group_sessions[TEST_ROOM_ID]
+        assert group_session.shared
+        assert to_device_for_alice
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                olm_message_to_event(to_device_for_alice, alice, bob)
+            )
+        )
+
+        # Run a sync for Alice, the sync will now contain the to-device message
+        # containing the group session.
+        await alice.sync()
+
+        # Check that an Olm session was created.
+        session = alice.olm.session_store.get(bob_device.curve25519)
+        assert session
+
+        # Let us pickle our session with bob here so we can later unpickle it
+        # and wedge our session.
+        alice_pickle = session.pickle("")
+
+        # Check that we successfully received the group session as well.
+        alice_group_session = alice.olm.inbound_group_store.get(
+            TEST_ROOM_ID,
+            bob_device.curve25519,
+            group_session.id
+        )
+        assert alice_group_session.id == group_session.id
+
+        # Now let's share a session from alice to bob
+        response = await alice.share_group_session(TEST_ROOM_ID, "1", True)
+        assert isinstance(response, ShareGroupSessionResponse)
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                olm_message_to_event(to_device_for_bob, bob, alice)
+            )
+        )
+
+        group_session = alice.olm.outbound_group_sessions[TEST_ROOM_ID]
+        assert group_session.shared
+
+        # Bob syncs and receives a the group session.
+        await bob.sync()
+        bob_group_session = bob.olm.inbound_group_store.get(
+            TEST_ROOM_ID,
+            alice_device.curve25519,
+            group_session.id
+        )
+        assert bob_group_session.id == group_session.id
+
+        to_device_for_bob = None
+
+        # Let us wedge the session now
+        session = alice.olm.session_store.get(bob_device.curve25519)
+        alice.olm.session_store[bob_device.curve25519][0] = (
+            Session.from_pickle(alice_pickle, session.creation_time, "",
+                                session.use_time))
+
+        # Invalidate the current outbound group session
+        alice.invalidate_outbound_session(TEST_ROOM_ID)
+        assert TEST_ROOM_ID not in alice.olm.outbound_group_sessions
+
+        # Let us try to share a session again.
+        response = await alice.share_group_session(TEST_ROOM_ID, "2", True)
+        assert isinstance(response, ShareGroupSessionResponse)
+
+        group_session = alice.olm.outbound_group_sessions[TEST_ROOM_ID]
+        assert group_session.shared
+        assert to_device_for_bob
+
+        # Bob syncs, gets a new Olm message.
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                olm_message_to_event(to_device_for_bob, bob, alice),
+                "2"
+            )
+        )
+        assert not bob.outgoing_to_device_messages
+
+        await bob.sync()
+        # Check that bob was unable to decrypt the new group session.
+        bob_group_session = bob.olm.inbound_group_store.get(
+            TEST_ROOM_ID,
+            alice_device.curve25519,
+            group_session.id
+        )
+        assert not bob_group_session
+
+        # Check that alice was marked as wedged.
+        assert alice_device in bob.olm.wedged_devices
+        assert not bob.outgoing_to_device_messages
