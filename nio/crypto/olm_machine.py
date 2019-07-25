@@ -458,15 +458,14 @@ class Olm(object):
                             and device.display_name == display_name):
                         continue
 
-                    device.curve25519 = curve_key
-                    device.display_name = display_name
-
-                    if device.curve25519 == curve_key:
+                    if device.curve25519 != curve_key:
+                        device.curve25519 = curve_key
                         logger.info("Updating curve key in the device store "
                                     "for user {} with device id {}".format(
                                         user_id, device_id))
 
-                    elif device.display_name == display_name:
+                    elif device.display_name != display_name:
+                        device.display_name = display_name
                         logger.info("Updating display name in the device "
                                     "store for user {} with device id "
                                     "{}".format(user_id, device_id))
