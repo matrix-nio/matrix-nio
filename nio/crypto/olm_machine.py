@@ -932,7 +932,8 @@ class Olm(object):
                 device = self.device_store[event.sender][event.device_id]
             except KeyError:
                 # We don't have the device keys for this device, add them
-                # to our quey set so we fetch in the next key query.
+                # to our query set so the client fetches the keys in the next
+                # key query.
                 self.users_for_key_query.add(event.sender)
             else:
                 # Do not mark events decrypted using a forwarded key as
