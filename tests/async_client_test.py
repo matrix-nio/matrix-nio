@@ -1089,7 +1089,7 @@ class TestClass(object):
         )
 
         bob_to_device_url = re.compile(
-            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.room.encrypted/[0-9]\?access_token=bob_1234",
+            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.room.encrypted/[0-9a-fA-f-]*\?access_token=bob_1234",
         )
 
         alice_to_device_url = re.compile(
@@ -1213,6 +1213,7 @@ class TestClass(object):
             )
         )
         assert not bob.outgoing_to_device_messages
+        assert not bob.should_unwedge_sessions
 
         await bob.sync()
         # Check that bob was unable to decrypt the new group session.
@@ -1225,4 +1226,63 @@ class TestClass(object):
 
         # Check that alice was marked as wedged.
         assert alice_device in bob.olm.wedged_devices
+
+        # Bob now needs to create a new Olm session with Alice, to do so he
+        # needs to claim new one-time keys for the wedged devices.
+
+        # Make sure that we don't reuse the first key.
+        alice_one_time = list(alice_to_share["one_time_keys"].items())[1]
+        key_claim_dict = {
+            "one_time_keys": {
+                alice.user_id: {
+                    alice.device_id: {alice_one_time[0]: alice_one_time[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
+            status=200,
+            payload=key_claim_dict
+        )
+
         assert not bob.outgoing_to_device_messages
+
+        assert bob.should_unwedge_sessions
+
+        await bob.keys_claim(bob.get_wedged_sessions())
+
+        # Now that bob created a new session, there should be a to-device
+        # message waiting to be sent out to Alice
+        assert not bob.olm.wedged_devices
+        assert bob.outgoing_to_device_messages
+
+        to_device_for_alice = None
+
+        # Let's send out that message.
+        await bob.send_to_device_messages()
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                olm_message_to_event(to_device_for_alice, alice, bob),
+                "3"
+            )
+        )
+
+        # Take out the wedged session
+        assert len(alice.olm.session_store[bob_device.curve25519]) == 1
+        wedged_session = alice.olm.session_store.get(bob_device.curve25519)
+
+        await alice.sync()
+
+        # Check that there are now two sessions with bob
+        assert len(alice.olm.session_store[bob_device.curve25519]) == 2
+
+        # Check that the preferred session isn't the wedged one.
+        new_session = alice.olm.session_store.get(bob_device.curve25519)
+
+        assert new_session != wedged_session
+        assert new_session.use_time > wedged_session.use_time
