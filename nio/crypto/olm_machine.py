@@ -494,6 +494,9 @@ class Olm(object):
 
         This removes the to-device message from our outgoing to-device list.
         """
+
+        # TODO if the to-device message was a m.dummy message resend key
+        # requests that were sent to the recipient of the message.
         try:
             self.outgoing_to_device_messages.remove(message)
         except ValueError:
