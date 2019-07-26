@@ -1018,6 +1018,12 @@ class TestClass(object):
         assert wedged_session.use_time < new_session.use_time
         assert wedged_session != new_session
 
+        # Try to mark the device again to be unwedged, this should fail since
+        # our creation time isn't old enough.
+        alice._mark_device_for_unwedging(alice_device.user_id,
+                                         alice_device.curve25519)
+        assert alice_device not in bob.wedged_devices
+
     def test_device_renaming(self, olm_account):
         parsed_dict = TestClass._load_response(
             "tests/data/keys_query.json")
