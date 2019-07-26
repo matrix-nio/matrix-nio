@@ -3,6 +3,7 @@
 import copy
 import json
 import os
+from datetime import datetime, timedelta
 
 import pytest
 from olm import Account, OlmMessage, OlmPreKeyMessage, OutboundGroupSession
@@ -947,6 +948,11 @@ class TestClass(object):
             [bob.user_id],
             ignore_unverified_devices=True
         )
+
+        # Set the creation time to be older than an hour, otherwise we will not
+        # be able to unwedge the session.
+        alice_session = bob.session_store.get(alice_device.curve25519)
+        alice_session.creation_time = datetime.now() - timedelta(hours=2)
 
         olm_message = olm_message_to_event(to_device, bob, alice)
         # Pass the to-device event to bob and make sure we get the right events

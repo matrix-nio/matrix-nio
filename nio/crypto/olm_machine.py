@@ -66,6 +66,7 @@ class Olm(object):
     _algorithms = [_olm_algorithm, _megolm_algorithm]
     _maxToDeviceMessagesPerRequest = 20
     _max_sas_life = timedelta(minutes=20)
+    _unwedging_interval = timedelta(minutes=60)
 
     def __init__(
         self,
@@ -681,8 +682,12 @@ class Olm(object):
                         "sender key {}".format(sender, sender_key))
             return
 
-        # TODO check when we created the last Olm session, if it's too recent
-        # don't mark the device to be unwedged.
+        session = self.session_store.get(device.curve25519)
+
+        # Don't mark the device to be unwedged if our newest session is less
+        # than an hour old.
+        if datetime.now() - session.creation_time < self._unwedging_interval:
+            return
 
         if device not in self.wedged_devices:
             self.wedged_devices.append(device)

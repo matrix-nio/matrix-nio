@@ -2,6 +2,7 @@ import json
 import sys
 import re
 from os import path
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -1214,6 +1215,11 @@ class TestClass(object):
         )
         assert not bob.outgoing_to_device_messages
         assert not bob.should_unwedge_sessions
+
+        # Set the creation time to be older than an hour, otherwise we will not
+        # be able to unwedge the session.
+        alice_session = bob.olm.session_store.get(alice_device.curve25519)
+        alice_session.creation_time = datetime.now() - timedelta(hours=2)
 
         await bob.sync()
         # Check that bob was unable to decrypt the new group session.
