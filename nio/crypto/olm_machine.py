@@ -68,7 +68,23 @@ class Olm(object):
     _maxToDeviceMessagesPerRequest = 20
     _max_sas_life = timedelta(minutes=20)
     _unwedging_interval = timedelta(minutes=60)
-    _message_index_store_size = 100
+
+    # To protect against replay attacks we store a bunch of data, as the dict
+    # keys we store:
+    #   - sender key: a curve25519 public key, 43 bytes
+    #   - session id: this is the id of the megolm group session that was
+    #       used to encrypt the message, 43 bytes
+    #   - message index: an integer representing the current ratchet state, 8
+    #       bytes
+    # The values of the dict hold:
+    #   - event id: for v4/v5 rooms this is a sha256 hash encoded as
+    #       base64 + a $ sign as the prefix, 44 bytes total
+    #   - server timestamp: the origin server timestamp of the message, an
+    #       integer, 8 bytes
+    #
+    # This totals in 146 bytes per message. The cache has a limit of 100000
+    # which results in around 14 MiB of memory in total.
+    _message_index_store_size = 100000
 
     def __init__(
         self,
