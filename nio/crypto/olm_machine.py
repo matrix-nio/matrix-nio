@@ -139,13 +139,17 @@ class Olm(object):
         # unwedging.
         self.outgoing_to_device_messages = []  # type: List[ToDeviceMessage]
 
+        # A least recently used cache for replay attack protection for Megolm
+        # encrypted messages. This is a dict holding a tuple of the
+        # sender_key, the session id and message index as the key and a tuple
+        # of the event_id and origin server timestamp as the dict values.
+        self.message_index_store = LRUCache(self._message_index_store_size)
+
         self.store = store
 
         # Try to load an account for this user_id/device id tuple from the
         # store.
         account = self.store.load_account()  # type: ignore
-
-        self.message_index_store = LRUCache(self._message_index_store_size)
 
         # If no account was found for this user/device create a new one.
         # Otherwise load all the Olm/Megolm sessions and other relevant account
