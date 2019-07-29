@@ -27,6 +27,7 @@ import olm
 from jsonschema import SchemaError, ValidationError
 from olm import (OlmGroupSessionError, OlmMessage, OlmPreKeyMessage,
                  OlmSessionError)
+from cachetools import LRUCache
 
 from . import (DeviceStore, GroupSessionStore, InboundGroupSession,
                InboundSession, OlmAccount, OlmDevice, OutboundGroupSession,
@@ -67,6 +68,7 @@ class Olm(object):
     _maxToDeviceMessagesPerRequest = 20
     _max_sas_life = timedelta(minutes=20)
     _unwedging_interval = timedelta(minutes=60)
+    _message_index_store_size = 100
 
     def __init__(
         self,
@@ -142,6 +144,8 @@ class Olm(object):
         # Try to load an account for this user_id/device id tuple from the
         # store.
         account = self.store.load_account()  # type: ignore
+
+        self.message_index_store = LRUCache(self._message_index_store_size)
 
         # If no account was found for this user/device create a new one.
         # Otherwise load all the Olm/Megolm sessions and other relevant account
@@ -910,6 +914,37 @@ class Olm(object):
             )
             return None
 
+    def message_index_ok(self, message_index, event):
+        # type: (int, MegolmEvent) -> bool
+        """Check that the message index coresponds to a known message.
+
+        If we know about the index already we will do some sanity checking to
+        prevent replay attacks, otherwise we store some info for a later check.
+
+        Args:
+            message_index (int): The message index of the decrypted message.
+            event (MegolmEvent): The encrypted event that was decrypted and the
+                message index belongs to.
+
+        Returns True if the message is ok, False if we found conflicting event
+        info indicating a replay attack.
+        """
+        store_key = (event.sender_key, event.session_id, message_index)
+
+        try:
+            event_id, timestamp = self.message_index_store[store_key]
+        except KeyError:
+            self.message_index_store[store_key] = (
+                event.event_id,
+                event.server_timestamp
+            )
+            return True
+
+        if event_id != event.event_id or timestamp != event.server_timestamp:
+            return False
+
+        return True
+
     def decrypt_megolm_event(self, event, room_id=None):
         # type (MegolmEvent, Optional[str]) -> Union[Event, BadEvent]
         room_id = room_id or event.room_id
@@ -943,7 +978,11 @@ class Olm(object):
             logger.warn(message)
             raise EncryptionError(message)
 
-        # TODO check the message index for replay attacks
+        if not self.message_index_ok(message_index, event):
+            raise EncryptionError(
+                "Duplicate message index, possible replay attack from {} {} "
+                "{}".format(event.sender, event.sender_key, event.session_id)
+            )
 
         # If the message is from our own session mark it as verified
         if (event.sender == self.user_id

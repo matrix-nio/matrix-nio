@@ -36,6 +36,7 @@ setup(
         "e2e":  [
             "python-olm>=3.1.0",
             "peewee>=3.9.5",
+            "cachetools",
             "atomicwrites",
         ]
     },
