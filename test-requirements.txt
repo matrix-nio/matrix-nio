@@ -13,3 +13,4 @@ aioresponses; python_version >= '3.5'
 python-olm >= '3.1.0'
 peewee >= '3.9.5'
 atomicwrites
+cachetools
