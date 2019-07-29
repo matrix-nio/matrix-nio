@@ -218,11 +218,9 @@ class AsyncClient(Client):
         Returns a dictionary representing the response.
         """
         try:
-            parsed_dict = await transport_response.json()
+            return await transport_response.json()
         except (JSONDecodeError, ContentTypeError):
-            parsed_dict = {}
-
-        return parsed_dict
+            return {}
 
     async def create_matrix_response(
             self,
@@ -245,16 +243,23 @@ class AsyncClient(Client):
         """
         data = data or ()
 
-        if issubclass(response_class, FileResponse):
+        content_type = transport_response.content_type
+        is_json = content_type == "application/json"
+
+        if issubclass(response_class, FileResponse) and is_json:
+            parsed_dict = await self.parse_body(transport_response)
+            resp = response_class.from_data(parsed_dict, content_type)
+
+        elif issubclass(response_class, FileResponse):
             body = await transport_response.read()
-            content_type = transport_response.content_type
-            response = response_class.from_data(body, content_type, *data)
+            resp = response_class.from_data(body, content_type)
+
         else:
             parsed_dict = await self.parse_body(transport_response)
-            response = response_class.from_dict(parsed_dict, *data)
+            resp = response_class.from_dict(parsed_dict, *data)
 
-        response.transport_response = transport_response
-        return response
+        resp.transport_response = transport_response
+        return resp
 
     async def _handle_to_device(self, response):
         decrypted_to_device = []  # type: ignore

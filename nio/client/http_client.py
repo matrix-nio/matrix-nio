@@ -1032,24 +1032,46 @@ class HttpClient(Client):
 
         return self._send(request, RequestInfo(SyncResponse))
 
-    @staticmethod
-    def _create_response(request_info, transport_response, max_events=0):
+    def parse_body(self, transport_response):
+        # type: (TransportResponse) -> Dict[Any, Any]
+        """Parse the body of the response.
+
+        Args:
+            transport_response(TransportResponse): The transport response that
+                contains the body of the response.
+
+        Returns a dictionary representing the response.
+        """
+        try:
+            return json.loads(transport_response.text, encoding="utf-8")
+        except JSONDecodeError:
+            return {}
+
+    def _create_response(self, request_info, transport_response, max_events=0):
         request_class = request_info.request_class
         extra_data = request_info.extra_data or ()
 
-        if issubclass(request_class, FileResponse):
-            body = transport_response.content
+        try:
             content_type = str(
-                transport_response.headers[b"content-type"], "utf-8"
+                transport_response.headers[b"content-type"], "utf-8",
             )
+        except KeyError:
+            content_type = None
+
+        is_json = content_type == "application/json"
+
+        if issubclass(request_class, FileResponse) and is_json:
+            parsed_dict = self.parse_body(transport_response)
+            response = request_class.from_data(
+                parsed_dict, content_type, *extra_data,
+            )
+
+        elif issubclass(request_class, FileResponse):
+            body = transport_response.content
             response = request_class.from_data(body, content_type, *extra_data)
+
         else:
-            try:
-                parsed_dict = json.loads(
-                    transport_response.text, encoding="utf-8"
-                )
-            except JSONDecodeError:
-                parsed_dict = {}
+            parsed_dict = self.parse_body(transport_response)
 
             if (transport_response.status_code == 401
                     and request_class == DeleteDevicesResponse):
