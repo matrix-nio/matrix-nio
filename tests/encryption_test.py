@@ -3,6 +3,7 @@
 import copy
 import json
 import os
+import time
 from datetime import datetime, timedelta
 
 import pytest
@@ -74,6 +75,16 @@ class TestClass(object):
 
     def _get_store(self, user_id, device_id, pickle_key=""):
         return DefaultStore(user_id, device_id, ephemeral_dir, pickle_key)
+
+    @staticmethod
+    def olm_message_to_event(message_dict, recipient, sender):
+        olm_content = message_dict["messages"][recipient.user_id][recipient.device_id]
+
+        return {
+            "sender": sender.user_id,
+            "type": "m.room.encrypted",
+            "content": olm_content,
+        }
 
     @property
     def ephemeral_olm(self):
@@ -858,14 +869,6 @@ class TestClass(object):
         assert alice.is_device_ignored(bob_device)
 
     def test_session_unwedging(self, olm_account, bob_account):
-        def olm_message_to_event(message_dict, recipient, sender):
-            olm_content = message_dict["messages"][recipient.user_id][recipient.device_id]
-
-            return {
-                "sender": sender.user_id,
-                "type": "m.room.encrypted",
-                "content": olm_content,
-            }
 
         alice = olm_account
         bob = bob_account
@@ -903,7 +906,7 @@ class TestClass(object):
 
         outbound_session = alice.outbound_group_sessions[TEST_ROOM]
 
-        olm_message = olm_message_to_event(to_device, bob, alice)
+        olm_message = self.olm_message_to_event(to_device, bob, alice)
 
         # Pass the to-device event to bob and make sure we get the right events
         event = ToDeviceEvent.parse_event(olm_message)
@@ -928,7 +931,7 @@ class TestClass(object):
             ignore_unverified_devices=True
         )
 
-        olm_message = olm_message_to_event(to_device, alice, bob)
+        olm_message = self.olm_message_to_event(to_device, alice, bob)
         event = ToDeviceEvent.parse_event(olm_message)
         assert isinstance(event, OlmEvent)
         decrypted_event = alice.decrypt_event(event)
@@ -954,7 +957,7 @@ class TestClass(object):
         alice_session = bob.session_store.get(alice_device.curve25519)
         alice_session.creation_time = datetime.now() - timedelta(hours=2)
 
-        olm_message = olm_message_to_event(to_device, bob, alice)
+        olm_message = self.olm_message_to_event(to_device, bob, alice)
         # Pass the to-device event to bob and make sure we get the right events
         event = ToDeviceEvent.parse_event(olm_message)
         assert isinstance(event, OlmEvent)
@@ -1001,7 +1004,7 @@ class TestClass(object):
 
         # Forward the message to alice.
         event = ToDeviceEvent.parse_event(
-            olm_message_to_event(message.as_dict(), alice, bob)
+            self.olm_message_to_event(message.as_dict(), alice, bob)
         )
 
         assert isinstance(event, OlmEvent)
@@ -1044,3 +1047,92 @@ class TestClass(object):
         response = KeysQueryResponse.from_dict(parsed_dict)
         olm_account.handle_response(response)
         assert device.display_name == "Phoney"
+
+    def test_replay_attack_protection(self, olm_account, bob_account):
+        alice = olm_account
+        bob = bob_account
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.account.identity_keys
+        )
+
+        alice.device_store.add(bob_device)
+        bob.device_store.add(alice_device)
+
+        bob.account.generate_one_time_keys(1)
+        one_time = list(bob.account.one_time_keys["curve25519"].values())[0]
+        bob.account.mark_keys_as_published()
+
+        alice.create_session(one_time, bob_device.curve25519)
+
+        # Share a initial olm encrypted message
+        _, to_device = alice.share_group_session(
+            TEST_ROOM,
+            [bob.user_id],
+            ignore_unverified_devices=True
+        )
+
+        outbound_session = alice.outbound_group_sessions[TEST_ROOM]
+        outbound_session.shared = True
+
+        olm_message = self.olm_message_to_event(to_device, bob, alice)
+
+        # Pass the to-device event to bob and make sure we get the right events
+        event = ToDeviceEvent.parse_event(olm_message)
+        assert isinstance(event, OlmEvent)
+        decrypted_event = bob.decrypt_event(event)
+        assert isinstance(decrypted_event, RoomKeyEvent)
+
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "It's a secret to everybody."
+            }
+        }
+        encrypted_content = alice.group_encrypt(TEST_ROOM, message)
+
+        encrypted_message = {
+            "event_id": "!event_id",
+            "type": "m.room.encrypted",
+            "sender": alice.user_id,
+            "origin_server_ts": int(time.time()),
+            "content": encrypted_content,
+            "room_id": TEST_ROOM
+        }
+        event = MegolmEvent.from_dict(encrypted_message)
+
+        decrypted_event = bob.decrypt_event(event)
+        assert decrypted_event.body == message["content"]["body"]
+
+        # Let us now replay the event.
+
+        encrypted_message["event_id"] = "!new_event_id"
+        event = MegolmEvent.from_dict(encrypted_message)
+
+        with pytest.raises(EncryptionError):
+            bob.decrypt_megolm_event(event)
+
+        encrypted_message["event_id"] = "!event_id"
+        old_time = encrypted_message["origin_server_ts"]
+        encrypted_message["origin_server_ts"] += 100
+        event = MegolmEvent.from_dict(encrypted_message)
+
+        with pytest.raises(EncryptionError):
+            bob.decrypt_megolm_event(event)
+
+        # Let us now check that normal messages from the room history decrypt
+        # again.
+        encrypted_message["origin_server_ts"] = old_time
+        event = MegolmEvent.from_dict(encrypted_message)
+
+        decrypted_event = bob.decrypt_event(event)
+
+        assert decrypted_event.body == message["content"]["body"]
