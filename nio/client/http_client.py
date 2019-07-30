@@ -1053,7 +1053,7 @@ class HttpClient(Client):
 
         try:
             content_type = str(
-                transport_response.headers[b"content-type"], "utf-8",
+                transport_response.headers[b"content-type"], "utf-8"
             )
         except KeyError:
             content_type = None
@@ -1063,7 +1063,7 @@ class HttpClient(Client):
         if issubclass(request_class, FileResponse) and is_json:
             parsed_dict = self.parse_body(transport_response)
             response = request_class.from_data(
-                parsed_dict, content_type, *extra_data,
+                parsed_dict, content_type, *extra_data
             )
 
         elif issubclass(request_class, FileResponse):
