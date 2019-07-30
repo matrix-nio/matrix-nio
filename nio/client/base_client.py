@@ -529,20 +529,10 @@ class Client(object):
         return self.olm.decrypt_megolm_event(event)
 
     def _handle_decrypt_to_device(self, to_device_event):
-        decrypted_event = None
+        if self.olm:
+            return self.olm.handle_to_device_event(to_device_event)
 
-        if isinstance(to_device_event, EncryptedToDeviceEvent):
-            if self.olm:
-                decrypted_event = self.olm.decrypt_event(to_device_event)
-
-                if decrypted_event:
-                    to_device_event = decrypted_event
-
-        elif isinstance(to_device_event, KeyVerificationEvent):
-            if self.olm:
-                self.olm.handle_key_verification(to_device_event)
-
-        return decrypted_event
+        return None
 
     def _replace_decrypted_to_device(self, decrypted_events, response):
         # Replace the encrypted to_device events with decrypted ones

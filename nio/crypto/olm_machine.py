@@ -342,6 +342,24 @@ class Olm(object):
             )
         )
 
+    def handle_to_device_event(self, event):
+        """Consume to-device events decrypting them if necessary.
+
+        Args:
+            event (ToDeviceEvent): The to-device event that should be handled.
+
+        Returns a new event if the event was encrypted and succesfully
+        decrypted, otherwise None.
+        """
+        decrypted_event = None
+
+        if isinstance(event, EncryptedToDeviceEvent):
+            decrypted_event = self.decrypt_event(event)
+        elif isinstance(event, KeyVerificationEvent):
+            self.handle_key_verification(event)
+
+        return decrypted_event
+
     def _handle_key_claiming(self, response):
         keys = response.one_time_keys
 
