@@ -21,7 +21,8 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, ErrorResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
-                 SyncResponse, ThumbnailResponse, Timeline, UploadResponse)
+                 SyncResponse, ThumbnailError, ThumbnailResponse,
+                 Timeline, UploadResponse)
 from nio.api import ResizingMethod
 from nio.crypto import OlmDevice, Session
 
@@ -765,6 +766,25 @@ class TestClass(object):
         )
         assert isinstance(resp, ThumbnailResponse)
         assert resp.body == self.file_response
+
+        aioresponse.get(
+            "https://example.org/_matrix/media/r0/thumbnail/{}/{}"
+            "?access_token=abc123&width={}&height={}&method={}"
+            "&allow_remote=true".format(
+                server_name,
+                media_id,
+                width,
+                height,
+                method.value,
+            ),
+            status=429,
+            content_type="application/json",
+            body=bytes(self.limit_exceeded_error_response, "utf-8"),
+        )
+        resp = await async_client.thumbnail(
+            server_name, media_id, width, height, method
+        )
+        assert isinstance(resp, ThumbnailError)
 
 
     async def test_event_callback(self, async_client):
