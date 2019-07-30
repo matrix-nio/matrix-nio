@@ -81,6 +81,8 @@ class ToDeviceEvent(object):
             return KeyVerificationMac.from_dict(event_dict)
         elif event_dict["type"] == "m.key.verification.cancel":
             return KeyVerificationCancel.from_dict(event_dict)
+        elif event_dict["type"] == "m.room_key_request":
+            return RoomKeyRequest.from_dict(event_dict)
 
         return None
 
@@ -121,6 +123,57 @@ class ToDeviceEvent(object):
 
         """
         raise NotImplementedError()
+
+
+@attr.s
+class RoomKeyRequest(ToDeviceEvent):
+    """Event that is requesting a room key from us.
+
+    Attributes:
+        action (str): The action that the request is performing. Can be
+            'request' meaning that the user started a key request from us or
+            'cancel_request' meaning that any previously received request
+            should be discarded.
+        requesting_device_id (str): The id of the device that is requesting the
+            key.
+        request_id (str): A unique identifier for the request.
+        algorithm (str, optional): The encryption algorithm the requested key
+            in this event is to be used with. Will be set only if the action is
+            'request'.
+        room_id (str, optional): The id of the room that the key is used in.
+            Will be set only if the action is 'request'.
+        sender_key (str, optional): The key of the device that initiated the
+            session. Will be set only if the action is 'request'.
+        session_id (str, optional): The id of the session the key is for. Will
+        be set only if the action is 'request'.
+    """
+
+    action = attr.ib(type=str)
+    requesting_device_id = attr.ib(type=str)
+    request_id = attr.ib(type=str)
+
+    algorithm = attr.ib(type=Optional[str])
+    room_id = attr.ib(type=Optional[str])
+    sender_key = attr.ib(type=Optional[str])
+    session_id = attr.ib(type=Optional[str])
+
+    @classmethod
+    @verify(Schemas.room_key_request)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+        body = content.get("body", {})
+
+        return cls(
+            parsed_dict,
+            parsed_dict["sender"],
+            content["action"],
+            content["requesting_device_id"],
+            content["request_id"],
+            body.get("algorithm"),
+            body.get("room_id"),
+            body.get("sender_key"),
+            body.get("session_id"),
+        )
 
 
 @attr.s

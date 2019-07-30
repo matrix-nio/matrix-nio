@@ -21,7 +21,7 @@ from nio.events import (BadEvent, OlmEvent, PowerLevelsEvent, RedactedEvent,
                         CallCandidatesEvent, KeyVerificationStart,
                         KeyVerificationAccept, KeyVerificationCancel,
                         KeyVerificationKey, KeyVerificationMac, TagEvent,
-                        DummyEvent)
+                        DummyEvent, RoomKeyRequest)
 
 
 class TestClass(object):

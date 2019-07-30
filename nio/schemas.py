@@ -547,6 +547,46 @@ class Schemas(object):
         "required": ["type", "sender", "keys", "sender_device"],
     }
 
+    room_key_request = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "type": {"type": "string", "enum": ["m.room_key_request"]},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "type": "object",
+                        "properties": {
+                            "algorithm": {"type": "string"},
+                            "room_id": {"type": "string", "format": "room_id"},
+                            "sender_key": {"type": "string"},
+                            "session_id": {"type": "string"},
+                        },
+                        "required": [
+                            "algorithm",
+                            "room_id",
+                            "sender_key",
+                            "session_id"
+                        ]
+                    },
+                    "requesting_device_id": {"type": "string"},
+                    "action": {
+                        "type": "string",
+                        "enum": ["request", "cancel_request"]
+                    },
+                    "request_id": {"type": "string"}
+                },
+                "required": [
+                    "requesting_device_id",
+                    "request_id",
+                    "action"
+                ],
+            },
+        },
+        "required": ["type", "sender", "content"],
+    }
+
     room_key_event = {
         "type": "object",
         "properties": {
