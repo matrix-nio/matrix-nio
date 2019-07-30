@@ -39,8 +39,7 @@ from ..events import (BadEvent, BadEventType, Event,
                       KeyVerificationKey, KeyVerificationMac,
                       KeyVerificationStart, MegolmEvent, OlmEvent,
                       EncryptedToDeviceEvent, RoomKeyEvent, UnknownBadEvent,
-                      DummyEvent,
-                      validate_or_badevent)
+                      DummyEvent, validate_or_badevent, RoomKeyRequest)
 from ..exceptions import (EncryptionError, GroupEncryptionError,
                           LocalProtocolError, OlmTrustError, VerificationError)
 from ..responses import (KeysClaimResponse, KeysQueryResponse,
@@ -137,6 +136,8 @@ class Olm(object):
         self.tracked_users = set()  # type: Set[str]
         self.outgoing_key_requests = dict()  \
             # type: Dict[str, OutgoingKeyRequest]
+
+        self.received_key_requests = dict()  # type: Dict[str, RoomKeyRequest]
 
         # A list of devices for which we need to start a new Olm session.
         # Matrix clients need to do a one-time key claiming request for the
@@ -357,8 +358,26 @@ class Olm(object):
             decrypted_event = self.decrypt_event(event)
         elif isinstance(event, KeyVerificationEvent):
             self.handle_key_verification(event)
+        elif isinstance(event, RoomKeyRequest):
+            self._handle_key_requests(event)
 
         return decrypted_event
+
+    def _handle_key_requests(self, event):
+        # We first queue up all the requests here. This avoids handling of
+        # requests that were canceled in the same sync.
+        if event.action == "request":
+            self.received_key_requests[event.request_id] = event
+        elif event.action == "cancel_request":
+            self.received_key_requests.pop(event.request_id, None)
+
+    def collect_key_requests(self):
+        """Turn queued up key requests into to-device messages for key sharing.
+
+        Returns RoomKeyRequest events that couldn't be sent out because the
+        requesting device isn't verified or ignored.
+        """
+        raise NotImplementedError
 
     def _handle_key_claiming(self, response):
         keys = response.one_time_keys
