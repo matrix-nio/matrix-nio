@@ -299,8 +299,6 @@ class Olm(object):
         return content
 
     def _olm_encrypt(self, session, recipient_device, message_type, content):
-        self.store.save_session(recipient_device.curve25519, session)
-
         payload = {
             "sender": self.user_id,
             "sender_device": self.device_id,
@@ -319,6 +317,7 @@ class Olm(object):
         }
 
         olm_message = session.encrypt(Api.to_json(payload))
+        self.store.save_session(recipient_device.curve25519, session)
 
         return {
             "algorithm": self._olm_algorithm,
