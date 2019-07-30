@@ -367,3 +367,20 @@ class TestClass(object):
                                      "alice_key")
 
         assert isinstance(event, DummyEvent)
+
+    def test_room_key_request(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/room_key_request.json")
+        event = ToDeviceEvent.parse_event(parsed_dict)
+
+        assert isinstance(event, RoomKeyRequest)
+        assert event.action == "request"
+        assert event.room_id is not None
+
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/room_key_request_cancel.json")
+        event = ToDeviceEvent.parse_event(parsed_dict)
+
+        assert isinstance(event, RoomKeyRequest)
+        assert event.action == "cancel_request"
+        assert event.room_id is None
