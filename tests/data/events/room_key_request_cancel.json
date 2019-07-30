@@ -1,0 +1,9 @@
+{
+    "sender": "@alice:example.org",
+    "content": {
+        "action": "cancel_request",
+        "request_id": "1495474790150.19",
+        "requesting_device_id": "RJYKSTBOIE"
+    },
+    "type": "m.room_key_request"
+}
