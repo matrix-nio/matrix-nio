@@ -14,7 +14,7 @@ from nio.crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
                         SessionStore, Session)
 from nio.events import (ForwardedRoomKeyEvent, MegolmEvent, OlmEvent,
                         RoomKeyEvent, RoomMessageText, UnknownBadEvent,
-                        ToDeviceEvent, DummyEvent)
+                        ToDeviceEvent, DummyEvent, RoomKeyRequest)
 from nio.exceptions import EncryptionError, GroupEncryptionError, OlmTrustError
 from nio.responses import (KeysClaimResponse, KeysQueryResponse,
                            KeysUploadResponse)
@@ -1136,3 +1136,100 @@ class TestClass(object):
         decrypted_event = bob.decrypt_event(event)
 
         assert decrypted_event.body == message["content"]["body"]
+
+    def test_key_forwards(self, olm_account, bob_account):
+        alice = olm_account
+        bob = bob_account
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.account.identity_keys
+        )
+
+        alice.device_store.add(bob_device)
+        bob.device_store.add(alice_device)
+
+        bob.account.generate_one_time_keys(1)
+        one_time = list(bob.account.one_time_keys["curve25519"].values())[0]
+        bob.account.mark_keys_as_published()
+
+        alice.create_session(one_time, bob_device.curve25519)
+
+        _, to_device = alice.share_group_session(
+            TEST_ROOM,
+            [bob.user_id],
+            ignore_unverified_devices=True
+        )
+
+        # Setup a working olm session by sharing a key from alice to bob
+        olm_message = self.olm_message_to_event(to_device, bob, alice)
+        event = ToDeviceEvent.parse_event(olm_message)
+        bob.decrypt_event(event)
+
+        # Bob shares a room session as well but alice never receives the
+        # session.
+        bob.share_group_session(
+            TEST_ROOM,
+            [alice.user_id],
+            ignore_unverified_devices=True
+        )
+
+        session = bob.outbound_group_sessions[TEST_ROOM]
+        session.shared = True
+
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "It's a secret to everybody."
+            }
+        }
+        encrypted_content = bob.group_encrypt(TEST_ROOM, message)
+
+        encrypted_message = {
+            "event_id": "!event_id",
+            "type": "m.room.encrypted",
+            "sender": bob.user_id,
+            "origin_server_ts": int(time.time()),
+            "content": encrypted_content,
+            "room_id": TEST_ROOM
+        }
+        event = MegolmEvent.from_dict(encrypted_message)
+
+        # Alice tries to decrypt the event but can't.
+        decrypted_event = alice.decrypt_event(event)
+        assert decrypted_event is None
+
+        # Let us create a RoomKeyRequest.
+        key_request = {
+            "sender": alice.user_id,
+            "content": {
+                "action": "request",
+                "body": {
+                    "algorithm": "m.megolm.v1.aes-sha2",
+                    "room_id": TEST_ROOM,
+                    "sender_key": event.sender_key,
+                    "session_id": event.session_id,
+                },
+                "request_id": "!12345",
+                "requesting_device_id": alice.device_id
+            },
+            "type": "m.room_key_request"
+        }
+
+        key_request_event = RoomKeyRequest.from_dict(key_request)
+
+        assert isinstance(key_request_event, RoomKeyRequest)
+
+        assert not bob.outgoing_to_device_messages
+
+        # Bob receives the event and queues it up for collection.
+        bob.handle_to_device_event(key_request_event)
+
+        assert key_request_event in bob.received_key_requests.values()
