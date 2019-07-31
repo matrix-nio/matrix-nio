@@ -389,7 +389,8 @@ class Olm(object):
         message that holds the room key.
 
         Raises EncryptionError if no Olm session was found to encrypt
-        the key.
+        the key. Raises a KeyShareError if the request was invalid and can't be
+        handled.
 
         """
         logger.debug("Trying to reshare key {} with {}".format(
