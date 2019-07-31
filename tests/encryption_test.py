@@ -1182,6 +1182,7 @@ class TestClass(object):
 
         session = bob.outbound_group_sessions[TEST_ROOM]
         session.shared = True
+        session.users_shared_with.add((alice.user_id, alice.device_id))
 
         message = {
             "type": "m.room.message",
@@ -1206,21 +1207,25 @@ class TestClass(object):
         decrypted_event = alice.decrypt_event(event)
         assert decrypted_event is None
 
-        # Let us create a RoomKeyRequest.
+        key_request = event.as_key_request(
+            bob.user_id,
+            alice.device_id,
+            event.session_id,
+        )
+
+        outgoing_key_request = OutgoingKeyRequest(
+            event.session_id,
+            event.session_id,
+            TEST_ROOM,
+            event.algorithm
+        )
+
+        alice.outgoing_key_requests[event.session_id] = outgoing_key_request
+
         key_request = {
             "sender": alice.user_id,
-            "content": {
-                "action": "request",
-                "body": {
-                    "algorithm": "m.megolm.v1.aes-sha2",
-                    "room_id": TEST_ROOM,
-                    "sender_key": event.sender_key,
-                    "session_id": event.session_id,
-                },
-                "request_id": "!12345",
-                "requesting_device_id": alice.device_id
-            },
-            "type": "m.room_key_request"
+            "type": "m.room_key_request",
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
         }
 
         key_request_event = RoomKeyRequest.from_dict(key_request)
@@ -1233,3 +1238,27 @@ class TestClass(object):
         bob.handle_to_device_event(key_request_event)
 
         assert key_request_event in bob.received_key_requests.values()
+
+        # Convert the key request event into a to-device message.
+        bob.collect_key_requests()
+        # Check that the message is now queued.
+        assert bob.outgoing_to_device_messages
+
+        to_device = bob.outgoing_to_device_messages[0]
+
+        # Let us now share the to-device message with Alice
+        olm_message = self.olm_message_to_event(to_device.as_dict(), alice,
+                                                bob)
+        forwarded_key_event = ToDeviceEvent.parse_event(olm_message)
+
+        assert isinstance(forwarded_key_event, OlmEvent)
+
+        # Decrypt the olm event and check that we received a forwarded room
+        # key.
+        decrypted_event = alice.handle_to_device_event(forwarded_key_event)
+        assert isinstance(decrypted_event, ForwardedRoomKeyEvent)
+
+        # Alice tries to decrypt the previous event again.
+        decrypted_event = alice.decrypt_event(event)
+        assert isinstance(decrypted_event, RoomMessageText)
+        assert decrypted_event.body == "It's a secret to everybody."
