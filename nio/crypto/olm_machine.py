@@ -370,7 +370,11 @@ class Olm(object):
         # We first queue up all the requests here. This avoids handling of
         # requests that were canceled in the same sync.
         if event.action == "request":
-            self.received_key_requests[event.request_id] = event
+            # TODO handle differing algorithms better. To achieve this the
+            # sessions should know which algorithm they speak.
+            if event.algorithm == Olm._megolm_algorithm:
+                self.received_key_requests[event.request_id] = event
+
         elif event.action == "cancel_request":
             self.received_key_requests.pop(event.request_id, None)
 
