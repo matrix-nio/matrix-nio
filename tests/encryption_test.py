@@ -1281,6 +1281,7 @@ class TestClass(object):
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
+        bob.verify_device(alice_device)
 
         bob.account.generate_one_time_keys(1)
         one_time = list(bob.account.one_time_keys["curve25519"].values())[0]

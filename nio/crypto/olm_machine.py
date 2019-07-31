@@ -527,6 +527,13 @@ class Olm(object):
             raise EncryptionError("No Olm session found for {} and device "
                                   "{}".format(device.user_id, device.id))
 
+        if not device.verified:
+            raise OlmTrustError(
+                "Failed to reshare key {} with {}: Device {} is not "
+                "verified".format(event.session_id, event.sender,
+                                  event.requesting_device_id)
+            )
+
         self.outgoing_to_device_messages.append(
             self._encrypt_forwarding_key(
                 event.room_id,
