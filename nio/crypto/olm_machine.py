@@ -427,7 +427,6 @@ class Olm(object):
                 self.device_store[event.sender][event.requesting_device_id]
             )
         except KeyError:
-            # TODO we should mark the user for a key query.
             raise KeyShareError(
                 "Failed to reshare key {} with {}: Unkown requesting "
                 "device {}.".format(event.session_id, event.sender,
