@@ -425,6 +425,8 @@ class Olm(object):
         handled.
 
         """
+        assert event.action == "request"
+
         logger.debug("Trying to reshare key {} with {}".format(
             event.session_id,
             event.sender
@@ -501,6 +503,8 @@ class Olm(object):
         not verified. Raises a KeyShareError if the request is invalid and
         can't be handled.
         """
+        assert event.action == "request"
+
         group_session = self.inbound_group_store.get(
             event.room_id,
             event.sender_key,
