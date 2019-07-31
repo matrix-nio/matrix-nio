@@ -548,7 +548,14 @@ class Olm(object):
             # The sender is ourself but on a different device. We share all
             # keys with ourselves.
             if event.sender == self.user_id:
-                raise NotImplementedError
+                try:
+                    self.share_with_ourselves(event)
+                    handled_events.append(event)
+                except KeyShareError as error:
+                    logger.warn(error)
+                except EncryptionError:
+                    # TODO we need to create a session first
+                    pass
 
             # The sender is someone else, we share only the current
             # outbound group session.
