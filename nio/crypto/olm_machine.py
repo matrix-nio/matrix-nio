@@ -60,6 +60,10 @@ except ImportError:  # pragma: no cover
 DecryptedOlmT = Union[RoomKeyEvent, BadEvent, UnknownBadEvent, None]
 
 
+class KeyShareError(Exception):
+    pass
+
+
 class Olm(object):
     _olm_algorithm = 'm.olm.v1.curve25519-aes-sha2'
     _megolm_algorithm = 'm.megolm.v1.aes-sha2'
@@ -370,13 +374,128 @@ class Olm(object):
         elif event.action == "cancel_request":
             self.received_key_requests.pop(event.request_id, None)
 
+    def reshare_key(self, event):
+        # type: (RoomKeyEvent) -> None
+        """Try to reshare an outgoing group session.
+
+        Args:
+            event (RoomKeyRequest): The event of the key request.
+
+        If the key share request is valid this will queue up a to-device
+        message that holds the room key.
+
+        Raises EncryptionError if no Olm session was found to encrypt
+        the key.
+
+        """
+        logger.debug("Trying to reshare key {} with {}".format(
+            event.session_id,
+            event.sender
+        ))
+
+        outbound_session = self.outbound_group_sessions.get(event.room_id)
+
+        if not outbound_session:
+            raise KeyShareError("Failed to reshare key {} with {}: No "
+                                "outbound session found".format(
+                                    event.session_id, event.sender))
+
+        user_tuple = (event.sender, event.requesting_device_id)
+
+        if user_tuple not in outbound_session.users_shared_with:
+            raise KeyShareError(
+                "Failed to reshare key {} with {}: Session wasn't "
+                "shared with the device {}".format(event.session_id,
+                                                   event.sender,
+                                                   event.requesting_device_id))
+
+        sender_key = self.account.identity_keys["curve25519"]
+        signing_key = self.account.identity_keys["ed25519"]
+
+        group_session = self.inbound_group_store.get(
+            event.room_id,
+            sender_key,
+            outbound_session.id
+        )
+
+        try:
+            device = (
+                self.device_store[event.sender][event.requesting_device_id]
+            )
+        except KeyError:
+            # TODO we should mark the user for a key query.
+            raise KeyShareError(
+                "Failed to reshare key {} with {}: Unkown requesting "
+                "device {}.".format(event.session_id, event.sender,
+                                    event.requesting_device_id))
+
+        if device.deleted:
+            raise KeyShareError(
+                "Failed to reshare key {} with {}: Request from a "
+                "deleted device {}.".format(event.session_id,
+                                            event.sender,
+                                            event.requesting_device_id))
+
+        session = self.session_store.get(device.curve25519)
+
+        if not session:
+            raise EncryptionError("No Olm session found for {} and device "
+                                  "{}".format(device.user_id, device.id))
+
+        key_content = {
+            "algorithm": self._megolm_algorithm,
+            "forwarding_curve25519_key_chain": [],
+            "room_id": event.room_id,
+            "sender_claimed_ed25519_key": signing_key,
+            "sender_key": sender_key,
+            "session_id": group_session.id,
+            "session_key": group_session.export_session(0),
+            "chain_index": group_session.first_known_index,
+        }
+
+        olm_dict = self._olm_encrypt(session, device, "m.forwarded_room_key",
+                                     key_content)
+
+        self.outgoing_to_device_messages.append(
+            ToDeviceMessage(
+                "m.room.encrypted",
+                device.user_id,
+                device.device_id,
+                olm_dict
+            )
+        )
+
     def collect_key_requests(self):
         """Turn queued up key requests into to-device messages for key sharing.
 
         Returns RoomKeyRequest events that couldn't be sent out because the
         requesting device isn't verified or ignored.
         """
-        raise NotImplementedError
+        handled_events = []
+
+        for event in self.received_key_requests.values():
+            # The sender is ourselfs but on a different device. We share all
+            # keys with ourselves.
+            if event.sender == self.user_id:
+                raise NotImplementedError
+
+            # The sender is someone else, we share only the current
+            # outbound group session.
+            else:
+                try:
+                    self.reshare_key(event)
+                    handled_events.append(event)
+                except KeyShareError as error:
+                    logger.warn(error)
+                except EncryptionError:
+                    # TODO we are missing an Olm session with the requesting
+                    # device, mark the user/device for key claiming.
+                    pass
+
+        for event in handled_events:
+            self.received_key_requests.pop(event.request_id)
+
+        return handled_events
 
     def _handle_key_claiming(self, response):
         keys = response.one_time_keys
