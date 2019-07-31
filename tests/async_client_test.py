@@ -779,7 +779,7 @@ class TestClass(object):
             ),
             status=429,
             content_type="application/json",
-            body=bytes(self.limit_exceeded_error_response, "utf-8"),
+            body = b'{"errcode": "M_LIMIT_EXCEEDED"}',
         )
         resp = await async_client.thumbnail(
             server_name, media_id, width, height, method
