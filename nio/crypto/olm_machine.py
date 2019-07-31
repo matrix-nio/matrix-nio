@@ -479,7 +479,7 @@ class Olm(object):
         handled_events = []
 
         for event in self.received_key_requests.values():
-            # The sender is ourselfs but on a different device. We share all
+            # The sender is ourself but on a different device. We share all
             # keys with ourselves.
             if event.sender == self.user_id:
                 raise NotImplementedError
