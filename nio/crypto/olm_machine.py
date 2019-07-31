@@ -415,7 +415,6 @@ class Olm(object):
                                                    event.requesting_device_id))
 
         sender_key = self.account.identity_keys["curve25519"]
-        signing_key = self.account.identity_keys["ed25519"]
 
         group_session = self.inbound_group_store.get(
             event.room_id,
@@ -449,12 +448,14 @@ class Olm(object):
 
         key_content = {
             "algorithm": self._megolm_algorithm,
-            "forwarding_curve25519_key_chain": [],
+            "forwarding_curve25519_key_chain": group_session.forwarding_chain,
             "room_id": event.room_id,
-            "sender_claimed_ed25519_key": signing_key,
-            "sender_key": sender_key,
+            "sender_claimed_ed25519_key": group_session.ed25519,
+            "sender_key": group_session.sender_key,
             "session_id": group_session.id,
-            "session_key": group_session.export_session(0),
+            "session_key": group_session.export_session(
+                group_session.first_known_index
+            ),
             "chain_index": group_session.first_known_index,
         }
 
