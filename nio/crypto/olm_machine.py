@@ -378,6 +378,38 @@ class Olm(object):
         elif event.action == "cancel_request":
             self.received_key_requests.pop(event.request_id, None)
 
+    def _encrypt_forwarding_key(
+        self,
+        room_id,         # type: str
+        group_session,   # type: InboundGroupSession
+        session,         # type: Session
+        device           # type: OlmDevice
+    ):
+        # type: (...) -> ToDeviceMessage
+        """Encrypt a group session to be forwarded as a to-device message."""
+        key_content = {
+            "algorithm": self._megolm_algorithm,
+            "forwarding_curve25519_key_chain": group_session.forwarding_chain,
+            "room_id": room_id,
+            "sender_claimed_ed25519_key": group_session.ed25519,
+            "sender_key": group_session.sender_key,
+            "session_id": group_session.id,
+            "session_key": group_session.export_session(
+                group_session.first_known_index
+            ),
+            "chain_index": group_session.first_known_index,
+        }
+
+        olm_dict = self._olm_encrypt(session, device, "m.forwarded_room_key",
+                                     key_content)
+
+        return ToDeviceMessage(
+            "m.room.encrypted",
+            device.user_id,
+            device.device_id,
+            olm_dict
+        )
+
     def reshare_key(self, event):
         # type: (RoomKeyEvent) -> None
         """Try to reshare an outgoing group session.
@@ -445,28 +477,12 @@ class Olm(object):
             raise EncryptionError("No Olm session found for {} and device "
                                   "{}".format(device.user_id, device.id))
 
-        key_content = {
-            "algorithm": self._megolm_algorithm,
-            "forwarding_curve25519_key_chain": group_session.forwarding_chain,
-            "room_id": event.room_id,
-            "sender_claimed_ed25519_key": group_session.ed25519,
-            "sender_key": group_session.sender_key,
-            "session_id": group_session.id,
-            "session_key": group_session.export_session(
-                group_session.first_known_index
-            ),
-            "chain_index": group_session.first_known_index,
-        }
-
-        olm_dict = self._olm_encrypt(session, device, "m.forwarded_room_key",
-                                     key_content)
-
         self.outgoing_to_device_messages.append(
-            ToDeviceMessage(
-                "m.room.encrypted",
-                device.user_id,
-                device.device_id,
-                olm_dict
+            self._encrypt_forwarding_key(
+                event.room_id,
+                group_session,
+                session,
+                device
             )
         )
 
