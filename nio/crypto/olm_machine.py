@@ -486,6 +486,56 @@ class Olm(object):
             )
         )
 
+    def share_with_ourselves(self, event):
+        # type: (RoomKeyEvent) -> None
+        """Share a room key with some other device owned by our own user.
+
+        Args:
+            event (RoomKeyRequest): The event of the key request.
+
+        If the key share request is valid this will queue up a to-device
+        message that holds the room key.
+
+        Raises EncryptionError if no Olm session was found to encrypt
+        the key. Raises OlmTrustError if the device that requested the key is
+        not verified. Raises a KeyShareError if the request is invalid and
+        can't be handled.
+        """
+        group_session = self.inbound_group_store.get(
+            event.room_id,
+            event.sender_key,
+            event.session_id
+        )
+
+        if not group_session:
+            raise KeyShareError("Failed to reshare key {} with {}: No "
+                                "session found".format(event.session_id,
+                                                       event.sender))
+        try:
+            device = (
+                self.device_store[event.sender][event.requesting_device_id]
+            )
+        except KeyError:
+            # TODO we should mark the user for a key query.
+            raise KeyShareError(
+                "Failed to reshare key {} with {}: Unkown requesting "
+                "device {}.".format(event.session_id, event.sender,
+                                    event.requesting_device_id))
+
+        session = self.session_store.get(device.curve25519)
+        if not session:
+            raise EncryptionError("No Olm session found for {} and device "
+                                  "{}".format(device.user_id, device.id))
+
+        self.outgoing_to_device_messages.append(
+            self._encrypt_forwarding_key(
+                event.room_id,
+                group_session,
+                session,
+                device
+            )
+        )
+
     def collect_key_requests(self):
         """Turn queued up key requests into to-device messages for key sharing.
 
