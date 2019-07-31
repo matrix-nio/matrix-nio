@@ -400,7 +400,7 @@ class Olm(object):
 
         outbound_session = self.outbound_group_sessions.get(event.room_id)
 
-        if not outbound_session:
+        if not outbound_session or outbound_session.id != event.session_id:
             raise KeyShareError("Failed to reshare key {} with {}: No "
                                 "outbound session found".format(
                                     event.session_id, event.sender))
