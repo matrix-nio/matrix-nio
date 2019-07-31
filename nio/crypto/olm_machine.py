@@ -506,12 +506,8 @@ class Olm(object):
                 try:
                     self.reshare_key(event)
                     handled_events.append(event)
-                except KeyShareError as error:
+                except (KeyShareError, EncryptionError) as error:
                     logger.warn(error)
-                except EncryptionError:
-                    # TODO we are missing an Olm session with the requesting
-                    # device, mark the user/device for key claiming.
-                    pass
 
         for event in handled_events:
             self.received_key_requests.pop(event.request_id)
