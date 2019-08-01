@@ -415,7 +415,7 @@ class Olm(object):
         )
 
     def reshare_key(self, event):
-        # type: (RoomKeyEvent) -> None
+        # type: (RoomKeyRequest) -> None
         """Try to reshare an outgoing group session.
 
         Args:
@@ -491,7 +491,7 @@ class Olm(object):
         )
 
     def share_with_ourselves(self, event):
-        # type: (RoomKeyEvent) -> None
+        # type: (RoomKeyRequest) -> None
         """Share a room key with some other device owned by our own user.
 
         Args:
