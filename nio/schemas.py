@@ -580,6 +580,32 @@ class Schemas(object):
                 "required": [
                     "requesting_device_id",
                     "request_id",
+                    "action",
+                    "body"
+                ],
+            },
+        },
+        "required": ["type", "sender", "content"],
+    }
+
+    room_key_request_cancel = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "type": {"type": "string", "enum": ["m.room_key_request"]},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "requesting_device_id": {"type": "string"},
+                    "action": {
+                        "type": "string",
+                        "enum": ["request", "cancel_request"]
+                    },
+                    "request_id": {"type": "string"}
+                },
+                "required": [
+                    "requesting_device_id",
+                    "request_id",
                     "action"
                 ],
             },

@@ -39,7 +39,8 @@ from ..events import (BadEvent, BadEventType, Event,
                       KeyVerificationKey, KeyVerificationMac,
                       KeyVerificationStart, MegolmEvent, OlmEvent,
                       EncryptedToDeviceEvent, RoomKeyEvent, UnknownBadEvent,
-                      DummyEvent, validate_or_badevent, RoomKeyRequest)
+                      DummyEvent, validate_or_badevent, RoomKeyRequest,
+                      RoomKeyRequestCancellation)
 from ..exceptions import (EncryptionError, GroupEncryptionError,
                           LocalProtocolError, OlmTrustError, VerificationError)
 from ..responses import (KeysClaimResponse, KeysQueryResponse,
@@ -371,13 +372,13 @@ class Olm(object):
     def _handle_key_requests(self, event):
         # We first queue up all the requests here. This avoids handling of
         # requests that were canceled in the same sync.
-        if event.action == "request":
+        if isinstance(event, RoomKeyRequest):
             # TODO handle differing algorithms better. To achieve this the
             # sessions should know which algorithm they speak.
             if event.algorithm == Olm._megolm_algorithm:
                 self.received_key_requests[event.request_id] = event
 
-        elif event.action == "cancel_request":
+        elif isinstance(event, RoomKeyRequestCancellation):
             # TODO cancel requests that are waiting for a session as well.
             self.received_key_requests.pop(event.request_id, None)
 
@@ -428,8 +429,6 @@ class Olm(object):
         handled.
 
         """
-        assert event.action == "request"
-
         logger.debug("Trying to reshare key {} with {}".format(
             event.session_id,
             event.sender
@@ -506,8 +505,6 @@ class Olm(object):
         not verified. Raises a KeyShareError if the request is invalid and
         can't be handled.
         """
-        assert event.action == "request"
-
         group_session = self.inbound_group_store.get(
             event.room_id,
             event.sender_key,
