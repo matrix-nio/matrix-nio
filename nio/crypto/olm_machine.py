@@ -146,6 +146,8 @@ class Olm(object):
         self.key_requests_waiting_for_session = defaultdict(list)
         self.key_request_devices_no_session = list()  # type: List[OlmDevice]
 
+        self.key_request_from_untrusted = dict()
+
         # A list of devices for which we need to start a new Olm session.
         # Matrix clients need to do a one-time key claiming request for the
         # devices in this list. After a new session is created with the device
@@ -560,45 +562,76 @@ class Olm(object):
             )
         )
 
+    def continue_key_share(self, event):
+        # type: (RoomKeyRequest) -> bool
+        """Continue a previously interrupted key share event.
+
+        Args:
+            event (RoomKeyRequest): The event which we would like to continue.
+        """
+        if event not in self.key_request_from_untrusted.values():
+            raise LocalProtocolError("No such pending key share request found")
+
+        event = self.key_request_from_untrusted[event.request_id]
+
+        if not self._collect_single_key_share(event):
+            return False
+
+        self.key_request_from_untrusted.pop(event.request_id)
+        return True
+
+    def cancel_key_share(self, event):
+        # type: (RoomKeyRequest) -> bool
+        """Cancel a previously interrupted key share event.
+
+        Args:
+            event (RoomKeyRequest): The event which we would like to cancel.
+        """
+        self.key_request_from_untrusted.pop(event.request_id, None)
+
+    def _collect_single_key_share(self, event):
+        # type: (RoomKeyRequest) -> bool
+        # The sender is ourself but on a different device. We share all
+        # keys with ourselves.
+        if event.sender == self.user_id:
+            try:
+                self.share_with_ourselves(event)
+            except KeyShareError as error:
+                logger.warn(error)
+            except EncryptionError as error:
+                # We can safely ignore this, the share_with_ourselves
+                # method will queue up the device for a key claiming
+                # request when that is done the event will be put back
+                # in the received_key_requests queue.
+                logger.warn(error)
+            except OlmTrustError:
+                return False
+
+        # The sender is someone else, we share only the current
+        # outbound group session.
+        else:
+            try:
+                self.reshare_key(event)
+            except (KeyShareError, EncryptionError) as error:
+                logger.warn(error)
+
+        return True
+
     def collect_key_requests(self):
         """Turn queued up key requests into to-device messages for key sharing.
 
         Returns RoomKeyRequest events that couldn't be sent out because the
         requesting device isn't verified or ignored.
         """
-        for event in self.received_key_requests.values():
-            # The sender is ourself but on a different device. We share all
-            # keys with ourselves.
-            if event.sender == self.user_id:
-                try:
-                    self.share_with_ourselves(event)
-                except KeyShareError as error:
-                    logger.warn(error)
-                except EncryptionError:
-                    # We can safely ignore this, the share_with_ourselves
-                    # method will queue up the device for a key claiming
-                    # request when that is done the event will be put back
-                    # in the received_key_requests queue.
-                    pass
-                except OlmTrustError:
-                    # TODO we need to tell our user that there is a key share
-                    # request and that we can't share keys until they verify
-                    # the device. The user might also decline sharing keys.
-                    pass
+        events_for_users = []
 
-            # The sender is someone else, we share only the current
-            # outbound group session.
-            else:
-                try:
-                    self.reshare_key(event)
-                except (KeyShareError, EncryptionError) as error:
-                    logger.warn(error)
+        for event in self.received_key_requests.values():
+            if not self._collect_single_key_share(event):
+                self.key_request_from_untrusted[event.request_id] = event
+                events_for_users.append(event)
 
         self.received_key_requests = dict()
-
-        # TODO we wan't to return events here that need to be presented to the
-        # user.
-        return []
+        return events_for_users
 
     def _handle_key_claiming(self, response):
         keys = response.one_time_keys
