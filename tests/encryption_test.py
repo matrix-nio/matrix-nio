@@ -1647,6 +1647,7 @@ class TestClass(object):
         # resume.
         bob.verify_device(alice_device)
         assert bob.continue_key_share(key_request_event)
+        assert key_request_event not in bob.key_request_from_untrusted.values()
 
         # There is now a key queued up to be sent as a to-device message.
         assert bob.outgoing_to_device_messages
