@@ -25,7 +25,7 @@ import warnings
 from ..crypto import ENCRYPTION_ENABLED
 from ..events import (BadEventType, Event, KeyVerificationEvent, MegolmEvent,
                       RoomEncryptionEvent, RoomMemberEvent,
-                      ToDeviceEvent, EncryptedToDeviceEvent)
+                      ToDeviceEvent, EncryptedToDeviceEvent, RoomKeyRequest)
 from ..exceptions import LocalProtocolError, MembersSyncError
 from ..log import logger_group
 from ..responses import (ErrorResponse, JoinedMembersResponse,
@@ -546,6 +546,12 @@ class Client(object):
             index, event = decrypted_event
             response.to_device_events[index] = event
 
+    def _run_to_device_callbacks(self, event):
+        for cb in self.to_device_callbacks:
+            if (cb.filter is None
+                    or isinstance(event, cb.filter)):
+                cb.func(event)
+
     def _handle_to_device(self, response):
         decrypted_to_device = []  # type: ignore
 
@@ -556,10 +562,13 @@ class Client(object):
                 decrypted_to_device.append((index, decrypted_event))
                 to_device_event = decrypted_event
 
-            for cb in self.to_device_callbacks:
-                if (cb.filter is None
-                        or isinstance(to_device_event, cb.filter)):
-                    cb.func(to_device_event)
+            # Do not pass room key request events to our user here. We don't
+            # want to notify them about requests that get automatically handled
+            # or canceled right away.
+            if isinstance(to_device_event, RoomKeyRequest):
+                continue
+
+            self._run_to_device_callbacks(to_device_event)
 
         self._replace_decrypted_to_device(decrypted_to_device, response)
 
@@ -726,6 +735,12 @@ class Client(object):
         if self.olm:
             self._handle_expired_verifications()
             self._handle_olm_events(response)
+            self._collect_key_requests()
+
+    def _collect_key_requests(self):
+        events = self.olm.collect_key_requests()
+        for event in events:
+            self._run_to_device_callbacks(event)
 
     def _decrypt_event_array(self, array):
         if not self.olm:
