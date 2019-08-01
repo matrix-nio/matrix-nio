@@ -231,19 +231,25 @@ class Client(object):
         return self.olm.should_query_keys
 
     @property
-    def should_unwedge_sessions(self):
-        """Check if the client should claim one-time keys to unwedge sessions.
+    def should_claim_keys(self):
+        """Check if the client should claim one-time keys for some users.
 
         This should be periodically checked and if true a keys claim request
-        should be made with the return value of a `get_wedged_sessions()` call
-        as the payload.
+        should be made with the return value of a
+        `get_users_for_key_claiming()` call as the payload.
+
+        Keys need to be claimed for various reasons. Every time we need to send
+        an encrypted message to a device and we don't have a working Olm
+        session with them we need to claim one-time keys to create a new Olm
+        session.
 
         Returns True if a key query is necessary, false otherwise.
         """
         if not self.olm:
             return False
 
-        return bool(self.olm.wedged_devices)
+        return bool(self.olm.wedged_devices
+                    or self.olm.key_request_devices_no_session)
 
     @property
     def outgoing_key_requests(self):
@@ -928,17 +934,17 @@ class Client(object):
         return self.olm.get_missing_sessions(list(room.users))
 
     @store_loaded
-    def get_wedged_sessions(self):
+    def get_users_for_key_claiming(self):
         # type: () -> Dict[str, List[str]]
-        """Get the content for a key query to unwedge Olm sessions.
+        """Get the content for a key claim request that needs to be made.
 
         Returns a dictionary containing users as the keys and a list of devices
         for which we will claim one-time keys.
 
-        Raises a LocalProtocolError if there are no wedged sessions.
+        Raises a LocalProtocolError if no key claim request needs to be made.
         """
         assert self.olm
-        return self.olm.get_wedged_sessions()
+        return self.olm.get_users_for_key_claiming()
 
     @store_loaded
     def encrypt(self, room_id, message_type, content):

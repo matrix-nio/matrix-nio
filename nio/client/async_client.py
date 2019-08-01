@@ -607,9 +607,9 @@ class AsyncClient(Client):
                 if self.should_query_keys:
                     tasks.append(asyncio.ensure_future(self.keys_query()))
 
-                if self.should_unwedge_sessions:
+                if self.should_claim_keys:
                     tasks.append(asyncio.ensure_future(
-                        self.keys_claim(self.get_wedged_sessions())
+                        self.keys_claim(self.get_users_for_key_claiming())
                     ))
 
                 for response in asyncio.as_completed(tasks):

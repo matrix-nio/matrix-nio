@@ -948,14 +948,14 @@ class Olm(object):
 
         return missing
 
-    def get_wedged_sessions(self):
+    def get_users_for_key_claiming(self):
         # type: () -> Dict[str, List[str]]
-        """Get the content for a key query to unwedge Olm sessions.
+        """Get the content for a key claim request that needs to be made.
 
         Returns a dictionary containing users as the keys and a list of devices
         for which we will claim one-time keys.
 
-        Raises a LocalProtocolError if there are no wedged sessions.
+        Raises a LocalProtocolError if no key claim request needs to be made.
         """
         if not self.wedged_devices and not self.key_request_devices_no_session:
             raise LocalProtocolError("No wedged sessions found.")

@@ -1214,7 +1214,7 @@ class TestClass(object):
             )
         )
         assert not bob.outgoing_to_device_messages
-        assert not bob.should_unwedge_sessions
+        assert not bob.should_claim_keys
 
         # Set the creation time to be older than an hour, otherwise we will not
         # be able to unwedge the session.
@@ -1255,9 +1255,9 @@ class TestClass(object):
 
         assert not bob.outgoing_to_device_messages
 
-        assert bob.should_unwedge_sessions
+        assert bob.should_claim_keys
 
-        await bob.keys_claim(bob.get_wedged_sessions())
+        await bob.keys_claim(bob.get_users_for_key_claiming())
 
         # Now that bob created a new session, there should be a to-device
         # message waiting to be sent out to Alice
