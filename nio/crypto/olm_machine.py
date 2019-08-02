@@ -499,6 +499,10 @@ class Olm(object):
             outbound_session.id
         )
 
+        # If there is an outbound group session, we are guaranteed to have the
+        # inbound one as well.
+        assert group_session
+
         try:
             device = (
                 self.device_store[event.sender][event.requesting_device_id]
