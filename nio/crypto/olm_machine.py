@@ -995,7 +995,7 @@ class Olm(object):
         for device in self.wedged_devices:
             wedged[device.user_id].append(device.device_id)
 
-        for device in self.key_requests_waiting_for_session:
+        for device in self.key_request_devices_no_session:
             if device in wedged[device.user_id]:
                 continue
 
