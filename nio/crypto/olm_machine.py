@@ -143,10 +143,12 @@ class Olm(object):
             # type: Dict[str, OutgoingKeyRequest]
 
         self.received_key_requests = dict()  # type: Dict[str, RoomKeyRequest]
-        self.key_requests_waiting_for_session = defaultdict(dict)
+        self.key_requests_waiting_for_session = defaultdict(dict)  \
+            # type: Dict[Tuple[str, str], Dict[str, RoomKeyRequest]]
         self.key_request_devices_no_session = list()  # type: List[OlmDevice]
 
-        self.key_request_from_untrusted = dict()
+        self.key_request_from_untrusted = dict()  \
+            # type: Dict[str, RoomKeyRequest]
 
         # A list of devices for which we need to start a new Olm session.
         # Matrix clients need to do a one-time key claiming request for the
