@@ -143,7 +143,7 @@ class Olm(object):
             # type: Dict[str, OutgoingKeyRequest]
 
         self.received_key_requests = dict()  # type: Dict[str, RoomKeyRequest]
-        self.key_requests_waiting_for_session = defaultdict(list)
+        self.key_requests_waiting_for_session = defaultdict(dict)
         self.key_request_devices_no_session = list()  # type: List[OlmDevice]
 
         self.key_request_from_untrusted = dict()
@@ -541,7 +541,7 @@ class Olm(object):
             self.key_requests_waiting_for_session[(
                 device.user_id,
                 device.device_id
-            )].append(event)
+            )][event.request_id] = event
 
             raise EncryptionError("No Olm session found for {} and device "
                                   "{}".format(device.user_id, device.id))
@@ -677,12 +677,9 @@ class Olm(object):
 
                         events = self.key_requests_waiting_for_session.pop(
                             (device.user_id, device.device_id),
-                            []
+                            {}
                         )
-                        for event in events:
-                            self.received_key_requests[event.request_id] = (
-                                event
-                            )
+                        self.received_key_requests.update(events)
 
                 else:
                     logger.warn("Signature verification for one-time key of "

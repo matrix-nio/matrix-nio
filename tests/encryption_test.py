@@ -1478,7 +1478,7 @@ class TestClass(object):
         assert alice_device in bob.key_request_devices_no_session
         assert (
             key_request_event in
-            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id]
+            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
         )
 
         # Let us do a key claim request.
@@ -1502,7 +1502,7 @@ class TestClass(object):
         # The key request is neither waiting for a session anymore.
         assert (
             key_request_event not in
-            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id]
+            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
         )
         # The key request is now waiting to be collected again.
         assert key_request_event in bob.received_key_requests.values()
