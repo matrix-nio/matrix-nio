@@ -14,7 +14,8 @@ from nio.crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
                         SessionStore, Session)
 from nio.events import (ForwardedRoomKeyEvent, MegolmEvent, OlmEvent,
                         RoomKeyEvent, RoomMessageText, UnknownBadEvent,
-                        ToDeviceEvent, DummyEvent, RoomKeyRequest)
+                        ToDeviceEvent, DummyEvent, RoomKeyRequest,
+                        RoomKeyRequestCancellation)
 from nio.exceptions import EncryptionError, GroupEncryptionError, OlmTrustError
 from nio.responses import (KeysClaimResponse, KeysQueryResponse,
                            KeysUploadResponse)
@@ -1669,3 +1670,167 @@ class TestClass(object):
         decrypted_event = alice.decrypt_event(event)
         assert isinstance(decrypted_event, RoomMessageText)
         assert decrypted_event.body == "It's a secret to everybody."
+
+    def test_key_forward_cancelling(self, olm_account, bob_account):
+        alice = olm_account
+        bob = bob_account
+        bob.user_id = alice.user_id
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.account.identity_keys
+        )
+
+        alice.device_store.add(bob_device)
+        bob.device_store.add(alice_device)
+        # bob.verify_device(alice_device)
+
+        bob.create_outbound_group_session(TEST_ROOM)
+        session = bob.outbound_group_sessions[TEST_ROOM]
+        session.shared = True
+
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "It's a secret to everybody."
+            }
+        }
+        encrypted_content = bob.group_encrypt(TEST_ROOM, message)
+
+        encrypted_message = {
+            "event_id": "!event_id",
+            "type": "m.room.encrypted",
+            "sender": bob.user_id,
+            "origin_server_ts": int(time.time()),
+            "content": encrypted_content,
+            "room_id": TEST_ROOM
+        }
+        event = MegolmEvent.from_dict(encrypted_message)
+
+        # Alice tries to decrypt the event but can't.
+        decrypted_event = alice.decrypt_event(event)
+        assert decrypted_event is None
+
+        key_request = event.as_key_request(
+            bob.user_id,
+            alice.device_id,
+            event.session_id,
+        )
+
+        outgoing_key_request = OutgoingKeyRequest(
+            event.session_id,
+            event.session_id,
+            TEST_ROOM,
+            event.algorithm
+        )
+
+        alice.outgoing_key_requests[event.session_id] = outgoing_key_request
+
+        key_request = {
+            "sender": alice.user_id,
+            "type": "m.room_key_request",
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
+        }
+
+        key_request_event = RoomKeyRequest.from_dict(key_request)
+
+        assert isinstance(key_request_event, RoomKeyRequest)
+
+        assert not bob.outgoing_to_device_messages
+
+        cancellation = RoomKeyRequestCancellation(
+            {},
+            key_request_event.sender,
+            key_request_event.requesting_device_id,
+            key_request_event.request_id,
+        )
+
+        # Bob receives the event and queues it up for collection.
+        bob.handle_to_device_event(key_request_event)
+        assert key_request_event in bob.received_key_requests.values()
+        # Cancel the request immediatelly.
+        bob.handle_to_device_event(cancellation)
+        assert key_request_event not in bob.received_key_requests.values()
+
+        # Bob receives the event again
+        bob.handle_to_device_event(key_request_event)
+
+        # This time we collect the event.
+        assert cancellation not in bob.collect_key_requests()
+        # Check that the message is not queued. We are missing a Olm session.
+        assert not bob.outgoing_to_device_messages
+
+        assert alice_device in bob.key_request_devices_no_session
+        assert (
+            key_request_event in
+            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
+        )
+
+        # We cancel again.
+        bob.handle_to_device_event(cancellation)
+        assert cancellation not in bob.collect_key_requests()
+
+        assert alice_device not in bob.key_request_devices_no_session
+        assert (
+            key_request_event not in
+            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
+        )
+
+        # Let us do another round
+        bob.handle_to_device_event(key_request_event)
+        bob.collect_key_requests()
+
+        # Let us do a key claim request.
+        to_share = alice.share_keys()
+        one_time_key = list(to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                alice.user_id: {
+                    alice.device_id: {one_time_key[0]: one_time_key[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        response = KeysClaimResponse.from_dict(key_claim_dict)
+        bob.handle_response(response)
+
+        # We got a session now, the device is not waiting for a session anymore
+        assert alice_device not in bob.key_request_devices_no_session
+        # The key request is neither waiting for a session anymore.
+        assert (
+            key_request_event not in
+            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
+        )
+        # The key request is now waiting to be collected again.
+        assert key_request_event in bob.received_key_requests.values()
+
+        # Let us collect it now.
+        bob.collect_key_requests()
+
+        # Still no, device isn't verified.
+        assert not bob.outgoing_to_device_messages
+        assert key_request_event in bob.key_request_from_untrusted.values()
+
+        # Cancel again, now we're going to get the cancellation event in the
+        # collect output
+        bob.handle_to_device_event(cancellation)
+        assert cancellation in bob.collect_key_requests()
+
+        # Let us finally check out if bob can also reject the sharing of the
+        # key.
+        bob.handle_to_device_event(key_request_event)
+        event_for_user = bob.collect_key_requests()[0]
+        assert not bob.outgoing_to_device_messages
+        assert key_request_event in bob.key_request_from_untrusted.values()
+
+        bob.cancel_key_share(event_for_user)
+        assert key_request_event not in bob.key_request_from_untrusted.values()
