@@ -388,8 +388,32 @@ class Olm(object):
                             ))
 
         elif isinstance(event, RoomKeyRequestCancellation):
-            # TODO cancel requests that are waiting for a session as well.
+            # Let us first remove key requests that just arrived. Those don't
+            # need anything special.
             self.received_key_requests.pop(event.request_id, None)
+
+            # Now come the key requests that are waiting for an Olm session.
+            user_key = (event.sender, event.requesting_device_id)
+            self.key_requests_waiting_for_session[user_key].pop(
+                event.request_id,
+                None
+            )
+
+            # If there are no key requests that are waiting for this device to
+            # get an Olm session, cancel getting an Olm session as well.
+            if not self.key_requests_waiting_for_session[user_key]:
+                try:
+                    device = (
+                        self.device_store[
+                            event.sender
+                        ][event.requesting_device_id]
+                    )
+                    self.key_request_devices_no_session.remove(device)
+                except (KeyError, ValueError):
+                    pass
+
+            # TODO finally key requests that are waiting for device
+            # verification.
 
     def _encrypt_forwarding_key(
         self,
