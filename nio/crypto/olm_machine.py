@@ -630,7 +630,9 @@ class Olm(object):
         Args:
             event (RoomKeyRequest): The event which we would like to cancel.
         """
-        self.key_request_from_untrusted.pop(event.request_id, None)
+        return bool(
+            self.key_request_from_untrusted.pop(event.request_id, None)
+        )
 
     def _collect_single_key_share(self, event):
         # type: (RoomKeyRequest) -> bool
