@@ -1834,3 +1834,120 @@ class TestClass(object):
 
         bob.cancel_key_share(event_for_user)
         assert key_request_event not in bob.key_request_from_untrusted.values()
+
+    def test_invalid_key_requests(self, olm_account, bob_account):
+        alice = olm_account
+        bob = bob_account
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.account.identity_keys
+        )
+
+        alice.device_store.add(bob_device)
+        bob.device_store.add(alice_device)
+        # bob.verify_device(alice_device)
+
+        bob.create_outbound_group_session(TEST_ROOM)
+        session = bob.outbound_group_sessions[TEST_ROOM]
+        session.shared = True
+
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "It's a secret to everybody."
+            }
+        }
+        encrypted_content = bob.group_encrypt(TEST_ROOM, message)
+
+        encrypted_message = {
+            "event_id": "!event_id",
+            "type": "m.room.encrypted",
+            "sender": bob.user_id,
+            "origin_server_ts": int(time.time()),
+            "content": encrypted_content,
+            "room_id": TEST_ROOM
+        }
+        event = MegolmEvent.from_dict(encrypted_message)
+
+        # Alice tries to decrypt the event but can't.
+        decrypted_event = alice.decrypt_event(event)
+        assert decrypted_event is None
+
+        key_request = event.as_key_request(
+            bob.user_id,
+            alice.device_id,
+            event.session_id,
+        )
+
+        outgoing_key_request = OutgoingKeyRequest(
+            event.session_id,
+            event.session_id,
+            TEST_ROOM,
+            event.algorithm
+        )
+
+        alice.outgoing_key_requests[event.session_id] = outgoing_key_request
+
+        key_request = {
+            "sender": alice.user_id,
+            "type": "m.room_key_request",
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
+        }
+
+        key_request_event = RoomKeyRequest.from_dict(key_request)
+
+        assert isinstance(key_request_event, RoomKeyRequest)
+
+        assert not bob.outgoing_to_device_messages
+
+        key_request_event.session_id = "fake_id"
+
+        bob.handle_to_device_event(key_request_event)
+        assert key_request_event in bob.received_key_requests.values()
+        assert not bob.outgoing_to_device_messages
+        bob.collect_key_requests()
+        assert not bob.outgoing_to_device_messages
+
+        key_request_event.session_id = session.id
+        key_request_event.requesting_device_id = "FAKE_ID"
+
+        bob.handle_to_device_event(key_request_event)
+        assert key_request_event in bob.received_key_requests.values()
+        assert not bob.outgoing_to_device_messages
+        bob.collect_key_requests()
+        assert not bob.outgoing_to_device_messages
+
+        alice_device.deleted = True
+        key_request_event.requesting_device_id = alice.device_id
+
+        bob.handle_to_device_event(key_request_event)
+        assert key_request_event in bob.received_key_requests.values()
+        assert not bob.outgoing_to_device_messages
+        bob.collect_key_requests()
+        assert not bob.outgoing_to_device_messages
+
+        bob.user_id = alice.user_id
+
+        key_request_event.session_id = "fake_id"
+        bob.handle_to_device_event(key_request_event)
+        assert key_request_event in bob.received_key_requests.values()
+        assert not bob.outgoing_to_device_messages
+        bob.collect_key_requests()
+        assert not bob.outgoing_to_device_messages
+
+        key_request_event.session_id = session.id
+        key_request_event.requesting_device_id = "FAKE_ID"
+
+        bob.handle_to_device_event(key_request_event)
+        assert key_request_event in bob.received_key_requests.values()
+        assert not bob.outgoing_to_device_messages
+        bob.collect_key_requests()
+        assert not bob.outgoing_to_device_messages
