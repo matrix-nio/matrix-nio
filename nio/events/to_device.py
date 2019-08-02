@@ -160,10 +160,10 @@ class RoomKeyRequest(BaseRoomKeyRequest):
         be set only if the action is 'request'.
     """
 
-    algorithm = attr.ib(type=Optional[str])
-    room_id = attr.ib(type=Optional[str])
-    sender_key = attr.ib(type=Optional[str])
-    session_id = attr.ib(type=Optional[str])
+    algorithm = attr.ib(type=str)
+    room_id = attr.ib(type=str)
+    sender_key = attr.ib(type=str)
+    session_id = attr.ib(type=str)
 
     @classmethod
     @verify(Schemas.room_key_request)
