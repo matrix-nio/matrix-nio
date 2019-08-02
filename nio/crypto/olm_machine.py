@@ -379,6 +379,13 @@ class Olm(object):
             # sessions should know which algorithm they speak.
             if event.algorithm == Olm._megolm_algorithm:
                 self.received_key_requests[event.request_id] = event
+            else:
+                logger.warn("Received key request from {} via {} with an "
+                            "unknown algorithm: {}".format(
+                                event.sender,
+                                event.requesting_device_id,
+                                event.algorithm
+                            ))
 
         elif isinstance(event, RoomKeyRequestCancellation):
             # TODO cancel requests that are waiting for a session as well.
