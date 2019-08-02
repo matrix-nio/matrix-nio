@@ -412,8 +412,14 @@ class Olm(object):
                 except (KeyError, ValueError):
                     pass
 
-            # TODO finally key requests that are waiting for device
+            # Finally key requests that are waiting for device
             # verification.
+            if event.request_id in self.key_request_from_untrusted:
+                # First remove the event from our untrusted queue.
+                self.key_request_from_untrusted.pop(event.request_id)
+                # Since events in the untrusted queue were forwarded to users
+                # we need to forward the cancellation as well.
+                self.received_key_requests[event.request_id] = event
 
     def _encrypt_forwarding_key(
         self,
@@ -657,6 +663,22 @@ class Olm(object):
         events_for_users = []
 
         for event in self.received_key_requests.values():
+            # A key request cancellation turning up here means that the
+            # cancellation cancelled a key request from an untrusted device.
+            # Such a request was presented to the user to do the verification
+            # dance before continuing so we need to show the user that the
+            # request was cancelled.
+            if isinstance(event, RoomKeyRequestCancellation):
+                events_for_users.append(event)
+                continue
+
+            # The collect_single_key_share method tries to produce to-device
+            # messages for the key share request. It will return False if it
+            # wasn't able to produce such a to-device message if the requesting
+            # device isn't trusted.
+            # Forward such requests from untrusted devices to the user so they
+            # can verify the device and continue with the key share request or
+            # reject the request.
             if not self._collect_single_key_share(event):
                 self.key_request_from_untrusted[event.request_id] = event
                 events_for_users.append(event)
