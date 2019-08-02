@@ -368,7 +368,7 @@ class Olm(object):
             decrypted_event = self.decrypt_event(event)
         elif isinstance(event, KeyVerificationEvent):
             self.handle_key_verification(event)
-        elif isinstance(event, RoomKeyRequest):
+        elif isinstance(event, (RoomKeyRequest, RoomKeyRequestCancellation)):
             self._handle_key_requests(event)
 
         return decrypted_event
