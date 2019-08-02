@@ -32,6 +32,7 @@ from .base_client import logged_in, store_loaded
 from ..api import Api, MessageDirection, ResizingMethod
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
+from ..events import RoomKeyRequest
 from ..messages import ToDeviceMessage
 from ..responses import (ErrorResponse, FileResponse,
                          JoinResponse, JoinError,
@@ -261,6 +262,12 @@ class AsyncClient(Client):
         resp.transport_response = transport_response
         return resp
 
+    async def _run_to_device_callbacks(self, event):
+        for cb in self.to_device_callbacks:
+            if (cb.filter is None
+                    or isinstance(event, cb.filter)):
+                await asyncio.coroutine(cb.func)(event)
+
     async def _handle_to_device(self, response):
         decrypted_to_device = []  # type: ignore
 
@@ -271,10 +278,13 @@ class AsyncClient(Client):
                 decrypted_to_device.append((index, decrypted_event))
                 to_device_event = decrypted_event
 
-            for cb in self.to_device_callbacks:
-                if (cb.filter is None
-                        or isinstance(to_device_event, cb.filter)):
-                    await asyncio.coroutine(cb.func)(to_device_event)
+            # Do not pass room key request events to our user here. We don't
+            # want to notify them about requests that get automatically handled
+            # or canceled right away.
+            if isinstance(to_device_event, RoomKeyRequest):
+                continue
+
+            await self._run_to_device_callbacks(to_device_event)
 
         self._replace_decrypted_to_device(decrypted_to_device, response)
 
@@ -360,6 +370,12 @@ class AsyncClient(Client):
         if self.olm:
             await self._handle_expired_verifications()
             self._handle_olm_events(response)
+            await self._collect_key_requests()
+
+    async def _collect_key_requests(self):
+        events = self.olm.collect_key_requests()
+        for event in events:
+            await self._run_to_device_callbacks(event)
 
     async def receive_response(self, response):
         """Receive a Matrix Response and change the client state accordingly.
@@ -612,9 +628,9 @@ class AsyncClient(Client):
                 if self.should_query_keys:
                     tasks.append(asyncio.ensure_future(self.keys_query()))
 
-                if self.should_unwedge_sessions:
+                if self.should_claim_keys:
                     tasks.append(asyncio.ensure_future(
-                        self.keys_claim(self.get_wedged_sessions())
+                        self.keys_claim(self.get_users_for_key_claiming())
                     ))
 
                 for response in asyncio.as_completed(tasks):

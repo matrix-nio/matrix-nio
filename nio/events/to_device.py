@@ -82,7 +82,7 @@ class ToDeviceEvent(object):
         elif event_dict["type"] == "m.key.verification.cancel":
             return KeyVerificationCancel.from_dict(event_dict)
         elif event_dict["type"] == "m.room_key_request":
-            return RoomKeyRequest.from_dict(event_dict)
+            return BaseRoomKeyRequest.parse_event(event_dict)
 
         return None
 
@@ -126,17 +126,29 @@ class ToDeviceEvent(object):
 
 
 @attr.s
-class RoomKeyRequest(ToDeviceEvent):
-    """Event that is requesting a room key from us.
-
-    Attributes:
-        action (str): The action that the request is performing. Can be
-            'request' meaning that the user started a key request from us or
-            'cancel_request' meaning that any previously received request
-            should be discarded.
+class BaseRoomKeyRequest(ToDeviceEvent):
+    """Base class for room key requests.
         requesting_device_id (str): The id of the device that is requesting the
             key.
         request_id (str): A unique identifier for the request.
+    """
+    requesting_device_id = attr.ib(type=str)
+    request_id = attr.ib(type=str)
+
+    @classmethod
+    @verify(Schemas.room_key_request_cancel)
+    def parse_event(cls, event_dict):
+        if event_dict["content"]["action"] == "request":
+            return RoomKeyRequest.from_dict(event_dict)
+
+        return RoomKeyRequestCancellation.from_dict(event_dict)
+
+
+@attr.s
+class RoomKeyRequest(BaseRoomKeyRequest):
+    """Event signaling that a room key was requested from us.
+
+    Attributes:
         algorithm (str, optional): The encryption algorithm the requested key
             in this event is to be used with. Will be set only if the action is
             'request'.
@@ -148,31 +160,43 @@ class RoomKeyRequest(ToDeviceEvent):
         be set only if the action is 'request'.
     """
 
-    action = attr.ib(type=str)
-    requesting_device_id = attr.ib(type=str)
-    request_id = attr.ib(type=str)
-
-    algorithm = attr.ib(type=Optional[str])
-    room_id = attr.ib(type=Optional[str])
-    sender_key = attr.ib(type=Optional[str])
-    session_id = attr.ib(type=Optional[str])
+    algorithm = attr.ib(type=str)
+    room_id = attr.ib(type=str)
+    sender_key = attr.ib(type=str)
+    session_id = attr.ib(type=str)
 
     @classmethod
     @verify(Schemas.room_key_request)
     def from_dict(cls, parsed_dict):
         content = parsed_dict["content"]
-        body = content.get("body", {})
+        body = content["body"]
 
         return cls(
             parsed_dict,
             parsed_dict["sender"],
-            content["action"],
             content["requesting_device_id"],
             content["request_id"],
-            body.get("algorithm"),
-            body.get("room_id"),
-            body.get("sender_key"),
-            body.get("session_id"),
+            body["algorithm"],
+            body["room_id"],
+            body["sender_key"],
+            body["session_id"],
+        )
+
+
+@attr.s
+class RoomKeyRequestCancellation(BaseRoomKeyRequest):
+    """Event signaling that a previous room key request was canceled."""
+
+    @classmethod
+    @verify(Schemas.room_key_request_cancel)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+
+        return cls(
+            parsed_dict,
+            parsed_dict["sender"],
+            content["requesting_device_id"],
+            content["request_id"],
         )
 
 

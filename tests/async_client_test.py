@@ -1,6 +1,7 @@
 import json
 import sys
 import re
+import time
 from os import path
 from datetime import datetime, timedelta
 
@@ -22,7 +23,7 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, ErrorResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
-                 Timeline, UploadResponse)
+                 Timeline, UploadResponse, RoomMessageText)
 from nio.api import ResizingMethod
 from nio.crypto import OlmDevice, Session
 
@@ -44,6 +45,17 @@ class TestClass(object):
     def _load_bytes(filename):
         with open(filename, "rb") as f:
             return f.read()
+
+    @staticmethod
+    def olm_message_to_event(message_dict, recipient, sender, type="m.room.encrypted"):
+        olm_content = message_dict["messages"][recipient.user_id][recipient.device_id]
+
+        return {
+            "sender": sender.user_id,
+            "type": type,
+            "content": olm_content,
+        }
+
 
     @staticmethod
     def _load_response(filename):
@@ -217,6 +229,25 @@ class TestClass(object):
             response["next_batch"] += sync_token
 
         return response
+
+    def sync_with_room_event(self, event, sync_token=None):
+        response = self.empty_sync
+        response["rooms"]["join"][TEST_ROOM_ID] = {
+            "timeline": {
+                "events": [event],
+                "limited": False,
+                "prev_batch": "12345"
+            },
+            "state": {"events": []},
+            "ephemeral": {"events": []},
+            "account_data": {"events": []}
+        }
+
+        if sync_token:
+            response["next_batch"] += sync_token
+
+        return response
+
 
     @property
     def limit_exceeded_error_response(self):
@@ -1061,15 +1092,6 @@ class TestClass(object):
     async def test_session_unwedging(self, async_client_pair, aioresponse, loop):
         alice, bob = async_client_pair
 
-        def olm_message_to_event(message_dict, recipient, sender):
-            olm_content = message_dict["messages"][recipient.user_id][recipient.device_id]
-
-            return {
-                "sender": sender.user_id,
-                "type": "m.room.encrypted",
-                "content": olm_content,
-            }
-
         assert alice.logged_in
         assert bob.logged_in
 
@@ -1156,7 +1178,7 @@ class TestClass(object):
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                olm_message_to_event(to_device_for_alice, alice, bob)
+                self.olm_message_to_event(to_device_for_alice, alice, bob)
             )
         )
 
@@ -1188,7 +1210,7 @@ class TestClass(object):
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                olm_message_to_event(to_device_for_bob, bob, alice)
+                self.olm_message_to_event(to_device_for_bob, bob, alice)
             )
         )
 
@@ -1229,12 +1251,12 @@ class TestClass(object):
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                olm_message_to_event(to_device_for_bob, bob, alice),
+                self.olm_message_to_event(to_device_for_bob, bob, alice),
                 "2"
             )
         )
         assert not bob.outgoing_to_device_messages
-        assert not bob.should_unwedge_sessions
+        assert not bob.should_claim_keys
 
         # Set the creation time to be older than an hour, otherwise we will not
         # be able to unwedge the session.
@@ -1275,9 +1297,9 @@ class TestClass(object):
 
         assert not bob.outgoing_to_device_messages
 
-        assert bob.should_unwedge_sessions
+        assert bob.should_claim_keys
 
-        await bob.keys_claim(bob.get_wedged_sessions())
+        await bob.keys_claim(bob.get_users_for_key_claiming())
 
         # Now that bob created a new session, there should be a to-device
         # message waiting to be sent out to Alice
@@ -1293,7 +1315,7 @@ class TestClass(object):
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                olm_message_to_event(to_device_for_alice, alice, bob),
+                self.olm_message_to_event(to_device_for_alice, alice, bob),
                 "3"
             )
         )
@@ -1312,3 +1334,461 @@ class TestClass(object):
 
         assert new_session != wedged_session
         assert new_session.use_time > wedged_session.use_time
+
+    async def test_key_sharing(self, async_client_pair, aioresponse, loop):
+        alice, bob = async_client_pair
+
+        assert alice.logged_in
+        assert bob.logged_in
+
+        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.olm.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.olm.account.identity_keys
+        )
+
+        alice.olm.device_store.add(bob_device)
+        bob.olm.device_store.add(alice_device)
+
+        alice_to_share = alice.olm.share_keys()
+        alice_one_time = list(alice_to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                alice.user_id: {
+                    alice.device_id: {alice_one_time[0]: alice_one_time[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        to_device_for_alice = None
+        to_device_for_bob = None
+
+        sync_url = re.compile(
+            r"^https://example\.org/_matrix/client/r0/sync\?access_token=.*"
+        )
+
+        bob_to_device_url = re.compile(
+            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.room.encrypted/[0-9a-fA-f-]*\?access_token=bob_1234",
+        )
+
+        alice_to_device_url = re.compile(
+            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.room[\._][_a-z]+/[0-9a-fA-f-]*\?access_token=alice_1234",
+        )
+
+        def alice_to_device_cb(url, data, **kwargs):
+            nonlocal to_device_for_alice
+            to_device_for_alice = json.loads(data)
+            return CallbackResult(status=200, payload={})
+
+        def bob_to_device_cb(url, data, **kwargs):
+            nonlocal to_device_for_bob
+            to_device_for_bob = json.loads(data)
+            return CallbackResult(status=200, payload={})
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
+            status=200,
+            payload=key_claim_dict
+        )
+
+        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb,
+                        repeat=True)
+        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb,
+                        repeat=True)
+
+        session = alice.olm.session_store.get(bob_device.curve25519)
+        assert not session
+
+        # Share a group session for the room we're sharing with Alice.
+        # This implicitly claims one-time keys since we don't have an Olm
+        # session with Alice
+        response = await bob.share_group_session(TEST_ROOM_ID, "1", True)
+        assert isinstance(response, ShareGroupSessionResponse)
+
+        # Check that the group session is indeed marked as shared.
+        group_session = bob.olm.outbound_group_sessions[TEST_ROOM_ID]
+        assert group_session.shared
+        assert to_device_for_alice
+        to_device_for_alice = None
+        to_device_for_bob = None
+
+        # We deliberatly don't share the message with alice
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "It's a secret to everybody."
+            }
+        }
+        encrypted_content = bob.olm.group_encrypt(TEST_ROOM_ID, message)
+
+        encrypted_message = {
+            "event_id": "!event_id",
+            "type": "m.room.encrypted",
+            "sender": bob.user_id,
+            "origin_server_ts": int(time.time()),
+            "content": encrypted_content,
+            "room_id": TEST_ROOM_ID
+        }
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_room_event(encrypted_message, "3")
+        )
+
+        response = await alice.sync()
+
+        assert isinstance(response, SyncResponse)
+
+        # Alice received the event but wasn't able to decrypt it.
+        event = response.rooms.join[TEST_ROOM_ID].timeline.events[0]
+        assert isinstance(event, MegolmEvent)
+        assert not to_device_for_bob
+
+        # Let us request the key from bob again.
+        await alice.request_room_key(event)
+
+        # Check that bob will receive a message.
+        assert to_device_for_bob
+
+        # The client doesn't for now know how to re-request keys from bob, so
+        # modify the message here.
+        to_device_for_bob = {
+            "messages": {
+                bob_device.user_id: {
+                    bob_device.device_id: to_device_for_bob["messages"][alice_device.user_id]["*"]
+                }
+            }
+        }
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.room_key_request"),
+                "4"
+            )
+        )
+
+        assert not bob.outgoing_to_device_messages
+
+        # Bob syncs and receives a message.
+        await bob.sync()
+
+        # The key is now queued up for alice.
+        assert bob.outgoing_to_device_messages
+
+        assert not to_device_for_alice
+        # Let's send out that message.
+        await bob.send_to_device_messages()
+        assert to_device_for_alice
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_alice, alice, bob),
+                "5"
+            )
+        )
+
+        # Alice syncs and receives the forwarded key.
+        await alice.sync()
+
+        # Alice tries to decrypt the previous event again.
+        decrypted_event = alice.decrypt_event(event)
+        assert isinstance(decrypted_event, RoomMessageText)
+        assert decrypted_event.body == "It's a secret to everybody."
+
+    async def test_sas_verification(self, async_client_pair, aioresponse, loop):
+        alice, bob = async_client_pair
+
+        assert alice.logged_in
+        assert bob.logged_in
+
+        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.olm.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.olm.account.identity_keys
+        )
+
+        alice.olm.device_store.add(bob_device)
+        bob.olm.device_store.add(alice_device)
+
+        alice_to_share = alice.olm.share_keys()
+        alice_one_time = list(alice_to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                alice.user_id: {
+                    alice.device_id: {alice_one_time[0]: alice_one_time[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        to_device_for_alice = None
+        to_device_for_bob = None
+
+        sync_url = re.compile(
+            r"^https://example\.org/_matrix/client/r0/sync\?access_token=.*"
+        )
+
+        bob_to_device_url = re.compile(
+            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.(room|key)[a-z_\.]+/[0-9a-fA-f-]*\?access_token=bob_1234",
+        )
+
+        alice_to_device_url = re.compile(
+            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.(room|key)[a-z_\.]+/[0-9a-fA-f-]*\?access_token=alice_1234",
+        )
+
+        def alice_to_device_cb(url, data, **kwargs):
+            nonlocal to_device_for_alice
+            to_device_for_alice = json.loads(data)
+            return CallbackResult(status=200, payload={})
+
+        def bob_to_device_cb(url, data, **kwargs):
+            nonlocal to_device_for_bob
+            to_device_for_bob = json.loads(data)
+            return CallbackResult(status=200, payload={})
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
+            status=200,
+            payload=key_claim_dict
+        )
+
+        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb,
+                        repeat=True)
+        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb,
+                        repeat=True)
+
+        session = alice.olm.session_store.get(bob_device.curve25519)
+        assert not session
+
+        # Share a group session for the room we're sharing with Alice.
+        # This implicitly claims one-time keys since we don't have an Olm
+        # session with Alice
+        with pytest.raises(OlmTrustError):
+            response = await bob.share_group_session(TEST_ROOM_ID, "1")
+
+        to_device_for_alice = None
+
+        await bob.start_key_verification(alice_device)
+
+        assert to_device_for_alice
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_alice, alice, bob, "m.key.verification.start"),
+                "4"
+            )
+        )
+        assert not alice.key_verifications
+        await alice.sync()
+        assert alice.key_verifications
+
+        assert not to_device_for_bob
+
+        await alice.accept_key_verification(list(alice.key_verifications.keys())[0])
+
+        assert to_device_for_bob
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.key.verification.accept"),
+                "5"
+            )
+        )
+
+        to_device_for_alice = None
+
+        assert not bob.outgoing_to_device_messages
+        await bob.sync()
+        assert bob.outgoing_to_device_messages
+
+        await bob.send_to_device_messages()
+        assert to_device_for_alice
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_alice, alice, bob, "m.key.verification.key"),
+                "6"
+            )
+        )
+
+        assert not bob.outgoing_to_device_messages
+        await alice.sync()
+        assert alice.outgoing_to_device_messages
+        await alice.send_to_device_messages()
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.key.verification.key"),
+                "7"
+            )
+        )
+
+        await bob.sync()
+
+        alice_sas = list(alice.key_verifications.values())[0]
+        bob_sas = list(bob.key_verifications.values())[0]
+
+        assert alice_sas.get_emoji() == bob_sas.get_emoji()
+
+        assert not alice_device.verified
+        assert not bob_device.verified
+
+        await alice.confirm_short_auth_string(alice_sas.transaction_id)
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.key.verification.mac"),
+                "8"
+            )
+        )
+
+        await bob.sync()
+
+        await bob.confirm_short_auth_string(bob_sas.transaction_id)
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_alice, alice, bob, "m.key.verification.mac"),
+                "8"
+            )
+        )
+
+        await alice.sync()
+
+        assert alice_device.verified
+        assert bob_device.verified
+
+        await bob.share_group_session(TEST_ROOM_ID, "1")
+
+        # Check that the group session is indeed marked as shared.
+        group_session = bob.olm.outbound_group_sessions[TEST_ROOM_ID]
+        assert group_session.shared
+        assert to_device_for_alice
+        to_device_for_alice = None
+        to_device_for_bob = None
+
+        # We deliberatly don't share the message with alice
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "It's a secret to everybody."
+            }
+        }
+        encrypted_content = bob.olm.group_encrypt(TEST_ROOM_ID, message)
+
+        encrypted_message = {
+            "event_id": "!event_id",
+            "type": "m.room.encrypted",
+            "sender": bob.user_id,
+            "origin_server_ts": int(time.time()),
+            "content": encrypted_content,
+            "room_id": TEST_ROOM_ID
+        }
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_room_event(encrypted_message, "3")
+        )
+
+        response = await alice.sync()
+
+        assert isinstance(response, SyncResponse)
+
+        # Alice received the event but wasn't able to decrypt it.
+        event = response.rooms.join[TEST_ROOM_ID].timeline.events[0]
+        assert isinstance(event, MegolmEvent)
+        assert not to_device_for_bob
+
+        # Let us request the key from bob again.
+        await alice.request_room_key(event)
+
+        # Check that bob will receive a message.
+        assert to_device_for_bob
+
+        # The client doesn't for now know how to re-request keys from bob, so
+        # modify the message here.
+        to_device_for_bob = {
+            "messages": {
+                bob_device.user_id: {
+                    bob_device.device_id: to_device_for_bob["messages"][alice_device.user_id]["*"]
+                }
+            }
+        }
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.room_key_request"),
+                "4"
+            )
+        )
+
+        assert not bob.outgoing_to_device_messages
+
+        # Bob syncs and receives a message.
+        await bob.sync()
+
+        # The key is now queued up for alice.
+        assert bob.outgoing_to_device_messages
+
+        assert not to_device_for_alice
+        # Let's send out that message.
+        await bob.send_to_device_messages()
+        assert to_device_for_alice
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_alice, alice, bob),
+                "5"
+            )
+        )
+
+        # Alice syncs and receives the forwarded key.
+        await alice.sync()
+
+        # Alice tries to decrypt the previous event again.
+        decrypted_event = alice.decrypt_event(event)
+        assert isinstance(decrypted_event, RoomMessageText)
+        assert decrypted_event.body == "It's a secret to everybody."

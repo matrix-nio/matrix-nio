@@ -14,7 +14,8 @@ from nio.crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
                         SessionStore, Session)
 from nio.events import (ForwardedRoomKeyEvent, MegolmEvent, OlmEvent,
                         RoomKeyEvent, RoomMessageText, UnknownBadEvent,
-                        ToDeviceEvent, DummyEvent, RoomKeyRequest)
+                        ToDeviceEvent, DummyEvent, RoomKeyRequest,
+                        RoomKeyRequestCancellation)
 from nio.exceptions import EncryptionError, GroupEncryptionError, OlmTrustError
 from nio.responses import (KeysClaimResponse, KeysQueryResponse,
                            KeysUploadResponse)
@@ -1182,6 +1183,7 @@ class TestClass(object):
 
         session = bob.outbound_group_sessions[TEST_ROOM]
         session.shared = True
+        session.users_shared_with.add((alice.user_id, alice.device_id))
 
         message = {
             "type": "m.room.message",
@@ -1206,21 +1208,25 @@ class TestClass(object):
         decrypted_event = alice.decrypt_event(event)
         assert decrypted_event is None
 
-        # Let us create a RoomKeyRequest.
+        key_request = event.as_key_request(
+            bob.user_id,
+            alice.device_id,
+            event.session_id,
+        )
+
+        outgoing_key_request = OutgoingKeyRequest(
+            event.session_id,
+            event.session_id,
+            TEST_ROOM,
+            event.algorithm
+        )
+
+        alice.outgoing_key_requests[event.session_id] = outgoing_key_request
+
         key_request = {
             "sender": alice.user_id,
-            "content": {
-                "action": "request",
-                "body": {
-                    "algorithm": "m.megolm.v1.aes-sha2",
-                    "room_id": TEST_ROOM,
-                    "sender_key": event.sender_key,
-                    "session_id": event.session_id,
-                },
-                "request_id": "!12345",
-                "requesting_device_id": alice.device_id
-            },
-            "type": "m.room_key_request"
+            "type": "m.room_key_request",
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
         }
 
         key_request_event = RoomKeyRequest.from_dict(key_request)
@@ -1233,3 +1239,715 @@ class TestClass(object):
         bob.handle_to_device_event(key_request_event)
 
         assert key_request_event in bob.received_key_requests.values()
+
+        # Convert the key request event into a to-device message.
+        bob.collect_key_requests()
+        # Check that the message is now queued.
+        assert bob.outgoing_to_device_messages
+
+        to_device = bob.outgoing_to_device_messages[0]
+
+        # Let us now share the to-device message with Alice
+        olm_message = self.olm_message_to_event(to_device.as_dict(), alice,
+                                                bob)
+        forwarded_key_event = ToDeviceEvent.parse_event(olm_message)
+
+        assert isinstance(forwarded_key_event, OlmEvent)
+
+        # Decrypt the olm event and check that we received a forwarded room
+        # key.
+        decrypted_event = alice.handle_to_device_event(forwarded_key_event)
+        assert isinstance(decrypted_event, ForwardedRoomKeyEvent)
+
+        # Alice tries to decrypt the previous event again.
+        decrypted_event = alice.decrypt_event(event)
+        assert isinstance(decrypted_event, RoomMessageText)
+        assert decrypted_event.body == "It's a secret to everybody."
+
+    def test_key_forwards_with_ourselves(self, olm_account, bob_account):
+        alice = olm_account
+        bob = bob_account
+        bob.user_id = alice.user_id
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.account.identity_keys
+        )
+
+        alice.device_store.add(bob_device)
+        bob.device_store.add(alice_device)
+        bob.verify_device(alice_device)
+
+        bob.account.generate_one_time_keys(1)
+        one_time = list(bob.account.one_time_keys["curve25519"].values())[0]
+        bob.account.mark_keys_as_published()
+
+        alice.create_session(one_time, bob_device.curve25519)
+
+        _, to_device = alice.share_group_session(
+            TEST_ROOM,
+            [bob.user_id],
+            ignore_unverified_devices=True
+        )
+
+        # Setup a working olm session by sharing a key from alice to bob
+        olm_message = self.olm_message_to_event(to_device, bob, alice)
+        event = ToDeviceEvent.parse_event(olm_message)
+        bob.decrypt_event(event)
+
+        # Bob shares a room session as well but alice never receives the
+        # session.
+        bob.share_group_session(
+            TEST_ROOM,
+            [alice.user_id],
+            ignore_unverified_devices=True
+        )
+
+        session = bob.outbound_group_sessions[TEST_ROOM]
+        session.shared = True
+        session.users_shared_with.add((alice.user_id, alice.device_id))
+
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "It's a secret to everybody."
+            }
+        }
+        encrypted_content = bob.group_encrypt(TEST_ROOM, message)
+
+        encrypted_message = {
+            "event_id": "!event_id",
+            "type": "m.room.encrypted",
+            "sender": bob.user_id,
+            "origin_server_ts": int(time.time()),
+            "content": encrypted_content,
+            "room_id": TEST_ROOM
+        }
+        event = MegolmEvent.from_dict(encrypted_message)
+
+        # Alice tries to decrypt the event but can't.
+        decrypted_event = alice.decrypt_event(event)
+        assert decrypted_event is None
+
+        key_request = event.as_key_request(
+            bob.user_id,
+            alice.device_id,
+            event.session_id,
+        )
+
+        outgoing_key_request = OutgoingKeyRequest(
+            event.session_id,
+            event.session_id,
+            TEST_ROOM,
+            event.algorithm
+        )
+
+        alice.outgoing_key_requests[event.session_id] = outgoing_key_request
+
+        key_request = {
+            "sender": alice.user_id,
+            "type": "m.room_key_request",
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
+        }
+
+        key_request_event = RoomKeyRequest.from_dict(key_request)
+
+        assert isinstance(key_request_event, RoomKeyRequest)
+
+        assert not bob.outgoing_to_device_messages
+
+        # Bob receives the event and queues it up for collection.
+        bob.handle_to_device_event(key_request_event)
+
+        assert key_request_event in bob.received_key_requests.values()
+
+        # Convert the key request event into a to-device message.
+        bob.collect_key_requests()
+        # Check that the message is now queued.
+        assert bob.outgoing_to_device_messages
+
+        to_device = bob.outgoing_to_device_messages[0]
+
+        # Let us now share the to-device message with Alice
+        olm_message = self.olm_message_to_event(to_device.as_dict(), alice,
+                                                bob)
+        forwarded_key_event = ToDeviceEvent.parse_event(olm_message)
+
+        assert isinstance(forwarded_key_event, OlmEvent)
+
+        # Decrypt the olm event and check that we received a forwarded room
+        # key.
+        decrypted_event = alice.handle_to_device_event(forwarded_key_event)
+        assert isinstance(decrypted_event, ForwardedRoomKeyEvent)
+
+        # Alice tries to decrypt the previous event again.
+        decrypted_event = alice.decrypt_event(event)
+        assert isinstance(decrypted_event, RoomMessageText)
+        assert decrypted_event.body == "It's a secret to everybody."
+
+    def test_key_forwards_missing_session(self, olm_account, bob_account):
+        alice = olm_account
+        bob = bob_account
+        bob.user_id = alice.user_id
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.account.identity_keys
+        )
+
+        alice.device_store.add(bob_device)
+        bob.device_store.add(alice_device)
+        bob.verify_device(alice_device)
+
+        bob.create_outbound_group_session(TEST_ROOM)
+        session = bob.outbound_group_sessions[TEST_ROOM]
+        session.shared = True
+
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "It's a secret to everybody."
+            }
+        }
+        encrypted_content = bob.group_encrypt(TEST_ROOM, message)
+
+        encrypted_message = {
+            "event_id": "!event_id",
+            "type": "m.room.encrypted",
+            "sender": bob.user_id,
+            "origin_server_ts": int(time.time()),
+            "content": encrypted_content,
+            "room_id": TEST_ROOM
+        }
+        event = MegolmEvent.from_dict(encrypted_message)
+
+        # Alice tries to decrypt the event but can't.
+        decrypted_event = alice.decrypt_event(event)
+        assert decrypted_event is None
+
+        key_request = event.as_key_request(
+            bob.user_id,
+            alice.device_id,
+            event.session_id,
+        )
+
+        outgoing_key_request = OutgoingKeyRequest(
+            event.session_id,
+            event.session_id,
+            TEST_ROOM,
+            event.algorithm
+        )
+
+        alice.outgoing_key_requests[event.session_id] = outgoing_key_request
+
+        key_request = {
+            "sender": alice.user_id,
+            "type": "m.room_key_request",
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
+        }
+
+        key_request_event = RoomKeyRequest.from_dict(key_request)
+
+        assert isinstance(key_request_event, RoomKeyRequest)
+
+        assert not bob.outgoing_to_device_messages
+
+        # Bob receives the event and queues it up for collection.
+        bob.handle_to_device_event(key_request_event)
+
+        assert key_request_event in bob.received_key_requests.values()
+
+        # Convert the key request event into a to-device message.
+        bob.collect_key_requests()
+        # Check that the message is not queued. We are missing a Olm session.
+        assert not bob.outgoing_to_device_messages
+
+        assert alice_device in bob.key_request_devices_no_session
+        assert (
+            key_request_event in
+            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
+        )
+
+        # Let us do a key claim request.
+        to_share = alice.share_keys()
+        one_time_key = list(to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                alice.user_id: {
+                    alice.device_id: {one_time_key[0]: one_time_key[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        response = KeysClaimResponse.from_dict(key_claim_dict)
+        bob.handle_response(response)
+
+        # We got a session now, the device is not waiting for a session anymore
+        assert alice_device not in bob.key_request_devices_no_session
+        # The key request is neither waiting for a session anymore.
+        assert (
+            key_request_event not in
+            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
+        )
+        # The key request is now waiting to be collected again.
+        assert key_request_event in bob.received_key_requests.values()
+
+        # Let us collect it now.
+        bob.collect_key_requests()
+
+        # We found a to-device message now.
+        to_device = bob.outgoing_to_device_messages[0]
+
+        # Let us now share the to-device message with Alice
+        olm_message = self.olm_message_to_event(to_device.as_dict(), alice,
+                                                bob)
+        forwarded_key_event = ToDeviceEvent.parse_event(olm_message)
+
+        assert isinstance(forwarded_key_event, OlmEvent)
+
+        # Decrypt the olm event and check that we received a forwarded room
+        # key.
+        decrypted_event = alice.handle_to_device_event(forwarded_key_event)
+        assert isinstance(decrypted_event, ForwardedRoomKeyEvent)
+
+        # Alice tries to decrypt the previous event again.
+        decrypted_event = alice.decrypt_event(event)
+        assert isinstance(decrypted_event, RoomMessageText)
+        assert decrypted_event.body == "It's a secret to everybody."
+
+    def test_key_forward_untrusted_device(self, olm_account, bob_account):
+        alice = olm_account
+        bob = bob_account
+        bob.user_id = alice.user_id
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.account.identity_keys
+        )
+
+        alice.device_store.add(bob_device)
+        bob.device_store.add(alice_device)
+
+        bob.account.generate_one_time_keys(1)
+        one_time = list(bob.account.one_time_keys["curve25519"].values())[0]
+        bob.account.mark_keys_as_published()
+
+        alice.create_session(one_time, bob_device.curve25519)
+
+        _, to_device = alice.share_group_session(
+            TEST_ROOM,
+            [bob.user_id],
+            ignore_unverified_devices=True
+        )
+
+        # Setup a working olm session by sharing a key from alice to bob
+        olm_message = self.olm_message_to_event(to_device, bob, alice)
+        event = ToDeviceEvent.parse_event(olm_message)
+        bob.decrypt_event(event)
+
+        # Bob shares a room session as well but alice never receives the
+        # session.
+        bob.share_group_session(
+            TEST_ROOM,
+            [alice.user_id],
+            ignore_unverified_devices=True
+        )
+
+        session = bob.outbound_group_sessions[TEST_ROOM]
+        session.shared = True
+        session.users_shared_with.add((alice.user_id, alice.device_id))
+
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "It's a secret to everybody."
+            }
+        }
+        encrypted_content = bob.group_encrypt(TEST_ROOM, message)
+
+        encrypted_message = {
+            "event_id": "!event_id",
+            "type": "m.room.encrypted",
+            "sender": bob.user_id,
+            "origin_server_ts": int(time.time()),
+            "content": encrypted_content,
+            "room_id": TEST_ROOM
+        }
+        event = MegolmEvent.from_dict(encrypted_message)
+
+        # Alice tries to decrypt the event but can't.
+        decrypted_event = alice.decrypt_event(event)
+        assert decrypted_event is None
+
+        key_request = event.as_key_request(
+            bob.user_id,
+            alice.device_id,
+            event.session_id,
+        )
+
+        outgoing_key_request = OutgoingKeyRequest(
+            event.session_id,
+            event.session_id,
+            TEST_ROOM,
+            event.algorithm
+        )
+
+        alice.outgoing_key_requests[event.session_id] = outgoing_key_request
+
+        key_request = {
+            "sender": alice.user_id,
+            "type": "m.room_key_request",
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
+        }
+
+        key_request_event = RoomKeyRequest.from_dict(key_request)
+
+        assert isinstance(key_request_event, RoomKeyRequest)
+
+        assert not bob.outgoing_to_device_messages
+
+        # Bob receives the event and queues it up for collection.
+        bob.handle_to_device_event(key_request_event)
+
+        assert key_request_event in bob.received_key_requests.values()
+
+        # Convert the key request event into a to-device message.
+        collected_requests = bob.collect_key_requests()
+        # The message could not be queued because the device is not trusted
+        assert not bob.outgoing_to_device_messages
+        assert key_request_event in bob.key_request_from_untrusted.values()
+        assert key_request_event in collected_requests
+
+        # Let us try to continue the key share without verifying the device.
+        assert not bob.continue_key_share(key_request_event)
+
+        # Let us now verify the device and tell our Olm machine that we should
+        # resume.
+        bob.verify_device(alice_device)
+        assert bob.continue_key_share(key_request_event)
+        assert key_request_event not in bob.key_request_from_untrusted.values()
+
+        # There is now a key queued up to be sent as a to-device message.
+        assert bob.outgoing_to_device_messages
+        to_device = bob.outgoing_to_device_messages[0]
+
+        # Let us now share the to-device message with Alice
+        olm_message = self.olm_message_to_event(to_device.as_dict(), alice,
+                                                bob)
+        forwarded_key_event = ToDeviceEvent.parse_event(olm_message)
+
+        assert isinstance(forwarded_key_event, OlmEvent)
+
+        # Decrypt the olm event and check that we received a forwarded room
+        # key.
+        decrypted_event = alice.handle_to_device_event(forwarded_key_event)
+        assert isinstance(decrypted_event, ForwardedRoomKeyEvent)
+
+        # Alice tries to decrypt the previous event again.
+        decrypted_event = alice.decrypt_event(event)
+        assert isinstance(decrypted_event, RoomMessageText)
+        assert decrypted_event.body == "It's a secret to everybody."
+
+    def test_key_forward_cancelling(self, olm_account, bob_account):
+        alice = olm_account
+        bob = bob_account
+        bob.user_id = alice.user_id
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.account.identity_keys
+        )
+
+        alice.device_store.add(bob_device)
+        bob.device_store.add(alice_device)
+        # bob.verify_device(alice_device)
+
+        bob.create_outbound_group_session(TEST_ROOM)
+        session = bob.outbound_group_sessions[TEST_ROOM]
+        session.shared = True
+
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "It's a secret to everybody."
+            }
+        }
+        encrypted_content = bob.group_encrypt(TEST_ROOM, message)
+
+        encrypted_message = {
+            "event_id": "!event_id",
+            "type": "m.room.encrypted",
+            "sender": bob.user_id,
+            "origin_server_ts": int(time.time()),
+            "content": encrypted_content,
+            "room_id": TEST_ROOM
+        }
+        event = MegolmEvent.from_dict(encrypted_message)
+
+        # Alice tries to decrypt the event but can't.
+        decrypted_event = alice.decrypt_event(event)
+        assert decrypted_event is None
+
+        key_request = event.as_key_request(
+            bob.user_id,
+            alice.device_id,
+            event.session_id,
+        )
+
+        outgoing_key_request = OutgoingKeyRequest(
+            event.session_id,
+            event.session_id,
+            TEST_ROOM,
+            event.algorithm
+        )
+
+        alice.outgoing_key_requests[event.session_id] = outgoing_key_request
+
+        key_request = {
+            "sender": alice.user_id,
+            "type": "m.room_key_request",
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
+        }
+
+        key_request_event = RoomKeyRequest.from_dict(key_request)
+
+        assert isinstance(key_request_event, RoomKeyRequest)
+
+        assert not bob.outgoing_to_device_messages
+
+        cancellation = RoomKeyRequestCancellation(
+            {},
+            key_request_event.sender,
+            key_request_event.requesting_device_id,
+            key_request_event.request_id,
+        )
+
+        # Bob receives the event and queues it up for collection.
+        bob.handle_to_device_event(key_request_event)
+        assert key_request_event in bob.received_key_requests.values()
+        # Cancel the request immediatelly.
+        bob.handle_to_device_event(cancellation)
+        assert key_request_event not in bob.received_key_requests.values()
+
+        # Bob receives the event again
+        bob.handle_to_device_event(key_request_event)
+
+        # This time we collect the event.
+        assert cancellation not in bob.collect_key_requests()
+        # Check that the message is not queued. We are missing a Olm session.
+        assert not bob.outgoing_to_device_messages
+
+        assert alice_device in bob.key_request_devices_no_session
+        assert (
+            key_request_event in
+            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
+        )
+
+        # We cancel again.
+        bob.handle_to_device_event(cancellation)
+        assert cancellation not in bob.collect_key_requests()
+
+        assert alice_device not in bob.key_request_devices_no_session
+        assert (
+            key_request_event not in
+            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
+        )
+
+        # Let us do another round
+        bob.handle_to_device_event(key_request_event)
+        bob.collect_key_requests()
+
+        # Let us do a key claim request.
+        to_share = alice.share_keys()
+        one_time_key = list(to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                alice.user_id: {
+                    alice.device_id: {one_time_key[0]: one_time_key[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        response = KeysClaimResponse.from_dict(key_claim_dict)
+        bob.handle_response(response)
+
+        # We got a session now, the device is not waiting for a session anymore
+        assert alice_device not in bob.key_request_devices_no_session
+        # The key request is neither waiting for a session anymore.
+        assert (
+            key_request_event not in
+            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
+        )
+        # The key request is now waiting to be collected again.
+        assert key_request_event in bob.received_key_requests.values()
+
+        # Let us collect it now.
+        bob.collect_key_requests()
+
+        # Still no, device isn't verified.
+        assert not bob.outgoing_to_device_messages
+        assert key_request_event in bob.key_request_from_untrusted.values()
+
+        # Cancel again, now we're going to get the cancellation event in the
+        # collect output
+        bob.handle_to_device_event(cancellation)
+        assert cancellation in bob.collect_key_requests()
+
+        # Let us finally check out if bob can also reject the sharing of the
+        # key.
+        bob.handle_to_device_event(key_request_event)
+        event_for_user = bob.collect_key_requests()[0]
+        assert not bob.outgoing_to_device_messages
+        assert key_request_event in bob.key_request_from_untrusted.values()
+
+        bob.cancel_key_share(event_for_user)
+        assert key_request_event not in bob.key_request_from_untrusted.values()
+
+    def test_invalid_key_requests(self, olm_account, bob_account):
+        alice = olm_account
+        bob = bob_account
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.account.identity_keys
+        )
+
+        alice.device_store.add(bob_device)
+        bob.device_store.add(alice_device)
+        # bob.verify_device(alice_device)
+
+        bob.create_outbound_group_session(TEST_ROOM)
+        session = bob.outbound_group_sessions[TEST_ROOM]
+        session.shared = True
+
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "It's a secret to everybody."
+            }
+        }
+        encrypted_content = bob.group_encrypt(TEST_ROOM, message)
+
+        encrypted_message = {
+            "event_id": "!event_id",
+            "type": "m.room.encrypted",
+            "sender": bob.user_id,
+            "origin_server_ts": int(time.time()),
+            "content": encrypted_content,
+            "room_id": TEST_ROOM
+        }
+        event = MegolmEvent.from_dict(encrypted_message)
+
+        # Alice tries to decrypt the event but can't.
+        decrypted_event = alice.decrypt_event(event)
+        assert decrypted_event is None
+
+        key_request = event.as_key_request(
+            bob.user_id,
+            alice.device_id,
+            event.session_id,
+        )
+
+        outgoing_key_request = OutgoingKeyRequest(
+            event.session_id,
+            event.session_id,
+            TEST_ROOM,
+            event.algorithm
+        )
+
+        alice.outgoing_key_requests[event.session_id] = outgoing_key_request
+
+        key_request = {
+            "sender": alice.user_id,
+            "type": "m.room_key_request",
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
+        }
+
+        key_request_event = RoomKeyRequest.from_dict(key_request)
+
+        assert isinstance(key_request_event, RoomKeyRequest)
+
+        assert not bob.outgoing_to_device_messages
+
+        key_request_event.session_id = "fake_id"
+
+        bob.handle_to_device_event(key_request_event)
+        assert key_request_event in bob.received_key_requests.values()
+        assert not bob.outgoing_to_device_messages
+        bob.collect_key_requests()
+        assert not bob.outgoing_to_device_messages
+
+        key_request_event.session_id = session.id
+        key_request_event.requesting_device_id = "FAKE_ID"
+
+        bob.handle_to_device_event(key_request_event)
+        assert key_request_event in bob.received_key_requests.values()
+        assert not bob.outgoing_to_device_messages
+        bob.collect_key_requests()
+        assert not bob.outgoing_to_device_messages
+
+        alice_device.deleted = True
+        key_request_event.requesting_device_id = alice.device_id
+
+        bob.handle_to_device_event(key_request_event)
+        assert key_request_event in bob.received_key_requests.values()
+        assert not bob.outgoing_to_device_messages
+        bob.collect_key_requests()
+        assert not bob.outgoing_to_device_messages
+
+        bob.user_id = alice.user_id
+
+        key_request_event.session_id = "fake_id"
+        bob.handle_to_device_event(key_request_event)
+        assert key_request_event in bob.received_key_requests.values()
+        assert not bob.outgoing_to_device_messages
+        bob.collect_key_requests()
+        assert not bob.outgoing_to_device_messages
+
+        key_request_event.session_id = session.id
+        key_request_event.requesting_device_id = "FAKE_ID"
+
+        bob.handle_to_device_event(key_request_event)
+        assert key_request_event in bob.received_key_requests.values()
+        assert not bob.outgoing_to_device_messages
+        bob.collect_key_requests()
+        assert not bob.outgoing_to_device_messages
