@@ -334,10 +334,14 @@ class TestClass(object):
         )
 
         resp = loop.run_until_complete(async_client.login("wordpass"))
+        assert async_client.access_token
+        assert async_client.logged_in
         resp2 = loop.run_until_complete(async_client.logout())
 
         assert isinstance(resp, LoginResponse)
         assert isinstance(resp2, LogoutResponse)
+        assert not async_client.access_token
+        assert not async_client.logged_in
 
     def test_sync(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
