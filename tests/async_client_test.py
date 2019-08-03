@@ -318,7 +318,7 @@ class TestClass(object):
         loop.run_until_complete(async_client.close())
         assert not async_client.client_session
 
-    def no_test_logout(self, async_client, aioresponse):
+    def test_logout(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
 
         aioresponse.post(
@@ -328,7 +328,7 @@ class TestClass(object):
         )
 
         aioresponse.post(
-            "https://example.org/_matrix/client/r0/logout",
+            "https://example.org/_matrix/client/r0/logout?access_token=abc123",
             status=200,
             payload=self.logout_response
         )
