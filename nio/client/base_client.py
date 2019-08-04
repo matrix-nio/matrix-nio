@@ -515,10 +515,8 @@ class Client(object):
 
     def _handle_logout(self, response):
         # type: (Union[LoginResponse, ErrorResponse]) -> None
-        if isinstance(response, ErrorResponse):
-            return
-
-        self.access_token = ""
+        if not isinstance(response, ErrorResponse):
+            self.access_token = ""
 
     @store_loaded
     def decrypt_event(
