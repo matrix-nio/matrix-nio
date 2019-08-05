@@ -25,7 +25,8 @@ import warnings
 from ..crypto import ENCRYPTION_ENABLED
 from ..events import (BadEventType, Event, KeyVerificationEvent, MegolmEvent,
                       RoomEncryptionEvent, RoomMemberEvent,
-                      ToDeviceEvent, EncryptedToDeviceEvent, RoomKeyRequest)
+                      ToDeviceEvent, EncryptedToDeviceEvent, RoomKeyRequest,
+                      RoomKeyRequestCancellation)
 from ..exceptions import LocalProtocolError, MembersSyncError
 from ..log import logger_group
 from ..responses import (ErrorResponse, JoinedMembersResponse,
@@ -565,7 +566,10 @@ class Client(object):
             # Do not pass room key request events to our user here. We don't
             # want to notify them about requests that get automatically handled
             # or canceled right away.
-            if isinstance(to_device_event, RoomKeyRequest):
+            if isinstance(
+                to_device_event,
+                (RoomKeyRequest, RoomKeyRequestCancellation)
+            ):
                 continue
 
             self._run_to_device_callbacks(to_device_event)

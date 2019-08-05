@@ -32,7 +32,7 @@ from .base_client import logged_in, store_loaded
 from ..api import Api, MessageDirection, ResizingMethod
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
-from ..events import RoomKeyRequest
+from ..events import RoomKeyRequest, RoomKeyRequestCancellation
 from ..messages import ToDeviceMessage
 from ..responses import (ErrorResponse, FileResponse,
                          JoinResponse, JoinError,
@@ -281,7 +281,10 @@ class AsyncClient(Client):
             # Do not pass room key request events to our user here. We don't
             # want to notify them about requests that get automatically handled
             # or canceled right away.
-            if isinstance(to_device_event, RoomKeyRequest):
+            if isinstance(
+                to_device_event,
+                (RoomKeyRequest, RoomKeyRequestCancellation)
+            ):
                 continue
 
             await self._run_to_device_callbacks(to_device_event)
