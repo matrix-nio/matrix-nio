@@ -1149,3 +1149,43 @@ class Client(object):
             devices[user] = {d.id: d for d in user_devices}
 
         return devices
+
+    @store_loaded
+    def continue_key_share(self, event):
+        """Continue a previously interrupted key share event.
+
+        To handle room key requests properly client users need to add a
+        callback for RoomKeyRequest:
+
+            >>> client.add_to_device_callback(callback, RoomKeyRequest)
+
+        This callback will be run only if a room key request needs user
+        interaction, that is if a room key request is comming from an untrusted
+        device.
+
+        After a user has verified the requesting device the key sharing can be
+        continued using this method:
+
+            >>> client.continue_key_share(room_key_request)
+
+        Args:
+            event (RoomKeyRequest): The event which we would like to continue.
+        """
+        assert self.olm
+        self.olm.continue_key_share(event)
+
+    @store_loaded
+    def cancel_key_share(self, event):
+        """Cancel a previously interrupted key share event.
+
+        This method is the counterpart to the `continue_key_share()` method. If
+        a user choses not to verify a device and does not want to share room
+        keys with such a device it should cancel the request with this method.
+
+            >>> client.continue_key_share(room_key_request)
+
+        Args:
+            event (RoomKeyRequest): The event which we would like to cancel.
+        """
+        assert self.olm
+        self.olm.continue_key_share(event)
