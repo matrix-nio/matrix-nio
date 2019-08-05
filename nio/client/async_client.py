@@ -155,7 +155,7 @@ class AsyncClient(Client):
             >>> login_response = loop.run_until_complete(
             >>>     client.login("hunter1")
             >>> )
-
+            >>> asyncio.run(client.sync_forever(30000))
     """
 
     def __init__(
