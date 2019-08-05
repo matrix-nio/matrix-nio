@@ -1168,6 +1168,17 @@ class Client(object):
 
             >>> client.continue_key_share(room_key_request)
 
+        Example:
+
+            # A to-device callback that verifies devices that
+            # request room keys and continue the room key sharing process.
+            def key_share_cb(event):
+                device = client.device_store[event.sender][event.requesting_device_id]
+                client.verify_device(device)
+                client.continue_key_share(event)
+
+            client.add_to_device_callback(key_share_cb)
+
         Args:
             event (RoomKeyRequest): The event which we would like to continue.
         """
