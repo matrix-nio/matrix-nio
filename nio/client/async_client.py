@@ -204,6 +204,17 @@ class AsyncClient(Client):
                 response as the argument.
             cb_filter (Type, optional): A type or a tuple of types for which
                 the callback should be called.
+
+        Example:
+
+            >>> # A callback that will be called every time our `sync_forever`
+            >>> # method succesfully syncs with the server.
+            >>> async def sync_cb(response):
+            ...    print(f"We synced, token: {response.next_batch}")
+            ...
+            >>> client.add_response_callback(sync_cb)
+            >>> await client.sync_forever(30000)
+
         """
         cb = ResponseCb(func, cb_filter)
         self.response_callbacks.append(cb)
