@@ -1176,7 +1176,6 @@ class Client(object):
             ...     device = client.device_store[event.sender][event.requesting_device_id]
             ...     client.verify_device(device)
             ...     client.continue_key_share(event)
-
             >>>   client.add_to_device_callback(key_share_cb)
 
         Args:
@@ -1193,7 +1192,7 @@ class Client(object):
         a user choses not to verify a device and does not want to share room
         keys with such a device it should cancel the request with this method.
 
-            >>> client.continue_key_share(room_key_request)
+            >>> client.cancel_key_share(room_key_request)
 
         Args:
             event (RoomKeyRequest): The event which we would like to cancel.
