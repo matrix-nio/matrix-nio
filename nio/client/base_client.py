@@ -1176,7 +1176,7 @@ class Client(object):
 
         Returns:
             list: A list of actively waiting rook key requests from the given
-                user/device combo.
+                      user/device combo.
 
         """
         assert self.olm
