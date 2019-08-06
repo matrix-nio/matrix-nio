@@ -1175,8 +1175,7 @@ class Client(object):
             >>>   client.add_to_device_callback(key_share_cb)
 
         Returns:
-            list: A list of actively waiting rook key requests from the given
-                      user/device combo.
+            list: A list of actively waiting key requests from the given user.
 
         """
         assert self.olm
