@@ -1183,6 +1183,7 @@ class Client(object):
 
     @store_loaded
     def continue_key_share(self, event):
+        # type: (RoomKeyRequest) -> bool
         """Continue a previously interrupted key share event.
 
         To handle room key requests properly client users need to add a
@@ -1199,12 +1200,15 @@ class Client(object):
 
             >>> client.continue_key_share(room_key_request)
 
-        
         Args:
             event (RoomKeyRequest): The event which we would like to continue.
+
+        Returns:
+            bool: True if the request was continued, False otherwise.
+
         """
         assert self.olm
-        self.olm.continue_key_share(event)
+        return self.olm.continue_key_share(event)
 
     @store_loaded
     def cancel_key_share(self, event):
@@ -1218,6 +1222,10 @@ class Client(object):
 
         Args:
             event (RoomKeyRequest): The event which we would like to cancel.
+
+        Returns:
+            bool: True if the request was canceled, False if no request was found.
+
         """
         assert self.olm
         self.olm.continue_key_share(event)
