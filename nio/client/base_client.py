@@ -25,7 +25,8 @@ import warnings
 from ..crypto import ENCRYPTION_ENABLED
 from ..events import (BadEventType, Event, KeyVerificationEvent, MegolmEvent,
                       RoomEncryptionEvent, RoomMemberEvent,
-                      ToDeviceEvent, EncryptedToDeviceEvent, RoomKeyRequest)
+                      ToDeviceEvent, EncryptedToDeviceEvent, RoomKeyRequest,
+                      RoomKeyRequestCancellation)
 from ..exceptions import LocalProtocolError, MembersSyncError
 from ..log import logger_group
 from ..responses import (ErrorResponse, JoinedMembersResponse,
@@ -570,7 +571,10 @@ class Client(object):
             # Do not pass room key request events to our user here. We don't
             # want to notify them about requests that get automatically handled
             # or canceled right away.
-            if isinstance(to_device_event, RoomKeyRequest):
+            if isinstance(
+                to_device_event,
+                (RoomKeyRequest, RoomKeyRequestCancellation)
+            ):
                 continue
 
             self._run_to_device_callbacks(to_device_event)
@@ -1152,3 +1156,83 @@ class Client(object):
             devices[user] = {d.id: d for d in user_devices}
 
         return devices
+
+    @store_loaded
+    def get_active_key_requests(self, user_id, device_id):
+        # type: (str, str) -> List[RoomKeyRequest]
+        """Get key requests from a device that are waiting for verification.
+
+        Args:
+            user_id (str): The id of the user for which we would like to find
+                the active key requests.
+            device_id (str): The id of the device for which we would like to
+                find the active key requests.
+
+        Example:
+            >>> # A to-device callback that verifies devices that
+            >>> # request room keys and continue the room key sharing process.
+            >>>   def key_share_cb(event):
+            ...       user_id = event.sender
+            ...       device_id = event.requesting_device_id
+            ...       device = client.device_store[user_id][device_id]
+            ...       client.verify_device(device)
+            ...       for request in client.get_active_key_requests(
+            ...           user_id, device_id):
+            ...           client.continue_key_share(request)
+            >>>   client.add_to_device_callback(key_share_cb)
+
+        Returns:
+            list: A list of actively waiting key requests from the given user.
+
+        """
+        assert self.olm
+        return self.olm.get_active_key_requests(user_id, device_id)
+
+    @store_loaded
+    def continue_key_share(self, event):
+        # type: (RoomKeyRequest) -> bool
+        """Continue a previously interrupted key share event.
+
+        To handle room key requests properly client users need to add a
+        callback for RoomKeyRequest:
+
+            >>> client.add_to_device_callback(callback, RoomKeyRequest)
+
+        This callback will be run only if a room key request needs user
+        interaction, that is if a room key request is comming from an untrusted
+        device.
+
+        After a user has verified the requesting device the key sharing can be
+        continued using this method:
+
+            >>> client.continue_key_share(room_key_request)
+
+        Args:
+            event (RoomKeyRequest): The event which we would like to continue.
+
+        Returns:
+            bool: True if the request was continued, False otherwise.
+
+        """
+        assert self.olm
+        return self.olm.continue_key_share(event)
+
+    @store_loaded
+    def cancel_key_share(self, event):
+        """Cancel a previously interrupted key share event.
+
+        This method is the counterpart to the `continue_key_share()` method. If
+        a user choses not to verify a device and does not want to share room
+        keys with such a device it should cancel the request with this method.
+
+            >>> client.cancel_key_share(room_key_request)
+
+        Args:
+            event (RoomKeyRequest): The event which we would like to cancel.
+
+        Returns:
+            bool: True if the request was canceled, False if no request was found.
+
+        """
+        assert self.olm
+        self.olm.continue_key_share(event)

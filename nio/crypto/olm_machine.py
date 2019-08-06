@@ -605,6 +605,20 @@ class Olm(object):
             )
         )
 
+    def get_active_key_requests(self, user_id, device_id):
+        # type: (str, str) -> List[RoomKeyRequest]
+        """Get key requests from a device that are waiting for verification.
+
+        Args:
+            user_id (str): The id of the user for which we would like to find
+                the active key requests.
+            device_id (str): The id of the device for which we would like to
+                find the active key requests.
+        """
+        return [event for event in self.key_request_from_untrusted.values()
+                if event.sender == user_id
+                and event.requesting_device_id == device_id]
+
     def continue_key_share(self, event):
         # type: (RoomKeyRequest) -> bool
         """Continue a previously interrupted key share event.
