@@ -1821,7 +1821,12 @@ class TestClass(object):
         def key_request_cb(event):
             print(event)
             bob.verify_device(alice_device)
-            bob.continue_key_share(event)
+
+            for key_share in bob.get_active_key_requests(
+                event.sender,
+                event.requesting_device_id
+            ):
+                bob.continue_key_share(key_share)
 
         bob.add_to_device_callback(key_request_cb, RoomKeyRequest)
 
