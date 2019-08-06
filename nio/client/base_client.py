@@ -1151,6 +1151,38 @@ class Client(object):
         return devices
 
     @store_loaded
+    def get_active_key_requests(self, user_id, device_id):
+        # type: (str, str) -> List[RoomKeyRequest]
+        """Get key requests from a device that are waiting for verification.
+
+        Args:
+            user_id (str): The id of the user for which we would like to find
+                the active key requests.
+            device_id (str): The id of the device for which we would like to
+                find the active key requests.
+
+        Example:
+            >>> # A to-device callback that verifies devices that
+            >>> # request room keys and continue the room key sharing process.
+            >>>   def key_share_cb(event):
+            ...       user_id = event.sender
+            ...       device_id = event.requesting_device_id
+            ...       device = client.device_store[user_id][device_id]
+            ...       client.verify_device(device)
+            ...       for request in client.get_active_key_requests(
+            ...           user_id, device_id):
+            ...           client.continue_key_share(request)
+            >>>   client.add_to_device_callback(key_share_cb)
+
+        Returns:
+            list: A list of actively waiting rook key requests from the given
+                user/device combo.
+
+        """
+        assert self.olm
+        return self.olm.get_active_key_requests(user_id, device_id)
+
+    @store_loaded
     def continue_key_share(self, event):
         """Continue a previously interrupted key share event.
 
@@ -1168,16 +1200,7 @@ class Client(object):
 
             >>> client.continue_key_share(room_key_request)
 
-        Example:
-
-            >>> # A to-device callback that verifies devices that
-            >>> # request room keys and continue the room key sharing process.
-            >>>   def key_share_cb(event):
-            ...     device = client.device_store[event.sender][event.requesting_device_id]
-            ...     client.verify_device(device)
-            ...     client.continue_key_share(event)
-            >>>   client.add_to_device_callback(key_share_cb)
-
+        
         Args:
             event (RoomKeyRequest): The event which we would like to continue.
         """
