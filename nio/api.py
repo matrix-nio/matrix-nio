@@ -245,7 +245,7 @@ class Api(object):
         """
         query_parameters = {"access_token": access_token}
 
-        content_dict = {}
+        content_dict = {} # type: Dict
         return (
             "POST",
             Api._build_path("logout", query_parameters),

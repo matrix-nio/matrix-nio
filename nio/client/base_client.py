@@ -514,7 +514,7 @@ class Client(object):
             self.load_store()
 
     def _handle_logout(self, response):
-        # type: (Union[LoginResponse, ErrorResponse]) -> None
+        # type: (Union[LogoutResponse, ErrorResponse]) -> None
         if not isinstance(response, ErrorResponse):
             self.access_token = ""
 

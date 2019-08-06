@@ -494,7 +494,7 @@ class LogoutResponse(Response):
     @classmethod
     @verify(Schemas.empty, LogoutError)
     def from_dict(cls, parsed_dict):
-        # type: () -> Union[LogoutResponse, ErrorResponse]
+        # type: (Dict[Any, Any]) -> Union[LogoutResponse, ErrorResponse]
         """Create a response for logout response from server."""
         return cls()
 
