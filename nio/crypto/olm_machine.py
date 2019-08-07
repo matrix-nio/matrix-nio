@@ -526,6 +526,11 @@ class Olm(object):
             raise EncryptionError("No Olm session found for {} and device "
                                   "{}".format(device.user_id, device.id))
 
+        logger.debug("Sucesfully reshared key {} with {}".format(
+            event.session_id,
+            event.sender
+        ))
+
         self.outgoing_to_device_messages.append(
             self._encrypt_forwarding_key(
                 event.room_id,
@@ -550,6 +555,12 @@ class Olm(object):
         not verified. Raises a KeyShareError if the request is invalid and
         can't be handled.
         """
+        logger.debug("Trying to share key {} with {}:{}".format(
+            event.session_id,
+            event.sender,
+            event.requesting_device_id
+        ))
+
         group_session = self.inbound_group_store.get(
             event.room_id,
             event.sender_key,
@@ -595,6 +606,12 @@ class Olm(object):
                 "verified".format(event.session_id, event.sender,
                                   event.requesting_device_id)
             )
+
+        logger.debug("Sucesfully shared a key {} with {}:{}".format(
+            event.session_id,
+            event.sender,
+            event.requesting_device_id
+        ))
 
         self.outgoing_to_device_messages.append(
             self._encrypt_forwarding_key(
