@@ -634,7 +634,7 @@ class TestClass(object):
             session.id,
             session.id,
             session.room_id,
-            "megolm.v1"
+            "m.megolm.v1.aes-sha2",
         )
 
         olm.outgoing_key_requests[session.id] = key_request
