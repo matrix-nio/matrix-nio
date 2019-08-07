@@ -1212,6 +1212,10 @@ class Client(object):
         Args:
             event (RoomKeyRequest): The event which we would like to continue.
 
+        If the key share event is continued successfully a to-device message
+        will be queued up in the `client.outgoing_to_device_messages` list
+        waiting to be sent out
+
         Returns:
             bool: True if the request was continued, False otherwise.
 
