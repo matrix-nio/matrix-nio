@@ -139,14 +139,32 @@ class Olm(object):
             # type: Dict[str, OutboundGroupSession]
 
         self.tracked_users = set()  # type: Set[str]
+
+        # A dictionary holding key requests that we sent out ourselves. Those
+        # will be stored in the database and restored.
         self.outgoing_key_requests = dict()  \
             # type: Dict[str, OutgoingKeyRequest]
 
+        # This dictionary holds key requests that we received during a sync
+        # response. We don't handle them right away since they might be
+        # cancelled in the same sync response.
         self.received_key_requests = dict()  # type: Dict[str, RoomKeyRequest]
+
+        # If a received key request comes from a device for which we don't have
+        # an Olm session the event will end up in this dictionary and the
+        # device will end up in the key_request_devices_no_session list.
+        # After the user claims one-time keys for the device with the missing
+        # Olm session the event will be put back into the received_key_requests
+        # dictionary.
         self.key_requests_waiting_for_session = defaultdict(dict)  \
             # type: Dict[Tuple[str, str], Dict[str, RoomKeyRequest]]
         self.key_request_devices_no_session = list()  # type: List[OlmDevice]
 
+        # This dictionary holds key requests that we received but the device
+        # that sent us the key request is not verified/trusted. Such key
+        # requests will be forwarded to users using a callback.
+        # Users will need to verify the device and tell us to continue the key
+        # sharing process using the continue_key_share method.
         self.key_request_from_untrusted = dict()  \
             # type: Dict[str, RoomKeyRequest]
 
