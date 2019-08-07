@@ -1289,7 +1289,14 @@ class Olm(object):
 
         key_request = self.outgoing_key_requests[event.session_id]
 
-        # TODO check that the algorithm, room_id and session id match
+        if (event.algorithm != key_request.algorithm
+                or event.room_id != key_request.room_id
+                or event.session_id != key_request.session_id):
+            logger.info(
+                "Ignoring session key with mismatched algorithm, room_id, or "
+                "session id."
+            )
+            return None
 
         content = payload["content"]
 
