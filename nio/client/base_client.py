@@ -1170,7 +1170,9 @@ class Client(object):
 
         Example:
             >>> # A to-device callback that verifies devices that
-            >>> # request room keys and continue the room key sharing process.
+            >>> # request room keys and continues the room key sharing process.
+            >>> # Note that a single user/device can have multiple key requests
+            >>> # queued up.
             >>>   def key_share_cb(event):
             ...       user_id = event.sender
             ...       device_id = event.requesting_device_id
