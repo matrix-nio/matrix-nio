@@ -1832,7 +1832,7 @@ class TestClass(object):
         assert not bob.outgoing_to_device_messages
         assert key_request_event in bob.key_request_from_untrusted.values()
 
-        bob.cancel_key_share(event_for_user)
+        assert bob.cancel_key_share(event_for_user)
         assert key_request_event not in bob.key_request_from_untrusted.values()
 
     def test_invalid_key_requests(self, olm_account, bob_account):
