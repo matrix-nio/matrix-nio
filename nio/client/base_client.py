@@ -1219,6 +1219,7 @@ class Client(object):
 
     @store_loaded
     def cancel_key_share(self, event):
+        # type: (RoomKeyRequest) -> bool
         """Cancel a previously interrupted key share event.
 
         This method is the counterpart to the `continue_key_share()` method. If
@@ -1235,4 +1236,4 @@ class Client(object):
 
         """
         assert self.olm
-        self.olm.continue_key_share(event)
+        return self.olm.continue_key_share(event)
