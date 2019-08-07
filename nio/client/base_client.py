@@ -1199,7 +1199,7 @@ class Client(object):
             >>> client.add_to_device_callback(callback, RoomKeyRequest)
 
         This callback will be run only if a room key request needs user
-        interaction, that is if a room key request is comming from an untrusted
+        interaction, that is if a room key request is coming from an untrusted
         device.
 
         After a user has verified the requesting device the key sharing can be
@@ -1231,7 +1231,7 @@ class Client(object):
             event (RoomKeyRequest): The event which we would like to cancel.
 
         Returns:
-            bool: True if the request was canceled, False if no request was found.
+            bool: True if the request was cancelled, False otherwise.
 
         """
         assert self.olm
