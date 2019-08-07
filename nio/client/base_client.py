@@ -423,6 +423,7 @@ class Client(object):
         unverified.
         """
         assert self.olm
+
         changed = self.olm.unverify_device(device)
         if changed:
             self._invalidate_outbound_sessions(device)
@@ -445,6 +446,7 @@ class Client(object):
         already.
         """
         assert self.olm
+
         changed = self.olm.blacklist_device(device)
         if changed:
             self._invalidate_outbound_sessions(device)
@@ -464,7 +466,12 @@ class Client(object):
         blacklist and no removal happened.
         """
         assert self.olm
-        return self.olm.unblacklist_device(device)
+
+        changed = self.olm.unblacklist_device(device)
+        if changed:
+            self._invalidate_outbound_sessions(device)
+
+        return changed
 
     @store_loaded
     def ignore_device(self, device):
@@ -481,6 +488,7 @@ class Client(object):
         list of ignored devices.
         """
         assert self.olm
+
         changed = self.olm.ignore_device(device)
         if changed:
             self._invalidate_outbound_sessions(device)
@@ -500,7 +508,12 @@ class Client(object):
         list and no removal happened.
         """
         assert self.olm
-        return self.olm.unignore_device(device)
+
+        changed = self.olm.unignore_device(device)
+        if changed:
+            self._invalidate_outbound_sessions(device)
+
+        return changed
 
     def _handle_login(self, response):
         # type: (Union[LoginResponse, ErrorResponse]) -> None
