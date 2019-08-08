@@ -1255,4 +1255,4 @@ class Client(object):
 
         """
         assert self.olm
-        return self.olm.continue_key_share(event)
+        return self.olm.cancel_key_share(event)
