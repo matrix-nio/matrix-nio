@@ -2273,3 +2273,177 @@ class TestClass(object):
 
         assert not bob.outgoing_to_device_messages
         assert not bob.olm.key_request_from_untrusted
+
+    async def test_sas_verification_cancel(self, async_client_pair, aioresponse, loop):
+        alice, bob = async_client_pair
+
+        assert alice.logged_in
+        assert bob.logged_in
+
+        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.olm.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.olm.account.identity_keys
+        )
+
+        alice.olm.device_store.add(bob_device)
+        bob.olm.device_store.add(alice_device)
+
+        alice_to_share = alice.olm.share_keys()
+        alice_one_time = list(alice_to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                alice.user_id: {
+                    alice.device_id: {alice_one_time[0]: alice_one_time[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        to_device_for_alice = None
+        to_device_for_bob = None
+
+        sync_url = re.compile(
+            r"^https://example\.org/_matrix/client/r0/sync\?access_token=.*"
+        )
+
+        bob_to_device_url = re.compile(
+            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.(room|key)[a-z_\.]+/[0-9a-fA-f-]*\?access_token=bob_1234",
+        )
+
+        alice_to_device_url = re.compile(
+            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.(room|key)[a-z_\.]+/[0-9a-fA-f-]*\?access_token=alice_1234",
+        )
+
+        def alice_to_device_cb(url, data, **kwargs):
+            nonlocal to_device_for_alice
+            to_device_for_alice = json.loads(data)
+            return CallbackResult(status=200, payload={})
+
+        def bob_to_device_cb(url, data, **kwargs):
+            nonlocal to_device_for_bob
+            to_device_for_bob = json.loads(data)
+            return CallbackResult(status=200, payload={})
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
+            status=200,
+            payload=key_claim_dict
+        )
+
+        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb,
+                        repeat=True)
+        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb,
+                        repeat=True)
+
+        session = alice.olm.session_store.get(bob_device.curve25519)
+        assert not session
+
+        # Share a group session for the room we're sharing with Alice.
+        # This implicitly claims one-time keys since we don't have an Olm
+        # session with Alice
+        with pytest.raises(OlmTrustError):
+            response = await bob.share_group_session(TEST_ROOM_ID, "1")
+
+        to_device_for_alice = None
+
+        await bob.start_key_verification(alice_device)
+
+        assert to_device_for_alice
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_alice, alice, bob, "m.key.verification.start"),
+                "4"
+            )
+        )
+        assert not alice.key_verifications
+        await alice.sync()
+        assert alice.key_verifications
+
+        assert not to_device_for_bob
+
+        await alice.accept_key_verification(list(alice.key_verifications.keys())[0])
+
+        assert to_device_for_bob
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.key.verification.accept"),
+                "5"
+            )
+        )
+
+        to_device_for_alice = None
+
+        assert not bob.outgoing_to_device_messages
+        await bob.sync()
+        assert bob.outgoing_to_device_messages
+
+        await bob.send_to_device_messages()
+        assert to_device_for_alice
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_alice, alice, bob, "m.key.verification.key"),
+                "6"
+            )
+        )
+
+        assert not bob.outgoing_to_device_messages
+        await alice.sync()
+        assert alice.outgoing_to_device_messages
+        await alice.send_to_device_messages()
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.key.verification.key"),
+                "7"
+            )
+        )
+
+        await bob.sync()
+
+        alice_sas = list(alice.key_verifications.values())[0]
+        bob_sas = list(bob.key_verifications.values())[0]
+
+        assert alice_sas.get_emoji() == bob_sas.get_emoji()
+
+        assert not alice_device.verified
+        assert not bob_device.verified
+
+        await alice.cancel_key_verification(alice_sas.transaction_id)
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.key.verification.cancel"),
+                "8"
+            )
+        )
+
+        await bob.sync()
+
+        assert not alice_device.verified
+        assert not bob_device.verified
+
+        assert alice_sas.canceled
+        assert bob_sas.canceled
