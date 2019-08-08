@@ -2040,3 +2040,64 @@ class TestClass(object):
         decrypted_event = alice.decrypt_event(event)
         assert isinstance(decrypted_event, RoomMessageText)
         assert decrypted_event.body == "It's a secret to everybody."
+
+    async def test_key_invalidation(self, async_client_pair, aioresponse, loop):
+        alice, bob = async_client_pair
+
+        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.olm.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.olm.account.identity_keys
+        )
+
+        alice.olm.device_store.add(bob_device)
+        bob.olm.device_store.add(alice_device)
+
+        alice_to_share = alice.olm.share_keys()
+        alice_one_time = list(alice_to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                alice.user_id: {
+                    alice.device_id: {alice_one_time[0]: alice_one_time[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        bob_to_device_url = re.compile(
+            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.(room|key)[a-z_\.]+/[0-9a-fA-f-]*\?access_token=bob_1234",
+        )
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
+            status=200,
+            payload=key_claim_dict
+        )
+
+        aioresponse.put(bob_to_device_url, payload={}, repeat=True)
+
+        await bob.share_group_session(TEST_ROOM_ID, "1", True)
+        assert TEST_ROOM_ID in bob.olm.outbound_group_sessions
+        bob.unignore_device(alice_device)
+        assert TEST_ROOM_ID not in bob.olm.outbound_group_sessions
+
+        bob.verify_device(alice_device)
+        await bob.share_group_session(TEST_ROOM_ID, "2")
+        assert TEST_ROOM_ID in bob.olm.outbound_group_sessions
+        bob.unverify_device(alice_device)
+        assert TEST_ROOM_ID not in bob.olm.outbound_group_sessions
+
+        bob.blacklist_device(alice_device)
+        await bob.share_group_session(TEST_ROOM_ID, "3")
+        assert TEST_ROOM_ID in bob.olm.outbound_group_sessions
+        bob.unblacklist_device(alice_device)
+        assert TEST_ROOM_ID not in bob.olm.outbound_group_sessions
