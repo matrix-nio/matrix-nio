@@ -2447,3 +2447,165 @@ class TestClass(object):
 
         assert alice_sas.canceled
         assert bob_sas.canceled
+
+    async def test_e2e_sending(self, async_client_pair, aioresponse, loop):
+        alice, bob = async_client_pair
+
+        assert alice.logged_in
+        assert bob.logged_in
+
+        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+
+        cb_ran = False
+
+        def alice_event_cb(room, event):
+            nonlocal cb_ran
+            cb_ran = True
+            assert isinstance(event, RoomMessageText)
+            assert event.body == "It's a secret to everybody."
+
+        alice.add_event_callback(alice_event_cb, (RoomMessageText, MegolmEvent))
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.olm.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.olm.account.identity_keys
+        )
+
+        alice.olm.device_store.add(bob_device)
+        bob.olm.device_store.add(alice_device)
+
+        alice_to_share = alice.olm.share_keys()
+        alice_one_time = list(alice_to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                alice.user_id: {
+                    alice.device_id: {alice_one_time[0]: alice_one_time[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        to_device_for_alice = None
+        to_device_for_bob = None
+        room_event_for_alice = None
+
+        sync_url = re.compile(
+            r"^https://example\.org/_matrix/client/r0/sync\?access_token=.*"
+        )
+
+        bob_to_device_url = re.compile(
+            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.room.encrypted/[0-9a-fA-f-]*\?access_token=bob_1234",
+        )
+
+        alice_to_device_url = re.compile(
+            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.room.encrypted/[0-9]\?access_token=alice_1234",
+        )
+
+        bob_room_send_url = re.compile(
+            r"https://example\.org/_matrix/client/r0/rooms/{}/send/m\.room\.encrypted/[0-9]\?access_token=bob_1234".format(TEST_ROOM_ID),
+        )
+
+        def alice_to_device_cb(url, data, **kwargs):
+            nonlocal to_device_for_alice
+            to_device_for_alice = json.loads(data)
+            return CallbackResult(status=200, payload={})
+
+        def bob_to_device_cb(url, data, **kwargs):
+            nonlocal to_device_for_bob
+            to_device_for_bob = json.loads(data)
+            return CallbackResult(status=200, payload={})
+
+        def alice_room_send_cb(url, data, **kwargs):
+            nonlocal room_event_for_alice
+            room_event_for_alice = json.loads(data)
+            return CallbackResult(status=200, payload={})
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
+            status=200,
+            payload=key_claim_dict
+        )
+
+        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb,
+                        repeat=True)
+        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb,
+                        repeat=True)
+
+        aioresponse.put(bob_room_send_url, callback=alice_room_send_cb,
+                        repeat=True)
+
+        session = alice.olm.session_store.get(bob_device.curve25519)
+        assert not session
+
+        await bob.room_send(
+            TEST_ROOM_ID,
+            "m.room.message",
+            {
+                "msgtype": "m.text",
+                "body": "It's a secret to everybody."
+            },
+            "1",
+            ignore_unverified_devices=True
+        )
+
+        group_session = bob.olm.outbound_group_sessions[TEST_ROOM_ID]
+        assert group_session.shared
+        assert to_device_for_alice
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_to_device_events(
+                self.olm_message_to_event(to_device_for_alice, alice, bob)
+            )
+        )
+
+        # Run a sync for Alice, the sync will now contain the to-device message
+        # containing the group session.
+        await alice.sync()
+
+        # Check that an Olm session was created.
+        session = alice.olm.session_store.get(bob_device.curve25519)
+        assert session
+
+        # Check that we successfully received the group session as well.
+        alice_group_session = alice.olm.inbound_group_store.get(
+            TEST_ROOM_ID,
+            bob_device.curve25519,
+            group_session.id
+        )
+        assert alice_group_session.id == group_session.id
+
+        encrypted_message = {
+            "event_id": "!event_id",
+            "type": "m.room.encrypted",
+            "sender": bob.user_id,
+            "origin_server_ts": int(time.time()),
+            "content": room_event_for_alice,
+            "room_id": TEST_ROOM_ID
+        }
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_with_room_event(encrypted_message, "3")
+        )
+
+        response = await alice.sync()
+
+        assert isinstance(response, SyncResponse)
+
+        # Alice received the event but wasn't able to decrypt it.
+        event = response.rooms.join[TEST_ROOM_ID].timeline.events[0]
+        assert isinstance(event, RoomMessageText)
+
+        assert event.body == "It's a secret to everybody."
+        assert cb_ran
