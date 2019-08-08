@@ -2101,3 +2101,9 @@ class TestClass(object):
         assert TEST_ROOM_ID in bob.olm.outbound_group_sessions
         bob.unblacklist_device(alice_device)
         assert TEST_ROOM_ID not in bob.olm.outbound_group_sessions
+
+        bob.ignore_device(alice_device)
+        await bob.share_group_session(TEST_ROOM_ID, "3")
+        assert TEST_ROOM_ID in bob.olm.outbound_group_sessions
+        bob.verify_device(alice_device)
+        assert TEST_ROOM_ID not in bob.olm.outbound_group_sessions
