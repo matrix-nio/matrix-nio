@@ -23,7 +23,8 @@ from functools import partial, wraps
 from json.decoder import JSONDecodeError
 from pathlib import Path
 from typing import (Any, AsyncIterable, BinaryIO, Callable, Coroutine, Dict,
-                    Iterable, List, Optional, Sequence, Tuple, Type, Union)
+                    Iterable, List, Optional, Sequence, Set, Tuple, Type,
+                    Union)
 from uuid import UUID, uuid4
 
 import attr
@@ -1446,21 +1447,33 @@ class AsyncClient(Client):
 
         self.sharing_session[room_id] = Event()
 
-        shared_with = set()
+        shared_with = set()               # type: Set[Tuple[str, str]]
+        successfully_shared_with = set()  # type: Set[Tuple[str, str]]
 
         missing_sessions = self.get_missing_sessions(room_id)
 
         if missing_sessions:
             await self.keys_claim(missing_sessions)
 
-        try:
-            while True:
+        coros = []
+
+        while True:
+            try:
                 user_set, to_device_dict = self.olm.share_group_session(
                     room_id,
                     list(room.users.keys()),
                     ignore_missing_sessions=True,
-                    ignore_unverified_devices=ignore_unverified_devices
+                    ignore_unverified_devices=ignore_unverified_devices,
+                    already_shared_with=shared_with
                 )
+            except LocalProtocolError:  # Group session already shared
+                break
+            except Exception:
+                event = self.sharing_session.pop(room_id)
+                event.set()
+                raise
+            else:
+                shared_with |= user_set
 
                 uuid = tx_id or uuid4()
 
@@ -1471,24 +1484,24 @@ class AsyncClient(Client):
                     uuid
                 )
 
-                response = await self._send(
+                coros.append(self._send(
                     ShareGroupSessionResponse,
                     method,
                     path,
                     data,
                     (room_id, user_set)
-                )
+                ))
 
-                if isinstance(response, ShareGroupSessionResponse):
-                    shared_with.update(response.users_shared_with)
+                if not user_set:
+                    break
 
-        except LocalProtocolError:
-            return ShareGroupSessionResponse(room_id, shared_with)
-        except ClientConnectionError:
-            raise
-        finally:
-            event = self.sharing_session.pop(room_id)
-            event.set()
+        for resp in await asyncio.gather(*coros, return_exceptions=True):
+            if isinstance(resp, ShareGroupSessionResponse):
+                successfully_shared_with.update(resp.users_shared_with)
+
+        event = self.sharing_session.pop(room_id)
+        event.set()
+        return ShareGroupSessionResponse(room_id, successfully_shared_with)
 
     @logged_in
     @store_loaded

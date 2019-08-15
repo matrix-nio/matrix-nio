@@ -1760,8 +1760,9 @@ class Olm(object):
         self,
         room_id,  # type: str
         users,    # type: List[str]
-        ignore_missing_sessions=False,   # type: bool
-        ignore_unverified_devices=False  # type: bool
+        ignore_missing_sessions=False,    # type: bool
+        ignore_unverified_devices=False,  # type: bool
+        already_shared_with=None  # type: Optional[Set[Tuple[str, str]]]
     ):
         # type: (...) -> Tuple[Set[Tuple[str, str]], Dict[str, Any]]
         logger.info("Sharing group session for room {}".format(room_id))
@@ -1783,7 +1784,9 @@ class Olm(object):
 
         to_device_dict = {"messages": {}}  # type: Dict[str, Any]
 
-        already_shared_set = group_session.users_shared_with
+        already_shared_set = (
+            group_session.users_shared_with | (already_shared_with or set())
+        )
         ignored_set = group_session.users_ignored
 
         user_map = []
