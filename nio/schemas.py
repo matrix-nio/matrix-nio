@@ -827,13 +827,16 @@ class Schemas(object):
             "type": {"type": "string"},
             "content": {
                 "type": "object",
-                "info": {
-                    "h": {"type": "integer"},
-                    "w": {"type": "integer"},
-                    "mimetype": {"type", "string"},
-                    "size": {"type": "integer"},
+                "properties": {
+                    "info": {
+                        "h": {"type": "integer"},
+                        "w": {"type": "integer"},
+                        "mimetype": {"type", "string"},
+                        "size": {"type": "integer"},
+                    },
+                    "url": {"type": "string"},
                 },
-                "url": {"type": "string"},
+                "required": ["url"]
             },
         },
         "required": ["type", "sender", "content", "state_key"]

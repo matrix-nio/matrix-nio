@@ -78,6 +78,13 @@ class TestClass(object):
         event = RoomAvatarEvent.from_dict(parsed_dict)
         assert isinstance(event, RoomAvatarEvent)
 
+    def test_room_avatar_event_no_url(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/room_avatar.json")
+        parsed_dict["content"].pop("url")
+        event = RoomAvatarEvent.from_dict(parsed_dict)
+        assert isinstance(event, BadEvent)
+
     def test_tag_event(self):
         parsed_dict = TestClass._load_response(
             "tests/data/events/tag.json")
