@@ -308,11 +308,11 @@ class AsyncClient(Client):
             room = self._get_invited_room(room_id)
 
             for event in info.invite_state:
+                room.handle_event(event)
+
                 for cb in self.event_callbacks:
                     if (cb.filter is None or isinstance(event, cb.filter)):
                         await asyncio.coroutine(cb.func)(room, event)
-
-                room.handle_event(event)
 
     async def _handle_joined_rooms(self, response):
         encrypted_rooms = set()
