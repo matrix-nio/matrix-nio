@@ -608,11 +608,11 @@ class Client(object):
             room = self._get_invited_room(room_id)
 
             for event in info.invite_state:
+                room.handle_event(event)
+
                 for cb in self.event_callbacks:
                     if (cb.filter is None or isinstance(event, cb.filter)):
                         cb.func(room, event)
-
-                room.handle_event(event)
 
     def _handle_joined_state(self, room_id, join_info, encrypted_rooms):
         if room_id in self.invited_rooms:
