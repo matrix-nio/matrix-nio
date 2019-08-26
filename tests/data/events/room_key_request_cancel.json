@@ -1,7 +1,7 @@
 {
     "sender": "@alice:example.org",
     "content": {
-        "action": "cancel_request",
+        "action": "request_cancellation",
         "request_id": "1495474790150.19",
         "requesting_device_id": "RJYKSTBOIE"
     },

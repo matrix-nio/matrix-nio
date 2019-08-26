@@ -355,7 +355,7 @@ class OutgoingKeyRequest(object):
     def as_cancellation(self, user_id, requesting_device_id):
         """Turn the key request into a cancellation to-device message."""
         content = {
-            "action": "cancel_request",
+            "action": "request_cancellation",
             "request_id": self.request_id,
             "requesting_device_id": requesting_device_id,
         }

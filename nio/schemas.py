@@ -573,7 +573,7 @@ class Schemas(object):
                     "requesting_device_id": {"type": "string"},
                     "action": {
                         "type": "string",
-                        "enum": ["request", "cancel_request"]
+                        "enum": ["request", "request_cancellation"]
                     },
                     "request_id": {"type": "string"}
                 },
@@ -599,7 +599,7 @@ class Schemas(object):
                     "requesting_device_id": {"type": "string"},
                     "action": {
                         "type": "string",
-                        "enum": ["request", "cancel_request"]
+                        "enum": ["request", "request_cancellation"]
                     },
                     "request_id": {"type": "string"}
                 },
