@@ -1127,8 +1127,10 @@ class Olm(object):
 
         # Don't mark the device to be unwedged if our newest session is less
         # than an hour old.
-        if datetime.now() - session.creation_time < self._unwedging_interval:
-            return
+        if session:
+            session_age = datetime.now() - session.creation_time
+            if session_age < self._unwedging_interval:
+                return
 
         if device not in self.wedged_devices:
             self.wedged_devices.append(device)
