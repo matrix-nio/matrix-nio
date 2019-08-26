@@ -76,29 +76,23 @@ class MatrixRoom(object):
         Prefer returning the room name if it exists, falling back to
         a group-style name if not.
 
-        Mostly follows:
+        Follows:
         https://matrix.org/docs/spec/client_server/r0.3.0.html#id268
-
-        An exception is that we prepend '#' before the room name to make it
-        visually distinct from private messages and unnamed groups of users
-        ("direct chats") in weechat's buffer list.
         """
         if self.is_named:
             return self.named_room_name()
-        else:
-            return self.group_name()
+
+        return self.group_name()
 
     def named_room_name(self):
         """Return the name of the room, if it's a named room.
 
         Otherwise, return None.
         """
-        if self.name and self.name != '#':
-            return self.name if self.name.startswith('#') else '#' + self.name
+        if self.name:
+            return self.name
         elif self.canonical_alias:
             return self.canonical_alias
-        elif self.name == '#':
-            return '##'
         else:
             return None
 
