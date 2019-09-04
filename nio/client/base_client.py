@@ -1082,7 +1082,7 @@ class Client(object):
         """Add a callback that will be executed on to-device events.
 
         Args:
-            callback (Callable[MatrixRoom, Event]): A function that will be
+            callback (Callable[Event]): A function that will be
                 called if the event type in the filter argument is found in a
                 the to-device part of the sync response.
             filter (Type, Tuple[Type]): The event type or a tuple containing
