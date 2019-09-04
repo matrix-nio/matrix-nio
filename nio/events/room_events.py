@@ -675,7 +675,7 @@ class RoomHistoryVisibilityEvent(Event):
 
 @attr.s
 class RoomAliasEvent(Event):
-    """An event informing us about which alias should be prefered.
+    """An event informing us about which alias should be preferred.
 
     Attributes:
         canonical_alias (str): The alias that is considered canonical.
