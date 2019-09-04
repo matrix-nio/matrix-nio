@@ -151,7 +151,7 @@ class InviteMemberEvent(InviteEvent):
 
 @attr.s
 class InviteAliasEvent(InviteEvent):
-    """An event informing us about which alias should be prefered.
+    """An event informing us about which alias should be preferred.
 
     This is the RoomAliasEvent equivalent for invited rooms.
 
