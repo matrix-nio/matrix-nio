@@ -238,3 +238,13 @@ class TestClass(object):
         assert not room.canonical_alias
         room.handle_event(InviteAliasEvent({}, BOB_ID, "test alias"))
         assert room.canonical_alias == "test alias"
+
+    def test_handle_member_return_value(self):
+        room = self.test_room
+        assert not room.users
+        mx_id, name, avatar = self.new_user
+        assert room.add_member(mx_id, name, avatar)
+        assert not room.add_member(mx_id, name, avatar)
+
+        assert room.remove_member(mx_id)
+        assert not room.remove_member(mx_id)

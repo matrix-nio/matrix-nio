@@ -203,8 +203,9 @@ class MatrixRoom(object):
         return not self.is_named
 
     def add_member(self, user_id, display_name, avatar_url):
+        # type (str, str, str) -> bool
         if user_id in self.users:
-            return
+            return False
 
         level = self.power_levels.users.get(
             user_id,
@@ -217,11 +218,17 @@ class MatrixRoom(object):
         name = display_name if display_name else user_id
         self.names[name].append(user_id)
 
+        return True
+
     def remove_member(self, user_id):
+        # type (str) -> bool
         if user_id in self.users:
             user = self.users[user_id]
             self.names[user.name].remove(user.user_id)
             del self.users[user_id]
+            return True
+
+        return False
 
     def handle_membership(self, event):
         # type: (RoomMemberEvent) -> bool
