@@ -996,3 +996,19 @@ class TestClass(object):
         alice_device = room_devices[ALICE_ID][ALICE_DEVICE_ID]
 
         assert alice_device
+
+    def test_soft_logout(self, client):
+        client.receive_response(self.login_response)
+
+        assert client.logged_in
+
+        error_response = SyncResponse.from_dict(
+            {
+                "errcode": "M_UNKNOWN_TOKEN",
+                "error": "Access token has expired",
+                "soft_logout": True
+            }
+        )
+        client.receive_response(error_response)
+
+        assert not client.logged_in

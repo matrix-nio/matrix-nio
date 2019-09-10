@@ -276,6 +276,7 @@ class ErrorResponse(Response):
     message = attr.ib(type=str)
     status_code = attr.ib(default=None, type=Optional[int])
     retry_after_ms = attr.ib(default=None, type=Optional[int])
+    soft_logout = attr.ib(default=False, type=bool)
 
     def __str__(self):
         # type: () -> str
@@ -305,6 +306,7 @@ class ErrorResponse(Response):
             parsed_dict["error"],
             parsed_dict["errcode"],
             parsed_dict.get("retry_after_ms"),
+            parsed_dict.get("soft_logout", False),
         )
 
 
@@ -323,6 +325,7 @@ class _ErrorWithRoomId(ErrorResponse):
             parsed_dict["error"],
             parsed_dict["errcode"],
             parsed_dict.get("retry_after_ms"),
+            parsed_dict.get("soft_logout", False),
             room_id
         )
 

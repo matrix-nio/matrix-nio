@@ -905,6 +905,9 @@ class Client(object):
             self._handle_room_forget_response(response)
         elif isinstance(response, ToDeviceResponse):
             self._handle_olm_response(response)
+        elif isinstance(response, ErrorResponse):
+            if response.soft_logout:
+                self.access_token = None
 
     @store_loaded
     def export_keys(self, outfile, passphrase, count=10000):
