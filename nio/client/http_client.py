@@ -57,7 +57,8 @@ from ..responses import (DeleteDevicesAuthResponse, DeleteDevicesResponse,
                          RoomRedactResponse, RoomSendResponse,
                          RoomTypingResponse, ShareGroupSessionResponse,
                          SyncResponse, ThumbnailResponse,
-                         ToDeviceResponse, UpdateDeviceResponse)
+                         ToDeviceResponse, UpdateDeviceResponse,
+                         LoginInfoResponse)
 
 if False:
     from .messages import ToDeviceMessage
@@ -224,14 +225,32 @@ class HttpClient(Client):
         return self.connection.data_to_send()
 
     @connected
-    def login(self, password, device_name=""):
+    def login_info(self):
+        # type: () -> Tuple[UUID, bytes]
+        """Get the available login methods from the server
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        """
+        request = self._build_request(Api.login_info())
+
+        return self._send(request, RequestInfo(LoginInfoResponse))
+
+    @connected
+    def login(self, password=None, device_name="", token=None):
         # type: (str, Optional[str]) -> Tuple[UUID, bytes]
+        if password is None and token is None:
+            raise ValueError("Either a password or a token needs to be "
+                             "provided")
+
         request = self._build_request(
             Api.login(
                 self.user,
-                password,
+                password=password,
                 device_name=device_name,
-                device_id=self.device_id
+                device_id=self.device_id,
+                token=token
             )
         )
 

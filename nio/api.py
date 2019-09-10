@@ -231,11 +231,19 @@ class Api(object):
         """
         path = Api._build_path("login")
 
-        content_dict = {
-            "type": "m.login.password",
-            "user": user,
-            "password": password,
-        }
+        if password is not None:
+            content_dict = {
+                "type": "m.login.password",
+                "user": user,
+                "password": password,
+            }
+        elif token is not None:
+            content_dict = {
+                "type": "m.login.token",
+                "token": token,
+            }
+        else:
+            raise ValueError("Neither a password nor a token was provided")
 
         if device_id:
             content_dict["device_id"] = device_id

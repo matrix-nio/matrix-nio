@@ -515,7 +515,7 @@ class AsyncClient(Client):
         """
         method, path, data = Api.login(
             self.user,
-            password,
+            password=password,
             device_name=device_name,
             device_id=self.device_id
         )
