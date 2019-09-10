@@ -568,7 +568,7 @@ class AsyncClient(Client):
         sync_token = since or self.next_batch
         method, path = Api.sync(
             self.access_token,
-            since=self.next_batch or self.loaded_sync_token,
+            since=sync_token or self.loaded_sync_token,
             timeout=timeout,
             filter=sync_filter,
             full_state=full_state
