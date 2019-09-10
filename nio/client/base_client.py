@@ -97,6 +97,8 @@ class ClientConfig(object):
             used.
         pickle_key (str, optional): A passphrase that will be used to encrypt
             end to end encryption keys.
+        store_sync_tokens (bool, optional): Should the client store and restore
+            sync tokens.
 
     Raises an ImportWarning if encryption_enabled is true but the dependencies
     for encryption aren't installed.
