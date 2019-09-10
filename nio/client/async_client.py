@@ -213,7 +213,7 @@ class AsyncClient(Client):
             >>> async def sync_cb(response):
             ...    print(f"We synced, token: {response.next_batch}")
             ...
-            >>> client.add_response_callback(sync_cb)
+            >>> client.add_response_callback(sync_cb, SyncResponse)
             >>> await client.sync_forever(30000)
 
         """
