@@ -600,7 +600,7 @@ class AsyncClient(Client):
             for cb in self.response_callbacks:
                 if (cb.filter is None
                         or isinstance(response, cb.filter)):
-                    await cb.func(response)
+                    await asyncio.coroutine(cb.func)(response)
 
     @logged_in
     async def sync_forever(
