@@ -1024,9 +1024,10 @@ class TestClass(object):
 
         client.receive_response(self.login_response)
         assert not client.next_batch
+        assert not client.loaded_sync_token
         client.receive_response(self.sync_response)
         assert client.next_batch
 
         client = Client(user, device_id, path, config=config)
         client.receive_response(self.login_response)
-        assert client.next_batch
+        assert client.loaded_sync_token
