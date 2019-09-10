@@ -777,3 +777,9 @@ class TestClass(object):
         bob_device = loaded_devices[BOB_ID][BOB_DEVICE]
 
         assert bob_device.verified
+
+    def test_sync_token_loading(self, sqlstore):
+        token = "1234"
+        sqlstore.save_sync_token(token)
+        loaded_token = sqlstore.load_sync_token()
+        assert token == loaded_token

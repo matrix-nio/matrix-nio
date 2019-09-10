@@ -564,9 +564,11 @@ class AsyncClient(Client):
         Returns either a `SyncResponse` if the request was successful or
         a `SyncError` if there was an error with the request.
         """
+
+        sync_token = since or self.next_batch
         method, path = Api.sync(
             self.access_token,
-            since=since or self.next_batch,
+            since=self.next_batch or self.loaded_sync_token,
             timeout=timeout,
             filter=sync_filter,
             full_state=full_state

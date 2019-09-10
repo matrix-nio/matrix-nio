@@ -15,7 +15,7 @@ from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
                  RoomSummary, RoomTypingResponse,
                  ShareGroupSessionResponse, SyncResponse,
                  Timeline, ThumbnailResponse, TransportType, TypingNoticeEvent,
-                 InviteMemberEvent, InviteInfo)
+                 InviteMemberEvent, InviteInfo, ClientConfig)
 from nio.messages import ToDeviceMessage
 
 HOST = "example.org"
@@ -1012,3 +1012,21 @@ class TestClass(object):
         client.receive_response(error_response)
 
         assert not client.logged_in
+
+    def test_sync_token_restoring(self, client):
+        user = client.user_id
+        device_id = client.device_id
+        path= client.store_path
+        del client
+
+        config = ClientConfig(store_sync_tokens=True)
+        client = Client(user, device_id, path, config=config)
+
+        client.receive_response(self.login_response)
+        assert not client.next_batch
+        client.receive_response(self.sync_response)
+        assert client.next_batch
+
+        client = Client(user, device_id, path, config=config)
+        client.receive_response(self.login_response)
+        assert client.next_batch

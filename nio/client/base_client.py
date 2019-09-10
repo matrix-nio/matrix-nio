@@ -112,6 +112,7 @@ class ClientConfig(object):
 
     store_name = attr.ib(type=str, default="")
     pickle_key = attr.ib(type=str, default="DEFAULT_KEY")
+    store_sync_tokens = attr.ib(type=bool, default=False)
 
     def __attrs_post_init__(self):
         if not ENCRYPTION_ENABLED and self.encryption_enabled:
@@ -162,6 +163,7 @@ class Client(object):
         self.user_id = ""
         self.access_token = ""
         self.next_batch = ""
+        self.loaded_sync_token = ""
 
         self.rooms = dict()  # type: Dict[str, MatrixRoom]
         self.invited_rooms = dict()  # type: Dict[str, MatrixRoom]
@@ -294,6 +296,9 @@ class Client(object):
         Raises LocalProtocolError if the session_path, user_id and devic_id are
             not set.
         """
+        if self.store:
+            raise LocalProtocolError("Store is already loaded")
+
         if not self.store_path:
             raise LocalProtocolError("Store path is not defined.")
 
@@ -319,6 +324,9 @@ class Client(object):
 
             self.olm = Olm(self.user_id, self.device_id, self.store)
             self.encrypted_rooms = self.store.load_encrypted_rooms()
+
+            if self.config.store_sync_tokens:
+                self.loaded_sync_token = self.store.load_sync_token()
 
     def room_contains_unverified(self, room_id):
         # type: (str) -> bool
@@ -747,6 +755,9 @@ class Client(object):
 
         if isinstance(response, SyncResponse):
             self.next_batch = response.next_batch
+
+            if self.config.store_sync_tokens and self.store:
+                self.store.save_sync_token(self.next_batch)
 
         self._handle_to_device(response)
 

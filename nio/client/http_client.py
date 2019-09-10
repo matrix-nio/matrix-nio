@@ -1048,14 +1048,15 @@ class HttpClient(Client):
 
     @connected
     @logged_in
-    def sync(self, timeout=None, filter=None):
+    def sync(self, timeout=None, filter=None, full_state=False):
         # type: (Optional[int], Optional[Dict[Any, Any]]) -> Tuple[UUID, bytes]
         request = self._build_request(
             Api.sync(
                 self.access_token,
-                since=self.next_batch,
+                since=self.next_batch or self.loaded_sync_token,
                 timeout=timeout,
-                filter=filter
+                filter=filter,
+                full_state=full_state
             ),
             timeout
         )

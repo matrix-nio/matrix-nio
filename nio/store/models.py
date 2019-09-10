@@ -306,10 +306,12 @@ class SyncTokens(Model):
     token = TextField()
     account = ForeignKeyField(
         model=Accounts,
-        primary_key=True,
         on_delete="CASCADE",
         backref="sync_token",
     )
+
+    class Meta:
+        constraints = [SQL("UNIQUE(account_id)")]
 
 
 class TrackedUsers(Model):

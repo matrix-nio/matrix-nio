@@ -27,7 +27,7 @@ from . import (Accounts, DeviceKeys, DeviceKeys_v1, DeviceTrustState,
                LegacyForwardedChains, LegacyMegolmInboundSessions,
                LegacyOlmSessions, LegacyOutgoingKeyRequests,
                MegolmInboundSessions, OlmSessions, OutgoingKeyRequests,
-               StoreVersion)
+               StoreVersion, SyncTokens)
 from ..crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
                       OlmAccount, OlmDevice, OutgoingKeyRequest, Session,
                       SessionStore, TrustState)
@@ -466,7 +466,8 @@ class MatrixStore(object):
         EncryptedRooms,
         OutgoingKeyRequests,
         StoreVersion,
-        Keys
+        Keys,
+        SyncTokens
     ]
     store_version = 2
 
@@ -914,6 +915,34 @@ class MatrixStore(object):
                 EncryptedRooms.room_id,
                 EncryptedRooms.account
             ]).on_conflict_ignore().execute()
+
+    @use_database
+    def save_sync_token(self, token):
+        # type (str) -> None
+        """Save the given token"""
+        account = self._get_account()
+        assert account
+
+        SyncTokens.replace(
+            account=account,
+            token=token
+        ).execute()
+
+    @use_database
+    def load_sync_token(self):
+        # type () -> Optional[str]
+        account = self._get_account()
+
+        if not account:
+            return None
+
+        token = SyncTokens.get_or_none(
+            SyncTokens.account == account.id,
+        )
+        if token:
+            return token.token
+
+        return None
 
     @use_database
     def delete_encrypted_room(self, room):
