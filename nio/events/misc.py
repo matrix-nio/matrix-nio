@@ -36,7 +36,7 @@ def validate_or_badevent(
     try:
         validate_json(parsed_dict, schema)
     except (ValidationError, SchemaError) as e:
-        logger.error("Error validating event: {}".format(str(e)))
+        logger.warn("Error validating event: {}".format(str(e)))
         try:
             return BadEvent.from_dict(parsed_dict)
         except KeyError:
