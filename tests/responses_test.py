@@ -19,7 +19,7 @@ from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
                            RoomTypingResponse, SyncError,
                            SyncResponse, ThumbnailResponse, ThumbnailError,
                            ToDeviceError, ToDeviceResponse,
-                           UploadResponse, _ErrorWithRoomId)
+                           UploadResponse, _ErrorWithRoomId, LoginInfoResponse)
 
 TEST_ROOM_ID = "!test:example.org"
 
@@ -267,3 +267,9 @@ class TestClass(object):
     def test_room_typing(self):
         response = RoomTypingResponse.from_dict({}, TEST_ROOM_ID)
         assert isinstance(response, RoomTypingResponse)
+
+    def test_login_info(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/login_info.json")
+        response = LoginInfoResponse.from_dict(parsed_dict)
+        assert isinstance(response, LoginInfoResponse)

@@ -58,6 +58,8 @@ __all__ = [
     "KeysUploadError",
     "LoginResponse",
     "LoginError",
+    "LoginInfoResponse",
+    "LoginInfoError",
     "LogoutResponse",
     "LogoutError",
     "Response",
@@ -460,6 +462,23 @@ class ProfileGetAvatarError(ErrorResponse):
 
 class ProfileSetAvatarError(ErrorResponse):
     pass
+
+
+@attr.s
+class LoginInfoError(ErrorResponse):
+    pass
+
+
+@attr.s
+class LoginInfoResponse(Response):
+    flows = attr.ib(type=List[str])
+
+    @classmethod
+    @verify(Schemas.login_info, LoginInfoError)
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[LoginInfoResponse, ErrorResponse]
+        flow_types = [flow["type"] for flow in parsed_dict["flows"]]
+        return cls(flow_types)
 
 
 @attr.s

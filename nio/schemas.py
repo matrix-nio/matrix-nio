@@ -214,6 +214,23 @@ class Schemas(object):
         "required": ["user_id", "device_id", "access_token"],
     }
 
+    login_info = {
+        "type": "object",
+        "properties": {
+            "flows": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "type": {"type": "string"}
+                    },
+                    "required": ["type"]
+                }
+            },
+        },
+        "required": ["flows"],
+    }
+
     error = {
         "type": "object",
         "properties": {

@@ -195,11 +195,24 @@ class Api(object):
         return path
 
     @staticmethod
+    def login_info():
+        # type: (...) -> Tuple[str, str, str]
+        """Get the homeserver's supported login types
+
+        Returns the HTTP method and HTTP path for the request.
+
+        """
+        path = Api._build_path("login")
+
+        return "GET", path
+
+    @staticmethod
     def login(
         user,            # type: str
-        password,        # type: str
+        password=None,   # type: str
         device_name="",  # type: Optional[str]
-        device_id=""     # type: Optional[str]
+        device_id="",    # type: Optional[str]
+        token=None,      # type: str
     ):
         # type: (...) -> Tuple[str, str, str]
         """Authenticate the user.
