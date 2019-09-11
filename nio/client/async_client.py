@@ -151,12 +151,39 @@ class AsyncClient(Client):
         synced (Event): An asyncio event that is fired every time the client
             successfully syncs with the server.
 
+    A simple example can be found bellow.
+
     Example:
             >>> client = AsyncClient("https://example.org", "example")
             >>> login_response = loop.run_until_complete(
             >>>     client.login("hunter1")
             >>> )
             >>> asyncio.run(client.sync_forever(30000))
+
+    This example assumes a full sync on every run. If a sync token is provided
+    for the `since` parameter of the `sync_forever` method `full_state` should
+    be set to `True` as well.
+
+    Example:
+            >>> asyncio.run(
+            >>>     client.sync_forever(30000, since="token123",
+            >>>                         full_state=True)
+            >>> )
+
+    The client can also be configured to store and restore the sync token
+    automatically. The `full_state` argument should be set to `True` in that
+    case as well.
+
+    Example:
+            >>> config = ClientConfig(store_sync_tokens=True)
+            >>> client = AsyncClient("https://example.org", "example",
+            >>>                      store_path="/home/example",
+            >>>                      config=config)
+            >>> login_response = loop.run_until_complete(
+            >>>     client.login("hunter1")
+            >>> )
+            >>> asyncio.run(client.sync_forever(30000, full_state=True))
+
     """
 
     def __init__(
