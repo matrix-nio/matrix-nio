@@ -295,7 +295,7 @@ class Client(object):
         # type: () -> None
         """Load the session store and olm account.
 
-        Raises LocalProtocolError if the session_path, user_id and devic_id are
+        Raises LocalProtocolError if the session_path, user_id and device_id are
             not set.
         """
         if self.store:
