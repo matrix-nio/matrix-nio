@@ -403,6 +403,9 @@ class AsyncClient(Client):
         if isinstance(response, SyncResponse):
             self.next_batch = response.next_batch
 
+            if self.config.store_sync_tokens and self.store:
+                self.store.save_sync_token(self.next_batc
+
         await self._handle_to_device(response)
 
         await self._handle_invited_rooms(response)
