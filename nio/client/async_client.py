@@ -404,7 +404,7 @@ class AsyncClient(Client):
             self.next_batch = response.next_batch
 
             if self.config.store_sync_tokens and self.store:
-                self.store.save_sync_token(self.next_batc
+                self.store.save_sync_token(self.next_batch)
 
         await self._handle_to_device(response)
 
