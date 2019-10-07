@@ -14,6 +14,8 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from .crypto import OlmDevice
+
 
 class ProtocolError(Exception):
     pass
@@ -45,6 +47,12 @@ class RemoteTransportError(ProtocolError):
 
 class OlmTrustError(Exception):
     pass
+
+
+class OlmUnverifiedDeviceError(OlmTrustError):
+    def __init__(self, *args: object, unverified_device: OlmDevice) -> None:
+        super().__init__(*args)
+        self.device = unverified_device
 
 
 class VerificationError(Exception):
