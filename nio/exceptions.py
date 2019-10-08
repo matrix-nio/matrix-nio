@@ -14,8 +14,6 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from .crypto import OlmDevice
-
 
 class ProtocolError(Exception):
     pass
@@ -50,7 +48,7 @@ class OlmTrustError(Exception):
 
 
 class OlmUnverifiedDeviceError(OlmTrustError):
-    def __init__(self, *args: object, unverified_device: OlmDevice) -> None:
+    def __init__(self, *args: object, unverified_device: 'nio.OlmDevice') -> None:
         super().__init__(*args)
         self.device = unverified_device
 
