@@ -48,7 +48,7 @@ class OlmTrustError(Exception):
 
 
 class OlmUnverifiedDeviceError(OlmTrustError):
-    def __init__(self, *args: object, unverified_device: 'nio.OlmDevice') -> None:
+    def __init__(self, *args, unverified_device) -> None:
         super().__init__(*args)
         self.device = unverified_device
 
