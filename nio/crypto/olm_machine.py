@@ -620,12 +620,9 @@ class Olm(object):
                                   "{}".format(device.user_id, device.id))
 
         if not device.verified:
-            raise OlmUnverifiedDeviceError(
-                "Failed to reshare key {} with {}: Device {} is not "
-                "verified".format(event.session_id, event.sender,
-                                  event.requesting_device_id),
-                unverified_device=device
-            )
+            raise OlmUnverifiedDeviceError(device, "Failed to reshare key {} with {}: Device {} is not "
+                                                   "verified".format(event.session_id, event.sender,
+                                                                     event.requesting_device_id))
 
         logger.debug("Sucesfully shared a key {} with {}:{}".format(
             event.session_id,
@@ -1731,14 +1728,11 @@ class Olm(object):
                     elif ignore_unverified_devices:
                         mark_as_ignored.append(device)
                     else:
-                        raise OlmUnverifiedDeviceError(
-                            "Device {} for user {} is not "
-                            "verified or blacklisted.".format(
-                                device.id,
-                                device.user_id
-                            ),
-                            unverified_device=device
-                        )
+                        raise OlmUnverifiedDeviceError(device, "Device {} for user {} is not "
+                                                               "verified or blacklisted.".format(
+                            device.id,
+                            device.user_id
+                        ))
 
                 user_map.append((user_id, device, session))
 

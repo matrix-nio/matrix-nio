@@ -15,6 +15,9 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+from builtins import super
+
+
 class ProtocolError(Exception):
     pass
 
@@ -48,7 +51,7 @@ class OlmTrustError(Exception):
 
 
 class OlmUnverifiedDeviceError(OlmTrustError):
-    def __init__(self, *args, unverified_device=None):
+    def __init__(self, unverified_device, *args):
         super().__init__(*args)
         self.device = unverified_device
 
