@@ -45,7 +45,7 @@ if ENCRYPTION_ENABLED:
 
 if False:
     from ..crypto import OlmDevice, OutgoingKeyRequest, Sas
-    from .messages import ToDeviceMessage
+    from ..messages import ToDeviceMessage
 
 try:
     from json.decoder import JSONDecodeError
@@ -295,8 +295,8 @@ class Client(object):
         # type: () -> None
         """Load the session store and olm account.
 
-        Raises LocalProtocolError if the session_path, user_id and device_id are
-            not set.
+        Raises LocalProtocolError if the session_path, user_id and device_id
+            are not set.
         """
         if self.store:
             raise LocalProtocolError("Store is already loaded")
