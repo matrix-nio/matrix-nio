@@ -8,7 +8,8 @@ from datetime import datetime, timedelta
 import pytest
 
 from helpers import faker
-from nio import (DeviceList, DeviceOneTimeKeyCount, ErrorResponse,
+from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
+                 DownloadResponse, ErrorResponse,
                  GroupEncryptionError,
                  JoinResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
@@ -847,6 +848,62 @@ class TestClass(object):
             )
         assert isinstance(streaming_resp, UploadResponse)
 
+    async def test_download(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        server_name = "example.org"
+        media_id = "ascERGshawAWawugaAcauga"
+        filename = "example.png"
+
+        aioresponse.get(
+            "https://example.org/_matrix/media/r0/download/{}/{}"
+            "?access_token=abc123&allow_remote=true".format(
+                server_name,
+                media_id,
+            ),
+            status=200,
+            content_type="image/png",
+            body=self.file_response,
+        )
+        resp = await async_client.download(server_name, media_id)
+        assert isinstance(resp, DownloadResponse)
+        assert resp.body == self.file_response
+        assert resp.filename is None
+
+        aioresponse.get(
+            "https://example.org/_matrix/media/r0/download/{}/{}/{}"
+            "?access_token=abc123&allow_remote=true".format(
+                server_name,
+                media_id,
+                filename,
+            ),
+            status=200,
+            content_type="image/png",
+            headers = {
+                "content-disposition": 'inline; filename="{}"'.format(filename)
+            },
+            body=self.file_response,
+        )
+        resp = await async_client.download(server_name, media_id, filename)
+        assert isinstance(resp, DownloadResponse)
+        assert resp.body == self.file_response
+        assert resp.filename == filename
+
+        aioresponse.get(
+            "https://example.org/_matrix/media/r0/download/{}/{}"
+            "?access_token=abc123&allow_remote=true".format(
+                server_name,
+                media_id,
+            ),
+            status=429,
+            content_type="application/json",
+            body = b'{"errcode": "M_LIMIT_EXCEEDED"}',
+        )
+        resp = await async_client.download(server_name, media_id)
+        assert isinstance(resp, DownloadError)
 
     async def test_thumbnail(self, async_client, aioresponse):
         await async_client.receive_response(

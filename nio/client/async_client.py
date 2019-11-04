@@ -35,7 +35,8 @@ from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
 from ..events import RoomKeyRequest, RoomKeyRequestCancellation
 from ..event_builders import ToDeviceMessage
-from ..responses import (ErrorResponse, FileResponse,
+from ..responses import (DownloadError, DownloadResponse,
+                         ErrorResponse, FileResponse,
                          JoinResponse, JoinError,
                          JoinedMembersError, JoinedMembersResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
@@ -288,13 +289,17 @@ class AsyncClient(Client):
         content_type = transport_response.content_type
         is_json = content_type == "application/json"
 
+        name = None
+        if transport_response.content_disposition:
+            name = transport_response.content_disposition.filename
+
         if issubclass(response_class, FileResponse) and is_json:
             parsed_dict = await self.parse_body(transport_response)
-            resp = response_class.from_data(parsed_dict, content_type)
+            resp = response_class.from_data(parsed_dict, content_type, name)
 
         elif issubclass(response_class, FileResponse):
             body = await transport_response.read()
-            resp = response_class.from_data(body, content_type)
+            resp = response_class.from_data(body, content_type, name)
 
         else:
             parsed_dict = await self.parse_body(transport_response)
@@ -1547,6 +1552,42 @@ class AsyncClient(Client):
             data,
             content_type=content_type
         )
+
+    @logged_in
+    async def download(
+        self,
+        server_name,        # type: str
+        media_id,           # type: str
+        filename=None,      # type: Optional[str]
+        allow_remote=True,  # type: bool
+    ):
+        # type: (...) -> Union[DownloadResponse, DownloadError]
+        """Get the content of a file from the content repository.
+
+        Returns either a `DownloadResponse` if the request was successful or
+        a `DownloadError` if there was an error with the request.
+
+        Args:
+            server_name (str): The server name from the mxc:// URI.
+            media_id (str): The media ID from the mxc:// URI.
+            filename (str, optional): A filename to be returned in the response
+                by the server. If None (default), the original name of the
+                file will be returned instead, if there is one.
+            allow_remote (bool): Indicates to the server that it should not
+                attempt to fetch the media if it is deemed remote.
+                This is to prevent routing loops where the server contacts
+                itself.
+        """
+        http_method, path = Api.download(
+            self.access_token,
+            server_name,
+            media_id,
+            filename,
+            allow_remote
+        )
+
+        return await self._send(DownloadResponse, http_method, path)
+
 
     @logged_in
     async def thumbnail(

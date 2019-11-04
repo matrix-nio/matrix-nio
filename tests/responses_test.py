@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import json
 
 from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
+                           DownloadResponse, DownloadError,
                            ErrorResponse, JoinedMembersError,
                            JoinedMembersResponse, JoinResponse,
                            KeysClaimResponse,
@@ -116,6 +117,22 @@ class TestClass(object):
             "tests/data/upload_response.json")
         response = UploadResponse.from_dict(parsed_dict)
         assert isinstance(response, UploadResponse)
+
+    def test_download(self):
+        data = TestClass._load_bytes("tests/data/file_response")
+        response = DownloadResponse.from_data(data, "image/png", "example.png")
+        assert isinstance(response, DownloadResponse)
+        assert response.body == data
+        assert response.content_type == "image/png"
+        assert response.filename == "example.png"
+
+        data = TestClass._load_response("tests/data/limit_exceeded_error.json")
+        response = DownloadResponse.from_data(data, "image/png")
+        assert isinstance(response, DownloadError)
+        assert response.status_code == data["errcode"]
+
+        response = DownloadResponse.from_data("123", "image/png")
+        assert isinstance(response, DownloadError)
 
     def test_thumbnail(self):
         data = TestClass._load_bytes("tests/data/file_response")

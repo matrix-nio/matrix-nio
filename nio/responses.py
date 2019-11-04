@@ -44,6 +44,8 @@ __all__ = [
     "DevicesResponse",
     "DevicesError",
     "DeviceOneTimeKeyCount",
+    "DownloadResponse",
+    "DownloadError",
     "ErrorResponse",
     "InviteInfo",
     "JoinResponse",
@@ -250,19 +252,22 @@ class FileResponse(Response):
         body (bytes): The file's content in bytes.
         content_type (str): The content MIME type of the file,
             e.g. "image/png".
+        filename (str, optional): The file's name returned by the server.
     """
 
     body = attr.ib(type=bytes)
     content_type = attr.ib(type=str)
+    filename = attr.ib(type=Optional[str])
 
     def __str__(self):
-        return "{} bytes, content type: {}".format(
+        return "{} bytes, content type: {}, filename: {}".format(
             len(self.body),
-            self.content_type
+            self.content_type,
+            self.filename
         )
 
     @classmethod
-    def from_data(cls, data, content_type):
+    def from_data(cls, data, content_type, filename=None):
         """Create a FileResponse from file content returned by the server.
 
         Args:
@@ -411,6 +416,12 @@ class KeysClaimError(_ErrorWithRoomId):
 
 class UploadError(ErrorResponse):
     """A response representing a unsuccessful upload request."""
+
+    pass
+
+
+class DownloadError(ErrorResponse):
+    """A response representing a unsuccessful download request."""
 
     pass
 
@@ -570,14 +581,40 @@ class UploadResponse(Response):
 
 
 @attr.s
+class DownloadResponse(FileResponse):
+    """A response representing a successful download request."""
+
+    @classmethod
+    def from_data(
+            cls,
+            data,          # type: bytes
+            content_type,  # type: str
+            filename=None  # type: Optional[str]
+    ):
+        # type: (...) -> Union[DownloadResponse, DownloadError]
+        if isinstance(data, bytes):
+            return cls(body=data, content_type=content_type, filename=filename)
+
+        if isinstance(data, dict):
+            return DownloadError.from_dict(data)
+
+        return DownloadError("invalid data")
+
+
+@attr.s
 class ThumbnailResponse(FileResponse):
     """A response representing a successful thumbnail request."""
 
     @classmethod
-    def from_data(cls, data, content_type):
-        # type: (bytes, str) -> Union[ThumbnailResponse, ThumbnailError]
+    def from_data(
+            cls,
+            data,          # type: bytes
+            content_type,  # type: str
+            filename=None  # type: Optional[str]
+    ):
+        # type: (...) -> Union[ThumbnailResponse, ThumbnailError]
         if isinstance(data, bytes):
-            return cls(body=data, content_type=content_type)
+            return cls(body=data, content_type=content_type, filename=filename)
 
         if isinstance(data, dict):
             return ThumbnailError.from_dict(data)

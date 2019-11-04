@@ -1039,6 +1039,43 @@ class Api(object):
         )
 
     @staticmethod
+    def download(
+        access_token,       # type: str
+        server_name,        # type: str
+        media_id,           # type: str
+        filename=None,      # type: Optional[str]
+        allow_remote=True,  # type: bool
+    ):
+        # type: (...) -> Tuple[str, str]
+        """Get the content of a file from the content repository.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            server_name (str): The server name from the mxc:// URI.
+            media_id (str): The media ID from the mxc:// URI.
+            filename (str, optional): A filename to be returned in the response
+                by the server. If None (default), the original name of the
+                file will be returned instead, if there is one.
+            allow_remote (bool): Indicates to the server that it should not
+                attempt to fetch the media if it is deemed remote.
+                This is to prevent routing loops where the server contacts
+                itself.
+        """
+        query_parameters = {
+            "access_token": access_token,
+            "allow_remote": "true" if allow_remote else "false",
+        }
+        end = "/{}".format(filename) if filename else ""
+        path = "download/{}/{}{}".format(server_name, media_id, end)
+
+        return (
+            "GET",
+            Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH)
+        )
+
+    @staticmethod
     def thumbnail(
         access_token,                 # type: str
         server_name,                  # type: str
