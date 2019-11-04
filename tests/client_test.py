@@ -4,7 +4,8 @@ import json
 import pytest
 
 from helpers import FrameFactory, ephemeral, ephemeral_dir, faker
-from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
+from nio import (Client, DeviceList, DeviceOneTimeKeyCount, DownloadResponse,
+                 EncryptionError,
                  HttpClient, JoinedMembersResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginResponse,
                  LogoutResponse, MegolmEvent, ProfileGetAvatarResponse,
@@ -94,12 +95,17 @@ class TestClass(object):
 
         return f.serialize() + data.serialize()
 
-    def file_byte_response(self, stream_id=5):
+    def file_byte_response(self, stream_id=5, header_filename=False):
         frame_factory = FrameFactory()
 
         headers = self.example_response_headers + [
             ("content-type", "image/png")
         ]
+
+        if header_filename:
+            headers.append(
+                ("content-disposition", 'inline; filename="example.png"')
+            )
 
         f = frame_factory.build_headers_frame(
             headers=headers, stream_id=stream_id
@@ -795,6 +801,45 @@ class TestClass(object):
 
         assert isinstance(response, RoomTypingResponse)
 
+    def test_http_client_download(self, http_client):
+        http_client.connect(TransportType.HTTP2)
+
+        _, _ = http_client.login("1234")
+
+        http_client.receive(self.login_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, LoginResponse)
+        assert http_client.access_token == "ABCD"
+
+        server_name = "example.og"
+        media_id = "ascERGshawAWawugaAcauga",
+        filename = "example.png"
+
+        _, _ = http_client.download(server_name, media_id, allow_remote=False)
+
+        http_client.receive(self.file_byte_response(3))
+        response = http_client.next_response()
+
+        assert isinstance(response, DownloadResponse)
+        assert response.body == self._load_byte_response(
+            "tests/data/file_response"
+        )
+        assert response.content_type == "image/png"
+        assert response.filename is None
+
+        _, _ = http_client.download(server_name, media_id, filename)
+
+        http_client.receive(self.file_byte_response(5, header_filename=True))
+        response = http_client.next_response()
+
+        assert isinstance(response, DownloadResponse)
+        assert response.body == self._load_byte_response(
+            "tests/data/file_response"
+        )
+        assert response.content_type == "image/png"
+        assert response.filename == filename
+
     def test_http_client_thumbnail(self, http_client):
         http_client.connect(TransportType.HTTP2)
 
@@ -822,7 +867,6 @@ class TestClass(object):
             "tests/data/file_response"
         )
         assert response.content_type == "image/png"
-
 
     def test_http_client_get_profile(self, http_client):
         http_client.connect(TransportType.HTTP2)

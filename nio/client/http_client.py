@@ -14,6 +14,7 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+import cgi
 import json
 import pprint
 from builtins import str, super
@@ -44,7 +45,7 @@ from ..http import (Http2Connection, Http2Request, HttpConnection, HttpRequest,
                     TransportRequest, TransportResponse, TransportType)
 from ..log import logger_group
 from ..responses import (DeleteDevicesAuthResponse, DeleteDevicesResponse,
-                         DevicesResponse, FileResponse,
+                         DownloadResponse, DevicesResponse, FileResponse,
                          JoinedMembersResponse, JoinResponse,
                          KeysClaimResponse, KeysQueryResponse, KeysUploadError,
                          KeysUploadResponse, LoginResponse, LogoutResponse,
@@ -637,6 +638,44 @@ class HttpClient(Client):
 
     @connected
     @logged_in
+    def download(
+        self,
+        server_name,        # type: str
+        media_id,           # type: str
+        filename=None,      # type: Optional[str]
+        allow_remote=True,  # type: bool
+    ):
+        # type: (...) -> Tuple[UUID, bytes]
+        """Get the content of a file from the content repository.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            server_name (str): The server name from the mxc:// URI.
+            media_id (str): The media ID from the mxc:// URI.
+            filename (str, optional): A filename to be returned in the response
+                by the server. If None (default), the original name of the
+                file will be returned instead, if there is one.
+            allow_remote (bool): Indicates to the server that it should not
+                attempt to fetch the media if it is deemed remote.
+                This is to prevent routing loops where the server contacts
+                itself.
+        """
+        request = self._build_request(
+            Api.download(
+                self.access_token,
+                server_name,
+                media_id,
+                filename,
+                allow_remote
+            )
+        )
+
+        return self._send(request, RequestInfo(DownloadResponse))
+
+    @connected
+    @logged_in
     def thumbnail(
         self,
         server_name,                  # type: str
@@ -1181,17 +1220,27 @@ class HttpClient(Client):
         except KeyError:
             content_type = None
 
+        try:
+            disposition = str(
+                transport_response.headers[b"content-disposition"], "utf-8"
+            )
+            filename = cgi.parse_header(disposition)[1]["filename"]
+        except KeyError:
+            filename = None
+
         is_json = content_type == "application/json"
 
         if issubclass(request_class, FileResponse) and is_json:
             parsed_dict = self.parse_body(transport_response)
             response = request_class.from_data(
-                parsed_dict, content_type, *extra_data
+                parsed_dict, content_type, filename, *extra_data
             )
 
         elif issubclass(request_class, FileResponse):
             body = transport_response.content
-            response = request_class.from_data(body, content_type, *extra_data)
+            response = request_class.from_data(
+                body, content_type, filename, *extra_data
+            )
 
         else:
             parsed_dict = self.parse_body(transport_response)
