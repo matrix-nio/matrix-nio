@@ -400,9 +400,11 @@ class HttpClient(Client):
         should be sent to the socket.
 
         Args:
+            access_token (str): The access token to be used with the request.
+
             visibility (RoomVisibility): whether to have the room published in
                 the server's room directory or not.
-                Defaults to RoomVisibility.Private.
+                Defaults to ``RoomVisibility.Private``.
 
             alias (str, optional): The desired canonical alias local part.
                 For example, if set to "foo" and the room is created on the
@@ -416,36 +418,37 @@ class HttpClient(Client):
             room_version (str, optional): The room version to set.
                 If not specified, the homeserver will use its default setting.
                 If a version not supported by the homeserver is specified,
-                a 400 M_UNSUPPORTED_ROOM_VERSION error will be returned.
+                a 400 ``M_UNSUPPORTED_ROOM_VERSION`` error will be returned.
 
             federate (bool): Whether to allow users from other homeservers from
-                joining the room. Defaults to True. Cannot be changed later.
+                joining the room. Defaults to ``True``.
+                Cannot be changed later.
 
             is_direct (bool): If this should be considered a
                 direct messaging room.
-                If True, the server will set the is_direct flag on
-                m.room.member events sent to the users in
-                invite and invite_3pid.
-                Defaults to False.
+                If ``True``, the server will set the ``is_direct`` flag on
+                ``m.room.member events`` sent to the users in ``invite``.
+                Defaults to ``False``.
 
             preset (RoomPreset, optional): The selected preset will set various
                 rules for the room.
                 If unspecified, the server will choose a preset from the
-                visibility: RoomVisibility.public equates to
-                RoomPreset.public_chat, and RoomVisibility.private equates to a
-                RoomPreset.private_chat.
+                ``visibility``: ``RoomVisibility.public`` equates to
+                ``RoomPreset.public_chat``, and
+                ``RoomVisibility.private`` equates to a
+                ``RoomPreset.private_chat``.
 
             invite (list): A list of user id to invite to the room.
 
             initial_state (list): A list of state event dicts to send when
                 the room is created.
                 For example, a room could be made encrypted immediatly by
-                having a m.room.encryption event dict.
+                having a ``m.room.encryption`` event dict.
 
-            power_level_override (dict): A m.room.power_levels content dict to
-                override the default.
+            power_level_override (dict): A ``m.room.power_levels content`` dict
+                to override the default.
                 The dict will be applied on top of the generated
-                m.room.power_levels event before it is sent to the room.
+                ``m.room.power_levels`` event before it is sent to the room.
         """
 
         request = self._build_request(Api.room_create(
