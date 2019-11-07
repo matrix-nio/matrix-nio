@@ -19,8 +19,8 @@ import warnings
 from asyncio import Event
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
-from typing import (Any, AsyncIterable, BinaryIO, Coroutine, Dict, Iterable,
-                    List, Optional, Tuple, Type, Union)
+from typing import (Any, AsyncIterable, BinaryIO, Collection, Coroutine, Dict,
+                    Iterable, List, Optional, Tuple, Type, Union)
 from uuid import uuid4
 
 import attr
@@ -29,7 +29,8 @@ from aiohttp.client_exceptions import ClientConnectionError
 
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
-from ..api import Api, MessageDirection, ResizingMethod
+from ..api import (Api, MessageDirection, ResizingMethod, RoomVisibility,
+                   RoomPreset)
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
 from ..events import RoomKeyRequest, RoomKeyRequestCancellation
@@ -47,6 +48,7 @@ from ..responses import (ErrorResponse, FileResponse,
                          ProfileSetAvatarError, ProfileSetDisplayNameResponse,
                          ProfileSetDisplayNameError, Response,
                          RoomContextError, RoomContextResponse,
+                         RoomCreateResponse, RoomCreateError,
                          RoomForgetResponse, RoomForgetError,
                          RoomKeyRequestError, RoomKeyRequestResponse,
                          RoomLeaveResponse, RoomLeaveError,
@@ -1240,6 +1242,93 @@ class AsyncClient(Client):
             # the end
             if self.olm.inbound_group_store.add(session):
                 self.store.save_inbound_group_session(session)
+
+    @store_loaded
+    async def room_create(
+        self,
+        visibility:           RoomVisibility             = RoomVisibility.private,
+        alias:                Optional[str]              = None,
+        name:                 Optional[str]              = None,
+        topic:                Optional[str]              = None,
+        room_version:         Optional[str]              = None,
+        federate:             bool                       = True,
+        is_direct:            bool                       = False,
+        preset:               Optional[RoomPreset]       = None,
+        invite:               Collection[str]            = (),
+        initial_state:        Collection[Dict[str, Any]] = (),
+        power_level_override: Optional[Dict[str, Any]]   = None,
+    ) -> Union[RoomCreateResponse, RoomCreateError]:
+        """Create a new room.
+
+        Returns either a `RoomCreateResponse` if the request was successful or
+        a `RoomCreateError` if there was an error with the request.
+
+        Args:
+            visibility (RoomVisibility): whether to have the room published in
+                the server's room directory or not.
+                Defaults to RoomVisibility.Private.
+
+            alias (str, optional): The desired canonical alias local part.
+                For example, if set to "foo" and the room is created on the
+                "example.com" server, the room alias will be
+                "#foo:example.com".
+
+            name (str, optional): A name to set for the room.
+
+            topic (str, optional): A topic to set for the room.
+
+            room_version (str, optional): The room version to set.
+                If not specified, the homeserver will use its default setting.
+                If a version not supported by the homeserver is specified,
+                a 400 M_UNSUPPORTED_ROOM_VERSION error will be returned.
+
+            federate (bool): Whether to allow users from other homeservers from
+                joining the room. Defaults to True. Cannot be changed later.
+
+            is_direct (bool): If this should be considered a
+                direct messaging room.
+                If True, the server will set the is_direct flag on
+                m.room.member events sent to the users in
+                invite and invite_3pid.
+                Defaults to False.
+
+            preset (RoomPreset, optional): The selected preset will set various
+                rules for the room.
+                If unspecified, the server will choose a preset from the
+                visibility: RoomVisibility.public equates to
+                RoomPreset.public_chat, and RoomVisibility.private equates to a
+                RoomPreset.private_chat.
+
+            invite (list): A list of user id to invite to the room.
+
+            initial_state (list): A list of state event dicts to send when
+                the room is created.
+                For example, a room could be made encrypted immediatly by
+                having a m.room.encryption event dict.
+
+            power_level_override (dict): A m.room.power_levels content dict to
+                override the default.
+                The dict will be applied on top of the generated
+                m.room.power_levels event before it is sent to the room.
+        """
+
+        method, path, data = Api.room_create(
+            self.access_token,
+            visibility           = visibility,
+            alias                = alias,
+            name                 = name,
+            topic                = topic,
+            room_version         = room_version,
+            federate             = federate,
+            is_direct            = is_direct,
+            preset               = preset,
+            invite               = invite,
+            initial_state        = initial_state,
+            power_level_override = power_level_override,
+        )
+
+        return await self._send(RoomCreateResponse, method, path, data)
+
 
     @logged_in
     async def join(self, room_id):

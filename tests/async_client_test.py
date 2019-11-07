@@ -19,13 +19,13 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, ErrorResponse,
                  ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
-                 RoomTypingResponse,
+                 RoomTypingResponse, RoomCreateResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
                  Timeline, UploadResponse, RoomMessageText, RoomKeyRequest)
-from nio.api import ResizingMethod
+from nio.api import ResizingMethod, RoomPreset, RoomVisibility
 from nio.crypto import OlmDevice, Session
 
 from aioresponses import CallbackResult
@@ -670,6 +670,33 @@ class TestClass(object):
         )
 
         assert imported_session.id == out_session.id
+
+    async def test_room_create(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/createRoom"
+            "?access_token=abc123",
+            status=200,
+            payload=self.room_id_response(TEST_ROOM_ID),
+        )
+
+        resp = await async_client.room_create(
+            visibility=RoomVisibility.public,
+            alias="foo",
+            name="bar",
+            topic="Foos and bars",
+            room_version="5",
+            preset=RoomPreset.trusted_private_chat,
+            invite={ALICE_ID},
+            initial_state=[],
+            power_level_override={},
+        )
+        assert isinstance(resp, RoomCreateResponse)
+        assert resp.room_id == TEST_ROOM_ID
 
     async def test_join(self, async_client, aioresponse):
         await async_client.receive_response(
