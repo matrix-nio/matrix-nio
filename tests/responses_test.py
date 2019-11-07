@@ -13,7 +13,7 @@ from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
                            PartialSyncResponse, ProfileGetAvatarResponse,
                            ProfileGetDisplayNameResponse, ProfileGetResponse,
                            RoomContextError, RoomContextResponse,
-                           RoomForgetResponse,
+                           RoomCreateResponse, RoomForgetResponse,
                            RoomKeyRequestError, RoomKeyRequestResponse,
                            RoomLeaveResponse, RoomMessagesResponse,
                            RoomTypingResponse, SyncError,
@@ -249,6 +249,12 @@ class TestClass(object):
         assert isinstance(response2, _ErrorWithRoomId)
         assert response.retry_after_ms == parsed_dict["retry_after_ms"]
         assert response2.room_id == room_id
+
+    def test_room_create(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/room_id.json")
+        response = RoomCreateResponse.from_dict(parsed_dict)
+        assert isinstance(response, RoomCreateResponse)
 
     def test_join(self):
         parsed_dict = TestClass._load_response(
