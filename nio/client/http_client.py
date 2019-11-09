@@ -19,7 +19,7 @@ import pprint
 from builtins import str, super
 from collections import deque
 from functools import wraps
-from typing import (Any, Collection, Deque, Dict, List, Tuple, Type,
+from typing import (Any, Deque, Dict, List, Sequence, Tuple, Type,
                     Union, Optional)
 from uuid import UUID, uuid4
 
@@ -389,8 +389,8 @@ class HttpClient(Client):
         federate=True,                      # type: bool
         is_direct=False,                    # type: bool
         preset=None,                        # type: Optional[RoomPreset]
-        invite=(),                          # type: Collection[str]
-        initial_state=(),                   # type: Collection[Dict[str, Any]]
+        invite=(),                          # type: Sequence[str]
+        initial_state=(),                   # type: Sequence[Dict[str, Any]]
         power_level_override=None,          # type: Optional[Dict[str, Any]]
     ):
         # type: (...) -> Tuple[UUID, bytes]

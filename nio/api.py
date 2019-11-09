@@ -25,8 +25,8 @@ from __future__ import unicode_literals
 import json
 from collections import defaultdict
 from enum import Enum, unique
-from typing import (Any, Collection, DefaultDict, Dict, Iterable, List,
-                    Optional, Set, Tuple, Union)
+from typing import (Any, DefaultDict, Dict, Iterable, List,
+                    Optional, Set, Sequence, Tuple, Union)
 
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest
@@ -503,8 +503,8 @@ class Api(object):
         federate=True,                      # type: bool
         is_direct=False,                    # type: bool
         preset=None,                        # type: Optional[RoomPreset]
-        invite=(),                          # type: Collection[str]
-        initial_state=(),                   # type: Collection[Dict[str, Any]]
+        invite=(),                          # type: Sequence[str]
+        initial_state=(),                   # type: Sequence[Dict[str, Any]]
         power_level_override=None,          # type: Optional[Dict[str, Any]]
     ):
         # type (...) -> Tuple[str, str, str]

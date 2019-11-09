@@ -19,8 +19,8 @@ import warnings
 from asyncio import Event
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
-from typing import (Any, AsyncIterable, BinaryIO, Collection, Coroutine, Dict,
-                    Iterable, List, Optional, Tuple, Type, Union)
+from typing import (Any, AsyncIterable, BinaryIO, Coroutine, Dict,
+                    Iterable, List, Optional, Sequence, Tuple, Type, Union)
 from uuid import uuid4
 
 import attr
@@ -1246,17 +1246,17 @@ class AsyncClient(Client):
     @store_loaded
     async def room_create(
         self,
-        visibility:           RoomVisibility             = RoomVisibility.private,
-        alias:                Optional[str]              = None,
-        name:                 Optional[str]              = None,
-        topic:                Optional[str]              = None,
-        room_version:         Optional[str]              = None,
-        federate:             bool                       = True,
-        is_direct:            bool                       = False,
-        preset:               Optional[RoomPreset]       = None,
-        invite:               Collection[str]            = (),
-        initial_state:        Collection[Dict[str, Any]] = (),
-        power_level_override: Optional[Dict[str, Any]]   = None,
+        visibility:           RoomVisibility           = RoomVisibility.private,
+        alias:                Optional[str]            = None,
+        name:                 Optional[str]            = None,
+        topic:                Optional[str]            = None,
+        room_version:         Optional[str]            = None,
+        federate:             bool                     = True,
+        is_direct:            bool                     = False,
+        preset:               Optional[RoomPreset]     = None,
+        invite:               Sequence[str]            = (),
+        initial_state:        Sequence[Dict[str, Any]] = (),
+        power_level_override: Optional[Dict[str, Any]] = None,
     ) -> Union[RoomCreateResponse, RoomCreateError]:
         """Create a new room.
 
