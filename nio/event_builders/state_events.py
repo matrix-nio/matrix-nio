@@ -20,15 +20,16 @@ import attr
 """Matrix state events module.
 
 This module contains classes that can be used to easily create
-content dicts for room state events.
+room state event dicts.
 
-For example, to turn on encryption in a room with the ``AsyncClient``, the
-``EnableEncryptionBuilder`` class could be used:
+For example, to turn on encryption in a room with the ``HttpClient`` or
+``AsyncClient``, the ``EnableEncryptionBuilder`` class can be used:
 
+    >>> event_dict = EnableEncryptionBuilder().as_dict()
     >>> client.room_send(
     ...     room_id      = "!test:example.com",
-    ...     message_type = "m.room.encryption",
-    ...     content      = EnableEncryptionBuilder().as_dict(),
+    ...     message_type = event_dict["type"],
+    ...     content      = event_dict["content"],
     ... )
 """
 
@@ -56,9 +57,13 @@ class EnableEncryptionBuilder(object):
     rotation_msgs = attr.ib(type=int, default=100)
 
     def as_dict(self):
-        """Format the event as a content dictionary."""
+        """Format the event as a dictionary."""
         return {
-            "algorithm":            self.algorithm,
-            "rotation_period_ms":   self.rotation_ms,
-            "rotation_period_msgs": self.rotation_msgs,
+            "type":      "m.room.encryption",
+            "state_key": "",
+            "content":   {
+                "algorithm":            self.algorithm,
+                "rotation_period_ms":   self.rotation_ms,
+                "rotation_period_msgs": self.rotation_msgs,
+            },
         }
