@@ -24,7 +24,7 @@ import attr
 import olm
 
 from ..exceptions import EncryptionError
-from ..messages import ToDeviceMessage
+from ..event_builders import ToDeviceMessage
 
 if False:
     from ..responses import RoomKeyRequestResponse

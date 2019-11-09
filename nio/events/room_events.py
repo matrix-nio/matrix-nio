@@ -24,7 +24,7 @@ import attr
 from ..schemas import Schemas
 from .misc import (BadEventType, UnknownBadEvent, validate_or_badevent, verify,
                    BadEvent)
-from ..messages import ToDeviceMessage
+from ..event_builders import ToDeviceMessage
 
 
 @attr.s

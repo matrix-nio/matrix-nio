@@ -33,7 +33,7 @@ from ..api import Api, MessageDirection, ResizingMethod
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
 from ..events import RoomKeyRequest, RoomKeyRequestCancellation
-from ..messages import ToDeviceMessage
+from ..event_builders import ToDeviceMessage
 from ..responses import (ErrorResponse, FileResponse,
                          JoinResponse, JoinError,
                          JoinedMembersError, JoinedMembersResponse,

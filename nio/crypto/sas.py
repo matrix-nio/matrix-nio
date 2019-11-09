@@ -28,7 +28,7 @@ from future.moves.itertools import zip_longest
 from ..api import Api
 from ..events import KeyVerificationStart
 from ..exceptions import LocalProtocolError
-from ..messages import ToDeviceMessage
+from ..event_builders import ToDeviceMessage
 from .sessions import OlmDevice
 
 
