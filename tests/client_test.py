@@ -139,7 +139,7 @@ class TestClass(object):
             headers=self.example_response_headers, stream_id=stream_id
         )
 
-        body = bytes(json.dumps({"room_id": room_id}), "utf-8")
+        body = json.dumps({"room_id": room_id}).encode()
 
         data = frame_factory.build_data_frame(
             data=body,
