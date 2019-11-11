@@ -804,21 +804,13 @@ class TestClass(object):
     def test_http_client_download(self, http_client):
         http_client.connect(TransportType.HTTP2)
 
-        _, _ = http_client.login("1234")
-
-        http_client.receive(self.login_byte_response)
-        response = http_client.next_response()
-
-        assert isinstance(response, LoginResponse)
-        assert http_client.access_token == "ABCD"
-
         server_name = "example.og"
         media_id = "ascERGshawAWawugaAcauga",
         filename = "example.png"
 
         _, _ = http_client.download(server_name, media_id, allow_remote=False)
 
-        http_client.receive(self.file_byte_response(3))
+        http_client.receive(self.file_byte_response(1))
         response = http_client.next_response()
 
         assert isinstance(response, DownloadResponse)
@@ -830,7 +822,7 @@ class TestClass(object):
 
         _, _ = http_client.download(server_name, media_id, filename)
 
-        http_client.receive(self.file_byte_response(5, header_filename=True))
+        http_client.receive(self.file_byte_response(3, header_filename=True))
         response = http_client.next_response()
 
         assert isinstance(response, DownloadResponse)

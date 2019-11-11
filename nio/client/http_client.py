@@ -637,7 +637,6 @@ class HttpClient(Client):
         ))
 
     @connected
-    @logged_in
     def download(
         self,
         server_name,        # type: str
@@ -664,7 +663,6 @@ class HttpClient(Client):
         """
         request = self._build_request(
             Api.download(
-                self.access_token,
                 server_name,
                 media_id,
                 filename,

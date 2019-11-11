@@ -1553,7 +1553,7 @@ class AsyncClient(Client):
             content_type=content_type
         )
 
-    @logged_in
+    @client_session
     async def download(
         self,
         server_name,        # type: str
@@ -1579,7 +1579,6 @@ class AsyncClient(Client):
                 itself.
         """
         http_method, path = Api.download(
-            self.access_token,
             server_name,
             media_id,
             filename,

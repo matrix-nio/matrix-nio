@@ -1040,7 +1040,6 @@ class Api(object):
 
     @staticmethod
     def download(
-        access_token,       # type: str
         server_name,        # type: str
         media_id,           # type: str
         filename=None,      # type: Optional[str]
@@ -1052,7 +1051,6 @@ class Api(object):
         Returns the HTTP method and HTTP path for the request.
 
         Args:
-            access_token (str): The access token to be used with the request.
             server_name (str): The server name from the mxc:// URI.
             media_id (str): The media ID from the mxc:// URI.
             filename (str, optional): A filename to be returned in the response
@@ -1064,7 +1062,6 @@ class Api(object):
                 itself.
         """
         query_parameters = {
-            "access_token": access_token,
             "allow_remote": "true" if allow_remote else "false",
         }
         end = "/{}".format(filename) if filename else ""

@@ -849,18 +849,13 @@ class TestClass(object):
         assert isinstance(streaming_resp, UploadResponse)
 
     async def test_download(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
-
         server_name = "example.org"
         media_id = "ascERGshawAWawugaAcauga"
         filename = "example.png"
 
         aioresponse.get(
             "https://example.org/_matrix/media/r0/download/{}/{}"
-            "?access_token=abc123&allow_remote=true".format(
+            "?allow_remote=true".format(
                 server_name,
                 media_id,
             ),
@@ -875,7 +870,7 @@ class TestClass(object):
 
         aioresponse.get(
             "https://example.org/_matrix/media/r0/download/{}/{}/{}"
-            "?access_token=abc123&allow_remote=true".format(
+            "?allow_remote=true".format(
                 server_name,
                 media_id,
                 filename,
@@ -894,7 +889,7 @@ class TestClass(object):
 
         aioresponse.get(
             "https://example.org/_matrix/media/r0/download/{}/{}"
-            "?access_token=abc123&allow_remote=true".format(
+            "?allow_remote=true".format(
                 server_name,
                 media_id,
             ),
