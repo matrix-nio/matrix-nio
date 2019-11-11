@@ -1,6 +1,8 @@
 from .log import logger_group
 from .client import *
-from .api import MessageDirection, Api
+from .api import (
+    MessageDirection, Api, ResizingMethod, RoomVisibility, RoomPreset
+)
 from .responses import *
 from .events import *
 from .rooms import *

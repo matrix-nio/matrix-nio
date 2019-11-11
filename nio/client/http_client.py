@@ -19,7 +19,8 @@ import pprint
 from builtins import str, super
 from collections import deque
 from functools import wraps
-from typing import Any, Deque, Dict, List, Optional, Tuple, Type, Union
+from typing import (Any, Deque, Dict, List, Sequence, Tuple, Type,
+                    Union, Optional)
 from uuid import UUID, uuid4
 
 import attr
@@ -35,7 +36,8 @@ except ImportError:
 
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
-from ..api import Api, MessageDirection, ResizingMethod
+from ..api import (Api, MessageDirection, ResizingMethod, RoomVisibility,
+                   RoomPreset)
 from ..events import MegolmEvent
 from ..exceptions import LocalProtocolError, RemoteTransportError
 from ..http import (Http2Connection, Http2Request, HttpConnection, HttpRequest,
@@ -50,6 +52,7 @@ from ..responses import (DeleteDevicesAuthResponse, DeleteDevicesResponse,
                          ProfileGetDisplayNameResponse, ProfileGetResponse,
                          ProfileSetAvatarResponse,
                          ProfileSetDisplayNameResponse, Response,
+                         RoomCreateResponse,
                          RoomForgetResponse, RoomInviteResponse,
                          RoomKeyRequestResponse, RoomKickResponse,
                          RoomLeaveResponse, RoomMessagesResponse,
@@ -373,6 +376,95 @@ class HttpClient(Client):
         )
 
         return self._send(request, RequestInfo(RoomInviteResponse))
+
+    @connected
+    @logged_in
+    def room_create(
+        self,
+        visibility=RoomVisibility.private,  # type: RoomVisibility
+        alias=None,                         # type: Optional[str]
+        name=None,                          # type: Optional[str]
+        topic=None,                         # type: Optional[str]
+        room_version=None,                  # type: Optional[str]
+        federate=True,                      # type: bool
+        is_direct=False,                    # type: bool
+        preset=None,                        # type: Optional[RoomPreset]
+        invite=(),                          # type: Sequence[str]
+        initial_state=(),                   # type: Sequence[Dict[str, Any]]
+        power_level_override=None,          # type: Optional[Dict[str, Any]]
+    ):
+        # type: (...) -> Tuple[UUID, bytes]
+        """Create a new room.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            visibility (RoomVisibility): whether to have the room published in
+                the server's room directory or not.
+                Defaults to ``RoomVisibility.Private``.
+
+            alias (str, optional): The desired canonical alias local part.
+                For example, if set to "foo" and the room is created on the
+                "example.com" server, the room alias will be
+                "#foo:example.com".
+
+            name (str, optional): A name to set for the room.
+
+            topic (str, optional): A topic to set for the room.
+
+            room_version (str, optional): The room version to set.
+                If not specified, the homeserver will use its default setting.
+                If a version not supported by the homeserver is specified,
+                a 400 ``M_UNSUPPORTED_ROOM_VERSION`` error will be returned.
+
+            federate (bool): Whether to allow users from other homeservers from
+                joining the room. Defaults to ``True``.
+                Cannot be changed later.
+
+            is_direct (bool): If this should be considered a
+                direct messaging room.
+                If ``True``, the server will set the ``is_direct`` flag on
+                ``m.room.member events`` sent to the users in ``invite``.
+                Defaults to ``False``.
+
+            preset (RoomPreset, optional): The selected preset will set various
+                rules for the room.
+                If unspecified, the server will choose a preset from the
+                ``visibility``: ``RoomVisibility.public`` equates to
+                ``RoomPreset.public_chat``, and
+                ``RoomVisibility.private`` equates to a
+                ``RoomPreset.private_chat``.
+
+            invite (list): A list of user id to invite to the room.
+
+            initial_state (list): A list of state event dicts to send when
+                the room is created.
+                For example, a room could be made encrypted immediatly by
+                having a ``m.room.encryption`` event dict.
+
+            power_level_override (dict): A ``m.room.power_levels content`` dict
+                to override the default.
+                The dict will be applied on top of the generated
+                ``m.room.power_levels`` event before it is sent to the room.
+        """
+
+        request = self._build_request(Api.room_create(
+            self.access_token,
+            visibility           = visibility,
+            alias                = alias,
+            name                 = name,
+            topic                = topic,
+            room_version         = room_version,
+            federate             = federate,
+            is_direct            = is_direct,
+            preset               = preset,
+            invite               = invite,
+            initial_state        = initial_state,
+            power_level_override = power_level_override,
+        ))
+
+        return self._send(request, RequestInfo(RoomCreateResponse))
 
     @connected
     @logged_in

@@ -10,6 +10,7 @@ from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
                  LogoutResponse, MegolmEvent, ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
+                 RoomCreateResponse,
                  RoomEncryptionEvent, RoomForgetResponse, RoomInfo,
                  RoomKeyRequestResponse, RoomMember, RoomMemberEvent, Rooms,
                  RoomSummary, RoomTypingResponse,
@@ -122,6 +123,23 @@ class TestClass(object):
         )
 
         body = b"{}"
+
+        data = frame_factory.build_data_frame(
+            data=body,
+            stream_id=stream_id,
+            flags=['END_STREAM']
+        )
+
+        return f.serialize() + data.serialize()
+
+    def room_id_response(self, stream_id=5, room_id=TEST_ROOM_ID):
+        frame_factory = FrameFactory()
+
+        f = frame_factory.build_headers_frame(
+            headers=self.example_response_headers, stream_id=stream_id
+        )
+
+        body = json.dumps({"room_id": room_id}).encode()
 
         data = frame_factory.build_data_frame(
             data=body,
@@ -692,6 +710,33 @@ class TestClass(object):
         assert isinstance(response, RoomKeyRequestResponse)
         assert ("X3lUlvLELLYxeTx4yOVu6UDpasGEVO0Jbu+QFnm0cKQ" in
                 http_client.outgoing_key_requests)
+
+    def test_http_client_room_create(self, http_client):
+        http_client.connect(TransportType.HTTP2)
+
+        _, _ = http_client.login("1234")
+
+        http_client.receive(self.login_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, LoginResponse)
+        assert http_client.access_token == "ABCD"
+
+        _, _ = http_client.sync()
+
+        http_client.receive(self.sync_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, SyncResponse)
+        assert http_client.access_token == "ABCD"
+
+        _, _ = http_client.room_create()
+
+        http_client.receive(self.room_id_response(5))
+        response = http_client.next_response()
+
+        assert isinstance(response, RoomCreateResponse)
+        assert response.room_id == TEST_ROOM_ID
 
     def test_http_client_room_forget(self, http_client):
         http_client.connect(TransportType.HTTP2)

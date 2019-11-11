@@ -25,8 +25,8 @@ from __future__ import unicode_literals
 import json
 from collections import defaultdict
 from enum import Enum, unique
-from typing import (Any, DefaultDict, Dict, Iterable, List, Optional, Set,
-                    Tuple, Union)
+from typing import (Any, DefaultDict, Dict, Iterable, List,
+                    Optional, Set, Sequence, Tuple, Union)
 
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest
@@ -63,6 +63,36 @@ class ResizingMethod(Enum):
 
     scale = "scale"
     crop = "crop"
+
+
+@unique
+class RoomVisibility(Enum):
+    """Enum representing the desired visibility when creating a room.
+
+    "public" means the room will be shown in the server's room directory.
+    "private" will hide the room from the server's room directory.
+    """
+
+    private = "private"
+    public = "public"
+
+
+@unique
+class RoomPreset(Enum):
+    """Enum representing the available rule presets when creating a room.
+
+    "private_chat" makes the room invite-only and allows guests.
+
+    "trusted_private_chat" is the same as above, but also gives all invitees
+    the same power level as the room's creator.
+
+    "public_chat" makes the room joinable by anyone without invitations, and
+    forbid guests.
+    """
+
+    private_chat = "private_chat"
+    trusted_private_chat = "trusted_private_chat"
+    public_chat = "public_chat"
 
 
 class Api(object):
@@ -455,6 +485,116 @@ class Api(object):
         query_parameters = {"access_token": access_token}
         body = {"user_id": user_id}
         path = "rooms/{room}/invite".format(room=room_id)
+
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body)
+        )
+
+    @staticmethod
+    def room_create(
+        access_token,                       # type: str
+        visibility=RoomVisibility.private,  # type: RoomVisibility
+        alias=None,                         # type: Optional[str]
+        name=None,                          # type: Optional[str]
+        topic=None,                         # type: Optional[str]
+        room_version=None,                  # type: Optional[str]
+        federate=True,                      # type: bool
+        is_direct=False,                    # type: bool
+        preset=None,                        # type: Optional[RoomPreset]
+        invite=(),                          # type: Sequence[str]
+        initial_state=(),                   # type: Sequence[Dict[str, Any]]
+        power_level_override=None,          # type: Optional[Dict[str, Any]]
+    ):
+        # type (...) -> Tuple[str, str, str]
+        """Create a new room.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+
+            visibility (RoomVisibility): whether to have the room published in
+                the server's room directory or not.
+                Defaults to ``RoomVisibility.Private``.
+
+            alias (str, optional): The desired canonical alias local part.
+                For example, if set to "foo" and the room is created on the
+                "example.com" server, the room alias will be
+                "#foo:example.com".
+
+            name (str, optional): A name to set for the room.
+
+            topic (str, optional): A topic to set for the room.
+
+            room_version (str, optional): The room version to set.
+                If not specified, the homeserver will use its default setting.
+                If a version not supported by the homeserver is specified,
+                a 400 ``M_UNSUPPORTED_ROOM_VERSION`` error will be returned.
+
+            federate (bool): Whether to allow users from other homeservers from
+                joining the room. Defaults to ``True``.
+                Cannot be changed later.
+
+            is_direct (bool): If this should be considered a
+                direct messaging room.
+                If ``True``, the server will set the ``is_direct`` flag on
+                ``m.room.member events`` sent to the users in ``invite``.
+                Defaults to ``False``.
+
+            preset (RoomPreset, optional): The selected preset will set various
+                rules for the room.
+                If unspecified, the server will choose a preset from the
+                ``visibility``: ``RoomVisibility.public`` equates to
+                ``RoomPreset.public_chat``, and
+                ``RoomVisibility.private`` equates to a
+                ``RoomPreset.private_chat``.
+
+            invite (list): A list of user id to invite to the room.
+
+            initial_state (list): A list of state event dicts to send when
+                the room is created.
+                For example, a room could be made encrypted immediatly by
+                having a ``m.room.encryption`` event dict.
+
+            power_level_override (dict): A ``m.room.power_levels content`` dict
+                to override the default.
+                The dict will be applied on top of the generated
+                ``m.room.power_levels`` event before it is sent to the room.
+        """
+        path = "createRoom"
+        query_parameters = {"access_token": access_token}
+
+        body = {
+            "visibility": visibility.value,
+            "creation_content": {"m.federate": federate},
+            "is_direct": is_direct,
+        }
+
+        if alias:
+            body["room_alias_name"] = alias
+
+        if name:
+            body["name"] = name
+
+        if topic:
+            body["topic"] = topic
+
+        if room_version:
+            body["room_version"] = room_version
+
+        if preset:
+            body["preset"] = preset.value
+
+        if invite:
+            body["invite"] = list(invite)
+
+        if initial_state:
+            body["initial_state"] = list(initial_state)
+
+        if power_level_override:
+            body["power_level_content_override"] = power_level_override
 
         return (
             "POST",
