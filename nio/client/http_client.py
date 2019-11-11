@@ -400,8 +400,6 @@ class HttpClient(Client):
         should be sent to the socket.
 
         Args:
-            access_token (str): The access token to be used with the request.
-
             visibility (RoomVisibility): whether to have the room published in
                 the server's room directory or not.
                 Defaults to ``RoomVisibility.Private``.
@@ -467,7 +465,6 @@ class HttpClient(Client):
         ))
 
         return self._send(request, RequestInfo(RoomCreateResponse))
-
 
     @connected
     @logged_in

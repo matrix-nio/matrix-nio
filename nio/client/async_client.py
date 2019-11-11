@@ -1243,7 +1243,7 @@ class AsyncClient(Client):
             if self.olm.inbound_group_store.add(session):
                 self.store.save_inbound_group_session(session)
 
-    @store_loaded
+    @logged_in
     async def room_create(
         self,
         visibility:           RoomVisibility           = RoomVisibility.private,
@@ -1264,8 +1264,6 @@ class AsyncClient(Client):
         a `RoomCreateError` if there was an error with the request.
 
         Args:
-            access_token (str): The access token to be used with the request.
-
             visibility (RoomVisibility): whether to have the room published in
                 the server's room directory or not.
                 Defaults to ``RoomVisibility.Private``.
@@ -1331,7 +1329,6 @@ class AsyncClient(Client):
         )
 
         return await self._send(RoomCreateResponse, method, path, data)
-
 
     @logged_in
     async def join(self, room_id):
