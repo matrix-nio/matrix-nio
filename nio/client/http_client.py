@@ -64,7 +64,7 @@ from ..responses import (DeleteDevicesAuthResponse, DeleteDevicesResponse,
                          LoginInfoResponse)
 
 if False:
-    from .messages import ToDeviceMessage
+    from .event_builders import ToDeviceMessage
     from .crypto import OlmDevice
 
 try:

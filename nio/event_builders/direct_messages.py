@@ -19,13 +19,10 @@ from typing import Dict
 import attr
 
 
-"""Matrix messages module.
+"""Matrix direct messages module.
 
-This module contains classes that can be used to send events to a Matrix
+This module contains classes that can be used to send direct events to a Matrix
 homeserver.
-
-They ease the creation of a propper message structure.
-
 """
 
 

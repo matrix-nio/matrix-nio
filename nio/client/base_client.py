@@ -45,7 +45,7 @@ if ENCRYPTION_ENABLED:
 
 if False:
     from ..crypto import OlmDevice, OutgoingKeyRequest, Sas
-    from ..messages import ToDeviceMessage
+    from ..event_builders import ToDeviceMessage
 
 try:
     from json.decoder import JSONDecodeError

@@ -17,7 +17,7 @@ from nio import (Client, DeviceList, DeviceOneTimeKeyCount, EncryptionError,
                  ShareGroupSessionResponse, SyncResponse,
                  Timeline, ThumbnailResponse, TransportType, TypingNoticeEvent,
                  InviteMemberEvent, InviteInfo, ClientConfig)
-from nio.messages import ToDeviceMessage
+from nio.event_builders import ToDeviceMessage
 
 HOST = "example.org"
 USER = "example"
