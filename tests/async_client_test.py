@@ -974,19 +974,12 @@ class TestClass(object):
             await async_client.receive_response(self.encryption_sync_response)
 
     async def test_get_profile(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
-
         base_url = "https://example.org/_matrix/client/r0"
         name = faker.name()
         avatar = faker.avatar_url().replace("#auto", "")
 
         aioresponse.get(
-            "{}/profile/{}?access_token={}".format(
-                base_url, async_client.user_id, async_client.access_token
-            ),
+            "{}/profile/{}".format(base_url, async_client.user_id),
             status=200,
             payload=self.get_profile_response(name, avatar)
         )
@@ -1004,9 +997,7 @@ class TestClass(object):
         base_url = "https://example.org/_matrix/client/r0"
 
         aioresponse.get(
-            "{}/profile/{}/displayname?access_token={}".format(
-                base_url, async_client.user_id, async_client.access_token
-            ),
+            "{}/profile/{}/displayname".format(base_url, async_client.user_id),
             status=200,
             payload=self.get_displayname_response(None)
         )
@@ -1026,9 +1017,7 @@ class TestClass(object):
         assert isinstance(resp2, ProfileSetDisplayNameResponse)
 
         aioresponse.get(
-            "{}/profile/{}/displayname?access_token={}".format(
-                base_url, async_client.user_id, async_client.access_token
-            ),
+            "{}/profile/{}/displayname".format(base_url, async_client.user_id),
             status=200,
             payload=self.get_displayname_response(new_name)
         )
@@ -1045,9 +1034,7 @@ class TestClass(object):
         base_url = "https://example.org/_matrix/client/r0"
 
         aioresponse.get(
-            "{}/profile/{}/avatar_url?access_token={}".format(
-                base_url, async_client.user_id, async_client.access_token
-            ),
+            "{}/profile/{}/avatar_url".format(base_url, async_client.user_id),
             status=200,
             payload=self.get_avatar_response(None)
         )
@@ -1067,9 +1054,7 @@ class TestClass(object):
         assert isinstance(resp2, ProfileSetAvatarResponse)
 
         aioresponse.get(
-            "{}/profile/{}/avatar_url?access_token={}".format(
-                base_url, async_client.user_id, async_client.access_token
-            ),
+            "{}/profile/{}/avatar_url".format(base_url, async_client.user_id),
             status=200,
             payload=self.get_avatar_response(new_avatar)
         )

@@ -866,24 +866,13 @@ class TestClass(object):
     def test_http_client_get_profile(self, http_client):
         http_client.connect(TransportType.HTTP2)
 
-        _, _ = http_client.login("1234")
-        http_client.receive(self.login_byte_response)
-        response = http_client.next_response()
-        assert isinstance(response, LoginResponse)
-        assert http_client.access_token == "ABCD"
-
-        _, _ = http_client.sync()
-        http_client.receive(self.sync_byte_response)
-        response = http_client.next_response()
-        assert isinstance(response, SyncResponse)
-        assert http_client.access_token == "ABCD"
-
         name = faker.name()
         avatar = faker.avatar_url().replace("#auto", "")
 
         _, _ = http_client.get_profile()
-        http_client.receive(self.get_profile_byte_response(name, avatar, 5))
+        http_client.receive(self.get_profile_byte_response(name, avatar, 1))
         response = http_client.next_response()
+
         assert isinstance(response, ProfileGetResponse)
         assert response.displayname == name
         assert response.avatar_url.replace("#auto", "") == avatar
