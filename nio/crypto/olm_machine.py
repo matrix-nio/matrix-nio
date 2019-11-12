@@ -1140,7 +1140,7 @@ class Olm(object):
             if session_age < self._unwedging_interval:
                 logger.warn("Attempted to mark device {} of user {} for Olm "
                             "session unwedging, but a new session was created "
-                            "recently sender key {}".format(
+                            "recently.".format(
                                 device.device_id,
                                 device.user_id
                             ))
