@@ -673,7 +673,6 @@ class HttpClient(Client):
         return self._send(request, RequestInfo(DownloadResponse))
 
     @connected
-    @logged_in
     def thumbnail(
         self,
         server_name,                  # type: str
@@ -704,7 +703,6 @@ class HttpClient(Client):
         """
         request = self._build_request(
             Api.thumbnail(
-                self.access_token,
                 server_name,
                 media_id,
                 width,

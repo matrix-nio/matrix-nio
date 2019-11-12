@@ -1588,7 +1588,7 @@ class AsyncClient(Client):
         return await self._send(DownloadResponse, http_method, path)
 
 
-    @logged_in
+    @client_session
     async def thumbnail(
         self,
         server_name,                  # type: str
@@ -1618,7 +1618,6 @@ class AsyncClient(Client):
                 itself.
         """
         http_method, path = Api.thumbnail(
-            self.access_token,
             server_name,
             media_id,
             width,

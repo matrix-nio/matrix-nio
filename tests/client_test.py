@@ -838,14 +838,6 @@ class TestClass(object):
     def test_http_client_thumbnail(self, http_client):
         http_client.connect(TransportType.HTTP2)
 
-        _, _ = http_client.login("1234")
-
-        http_client.receive(self.login_byte_response)
-        response = http_client.next_response()
-
-        assert isinstance(response, LoginResponse)
-        assert http_client.access_token == "ABCD"
-
         _, _ = http_client.thumbnail(
             "example.org",
             "ascERGshawAWawugaAcauga",
@@ -854,7 +846,7 @@ class TestClass(object):
             allow_remote=False
         )
 
-        http_client.receive(self.file_byte_response(3))
+        http_client.receive(self.file_byte_response(1))
         response = http_client.next_response()
 
         assert isinstance(response, ThumbnailResponse)

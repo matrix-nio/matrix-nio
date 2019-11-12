@@ -1074,7 +1074,6 @@ class Api(object):
 
     @staticmethod
     def thumbnail(
-        access_token,                 # type: str
         server_name,                  # type: str
         media_id,                     # type: str
         width,                        # type: int
@@ -1090,7 +1089,6 @@ class Api(object):
         Note: The actual thumbnail may be larger than the size specified.
 
         Args:
-            access_token (str): The access token to be used with the request.
             server_name (str): The server name from the mxc:// URI.
             media_id (str): The media ID from the mxc:// URI.
             width (int): The desired width of the thumbnail.
@@ -1102,7 +1100,6 @@ class Api(object):
                 itself.
         """
         query_parameters = {
-            "access_token": access_token,
             "width": width,
             "height": height,
             "method": method.value,

@@ -902,11 +902,6 @@ class TestClass(object):
         assert isinstance(resp, DownloadError)
 
     async def test_thumbnail(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
-
         server_name = "example.org"
         media_id = "ascERGshawAWawugaAcauga"
         width = 32
@@ -915,8 +910,7 @@ class TestClass(object):
 
         aioresponse.get(
             "https://example.org/_matrix/media/r0/thumbnail/{}/{}"
-            "?access_token=abc123&width={}&height={}&method={}"
-            "&allow_remote=true".format(
+            "?width={}&height={}&method={}&allow_remote=true".format(
                 server_name,
                 media_id,
                 width,
@@ -935,8 +929,7 @@ class TestClass(object):
 
         aioresponse.get(
             "https://example.org/_matrix/media/r0/thumbnail/{}/{}"
-            "?access_token=abc123&width={}&height={}&method={}"
-            "&allow_remote=true".format(
+            "?width={}&height={}&method={}&allow_remote=true".format(
                 server_name,
                 media_id,
                 width,
