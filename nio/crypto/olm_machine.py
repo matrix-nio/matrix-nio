@@ -363,6 +363,9 @@ class Olm(object):
     def _queue_dummy_message(self, session, device):
         olm_dict = self._olm_encrypt(session, device, "m.dummy", {})
 
+        logger.info("Queuing a dummy Olm message for device {} of user "
+                    "{}".format(device.device_id, device.user_id))
+
         self.outgoing_to_device_messages.append(
             ToDeviceMessage(
                 "m.room.encrypted",
@@ -1135,9 +1138,20 @@ class Olm(object):
         if session:
             session_age = datetime.now() - session.creation_time
             if session_age < self._unwedging_interval:
+                logger.warn("Attempted to mark device {} of user {} for Olm "
+                            "session unwedging, but a new session was created "
+                            "recently sender key {}".format(
+                                device.device_id,
+                                device.user_id
+                            ))
                 return
 
         if device not in self.wedged_devices:
+            logger.info("Marking device {} of user {} as wedged".format(
+                device.device_id,
+                device.user_id
+            ))
+
             self.wedged_devices.append(device)
 
     def _try_decrypt(
