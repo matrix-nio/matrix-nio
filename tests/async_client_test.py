@@ -4,6 +4,7 @@ import re
 import time
 from os import path
 from datetime import datetime, timedelta
+from urllib.parse import quote
 
 import pytest
 
@@ -851,7 +852,7 @@ class TestClass(object):
     async def test_download(self, async_client, aioresponse):
         server_name = "example.org"
         media_id = "ascERGshawAWawugaAcauga"
-        filename = "example.png"
+        filename = "example&.png"  # has unsafe character to test % encoding
 
         aioresponse.get(
             "https://example.org/_matrix/media/r0/download/{}/{}"
@@ -873,7 +874,7 @@ class TestClass(object):
             "?allow_remote=true".format(
                 server_name,
                 media_id,
-                filename,
+                quote(filename),
             ),
             status=200,
             content_type="image/png",

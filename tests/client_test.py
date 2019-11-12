@@ -95,7 +95,7 @@ class TestClass(object):
 
         return f.serialize() + data.serialize()
 
-    def file_byte_response(self, stream_id=5, header_filename=False):
+    def file_byte_response(self, stream_id=5, header_filename=""):
         frame_factory = FrameFactory()
 
         headers = self.example_response_headers + [
@@ -104,7 +104,10 @@ class TestClass(object):
 
         if header_filename:
             headers.append(
-                ("content-disposition", 'inline; filename="example.png"')
+                (
+                    "content-disposition",
+                    'inline; filename="{}"'.format(header_filename),
+                ),
             )
 
         f = frame_factory.build_headers_frame(
@@ -806,7 +809,7 @@ class TestClass(object):
 
         server_name = "example.og"
         media_id = "ascERGshawAWawugaAcauga",
-        filename = "example.png"
+        filename = "example&.png"  # has unsafe character to test % encoding
 
         _, _ = http_client.download(server_name, media_id, allow_remote=False)
 
@@ -822,7 +825,7 @@ class TestClass(object):
 
         _, _ = http_client.download(server_name, media_id, filename)
 
-        http_client.receive(self.file_byte_response(3, header_filename=True))
+        http_client.receive(self.file_byte_response(3, filename))
         response = http_client.next_response()
 
         assert isinstance(response, DownloadResponse)
