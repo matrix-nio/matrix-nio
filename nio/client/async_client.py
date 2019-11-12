@@ -1589,7 +1589,7 @@ class AsyncClient(Client):
 
         return await self._send(ThumbnailResponse, http_method, path)
 
-    @logged_in
+    @client_session
     async def get_profile(self, user_id=None):
         # type: (Optional[str]) -> Union[ProfileGetResponse, ProfileGetError]
         """Get a user's combined profile information.
@@ -1605,10 +1605,7 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the profile for.
         """
-        method, path = Api.profile_get(
-            self.access_token,
-            user_id or self.user_id
-        )
+        method, path = Api.profile_get(user_id or self.user_id)
 
         return await self._send(
             ProfileGetResponse,
@@ -1616,7 +1613,7 @@ class AsyncClient(Client):
             path,
         )
 
-    @logged_in
+    @client_session
     async def get_displayname(
             self,
             user_id=None  # type: Optional[str]
@@ -1634,10 +1631,7 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the display name for.
         """
-        method, path = Api.profile_get_displayname(
-            self.access_token,
-            user_id or self.user_id
-        )
+        method, path = Api.profile_get_displayname(user_id or self.user_id)
 
         return await self._send(
             ProfileGetDisplayNameResponse,
@@ -1673,7 +1667,7 @@ class AsyncClient(Client):
             data,
         )
 
-    @logged_in
+    @client_session
     async def get_avatar(
             self,
             user_id=None  # type: Optional[str]
@@ -1691,10 +1685,7 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the avatar for.
         """
-        method, path = Api.profile_get_avatar(
-            self.access_token,
-            user_id or self.user_id
-        )
+        method, path = Api.profile_get_avatar(user_id or self.user_id)
 
         return await self._send(
             ProfileGetAvatarResponse,

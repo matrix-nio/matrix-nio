@@ -854,7 +854,6 @@ class HttpClient(Client):
         )
 
     @connected
-    @logged_in
     def get_profile(self, user_id=None):
         # type: (Optional[str]) -> Tuple[UUID, bytes]
         """Get a user's combined profile information.
@@ -869,17 +868,14 @@ class HttpClient(Client):
         Args:
             user_id (str): User id of the user to get the profile for.
         """
-        request = self._build_request(Api.profile_get(
-            self.access_token,
-            user_id or self.user_id
-        ))
+        request = self._build_request(Api.profile_get(user_id or self.user_id))
+
         return self._send(
             request,
             RequestInfo(ProfileGetResponse)
         )
 
     @connected
-    @logged_in
     def get_displayname(self, user_id=None):
         # type: (Optional[str]) -> Tuple[UUID, bytes]
         """Get a user's display name.
@@ -894,9 +890,9 @@ class HttpClient(Client):
             user_id (str): User id of the user to get the display name for.
         """
         request = self._build_request(Api.profile_get_displayname(
-            self.access_token,
             user_id or self.user_id
         ))
+
         return self._send(
             request,
             RequestInfo(ProfileGetDisplayNameResponse)
@@ -928,7 +924,6 @@ class HttpClient(Client):
         )
 
     @connected
-    @logged_in
     def get_avatar(self, user_id=None):
         # type: (Optional[str]) -> Tuple[UUID, bytes]
         """Get a user's avatar URL.
@@ -943,9 +938,9 @@ class HttpClient(Client):
             user_id (str): User id of the user to get the avatar for.
         """
         request = self._build_request(Api.profile_get_avatar(
-            self.access_token,
             user_id or self.user_id
         ))
+
         return self._send(
             request,
             RequestInfo(ProfileGetAvatarResponse)
