@@ -85,17 +85,12 @@ def encrypt_attachment(plaintext):
         to decrypt data. See ``encrypted_attachment_generator()`` for the keys.
     """
 
-    generator        = encrypted_attachment_generator([plaintext])
-    encrypted_chunks = []
-    while True:
-        try:
-            encrypted_chunks.append(next(generator))
-        except StopIteration as returned:
-            return (b"".join(encrypted_chunks), returned.value)
+    values = list(encrypted_attachment_generator([plaintext]))
+    return (b"".join(values[:-1]), values[-1])
 
 
 def encrypted_attachment_generator(data):
-    # (Iterable[bytes]) -> Generator[bytes, None, Dict[str, Any]]
+    # (Iterable[bytes]) -> Generator[Union[bytes, Dict[str, Any]], None, None]
     """Generator to encrypt data in order to send it as an encrypted
     attachment.
 
@@ -108,9 +103,8 @@ def encrypted_attachment_generator(data):
 
     Yields:
         The encrypted bytes for each chunk of data.
-
-    Returns:
-        A dict containing the info needed to decrypt data. The keys are:
+        The last yielded value will be a dict containing the info needed to
+        decrypt data. The keys are:
         | key: AES-CTR JWK key object.
         | iv: Base64 encoded 16 byte AES-CTR IV.
         | hashes.sha256: Base64 encoded SHA-256 hash of the ciphertext.
@@ -130,7 +124,7 @@ def encrypted_attachment_generator(data):
         sha256.update(encrypted_chunk)  # in executor
         yield encrypted_chunk
 
-    return _get_decryption_info_dict(key, iv, sha256)
+    yield _get_decryption_info_dict(key, iv, sha256)
 
 
 def _get_decryption_info_dict(key, iv, sha256):
