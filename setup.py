@@ -24,6 +24,7 @@ setup(
         "attrs",
         "future",
         "aiohttp;python_version>'3.5'",
+        "aiofiles;python_version>'3.5'",
         "typing;python_version<'3.5'",
         "h11",
         "h2",

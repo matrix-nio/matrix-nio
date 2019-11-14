@@ -13,4 +13,5 @@ pycrypto
 sphinx >= 1.8
 aiohttp; python_version >= '3.5'
 aioresponses; python_version >= '3.5'
+aiofiles; python_version >= '3.5'
 m2r
