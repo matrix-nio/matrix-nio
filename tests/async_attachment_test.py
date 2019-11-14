@@ -1,5 +1,7 @@
 import sys
+from pathlib import Path
 
+import aiofiles
 import pytest
 import unpaddedbase64
 from Crypto import Random  # nosec
@@ -8,18 +10,19 @@ from nio import EncryptionError
 from nio.crypto import async_encrypt_attachment, decrypt_attachment
 
 
+FILEPATH = "tests/data/test_bytes"
+
 @pytest.mark.skipif(
     sys.version_info < (3, 5), reason="Python 3 specific asyncio tests",
 )
 class TestClass:
-    async def _get_data_cypher_keys(self):
-        data          = b"Test bytes"
+    async def _get_data_cypher_keys(self, data=b"Test bytes"):
         *chunks, keys = [i async for i in async_encrypt_attachment(data)]
         return (data, b"".join(chunks), keys)
 
 
-    async def test_encrypt(self):
-        data, cyphertext, keys = await self._get_data_cypher_keys()
+    async def test_encrypt(self, data=b"Test bytes"):
+        data, cyphertext, keys = await self._get_data_cypher_keys(data)
 
         plaintext = decrypt_attachment(
             cyphertext,
@@ -28,7 +31,29 @@ class TestClass:
             keys["iv"],
         )
 
-        assert data == plaintext
+        assert plaintext == b"Test bytes"
+
+    async def test_encrypt_str(self):
+        await self.test_encrypt(FILEPATH)
+
+    async def test_encrypt_path_object(self):
+        await self.test_encrypt(Path(FILEPATH))
+
+    async def test_encrypt_iterable(self):
+        await self.test_encrypt([b"Test ", b"bytes"])
+
+    async def test_encrypt_async_iterable(self):
+        async def async_gen():
+            yield b"Test "
+            yield b"bytes"
+
+        await self.test_encrypt([b async for b in async_gen()])
+
+    async def test_encrypt_file_object(self):
+        await self.test_encrypt(open(FILEPATH, "rb"))
+
+    async def test_encrypt_async_file_object(self):
+        await self.test_encrypt(await aiofiles.open(FILEPATH, "rb"))
 
     async def test_hash_verification(self):
         data, cyphertext, keys = await self._get_data_cypher_keys()

@@ -16,9 +16,13 @@
 """Matrix async encryption/decryption functions for file uploads."""
 
 import asyncio
+import io
 from functools import partial
+from pathlib import Path
 from typing import Any, AsyncGenerator, AsyncIterable, Dict, Iterable, Union
 
+import aiofiles
+from aiofiles.threadpool.binary import AsyncBufferedReader
 from Crypto import Random  # nosec
 from Crypto.Cipher import AES  # nosec
 from Crypto.Hash import SHA256  # nosec
@@ -26,11 +30,20 @@ from Crypto.Util import Counter  # nosec
 
 from .attachments import _get_decryption_info_dict
 
-_DataT            = Union[bytes, Iterable[bytes], AsyncIterable[bytes]]
+AsyncDataT = Union[
+    str,
+    Path,
+    bytes,
+    Iterable[bytes],
+    AsyncIterable[bytes],
+    io.BufferedIOBase,
+    AsyncBufferedReader,
+]
+
 _EncryptedReturnT = AsyncGenerator[Union[bytes, Dict[str, Any]], None]
 
 
-async def async_encrypt_attachment(data: _DataT) -> _EncryptedReturnT:
+async def async_encrypt_attachment(data: AsyncDataT) -> _EncryptedReturnT:
     """Async generator to encrypt data in order to send it as an encrypted
     attachment.
 
@@ -62,21 +75,7 @@ async def async_encrypt_attachment(data: _DataT) -> _EncryptedReturnT:
 
     loop = asyncio.get_event_loop()
 
-    adata: AsyncIterable[bytes]  # for mypy
-
-    if isinstance(data, bytes):
-        data = [data]
-
-    if isinstance(data, Iterable):
-        async def asyncify(iterable):
-            for item in iterable:
-                yield item
-
-        adata = asyncify(data)
-    else:
-        adata = data
-
-    async for chunk in adata:
+    async for chunk in generator_from_data(data):
         update_crypt = partial(cipher.encrypt, chunk)
         crypt_chunk  = await loop.run_in_executor(None, update_crypt)
 
@@ -86,3 +85,50 @@ async def async_encrypt_attachment(data: _DataT) -> _EncryptedReturnT:
         yield crypt_chunk
 
     yield _get_decryption_info_dict(key, iv, sha256)
+
+
+async def generator_from_data(data: AsyncDataT) -> AsyncGenerator[bytes, None]:
+    aio_opened = False
+    if isinstance(data, (str, Path)):
+        data       = await aiofiles.open(data, "rb")
+        aio_opened = True
+
+    ###
+
+    if isinstance(data, bytes):
+        yield data
+
+    elif isinstance(data, Iterable):
+        for chunk in data:
+            yield chunk  # type: ignore
+
+    elif isinstance(data, AsyncIterable):
+        async for chunk in data:
+            yield chunk
+
+    elif isinstance(data, io.BufferedIOBase):
+       while True:
+            chunk = data.read(4096)
+            if not chunk:
+                return
+            yield chunk
+
+    elif isinstance(data, io.BufferedIOBase):
+       while True:
+            chunk = data.read(4096)
+            if not chunk:
+                return
+            yield chunk
+
+    elif isinstance(data, aiofiles.base.AiofilesContextManager):
+        while True:
+            chunk = await data.read(4096)
+            if not chunk:
+                break
+            yield chunk
+
+        if aio_opened:
+            await data.close()
+
+    else:
+        raise TypeError(f"Unknown type for data: {data!r}")
