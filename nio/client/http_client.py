@@ -1196,7 +1196,7 @@ class HttpClient(Client):
         Returns a dictionary representing the response.
         """
         try:
-            return json.loads(transport_response.text, encoding="utf-8")
+            return json.loads(transport_response.text)
         except JSONDecodeError:
             return {}
 

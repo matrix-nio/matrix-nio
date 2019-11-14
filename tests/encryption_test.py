@@ -72,7 +72,7 @@ class TestClass(object):
     @staticmethod
     def _load_response(filename):
         with open(filename) as f:
-            return json.loads(f.read(), encoding="utf-8")
+            return json.loads(f.read())
 
     def _get_store(self, user_id, device_id, pickle_key=""):
         return DefaultStore(user_id, device_id, ephemeral_dir, pickle_key)

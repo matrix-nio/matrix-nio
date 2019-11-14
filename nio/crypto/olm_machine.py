@@ -1483,8 +1483,7 @@ class Olm(object):
                     verified = True
 
         try:
-            parsed_dict = json.loads(plaintext, encoding="utf-8") \
-                # type: Dict[Any, Any]
+            parsed_dict = json.loads(plaintext)  # type: Dict[Any, Any]
         except JSONDecodeError as e:
             raise EncryptionError("Error parsing payload: {}".format(str(e)))
 
@@ -1606,7 +1605,7 @@ class Olm(object):
 
         # The plaintext should be valid json, let's parse it and verify it.
         try:
-            parsed_payload = json.loads(plaintext, encoding="utf-8")
+            parsed_payload = json.loads(plaintext)
         except JSONDecodeError as e:
             # Failed parsing the payload, return early.
             logger.error(

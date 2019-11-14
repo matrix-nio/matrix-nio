@@ -48,7 +48,7 @@ class TestClass(object):
     @staticmethod
     def _load_response(filename):
         with open(filename) as f:
-            return json.loads(f.read(), encoding="utf-8")
+            return json.loads(f.read())
 
     @staticmethod
     def _load_byte_response(filename):
