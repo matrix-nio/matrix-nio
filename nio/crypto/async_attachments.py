@@ -39,8 +39,7 @@ async def async_encrypt_attachment(data: _DataT) -> _EncryptedReturnT:
     or async iterable of bytes is passed as data.
 
     Args:
-        data (Union[bytes, Iterable[bytes]], AsyncIterable[bytes]): The data
-            to encrypt.
+        data (bytes/Iterable[bytes]/AsyncIterable[bytes]): The data to encrypt.
 
     Yields:
         The encrypted bytes for each chunk of data.

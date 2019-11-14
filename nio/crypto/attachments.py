@@ -101,7 +101,7 @@ def encrypted_attachment_generator(data):
     into memory if an iterable of bytes is passed as data.
 
     Args:
-        data (Union[bytes, Iterable[bytes]]): The data to encrypt.
+        data (bytes/Iterable[bytes]): The data to encrypt.
 
     Yields:
         The encrypted bytes for each chunk of data.
