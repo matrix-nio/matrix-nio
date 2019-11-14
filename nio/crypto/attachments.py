@@ -18,7 +18,7 @@
 """Matrix encryption algorithms for file uploads."""
 
 import base64
-from typing import Any, Dict, Generator, Iterable, Tuple
+from typing import Any, Dict, Generator, Iterable, Tuple, Union
 
 import unpaddedbase64
 from Crypto import Random
@@ -27,6 +27,8 @@ from Crypto.Hash import SHA256
 from Crypto.Util import Counter
 
 from ..exceptions import EncryptionError
+
+_DataT = Union[bytes, Iterable[bytes]]
 
 
 def decrypt_attachment(ciphertext, key, hash, iv):
@@ -85,21 +87,21 @@ def encrypt_attachment(plaintext):
         to decrypt data. See ``encrypted_attachment_generator()`` for the keys.
     """
 
-    values = list(encrypted_attachment_generator([plaintext]))
+    values = list(encrypted_attachment_generator(plaintext))
     return (b"".join(values[:-1]), values[-1])
 
 
 def encrypted_attachment_generator(data):
-    # (Iterable[bytes]) -> Generator[Union[bytes, Dict[str, Any]], None, None]
+    # (_DataT) -> Generator[Union[bytes, Dict[str, Any]], None, None]
     """Generator to encrypt data in order to send it as an encrypted
     attachment.
 
     Unlike ``encrypt_attachment()``, this function lazily encrypts and yields
     data, thus it can be used to encrypt large files without fully loading them
-    into memory.
+    into memory if an iterable of bytes is passed as data.
 
     Args:
-        data (Iterable[bytes]): The data to encrypt.
+        data (Union[bytes, Iterable[bytes]]): The data to encrypt.
 
     Yields:
         The encrypted bytes for each chunk of data.
@@ -118,6 +120,9 @@ def encrypted_attachment_generator(data):
 
     cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
     sha256 = SHA256.new()
+
+    if isinstance(data, bytes):
+        data = [data]
 
     for chunk in data:
         encrypted_chunk = cipher.encrypt(chunk)  # in executor
