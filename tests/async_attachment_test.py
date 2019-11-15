@@ -55,6 +55,10 @@ class TestClass:
     async def test_encrypt_async_file_object(self):
         await self.test_encrypt(await aiofiles.open(FILEPATH, "rb"))
 
+    async def test_encrypt_bad_argument_type(self):
+        with pytest.raises(TypeError):
+            await self.test_encrypt(123)
+
     async def test_hash_verification(self):
         data, cyphertext, keys = await self._get_data_cypher_keys()
 
