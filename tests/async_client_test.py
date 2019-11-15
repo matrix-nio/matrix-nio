@@ -6,6 +6,7 @@ from os import path
 from datetime import datetime, timedelta
 from urllib.parse import quote
 
+import aiofiles
 import pytest
 
 from helpers import faker
@@ -822,7 +823,7 @@ class TestClass(object):
 
     async def test_upload(self, async_client, aioresponse):
         await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
+            LoginResponse.from_dict(self.login_response),
         )
         assert async_client.logged_in
 
@@ -831,23 +832,44 @@ class TestClass(object):
             "?access_token=abc123&filename=test.png",
             status=200,
             payload=self.upload_response,
-            repeat=True
+            repeat=True,
         )
 
-        resp = await async_client.upload(
-            self.file_response,
-            "image/png",
-            "test.png"
+        resp, decryption_info = await async_client.upload(
+            "tests/data/file_response", "image/png", "test.png",
         )
         assert isinstance(resp, UploadResponse)
+        assert decryption_info is None
 
-        with open("tests/data/file_response", "rb") as file:
-            streaming_resp = await async_client.upload(
-                file,
-                "image/png",
-                "test.png"
+    async def test_encrypted_upload(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            "https://example.org/_matrix/media/r0/upload"
+            "?access_token=abc123&filename=test.png",
+            status=200,
+            payload=self.upload_response,
+            repeat=True,
+        )
+
+        async with aiofiles.open("tests/data/file_response", "rb") as file:
+            resp, decryption_info = await async_client.upload(
+                file, "image/png", "test.png", encrypt=True,
             )
-        assert isinstance(streaming_resp, UploadResponse)
+
+        assert isinstance(resp, UploadResponse)
+        assert isinstance(decryption_info, dict)
+
+        # aioresponse doesn't do anything with the data_generator() in
+        # upload(), so the decryption dict doesn't get updated and
+        # we can't test wether it works as intended.
+        #
+        # assert "key" in decryption_info
+        # assert "hashes" in decryption_info
+        # assert "iv" in decryption_info
 
     async def test_download(self, async_client, aioresponse):
         server_name = "example.org"

@@ -54,6 +54,13 @@ async def async_encrypt_attachment(data: AsyncDataT) -> _EncryptedReturnT:
     Args:
         data (str/Path/bytes/Iterable[bytes]/AsyncIterable[bytes]/
         io.BufferedIOBase/AsyncBufferedReader): The data to encrypt.
+            Passing a path string, Path, async iterable or aiofiles open
+            binary file object allows the file data to be read in an
+            asynchronous and lazy (without reading the entire file into
+            memory) way.
+            Passing a non-async iterable or standard open binary file
+            object will still allow the data to be read lazily, but
+            not asynchronously.
 
     Yields:
         The encrypted bytes for each chunk of data.
