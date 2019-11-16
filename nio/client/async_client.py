@@ -1520,7 +1520,7 @@ class AsyncClient(Client):
     async def upload(
         self,
         data:         AsyncDataT,
-        content_type: str,
+        content_type: str           = "application/octet-stream",
         filename:     Optional[str] = None,
         encrypt:      bool          = False,
     ) -> Tuple[Union[UploadResponse, UploadError], Optional[Dict[str, Any]]]:
@@ -1547,6 +1547,9 @@ class AsyncClient(Client):
 
             content_type (str): The content MIME type of the file,
                 e.g. "image/png".
+                Defaults to "application/octet-stream", corresponding to a
+                generic binary file.
+                Custom values are ignored if encrypt is ``True``.
 
             filename (str, optional): The file's original name.
 
@@ -1570,14 +1573,13 @@ class AsyncClient(Client):
         else:
             data = generator_from_data(data)
 
-        import remote_pdb; remote_pdb.RemotePdb("127.0.0.1", 4444).set_trace()
-
         response = await self._send(
             UploadResponse,
             http_method,
             path,
             data,
-            content_type=content_type,
+            content_type =
+                "application/octet-stream" if encrypt else content_type,
         )
 
         # After the upload finished and we get the response above, if encrypt
