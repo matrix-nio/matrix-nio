@@ -71,7 +71,6 @@ async def async_encrypt_attachment(data: AsyncDataT) -> _EncryptedReturnT:
         | hashes.sha256: Base64 encoded SHA-256 hash of the ciphertext.
     """
 
-
     key = Random.new().read(32)
     # 8 bytes IV
     iv = Random.new().read(8)

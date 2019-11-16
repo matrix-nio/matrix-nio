@@ -31,7 +31,7 @@ from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
 from ..api import (Api, MessageDirection, ResizingMethod, RoomVisibility,
                    RoomPreset)
-from ..crypto import AsyncDataT, async_encrypt_attachment
+from ..crypto import AsyncDataT, async_encrypt_attachment, generator_from_data
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
 from ..events import RoomKeyRequest, RoomKeyRequestCancellation
@@ -1559,14 +1559,18 @@ class AsyncClient(Client):
         decryption_dict: Dict[str, Any] = {}
 
         if encrypt:
-            async def data_generator():
-                async for value in async_encrypt_attachment(data):
+            async def encrypted_data_generator(original_data):
+                async for value in async_encrypt_attachment(original_data):
                     if isinstance(value, dict):  # last yielded value
                         decryption_dict.update(value)
                     else:
                         yield value
 
-            data = data_generator()
+            data = encrypted_data_generator(data)
+        else:
+            data = generator_from_data(data)
+
+        import remote_pdb; remote_pdb.RemotePdb("127.0.0.1", 4444).set_trace()
 
         response = await self._send(
             UploadResponse,
