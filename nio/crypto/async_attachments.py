@@ -116,7 +116,7 @@ async def async_generator_from_data(
                 return
             yield chunk
 
-    elif isinstance(data, aiofiles.base.AiofilesContextManager):
+    elif isinstance(data, AsyncBufferedReader):
         while True:
             chunk = await data.read(4096)
             if not chunk:
