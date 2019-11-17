@@ -108,21 +108,7 @@ async def async_generator_from_data(
     if isinstance(data, bytes):
         yield data
 
-    elif isinstance(data, Iterable):
-        for chunk in data:
-            yield chunk  # type: ignore
-
-    elif isinstance(data, AsyncIterable):
-        async for chunk in data:
-            yield chunk
-
-    elif isinstance(data, io.BufferedIOBase):
-       while True:
-            chunk = data.read(4096)
-            if not chunk:
-                return
-            yield chunk
-
+    # Test if data is a file obj first, since it's considered Iterable too
     elif isinstance(data, io.BufferedIOBase):
        while True:
             chunk = data.read(4096)
@@ -139,6 +125,14 @@ async def async_generator_from_data(
 
         if aio_opened:
             await data.close()
+
+    elif isinstance(data, Iterable):
+        for chunk in data:  # type: ignore
+            yield chunk
+
+    elif isinstance(data, AsyncIterable):
+        async for chunk in data:
+            yield chunk
 
     else:
         raise TypeError(f"Unknown type for data: {data!r}")
