@@ -31,7 +31,8 @@ from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
 from ..api import (Api, MessageDirection, ResizingMethod, RoomVisibility,
                    RoomPreset)
-from ..crypto import AsyncDataT, async_encrypt_attachment, generator_from_data
+from ..crypto import (AsyncDataT, async_encrypt_attachment,
+                      async_generator_from_data)
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
 from ..events import RoomKeyRequest, RoomKeyRequestCancellation
@@ -1571,7 +1572,7 @@ class AsyncClient(Client):
 
             data = encrypted_data_generator(data)
         else:
-            data = generator_from_data(data)
+            data = async_generator_from_data(data)
 
         response = await self._send(
             UploadResponse,

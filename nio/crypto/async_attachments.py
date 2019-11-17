@@ -82,7 +82,7 @@ async def async_encrypt_attachment(data: AsyncDataT) -> _EncryptedReturnT:
 
     loop = asyncio.get_event_loop()
 
-    async for chunk in generator_from_data(data):
+    async for chunk in async_generator_from_data(data):
         update_crypt = partial(cipher.encrypt, chunk)
         crypt_chunk  = await loop.run_in_executor(None, update_crypt)
 
@@ -94,7 +94,10 @@ async def async_encrypt_attachment(data: AsyncDataT) -> _EncryptedReturnT:
     yield _get_decryption_info_dict(key, iv, sha256)
 
 
-async def generator_from_data(data: AsyncDataT) -> AsyncGenerator[bytes, None]:
+async def async_generator_from_data(
+    data: AsyncDataT,
+) -> AsyncGenerator[bytes, None]:
+
     aio_opened = False
     if isinstance(data, (str, Path)):
         data       = await aiofiles.open(data, "rb")
