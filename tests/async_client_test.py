@@ -29,7 +29,7 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
                  Timeline, UploadResponse, RoomMessageText, RoomKeyRequest)
 from nio.api import ResizingMethod, RoomPreset, RoomVisibility
-from nio.crypto import OlmDevice, Session
+from nio.crypto import OlmDevice, Session, decrypt_attachment
 
 from aioresponses import CallbackResult
 
@@ -865,11 +865,32 @@ class TestClass(object):
 
         # aioresponse doesn't do anything with the data_generator() in
         # upload(), so the decryption dict doesn't get updated and
-        # we can't test wether it works as intended.
-        #
-        # assert "key" in decryption_info
-        # assert "hashes" in decryption_info
-        # assert "iv" in decryption_info
+        # we can't test wether it works as intended here.
+
+    async def test_encrypted_data_generator(self, async_client):
+        original_data   = [b"123", b"456"]
+        decryption_dict = {}
+
+        gen = async_client._encrypted_data_generator(
+            original_data, decryption_dict,
+        )
+
+        encrypted_data = b"".join([chunk async for chunk in gen])
+
+        assert encrypted_data
+        assert "key" in decryption_dict
+        assert "hashes" in decryption_dict
+        assert "iv" in decryption_dict
+
+        decrypted_data = decrypt_attachment(
+            encrypted_data,
+            decryption_dict["key"]["k"],
+            decryption_dict["hashes"]["sha256"],
+            decryption_dict["iv"],
+        )
+
+        assert decrypted_data == b"".join(original_data)
+
 
     async def test_download(self, async_client, aioresponse):
         server_name = "example.org"

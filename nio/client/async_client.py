@@ -1517,6 +1517,14 @@ class AsyncClient(Client):
             response_data=(room_id, )
         )
 
+    @staticmethod
+    async def _encrypted_data_generator(original_data, decryption_dict):
+        async for value in async_encrypt_attachment(original_data):
+            if isinstance(value, dict):  # last yielded value
+                decryption_dict.update(value)
+            else:
+                yield value
+
     @logged_in
     async def upload(
         self,
@@ -1563,14 +1571,7 @@ class AsyncClient(Client):
         decryption_dict: Dict[str, Any] = {}
 
         if encrypt:
-            async def encrypted_data_generator(original_data):
-                async for value in async_encrypt_attachment(original_data):
-                    if isinstance(value, dict):  # last yielded value
-                        decryption_dict.update(value)
-                    else:
-                        yield value
-
-            data = encrypted_data_generator(data)
+            data = self._encrypted_data_generator(data, decryption_dict)
         else:
             data = async_generator_from_data(data)
 
@@ -1585,7 +1586,7 @@ class AsyncClient(Client):
 
         # After the upload finished and we get the response above, if encrypt
         # is True, decryption_dict will have been updated from inside the
-        # data_generator().
+        # self._encrypted_data_generator().
         return (response, decryption_dict if encrypt else None)
 
     @client_session
