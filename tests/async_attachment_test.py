@@ -47,7 +47,7 @@ class TestClass:
             yield b"Test "
             yield b"bytes"
 
-        await self.test_encrypt([b async for b in async_gen()])
+        await self.test_encrypt(async_gen())
 
     async def test_encrypt_file_object(self):
         await self.test_encrypt(open(FILEPATH, "rb"))
