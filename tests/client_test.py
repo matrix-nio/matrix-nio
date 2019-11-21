@@ -678,11 +678,12 @@ class TestClass(object):
         with pytest.raises(EncryptionError):
             client.olm.share_group_session(TEST_ROOM_ID, room.users)
 
-        shared_with, to_device = client.olm.share_group_session(
-            TEST_ROOM_ID,
-            room.users,
-            True
-        )
+        with pytest.raises(LocalProtocolError):
+            client.olm.share_group_session(
+                TEST_ROOM_ID,
+                room.users,
+                ignore_missing_sessions=True,
+            )
 
         session = client.olm.outbound_group_sessions[TEST_ROOM_ID]
         assert (ALICE_ID, ALICE_DEVICE_ID) in session.users_ignored
