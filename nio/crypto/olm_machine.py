@@ -1855,6 +1855,9 @@ class Olm(object):
 
             to_device_dict["messages"][user_id][device.id] = olm_dict
 
+        if not sharing_with:
+            raise LocalProtocolError("No user to share group session with")
+
         return sharing_with, to_device_dict
 
     def load(self):

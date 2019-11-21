@@ -2592,7 +2592,6 @@ class TestClass(object):
         )
 
         def key_request_cb(event):
-            print(event)
             bob.verify_device(alice_device)
 
             for key_share in bob.get_active_key_requests(

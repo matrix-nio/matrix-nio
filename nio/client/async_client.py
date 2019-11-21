@@ -1423,7 +1423,6 @@ class AsyncClient(Client):
                 ignored. Ignored devices will still receive encryption
                 keys for messages but they won't be marked as verified.
 
-
         Raises LocalProtocolError if the client isn't logged in, if the session
         store isn't loaded, no room with the given room id exists, the room
         isn't an encrypted room or a key sharing request is already in flight
@@ -1464,9 +1463,12 @@ class AsyncClient(Client):
                     list(room.users.keys()),
                     ignore_missing_sessions=True,
                     ignore_unverified_devices=ignore_unverified_devices,
-                    already_shared_with=shared_with
+                    already_shared_with=shared_with,
                 )
-            except LocalProtocolError:  # Group session already shared
+            except LocalProtocolError:
+                # Group session already shared OR no user left to share with,
+                # in which case we need to explictely mark the session shared.
+                self.olm.outbound_group_sessions[room_id].shared = True
                 break
             except Exception:
                 event = self.sharing_session.pop(room_id)
@@ -1481,7 +1483,7 @@ class AsyncClient(Client):
                     self.access_token,
                     "m.room.encrypted",
                     to_device_dict,
-                    uuid
+                    uuid,
                 )
 
                 coros.append(self._send(
@@ -1489,7 +1491,7 @@ class AsyncClient(Client):
                     method,
                     path,
                     data,
-                    (room_id, user_set)
+                    (room_id, user_set),
                 ))
 
                 if not user_set:
