@@ -391,7 +391,7 @@ class TestClass(object):
             TEST_ROOM,
             TEST_FORWARDING_CHAIN
         )
-        store.save_inbound_group_session(in_group)
+        store.save_inbound_group_sessions(in_group)
 
         store2 = self.copy_store(store)
         session_store = store2.load_inbound_group_sessions()
@@ -554,7 +554,6 @@ class TestClass(object):
     def test_real_db_upgrade(self, tempdir):
         path = os.path.abspath("tests/data/weechat_test.db")
         copyfile(path, os.path.join(tempdir, "weechat_test.db"))
-        print(path)
         store = MatrixStore(
             "@pjtest:termina.org.uk",
             "LHNALLSCNA",

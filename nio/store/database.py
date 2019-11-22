@@ -534,7 +534,7 @@ class MatrixStore(object):
                     self.save_session(curve_key, session)
 
             for g_session in group_sessions:
-                self.save_inbound_group_session(g_session)
+                self.save_inbound_group_sessions(g_session)
 
             self.save_device_keys(device_keys)
 
@@ -733,6 +733,7 @@ class MatrixStore(object):
     @use_database
     def save_inbound_group_session(self, session):
         """Deprecated: use save_inbound_group_sessions() instead."""
+        import remote_pdb; remote_pdb.RemotePdb("127.0.0.1", 4444).set_trace()
         warnings.warn(
             self.save_inbound_group_session.__doc__,
             DeprecationWarning

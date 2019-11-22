@@ -1063,7 +1063,7 @@ class Olm(object):
             return
 
         self.inbound_group_store.add(session)
-        self.save_inbound_group_session(session)
+        self.save_inbound_group_sessions(session)
 
     def create_outbound_group_session(self, room_id):
         # type: (str) -> None
@@ -1339,7 +1339,7 @@ class Olm(object):
             return None
 
         if self.inbound_group_store.add(session):
-            self.save_inbound_group_session(session)
+            self.save_inbound_group_sessions(session)
 
         key_request = self.outgoing_key_requests.pop(key_request.request_id)
         self.store.remove_outgoing_key_request(key_request)
