@@ -391,6 +391,10 @@ class TestClass(object):
             TEST_ROOM,
             TEST_FORWARDING_CHAIN
         )
+
+        # Nothing should happen if no sessions are passed
+        store.save_inbound_group_sessions()
+
         store.save_inbound_group_sessions(in_group)
 
         store2 = self.copy_store(store)
