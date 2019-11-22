@@ -712,16 +712,22 @@ class MatrixStore(object):
         account = self._get_account()
         assert account
 
-        rows = ({
-            "account": account,
-            "sender_key": sender_key,
-            "session": session.pickle(self.pickle_key),
-            "session_id": session.id,
-            "creation_time": session.creation_time,
-            "last_usage_date": session.use_time,
-        } for (sender_key, session) in sessions)
+        rows = [
+            {
+                "account": account,
+                "sender_key": sender_key,
+                "session": session.pickle(self.pickle_key),
+                "session_id": session.id,
+                "creation_time": session.creation_time,
+                "last_usage_date": session.use_time,
+            }
+            for (sender_key, session) in sessions
+        ]
 
-        for batch in chunked(rows, 20):
+        if not rows:
+            return
+
+        for batch in chunked(rows, 1000 / len(rows[0])):
             OlmSessions.replace_many(batch).execute()
 
     @use_database
