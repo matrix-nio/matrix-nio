@@ -16,6 +16,7 @@ import sqlite3
 from builtins import super
 from functools import wraps
 from typing import Optional, List, Dict
+import warnings
 
 import attr
 from peewee import DoesNotExist, SqliteDatabase, chunked
@@ -731,37 +732,12 @@ class MatrixStore(object):
 
     @use_database
     def save_inbound_group_session(self, session):
-        """Save the provided Megolm inbound group session to the database.
-
-        Args:
-            session (InboundGroupSession): The session to save.
-        """
-        account = self._get_account()
-        assert account
-
-        MegolmInboundSessions.insert(
-            sender_key=session.sender_key,
-            account=account,
-            fp_key=session.ed25519,
-            room_id=session.room_id,
-            session=session.pickle(self.pickle_key),
-            session_id=session.id
-        ).on_conflict_ignore().execute()
-
-        MegolmInboundSessions.update(
-            {
-                MegolmInboundSessions.session: session.pickle(
-                    self.pickle_key
-                )
-            }
-        ).where(
-            MegolmInboundSessions.session_id == session.id
-        ).execute()
-
-        ForwardedChains.replace_many((
-            {"sender_key": chain, "session": session.id}
-            for chain in session.forwarding_chain
-        )).execute()
+        """Deprecated: use save_inbound_group_sessions() instead."""
+        warnings.warn(
+            self.save_inbound_group_session.__doc__,
+            DeprecationWarning
+        )
+        self.save_inbound_group_sessions(session)
 
     @use_database_atomic
     def save_inbound_group_sessions(self, *sessions):
