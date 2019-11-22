@@ -720,7 +720,7 @@ class MatrixStore(object):
         if not rows:
             return
 
-        for batch in chunked(rows, 1000 / len(rows[0])):
+        for batch in chunked(rows, 1000 // len(rows[0])):
             OlmSessions.replace_many(batch).execute()
 
     @use_database
