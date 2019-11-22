@@ -18,7 +18,7 @@ from functools import wraps
 from typing import Optional, List, Dict
 
 import attr
-from peewee import DoesNotExist, SqliteDatabase
+from peewee import DoesNotExist, SqliteDatabase, chunked
 from playhouse.sqliteq import SqliteQueueDatabase
 
 from . import (Accounts, DeviceKeys, DeviceKeys_v1, DeviceTrustState,
@@ -758,12 +758,64 @@ class MatrixStore(object):
             MegolmInboundSessions.session_id == session.id
         ).execute()
 
-        # TODO, use replace many here
-        for chain in session.forwarding_chain:
-            ForwardedChains.replace(
-                sender_key=chain,
-                session=session.id
+        ForwardedChains.replace_many((
+            {"sender_key": chain, "session": session.id}
+            for chain in session.forwarding_chain
+        )).execute()
+
+    @use_database_atomic
+    def save_inbound_group_sessions(self, *sessions):
+        """Save the provided Megolm inbound group sessions to the database.
+
+        Args:
+            *sessions: A list of ``InboundGroupSession`` to save.
+        """
+        account = self._get_account()
+        assert account
+
+        insert_dicts = [
+            {
+                "sender_key": session.sender_key,
+                "account": account,
+                "fp_key": session.ed25519,
+                "room_id": session.room_id,
+                "session": session.pickle(self.pickle_key),
+                "session_id": session.id,
+            }
+            for session in sessions
+        ]
+
+        if not insert_dicts:
+            return
+
+        for batch in chunked(insert_dicts, 1000 // len(insert_dicts[0])):
+            MegolmInboundSessions.insert_many(
+                batch,
+            ).on_conflict_ignore().execute()
+
+        for session in sessions:
+            MegolmInboundSessions.update(
+                {
+                    MegolmInboundSessions.session: session.pickle(
+                        self.pickle_key,
+                    ),
+                },
+            ).where(
+                MegolmInboundSessions.session_id == session.id,
             ).execute()
+
+        replace_dicts = [
+            {"sender_key": chain, "session": session.id}
+            for session in sessions
+            for chain in session.forwarding_chain
+        ]
+
+        if not replace_dicts:
+            return
+
+        for batch in chunked(replace_dicts, 1000 // len(replace_dicts[0])):
+            ForwardedChains.replace_many(batch).execute()
+
 
     @use_database
     def load_device_keys(self):
