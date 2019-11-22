@@ -192,7 +192,7 @@ class TestClass(object):
             []
         )
 
-    def synce_response_for(self, own_user, other_user):
+    def synce_response_for(self, own_user, other_user, third_user=None):
         timeline = Timeline(
             [
                 RoomMemberEvent(
@@ -213,17 +213,30 @@ class TestClass(object):
                     None,
                     {"membership": "join"}
                 ),
-                RoomEncryptionEvent(
-                    {
-                        "event_id": "event_id_2",
-                        "sender": other_user,
-                        "origin_server_ts": 1516809890615
-                    }
-                )
             ],
             False,
             "prev_batch_token"
         )
+
+        if third_user:
+            timeline.events.append(RoomMemberEvent(
+                {"event_id": "event_id_1",
+                 "sender": third_user,
+                 "origin_server_ts": 1516809890615},
+                third_user,
+                "join",
+                None,
+                {"membership": "join"}
+            ))
+
+        timeline.events.append(RoomEncryptionEvent(
+            {
+                "event_id": "event_id_2",
+                "sender": other_user,
+                "origin_server_ts": 1516809890615
+            }
+        ))
+
         test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(0, 2, []))
         rooms = Rooms(
             {},
@@ -236,7 +249,7 @@ class TestClass(object):
             "token123",
             rooms,
             DeviceOneTimeKeyCount(50, 50),
-            DeviceList([other_user], []),
+            DeviceList([other_user] + [third_user] if third_user else [], []),
             []
         )
 
@@ -3326,27 +3339,3 @@ class TestClass(object):
 
         assert event.body == "It's a secret to everybody."
         assert cb_ran
-
-    async def test_connect_wrapper(self, async_client, aioresponse):
-        domain = "https://example.org"
-
-        aioresponse.post(
-            f"{domain}/_matrix/client/r0/login",
-            status=200,
-            payload=self.login_response
-        )
-        await async_client.login("wordpass")
-
-        assert async_client.client_session
-
-        conn = await connect_wrapper(
-            self    = async_client.client_session.connector,
-            req     = ClientRequest(method="GET", url=URL(domain)),
-            traces  = [],
-            timeout = ClientTimeout(),
-        )
-
-        # Using conn.transport.get_write_buffer_limits() directly raises
-        # "AttributeError: _low_water", but the set... method works?
-        ssl_transport = conn.transport._ssl_protocol._transport
-        assert ssl_transport.get_write_buffer_limits()[1] == 16 * 1024
