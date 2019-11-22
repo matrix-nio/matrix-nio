@@ -336,13 +336,13 @@ class Olm(object):
 
         return content
 
-    def _olm_encrypt(self, session, recipient_device, message_type, content):
-        payload = {
+    def _olm_encrypt_payload(self, recipient_device, message_type, content):
+        return {
             "sender": self.user_id,
             "sender_device": self.device_id,
 
             "keys": {
-                "ed25519": self.account.identity_keys["ed25519"]
+                "ed25519": self.account.identity_keys["ed25519"],
             },
 
             "recipient": recipient_device.user_id,
@@ -351,12 +351,33 @@ class Olm(object):
             },
 
             "type": message_type,
-            "content": content
+            "content": content,
         }
 
+    def _olm_encrypt(self, session, recipient_device, message_type, content):
+        payload = self._olm_encrypt_payload(
+            recipient_device, message_type, content,
+        )
         olm_message = session.encrypt(Api.to_json(payload))
         self.store.save_session(recipient_device.curve25519, session)
+        return self._olm_encrypt_dict(recipient_device, olm_message)
 
+    def _olm_encrypt_batch(self, *batches):
+        save_session_batches = []
+
+        for session, recipient_device, message_type, content in batches:
+            payload = self._olm_encrypt_payload(
+                recipient_device, message_type, content,
+            )
+            olm_message = session.encrypt(Api.to_json(payload))
+
+            save_session_batches.append((recipient_device.curve25519, session))
+
+            yield self._olm_encrypt_dict(recipient_device, olm_message)
+
+        self.store.save_sessions(*save_session_batches)
+
+    def _olm_encrypt_dict(self, recipient_device, olm_message):
         return {
             "algorithm": self._olm_algorithm,
             "sender_key": self.account.identity_keys["curve25519"],
@@ -1769,6 +1790,7 @@ class Olm(object):
         if room_id not in self.outbound_group_sessions:
             self.create_outbound_group_session(room_id)
 
+
         group_session = self.outbound_group_sessions[room_id]
 
         if group_session.shared:
@@ -1845,18 +1867,28 @@ class Olm(object):
         if mark_as_ignored:
             self.store.ignore_devices(mark_as_ignored)
 
+        if not user_map:
+            raise LocalProtocolError("No user to share group session with")
+
+        encrypt_batches = [
+            (session, device, "m.room_key", key_content)
+            for _, device, session in user_map
+        ]
+
+        olm_dicts = {
+            (session, device.id): dct  # device is unhashable
+            for (session, device, _, _), dct in
+            zip(encrypt_batches, self._olm_encrypt_batch(*encrypt_batches))
+        }
+
         for user_id, device, session in user_map:
-            olm_dict = self._olm_encrypt(session, device, "m.room_key",
-                                         key_content)
             sharing_with.add((user_id, device.id))
 
             if user_id not in to_device_dict["messages"]:
                 to_device_dict["messages"][user_id] = {}
 
+            olm_dict = olm_dicts[session, device.id]
             to_device_dict["messages"][user_id][device.id] = olm_dict
-
-        if not sharing_with:
-            raise LocalProtocolError("No user to share group session with")
 
         return sharing_with, to_device_dict
 

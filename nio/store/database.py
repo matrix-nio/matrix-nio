@@ -18,7 +18,7 @@ from functools import wraps
 from typing import Optional, List, Dict
 
 import attr
-from peewee import DoesNotExist, SqliteDatabase
+from peewee import DoesNotExist, SqliteDatabase, chunked
 from playhouse.sqliteq import SqliteQueueDatabase
 
 from . import (Accounts, DeviceKeys, DeviceKeys_v1, DeviceTrustState,
@@ -684,7 +684,7 @@ class MatrixStore(object):
         """Save the provided Olm session to the database.
 
         Args:
-            curve_key (str): The curve key that owns the Olm session.
+            sender_key (str): The curve key that owns the Olm session.
             session (Session): The Olm session that will be pickled and
                 saved in the database.
         """
@@ -697,8 +697,32 @@ class MatrixStore(object):
             session=session.pickle(self.pickle_key),
             session_id=session.id,
             creation_time=session.creation_time,
-            last_usage_date=session.use_time
+            last_usage_date=session.use_time,
         ).execute()
+
+    @use_database_atomic
+    def save_sessions(self, *sessions):
+        """Save the provided Olm sessions to the database in batch.
+
+        A session should be a tuple containing two elements:
+            curve_key (str): The curve key that owns the Olm session.
+            session (Session): The Olm session that will be pickled and
+                saved in the database.
+        """
+        account = self._get_account()
+        assert account
+
+        rows = ({
+            "account": account,
+            "sender_key": sender_key,
+            "session": session.pickle(self.pickle_key),
+            "session_id": session.id,
+            "creation_time": session.creation_time,
+            "last_usage_date": session.use_time,
+        } for (sender_key, session) in sessions)
+
+        for batch in chunked(rows, 20):
+            OlmSessions.replace_many(batch).execute()
 
     @use_database
     def load_inbound_group_sessions(self):
