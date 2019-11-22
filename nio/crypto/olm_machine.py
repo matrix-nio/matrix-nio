@@ -336,58 +336,46 @@ class Olm(object):
 
         return content
 
-    def _olm_encrypt_payload(self, recipient_device, message_type, content):
-        return {
-            "sender": self.user_id,
-            "sender_device": self.device_id,
-
-            "keys": {
-                "ed25519": self.account.identity_keys["ed25519"],
-            },
-
-            "recipient": recipient_device.user_id,
-            "recipient_keys": {
-                "ed25519": recipient_device.ed25519,
-            },
-
-            "type": message_type,
-            "content": content,
-        }
-
     def _olm_encrypt(self, session, recipient_device, message_type, content):
-        payload = self._olm_encrypt_payload(
-            recipient_device, message_type, content,
-        )
-        olm_message = session.encrypt(Api.to_json(payload))
-        self.store.save_session(recipient_device.curve25519, session)
-        return self._olm_encrypt_dict(recipient_device, olm_message)
+        batch = (session, recipient_device, message_type, content)
+        return list(self._olm_encrypt_batch(batch))[0]
 
     def _olm_encrypt_batch(self, *batches):
         save_session_batches = []
 
         for session, recipient_device, message_type, content in batches:
-            payload = self._olm_encrypt_payload(
-                recipient_device, message_type, content,
-            )
+            payload = {
+                "sender": self.user_id,
+                "sender_device": self.device_id,
+
+                "keys": {
+                    "ed25519": self.account.identity_keys["ed25519"],
+                },
+
+                "recipient": recipient_device.user_id,
+                "recipient_keys": {
+                    "ed25519": recipient_device.ed25519,
+                },
+
+                "type": message_type,
+                "content": content,
+            }
             olm_message = session.encrypt(Api.to_json(payload))
 
             save_session_batches.append((recipient_device.curve25519, session))
 
-            yield self._olm_encrypt_dict(recipient_device, olm_message)
+            yield {
+                "algorithm": self._olm_algorithm,
+                "sender_key": self.account.identity_keys["curve25519"],
+                "ciphertext": {
+                    recipient_device.curve25519: {
+                        "type": olm_message.message_type,
+                        "body": olm_message.ciphertext,
+                    },
+                },
+            }
 
         self.store.save_sessions(*save_session_batches)
-
-    def _olm_encrypt_dict(self, recipient_device, olm_message):
-        return {
-            "algorithm": self._olm_algorithm,
-            "sender_key": self.account.identity_keys["curve25519"],
-            "ciphertext": {
-                recipient_device.curve25519: {
-                    "type": olm_message.message_type,
-                    "body": olm_message.ciphertext,
-                }
-            },
-        }
 
     def _queue_dummy_message(self, session, device):
         olm_dict = self._olm_encrypt(session, device, "m.dummy", {})
