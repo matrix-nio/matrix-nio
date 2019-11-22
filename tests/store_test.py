@@ -370,7 +370,11 @@ class TestClass(object):
         account = store.load_account()
 
         session = OutboundSession(account, BOB_CURVE, BOB_ONETIME)
-        store.save_session(BOB_CURVE, session)
+
+        # Nothing should happen if no sessions are passed
+        store.save_sessions()
+
+        store.save_sessions((BOB_CURVE, session))
 
         store2 = self.copy_store(store)
         session_store = store2.load_sessions()
