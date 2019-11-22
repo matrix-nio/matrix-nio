@@ -17,6 +17,7 @@
 from __future__ import unicode_literals
 
 import json
+import warnings
 # pylint: disable=redefined-builtin
 from builtins import str
 from collections import defaultdict
@@ -1792,7 +1793,15 @@ class Olm(object):
 
     def save_inbound_group_session(self, session):
         # type: (InboundGroupSession) -> None
-        self.store.save_inbound_group_session(session)
+        warnings.warn(
+            "Deprecated, use save_inbound_group_sessions() instead.",
+            DeprecationWarning,
+        )
+        self.save_inbound_group_sessions(session)
+
+    def save_inbound_group_sessions(self, *sessions):
+        # type: (InboundGroupSession) -> None
+        self.store.save_inbound_group_sessions(*sessions)
 
     def save_account(self, account=None):
         # type: (Optional[OlmAccount]) -> None
@@ -1973,13 +1982,13 @@ class Olm(object):
             infile (str): The file containing the keys.
             passphrase (str): The decryption passphrase.
         """
-        sessions = Olm.import_keys_static(infile, passphrase)
+        to_save = []
 
-        for session in sessions:
-            # This could be improved by writing everything to db at once at
-            # the end
+        for session in Olm.import_keys_static(infile, passphrase):
             if self.inbound_group_store.add(session):
-                self.save_inbound_group_session(session)
+                to_save.append(session)
+
+        self.save_inbound_group_sessions(*to_save)
 
         logger.info(
             "Successfully imported encryption keys from {}".format(infile)
