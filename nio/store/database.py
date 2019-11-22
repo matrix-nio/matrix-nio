@@ -691,14 +691,7 @@ class MatrixStore(object):
         account = self._get_account()
         assert account
 
-        OlmSessions.replace(
-            account=account,
-            sender_key=sender_key,
-            session=session.pickle(self.pickle_key),
-            session_id=session.id,
-            creation_time=session.creation_time,
-            last_usage_date=session.use_time,
-        ).execute()
+        self.save_sessions((sender_key, session))
 
     @use_database_atomic
     def save_sessions(self, *sessions):
