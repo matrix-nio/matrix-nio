@@ -226,7 +226,7 @@ class Api(object):
 
     @staticmethod
     def login_info():
-        # type: (...) -> Tuple[str, str, str]
+        # type: (...) -> Tuple[str, str]
         """Get the homeserver's supported login types
 
         Returns the HTTP method and HTTP path for the request.
