@@ -18,6 +18,7 @@
 """Matrix encryption algorithms for file uploads."""
 
 import base64
+from typing import Any, Dict, Generator, Iterable, Tuple, Union
 
 import unpaddedbase64
 from Crypto import Random
@@ -26,6 +27,8 @@ from Crypto.Hash import SHA256
 from Crypto.Util import Counter
 
 from ..exceptions import EncryptionError
+
+_DataT = Union[bytes, Iterable[bytes]]
 
 
 def decrypt_attachment(ciphertext, key, hash, iv):
@@ -73,46 +76,79 @@ def decrypt_attachment(ciphertext, key, hash, iv):
 
 
 def encrypt_attachment(plaintext):
-    """Encrypt a plaintext in order to send it as an encrypted attachment.
+    # (bytes) -> Tuple[bytes, Dict[str, Any]]
+    """Encrypt data in order to send it as an encrypted attachment.
 
     Args:
-        plaintext (bytes): The data to encrypt.
+        data (bytes): The data to encrypt.
+
     Returns:
-        A tuple of the ciphertext bytes and a dict containing the info needed
-        to decrypt data. The keys are:
+        A tuple with the encrypted bytes and a dict containing the info needed
+        to decrypt data. See ``encrypted_attachment_generator()`` for the keys.
+    """
+
+    values = list(encrypted_attachment_generator(plaintext))
+    return (b"".join(values[:-1]), values[-1])
+
+
+def encrypted_attachment_generator(data):
+    # (_DataT) -> Generator[Union[bytes, Dict[str, Any]], None, None]
+    """Generator to encrypt data in order to send it as an encrypted
+    attachment.
+
+    Unlike ``encrypt_attachment()``, this function lazily encrypts and yields
+    data, thus it can be used to encrypt large files without fully loading them
+    into memory if an iterable of bytes is passed as data.
+
+    Args:
+        data (bytes/Iterable[bytes]): The data to encrypt.
+
+    Yields:
+        The encrypted bytes for each chunk of data.
+        The last yielded value will be a dict containing the info needed to
+        decrypt data. The keys are:
         | key: AES-CTR JWK key object.
         | iv: Base64 encoded 16 byte AES-CTR IV.
         | hashes.sha256: Base64 encoded SHA-256 hash of the ciphertext.
-
     """
+
+    key = Random.new().read(32)
     # 8 bytes IV
     iv = Random.new().read(8)
     # 8 bytes counter, prefixed by the IV
     ctr = Counter.new(64, prefix=iv, initial_value=0)
 
-    key = Random.new().read(32)
     cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
+    sha256 = SHA256.new()
 
-    ciphertext = cipher.encrypt(plaintext)
+    if isinstance(data, bytes):
+        data = [data]
 
-    h = SHA256.new()
-    h.update(ciphertext)
-    digest = h.digest()
+    for chunk in data:
+        encrypted_chunk = cipher.encrypt(chunk)  # in executor
+        sha256.update(encrypted_chunk)  # in executor
+        yield encrypted_chunk
+
+    yield _get_decryption_info_dict(key, iv, sha256)
+
+
+def _get_decryption_info_dict(key, iv, sha256):
+    # type: (bytes, bytes, SHA256.SHA256Hash) -> Dict[str, Any]
 
     json_web_key = {
         "kty": "oct",
         "alg": "A256CTR",
         "ext": True,
         "k": unpaddedbase64.encode_base64(key, urlsafe=True),
-        "key_ops": ["encrypt", "decrypt"]
+        "key_ops": ["encrypt", "decrypt"],
     }
-    keys = {
+
+    return {
         "v": "v2",
         "key": json_web_key,
         # Send IV concatenated with counter
         "iv": unpaddedbase64.encode_base64(iv + b"\x00" * 8),
         "hashes": {
-            "sha256": unpaddedbase64.encode_base64(digest),
-        }
+            "sha256": unpaddedbase64.encode_base64(sha256.digest()),
+        },
     }
-    return ciphertext, keys

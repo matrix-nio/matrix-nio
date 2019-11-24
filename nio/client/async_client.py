@@ -31,6 +31,8 @@ from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
 from ..api import (Api, MessageDirection, ResizingMethod, RoomVisibility,
                    RoomPreset)
+from ..crypto import (AsyncDataT, async_encrypt_attachment,
+                      async_generator_from_data)
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
 from ..events import RoomKeyRequest, RoomKeyRequestCancellation
@@ -65,8 +67,6 @@ from ..responses import (DownloadError, DownloadResponse,
 if False:
     from ..events import MegolmEvent
     from .crypto import OlmDevice
-
-_UploadDataT = Union[bytes, BinaryIO, AsyncIterable[bytes]]
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
 
@@ -512,7 +512,7 @@ class AsyncClient(Client):
             self,
             method,       # type: str
             path,         # type: str
-            data=None,    # type: Union[None, str, _UploadDataT]
+            data=None,    # type: Union[None, str, AsyncDataT]
             headers=None  # type: Optional[Dict[str, str]]
     ):
         # type: (...) -> ClientResponse
@@ -1517,41 +1517,77 @@ class AsyncClient(Client):
             response_data=(room_id, )
         )
 
+    @staticmethod
+    async def _encrypted_data_generator(original_data, decryption_dict):
+        async for value in async_encrypt_attachment(original_data):
+            if isinstance(value, dict):  # last yielded value
+                decryption_dict.update(value)
+            else:
+                yield value
+
     @logged_in
     async def upload(
         self,
-        data,          # type: _UploadDataT
-        content_type,  # type: str
-        filename=None  # type: Optional[str]
-    ):
-        # type: (...) -> Union[UploadResponse, UploadError]
-        """Upload a file's content to the content repository.
+        data:         AsyncDataT,
+        content_type: str           = "application/octet-stream",
+        filename:     Optional[str] = None,
+        encrypt:      bool          = False,
+    ) -> Tuple[Union[UploadResponse, UploadError], Optional[Dict[str, Any]]]:
+        """Upload a file to the content repository.
 
-        Returns either a `UploadResponse` if the request was successful or
-        a `UploadError` if there was an error with the request.
+        Returns a tuple containing:
+
+        - Either a `UploadResponse` if the request was successful, or a
+          `UploadError` if there was an error with the request
+
+        - A dict with file decryption info if encrypt is ``True``,
+          else ``None``.
 
         Args:
-            data (bytes/BinaryIO/AsyncIterable[bytes]): The file's binary
-                content. Using a binary file-like object or async iterable
-                allows sending large files without reading them into memory.
+            data (str/Path/bytes/Iterable[bytes]/AsyncIterable[bytes]/
+            io.BufferedIOBase/AsyncBufferedReader): The data to encrypt.
+                Passing a path string, Path, async iterable or aiofiles open
+                binary file object allows the file data to be read in an
+                asynchronous and lazy (without reading the entire file into
+                memory) way.
+                Passing a non-async iterable or standard open binary file
+                object will still allow the data to be read lazily, but
+                not asynchronously.
+
             content_type (str): The content MIME type of the file,
-                e.g. "image/png"
+                e.g. "image/png".
+                Defaults to "application/octet-stream", corresponding to a
+                generic binary file.
+                Custom values are ignored if encrypt is ``True``.
+
             filename (str, optional): The file's original name.
 
-        Example:
-            >>> with open("vid.webm", "rb") as f:
-            >>>     response = await client.upload(f, "video/webm", "vid.webm")
-            >>>     http_url = nio.Api.mxc_to_http(response.content_uri)
+            encrypt (bool): If the file's content should be encrypted,
+                necessary for files that will be sent to encrypted rooms.
+                Defaults to ``False``.
         """
         http_method, path, _ = Api.upload(self.access_token, filename)
 
-        return await self._send(
+        decryption_dict: Dict[str, Any] = {}
+
+        if encrypt:
+            data = self._encrypted_data_generator(data, decryption_dict)
+        else:
+            data = async_generator_from_data(data)
+
+        response = await self._send(
             UploadResponse,
             http_method,
             path,
             data,
-            content_type=content_type
+            content_type =
+                "application/octet-stream" if encrypt else content_type,
         )
+
+        # After the upload finished and we get the response above, if encrypt
+        # is True, decryption_dict will have been updated from inside the
+        # self._encrypted_data_generator().
+        return (response, decryption_dict if encrypt else None)
 
     @client_session
     async def download(
