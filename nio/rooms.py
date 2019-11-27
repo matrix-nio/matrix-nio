@@ -101,6 +101,8 @@ class MatrixRoom(object):
 
         In other words, a display name based on the names of room members. This
         is used for ad-hoc groups of people (usually direct chats).
+
+        Returns None if there are no users.
         """
         # Sort user display names, excluding our own user and using the
         # mxid as the sorting key.
@@ -121,7 +123,7 @@ class MatrixRoom(object):
                 first_user=user_names[0], num=num_users - 1
             )
         else:
-            return "Empty room?"
+            return None
 
     def user_name(self, user_id):
         """Get disambiguated display name for a user.
