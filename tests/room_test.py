@@ -52,8 +52,8 @@ class TestClass(object):
 
     def test_name_calculation_when_unnamed_with_no_members(self):
         room = self.test_room
-        assert room.display_name == "Empty room?"
-        assert room.named_room_name() == None
+        assert room.display_name is None
+        assert room.named_room_name() is None
 
     def test_name_calculation_when_unnamed_with_members(self):
         room = self.test_room
