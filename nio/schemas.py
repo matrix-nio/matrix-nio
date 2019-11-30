@@ -116,9 +116,11 @@ class Schemas(object):
                 "properties": {
                     "msgtype": {"type": "string", "const": "m.notice"},
                     "body": {"type": "string"},
+                    "formatted_body": {"type": "string"},
+                    "format": {"type": "string"},
                 },
                 "required": ["msgtype", "body"],
-            }
+            },
         },
     }
 

@@ -957,29 +957,6 @@ class RoomMessageUnknown(RoomMessage):
 
 
 @attr.s
-class RoomMessageNotice(RoomMessage):
-    """A room message corresponding to the m.notice msgtype.
-
-    Room notices are primarily intended for responses from automated
-    clients.
-
-    Attributes:
-        body (str): The text of the notice.
-
-    """
-
-    body = attr.ib(type=str)
-
-    @classmethod
-    @verify(Schemas.room_message_notice)
-    def from_dict(cls, parsed_dict):
-        return cls(
-            parsed_dict,
-            parsed_dict["content"]["body"],
-        )
-
-
-@attr.s
 class RoomMessageFormatted(RoomMessage):
     """Base abstract class for room messages that can have formatted bodies.
 
@@ -1074,6 +1051,28 @@ class RoomMessageEmote(RoomMessageFormatted):
     def _validate(parsed_dict):
         # type: (Dict[Any, Any]) -> Optional[BadEventType]
         return validate_or_badevent(parsed_dict, Schemas.room_message_emote)
+
+
+@attr.s
+class RoomMessageNotice(RoomMessageFormatted):
+    """A room message corresponding to the m.notice msgtype.
+
+    Room notices are primarily intended for responses from automated
+    clients.
+
+    Attributes:
+        body (str): The textual body of the notice.
+        formatted_body (str, optional): The formatted version of the notice
+            body. Can be None if the message doesn't contain a formatted
+            version of the body.
+        format (str, optional): The format used in the formatted_body. This
+            specifies how the formatted_body should be interpreted.
+    """
+
+    @staticmethod
+    def _validate(parsed_dict):
+        # type: (Dict[Any, Any]) -> Optional[BadEventType]
+        return validate_or_badevent(parsed_dict, Schemas.room_message_notice)
 
 
 @attr.s
