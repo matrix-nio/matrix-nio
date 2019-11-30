@@ -7,6 +7,8 @@
   },
   "content": {
     "body": "https://github.com/matrix-org/matrix-python-sdk/issues/266 : Consider allowing MatrixClient.__init__ to take sync_token kwarg",
+    "format": "org.matrix.custom.html",
+    "formatted_body": "<a href='https://github.com/matrix-org/matrix-python-sdk/pull/313'>313: nio wins!</a>",
     "msgtype": "m.notice"
   },
   "type": "m.room.message",
