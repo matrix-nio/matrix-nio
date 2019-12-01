@@ -21,7 +21,7 @@ from functools import partial, wraps
 from json.decoder import JSONDecodeError
 from typing import (Any, AsyncIterable, BinaryIO, Coroutine, Dict,
                     Iterable, List, Optional, Sequence, Tuple, Type, Union)
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import attr
 from aiohttp import ClientResponse, ClientSession, ContentTypeError
@@ -56,6 +56,7 @@ from ..responses import (DownloadError, DownloadResponse,
                          RoomKeyRequestError, RoomKeyRequestResponse,
                          RoomLeaveResponse, RoomLeaveError,
                          RoomMessagesError, RoomMessagesResponse,
+                         RoomRedactError, RoomRedactResponse,
                          RoomSendResponse, RoomTypingResponse, RoomTypingError,
                          ShareGroupSessionError,
                          ShareGroupSessionResponse, SyncError, SyncResponse,
@@ -1015,13 +1016,18 @@ class AsyncClient(Client):
         raise SendRetryError("Max retries exceeded while trying to send "
                              "the message")
 
-    @connected
     @logged_in
-    def room_redact(self, room_id, event_id, reason=None, tx_id=None):
+    async def room_redact(
+            self,
+            room_id:  str,
+            event_id: str,
+            reason:   Optional[str]          = None,
+            tx_id:    Union[None, str, UUID] = None,
+    ) -> Union[RoomRedactResponse, RoomRedactError]:
         """Strip information out of an event.
 
-        Returns a unique uuid that identifies the request and the bytes that
-        should be sent to the socket.
+        Returns either a `RoomRedactResponse` if the request was successful or
+        a `RoomRedactError` if there was an error with the request.
 
         Args:
             room_id (str): The room id of the room that contains the event that
@@ -1031,22 +1037,20 @@ class AsyncClient(Client):
             reason(str, optional): A description explaining why the
                 event was redacted.
         """
-        uuid = tx_id or uuid4()
-
-        request = self._build_request(
-            Api.room_redact(
-                self.access_token,
-                room_id,
-                event_id,
-                tx_id,
-                reason=reason,
-            )
+        method, path, data = Api.room_redact(
+            self.access_token,
+            room_id,
+            event_id,
+            tx_id  = tx_id or uuid4(),
+            reason = reason,
         )
 
-        return self._send(
-            request,
-            RequestInfo(RoomRedactResponse, (room_id, )),
-            uuid
+        return await self._send(
+            RoomRedactResponse,
+            method,
+            path,
+            data,
+            response_data = (room_id,),
         )
 
     @logged_in
