@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+from uuid import uuid4
 
 import pytest
 
@@ -14,7 +15,7 @@ from nio import (Client, DeviceList, DeviceOneTimeKeyCount, DownloadResponse,
                  RoomCreateResponse,
                  RoomEncryptionEvent, RoomForgetResponse, RoomInfo,
                  RoomKeyRequestResponse, RoomMember, RoomMemberEvent, Rooms,
-                 RoomSummary, RoomTypingResponse,
+                 RoomSummary, RoomTypingResponse, RoomRedactResponse,
                  ShareGroupSessionResponse, SyncResponse,
                  Timeline, ThumbnailResponse, TransportType, TypingNoticeEvent,
                  InviteMemberEvent, InviteInfo, ClientConfig)
@@ -26,9 +27,30 @@ DEVICE_ID = "DEVICEID"
 
 BOB_ID = "@bob:example.org"
 TEST_ROOM_ID = "!testroom:example.org"
+TEST_EVENT_ID = "$15163622445EBvZJ:localhost"
 
 ALICE_ID = "@alice:example.org"
 ALICE_DEVICE_ID = "JLAFKJWSCS"
+
+
+@pytest.fixture
+def synced_client(tempdir):
+    http_client = HttpClient("example.org", "ephemeral", "DEVICEID", tempdir)
+    http_client.connect(TransportType.HTTP2)
+
+    http_client.login("1234")
+    http_client.receive(TestClass().login_byte_response)
+    response = http_client.next_response()
+    assert isinstance(response, LoginResponse)
+    assert http_client.access_token == "ABCD"
+
+    http_client.sync()
+    http_client.receive(TestClass().sync_byte_response)
+    response = http_client.next_response()
+    assert isinstance(response, SyncResponse)
+    assert http_client.access_token == "ABCD"
+
+    return http_client
 
 
 class TestClass(object):
@@ -154,6 +176,23 @@ class TestClass(object):
             data=body,
             stream_id=stream_id,
             flags=['END_STREAM']
+        )
+
+        return f.serialize() + data.serialize()
+
+    def event_id_response(self, stream_id=5, event_id=TEST_EVENT_ID):
+        frame_factory = FrameFactory()
+
+        f = frame_factory.build_headers_frame(
+            headers=self.example_response_headers, stream_id=stream_id
+        )
+
+        body = json.dumps({"event_id": event_id}).encode()
+
+        data = frame_factory.build_data_frame(
+            data=body,
+            stream_id=stream_id,
+            flags=['END_STREAM'],
         )
 
         return f.serialize() + data.serialize()
@@ -766,15 +805,24 @@ class TestClass(object):
         assert isinstance(response, SyncResponse)
         assert http_client.access_token == "ABCD"
 
-        assert http_client.rooms
-        room_id = list(http_client.rooms.keys())[0]
+        room_id = next(iter(http_client.rooms))
         _, _ = http_client.room_forget(room_id)
 
         http_client.receive(self.empty_response(5))
         response = http_client.next_response()
 
         assert isinstance(response, RoomForgetResponse)
-        assert room_id not in http_client.rooms
+
+    def test_http_client_room_redact(self, synced_client):
+        room_id  = next(iter(synced_client.rooms))
+        event_id = "$15163622445EBvZJ:localhost"
+        tx_id    = uuid4()
+        reason   = "for no reason"
+
+        synced_client.room_redact(room_id, event_id, reason, tx_id)
+        synced_client.receive(self.event_id_response(5))
+        response = synced_client.next_response()
+        assert isinstance(response, RoomRedactResponse)
 
     def test_http_client_room_typing(self, http_client):
         http_client.connect(TransportType.HTTP2)
