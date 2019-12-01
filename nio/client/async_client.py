@@ -827,13 +827,13 @@ class AsyncClient(Client):
         # type: (...) -> Union[ToDeviceResponse, ToDeviceError]
         """Send a to-device message.
 
+        Returns either a `ToDeviceResponse` if the request was successful or
+        a `ToDeviceError` if there was an error with the request.
+
         Args:
             message (ToDeviceMessage): The message that should be sent out.
             tx_id (str, optional): The transaction ID for this message. Should
                 be unique.
-
-        Returns either a `ToDeviceResponse` if the request was successful or
-        a `ToDeviceError` if there was an error with the request.
         """
         uuid = tx_id or uuid4()
 
@@ -911,12 +911,12 @@ class AsyncClient(Client):
         # type: (str) -> Union[JoinedMembersResponse, JoinedMembersError]
         """Send a message to a room.
 
+        Returns either a `JoinedMembersResponse` if the request was successful
+        or a `JoinedMembersError` if there was an error with the request.
+
         Args:
             room_id(str): The room id of the room for which we wan't to request
                 the joined member list.
-
-        Returns either a `JoinedMembersResponse` if the request was successful
-        or a `JoinedMembersError` if there was an error with the request.
         """
         method, path = Api.joined_members(
             self.access_token,
@@ -1014,6 +1014,40 @@ class AsyncClient(Client):
 
         raise SendRetryError("Max retries exceeded while trying to send "
                              "the message")
+
+    @connected
+    @logged_in
+    def room_redact(self, room_id, event_id, reason=None, tx_id=None):
+        """Strip information out of an event.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            room_id (str): The room id of the room that contains the event that
+                will be redacted.
+            event_id (str): The ID of the event that will be redacted.
+            tx_id (str/UUID, optional): A transaction ID for this event.
+            reason(str, optional): A description explaining why the
+                event was redacted.
+        """
+        uuid = tx_id or uuid4()
+
+        request = self._build_request(
+            Api.room_redact(
+                self.access_token,
+                room_id,
+                event_id,
+                tx_id,
+                reason=reason,
+            )
+        )
+
+        return self._send(
+            request,
+            RequestInfo(RoomRedactResponse, (room_id, )),
+            uuid
+        )
 
     @logged_in
     @store_loaded
@@ -1144,15 +1178,14 @@ class AsyncClient(Client):
         This sends out a message to other devices requesting a room key from
         them.
 
-        Args:
-            event (str): An undecrypted MegolmEvent for which we would like to
-                request the decryption key.
-
         Returns either a `RoomKeyRequestResponse` if the request was successful
         or a `RoomKeyRequestError` if there was an error with the request.
 
         Raises a LocalProtocolError if the room key was already requested.
 
+        Args:
+            event (str): An undecrypted MegolmEvent for which we would like to
+                request the decryption key.
         """
         uuid = tx_id or uuid4()
 
@@ -1436,6 +1469,9 @@ class AsyncClient(Client):
 
         It uses pagination query parameters to paginate history in the room.
 
+        Returns either a `RoomContextResponse` if the request was successful or
+        a `RoomContextError` if there was an error with the request.
+
         Args:
             room_id (str): The room id of the room for which we would like to
                 fetch the messages.
@@ -1451,9 +1487,6 @@ class AsyncClient(Client):
                 events from. Defaults to MessageDirection.back.
             limit (int, optional): The maximum number of events to return.
                 Defaults to 10.
-
-        Returns either a `RoomContextResponse` if the request was successful or
-        a `RoomContextError` if there was an error with the request.
 
         Example:
             >>> response = await client.room_messages(room_id, previous_batch)
