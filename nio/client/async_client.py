@@ -212,7 +212,10 @@ class AsyncClient(Client):
 
         self.sharing_session = dict()  # type: Dict[str, Event]
 
-        if isinstance(config, ClientConfig):
+        is_config       = isinstance(config, ClientConfig)
+        is_async_config = isinstance(config, AsyncClientConfig)
+
+        if is_config and not is_async_config:
             warnings.warn(
                 "Pass an AsyncClientConfig instead of ClientConfig.",
                 DeprecationWarning
