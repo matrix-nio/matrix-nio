@@ -285,6 +285,18 @@ class TestClass(object):
     def get_avatar_response(avatar_url):
         return {"avatar_url": avatar_url}
 
+    async def test_mxc_to_http(self, async_client):
+        mxc      = "mxc://privacytools.io/123foo"
+        url_path = "/_matrix/media/r0/download/privacytools.io/123foo"
+
+        async_client.homeserver = "https://chat.privacytools.io"
+        expected                = f"{async_client.homeserver}{url_path}"
+        assert await async_client.mxc_to_http(mxc) == expected
+
+        other_server = "http://localhost:8081"
+        expected     = f"{other_server}{url_path}"
+        assert await async_client.mxc_to_http(mxc, other_server) == expected
+
     def test_login(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
 

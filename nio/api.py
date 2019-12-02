@@ -173,6 +173,9 @@ class Api(object):
         to a plumber program that will download and decrypt the content that
         the matrix content URI is pointing to.
 
+        The returned URI should never be converted to http and opened directly,
+        as that would expose the decryption parameters to any middleman or ISP.
+
         Args:
             mxc (str): The matrix content URI.
             key (str): The encryption key that can be used to decrypt the
