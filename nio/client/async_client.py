@@ -537,6 +537,12 @@ class AsyncClient(Client):
             headers=headers
         )
 
+    async def mxc_to_http(
+        self, mxc: str, homeserver: Optional[str] = None,
+   ) -> Optional[str]:
+        """Convert a matrix content URI to a HTTP URI."""
+        return Api.mxc_to_http(mxc, homeserver or self.homeserver)
+
     async def login(self, password, device_name=""):
         # type: (str, str) -> Union[LoginResponse, LoginError]
         """Login to the homeserver.
