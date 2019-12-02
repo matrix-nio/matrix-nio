@@ -500,7 +500,7 @@ class Olm(object):
         outbound_session = self.outbound_group_sessions.get(event.room_id)
 
         if not outbound_session or outbound_session.id != event.session_id:
-            raise KeyShareError("Failed to reshare key {} with {}: No "
+            raise KeyShareError("Failed to re-share key {} with {}: No "
                                 "outbound session found".format(
                                     event.session_id, event.sender))
 
@@ -508,7 +508,7 @@ class Olm(object):
 
         if user_tuple not in outbound_session.users_shared_with:
             raise KeyShareError(
-                "Failed to reshare key {} with {}: Session wasn't "
+                "Failed to re-share key {} with {}: Session wasn't "
                 "shared with the device {}".format(event.session_id,
                                                    event.sender,
                                                    event.requesting_device_id))
@@ -531,13 +531,13 @@ class Olm(object):
             )
         except KeyError:
             raise KeyShareError(
-                "Failed to reshare key {} with {}: Unkown requesting "
+                "Failed to re-share key {} with {}: Unknown requesting "
                 "device {}.".format(event.session_id, event.sender,
                                     event.requesting_device_id))
 
         if device.deleted:
             raise KeyShareError(
-                "Failed to reshare key {} with {}: Request from a "
+                "Failed to re-share key {} with {}: Request from a "
                 "deleted device {}.".format(event.session_id,
                                             event.sender,
                                             event.requesting_device_id))
@@ -548,7 +548,7 @@ class Olm(object):
             raise EncryptionError("No Olm session found for {} and device "
                                   "{}".format(device.user_id, device.id))
 
-        logger.debug("Sucesfully reshared key {} with {}".format(
+        logger.debug("Successfully re-shared key {} with {}".format(
             event.session_id,
             event.sender
         ))
@@ -590,7 +590,7 @@ class Olm(object):
         )
 
         if not group_session:
-            raise KeyShareError("Failed to reshare key {} with {}: No "
+            raise KeyShareError("Failed to re-share key {} with {}: No "
                                 "session found".format(event.session_id,
                                                        event.sender))
         try:
@@ -599,7 +599,7 @@ class Olm(object):
             )
         except KeyError:
             raise KeyShareError(
-                "Failed to reshare key {} with {}: Unkown requesting "
+                "Failed to re-share key {} with {}: Unknown requesting "
                 "device {}.".format(event.session_id, event.sender,
                                     event.requesting_device_id))
 
@@ -625,7 +625,7 @@ class Olm(object):
         if not device.verified:
             raise OlmUnverifiedDeviceError(
                 device,
-                "Failed to reshare key {} with {}: Device {} is not "
+                "Failed to re-share key {} with {}: Device {} is not "
                 "verified".format(
                     event.session_id,
                     event.sender,
@@ -633,7 +633,7 @@ class Olm(object):
                 )
             )
 
-        logger.debug("Sucesfully shared a key {} with {}:{}".format(
+        logger.debug("Successfully shared a key {} with {}:{}".format(
             event.session_id,
             event.sender,
             event.requesting_device_id
@@ -778,7 +778,7 @@ class Olm(object):
                                             user_id,
                                             device_id)
                 if verified:
-                    logger.info("Succesfully verified signature for one-time "
+                    logger.info("Successfully verified signature for one-time "
                                 "key of device {} of user {}.".format(
                                     device_id, user_id))
                     logger.info("Creating Outbound Session for device {} of "
@@ -1186,7 +1186,7 @@ class Olm(object):
                 self.save_session(sender_key, session)
 
                 logger.info(
-                    "Succesfully decrypted olm message "
+                    "Successfully decrypted olm message "
                     "using existing session"
                 )
                 return plaintext
@@ -1220,11 +1220,11 @@ class Olm(object):
         # type: (str, Dict[Any, Any]) -> bool
         # Verify that the sender in the payload matches the sender of the event
         if sender != payload["sender"]:
-            raise VerificationError("Missmatched sender in Olm payload")
+            raise VerificationError("Mismatched sender in Olm payload")
 
         # Verify that we're the recipient of the payload.
         if self.user_id != payload["recipient"]:
-            raise VerificationError("Missmatched recipient in Olm " "payload")
+            raise VerificationError("Mismatched recipient in Olm " "payload")
 
         # Verify that the recipient fingerprint key matches our own
         if (
@@ -1232,7 +1232,7 @@ class Olm(object):
             != payload["recipient_keys"]["ed25519"]
         ):
             raise VerificationError(
-                "Missmatched recipient key in " "Olm payload"
+                "Mismatched recipient key in " "Olm payload"
             )
 
         return True
@@ -1253,14 +1253,14 @@ class Olm(object):
 
         if event.algorithm != "m.megolm.v1.aes-sha2":
             logger.error(
-                "Error: unsuported room key of type {}".format(
+                "Error: unsupported room key of type {}".format(
                     event.algorithm
                 )
             )
             return event
 
         logger.info(
-            "Recieved new group session key for room {} "
+            "Received new group session key for room {} "
             "from {}".format(event.room_id, sender)
         )
 
@@ -1295,7 +1295,7 @@ class Olm(object):
 
         if event.algorithm != "m.megolm.v1.aes-sha2":
             logger.error(
-                "Error: unsuported forwarded room key of type {}".format(
+                "Error: unsupported forwarded room key of type {}".format(
                     event.algorithm
                 )
             )
@@ -1355,7 +1355,7 @@ class Olm(object):
         payload      # type: Dict[Any, Any]
     ):
         # type: (...) -> DecryptedOlmT
-        logger.info("Recieved Olm event of type: {}".format(payload["type"]))
+        logger.info("Received Olm event of type: {} from {} {}".format(payload["type"], sender, sender_key))
 
         if payload["type"] == "m.room_key":
             event = self._handle_room_key_event(sender, sender_key, payload)
@@ -1373,7 +1373,7 @@ class Olm(object):
 
         else:
             logger.warn(
-                "Received unsuported Olm event of type {}".format(
+                "Received unsupported Olm event of type {}".format(
                     payload["type"]
                 )
             )
@@ -1381,7 +1381,7 @@ class Olm(object):
 
     def message_index_ok(self, message_index, event):
         # type: (int, MegolmEvent) -> bool
-        """Check that the message index coresponds to a known message.
+        """Check that the message index corresponds to a known message.
 
         If we know about the index already we will do some sanity checking to
         prevent replay attacks, otherwise we store some info for a later check.
@@ -1415,7 +1415,7 @@ class Olm(object):
         room_id = room_id or event.room_id
 
         if not room_id:
-            raise EncryptionError("Event doens't contain a room id")
+            raise EncryptionError("Event doesn't contain a room id")
 
         verified = False
 
@@ -1478,7 +1478,7 @@ class Olm(object):
                         logger.warn(message)
                         raise EncryptionError(message)
 
-                    logger.info("Event {} succesfully verified".format(
+                    logger.info("Event {} successfully verified".format(
                         event.event_id))
                     verified = True
 
@@ -1539,7 +1539,7 @@ class Olm(object):
             elif own_ciphertext["type"] == 1:
                 message = OlmMessage(own_ciphertext["body"])
             else:
-                logger.warn("Unsuported olm message type: {}".format(
+                logger.warn("Unsupported olm message type: {}".format(
                     own_ciphertext["type"]))
                 return None
 
@@ -1630,18 +1630,18 @@ class Olm(object):
 
         # Verify that the payload properties contain correct values:
         # sender/recipient/keys/recipient_keys and check if the sender device
-        # is alread verified by us
+        # is already verified by us
         try:
             self._verify_olm_payload(sender, parsed_payload)
 
         except VerificationError as e:
-            # We found a missmatched property don't process the event any
+            # We found a mismatched property don't process the event any
             # further
             logger.error(e)
             return None
 
         else:
-            # Verification succeded, handle the event
+            # Verification succeeded, handle the event
             return self._handle_olm_event(sender, sender_key, parsed_payload)
 
     def rotate_outbound_group_session(self, room_id):
@@ -1898,7 +1898,7 @@ class Olm(object):
         Olm.export_keys_static(inbound_group_store, outfile, passphrase, count)
 
         logger.info(
-            "Succesfully exported encryption keys to {}".format(outfile)
+            "Successfully exported encryption keys to {}".format(outfile)
         )
 
     @staticmethod
@@ -2110,7 +2110,7 @@ class Olm(object):
                     cancel_message = old_sas.get_cancellation()
                     self.outgoing_to_device_messages.append(cancel_message)
 
-                logger.info("Sucesfully started key verification with "
+                logger.info("Successfully started key verification with "
                             "{} {} {}".format(
                                 event.sender,
                                 event.from_device,
