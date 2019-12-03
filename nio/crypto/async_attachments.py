@@ -106,7 +106,8 @@ async def async_generator_from_data(
     ###
 
     if isinstance(data, bytes):
-        yield data
+        for chunk in (data[i : i + 4096] for i in range(0, len(data), 4096)):
+            yield chunk
 
     # Test if data is a file obj first, since it's considered Iterable too
     elif isinstance(data, io.BufferedIOBase):
