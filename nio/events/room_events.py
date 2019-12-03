@@ -568,8 +568,8 @@ class RoomCreateEvent(Event):
         federate (bool): A boolean flag telling us whether users on other
             homeservers are able to join this room.
         room_version (str): The version of the room. Different room versions
-        will have different event formats. Clients shouldn't worry about this
-        too much unless they want to perform room upgrades.
+            will have different event formats. Clients shouldn't worry about this
+            too much unless they want to perform room upgrades.
 
     """
     creator = attr.ib(type=str)
