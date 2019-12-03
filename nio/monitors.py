@@ -22,14 +22,47 @@ from typing import Deque, Optional
 
 @dataclass
 class TransferMonitor:
+    """Get statistics, pause or cancel a running upload or download.
+
+    A ``TransferMonitor`` object can be passed to the
+    ``AsyncClient.upload()`` and ``AsyncClient.download()`` methods;
+    the methods will then update the object's statistics while the transfer
+    is running.
+
+    The transfer can also be paused or cancelled using the object.
+
+    Args:
+        total_size (int): Size in bytes of the data to transfer.
+
+        update_rate (int, optional): How many times per second the statistics
+            should be updated. Defaults to ``10``.
+
+    Attributes:
+        average_speed (float): An average number of how many bytes
+            are being transfered per second.
+
+        start_time (datetime): The date when the ``TransferMonitor` object
+            was created.
+
+        end_time (datetime, optional): The date when the transfer was
+            completed, or ``None`` if it is still running.
+
+        pause (bool): Indicates to methods using this object if the transfer
+            should be paused. ``False`` by default.
+
+        cancel (bool): When set to True, stop updating statistics and
+            indicate to methods using this object that they should raise
+            a ``TransferCancelledError``.
+    """
+
     total_size:  int  = field()
     update_rate: int  = 10
-    pause:       bool = False
-    cancel:      bool = False
 
     average_speed: float              = field(init=False, default=0.0)
     start_time:    datetime           = field(init=False)
     end_time:      Optional[datetime] = field(init=False, default=None)
+    pause:         bool               = field(init=False, default=False)
+    cancel:        bool               = field(init=False, default=False)
 
     _transfered:  int          = field(init=False, default=0)
     _past_speeds: Deque[float] = field(init=False)
@@ -43,6 +76,12 @@ class TransferMonitor:
         self._updater.start()
 
     def _update_loop(self) -> None:
+        """A loop to constantly update the average transfer speed.
+
+        The speed is averaged over a period of one second.
+        The loop exits when the transfer is done or cancelled.
+        """
+
         previous_transfered = 0
         previous_date       = datetime.now()
 
@@ -67,6 +106,7 @@ class TransferMonitor:
 
     @property
     def transfered(self) -> int:
+        """Number of currently transfered bytes."""
         return self._transfered
 
     @transfered.setter
@@ -78,18 +118,25 @@ class TransferMonitor:
 
     @property
     def percent_done(self) -> float:
+        """Percentage of completion for the transfer."""
         return self.transfered / self.total_size * 100
 
     @property
     def remaining(self) -> int:
+        """Number of remaining bytes to transfer."""
         return self.total_size - self.transfered
 
     @property
     def spent_time(self) -> timedelta:
+        """Time elapsed since the transfer started."""
         return (self.end_time or datetime.now()) - self.start_time
 
     @property
     def remaining_time(self) -> Optional[timedelta]:
+        """Estimated remaining time to complete the transfer.
+
+        Returns None (for infinity) if the current transfer speed is 0 bytes/s.
+        """
         if not self.average_speed:
             return None
 
@@ -97,4 +144,5 @@ class TransferMonitor:
 
     @property
     def done(self) -> bool:
+        """Whether the transfer is finished."""
         return bool(self.end_time)

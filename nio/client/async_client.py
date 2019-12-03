@@ -1651,6 +1651,12 @@ class AsyncClient(Client):
 
     @staticmethod
     async def _plain_data_generator(data, monitor):
+        """Yield chunks of bytes from data.
+
+        If a monitor is passed, update its ``transfered`` property and
+        suspend yielding chunks while its ``pause`` attribute is True.
+        """
+
         async for value in async_generator_from_data(data):
             if monitor:
                 monitor.transfered += len(value)
@@ -1662,6 +1668,14 @@ class AsyncClient(Client):
 
     @staticmethod
     async def _encrypted_data_generator(data, decryption_dict, monitor):
+        """Yield encrypted chunks of bytes from data.
+
+        If a monitor is passed, update its ``transfered`` property and
+        suspend yielding chunks while its ``pause`` attribute is True.
+
+        The last yielded value will be the decryption dict.
+        """
+
         async for value in async_encrypt_attachment(data):
             if isinstance(value, dict):  # last yielded value
                 decryption_dict.update(value)
@@ -1715,7 +1729,16 @@ class AsyncClient(Client):
             encrypt (bool): If the file's content should be encrypted,
                 necessary for files that will be sent to encrypted rooms.
                 Defaults to ``False``.
+
+            monitor (TransferMonitor, optional): If a ``TransferMonitor``
+                object is passed, it will be updated by this function while
+                uploading.
+                From this object, statistics such as currently
+                transfered bytes or estimated remaining time can be gathered
+                while the upload is running as a task; it also allows
+                for pausing and cancelling.
         """
+
         http_method, path, _ = Api.upload(self.access_token, filename)
 
         decryption_dict: Dict[str, Any] = {}
