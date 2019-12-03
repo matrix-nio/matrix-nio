@@ -71,6 +71,10 @@ class TransferMonitor:
     def __post_init__(self) -> None:
         self.start_time   = datetime.now()
         self._past_speeds = Deque(maxlen=self.update_rate)
+        self._start_update_loop()
+
+    def _start_update_loop(self) -> None:
+        """Start a Thread running ``_update_loop()``."""
 
         self._updater = Thread(target=self._update_loop, daemon=True)
         self._updater.start()

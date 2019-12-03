@@ -34,7 +34,8 @@ from ..api import (Api, MessageDirection, ResizingMethod, RoomVisibility,
 from ..crypto import (AsyncDataT, async_encrypt_attachment,
                       async_generator_from_data)
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
-                          MembersSyncError, SendRetryError)
+                          MembersSyncError, SendRetryError,
+                          TransferCancelledError)
 from ..events import RoomKeyRequest, RoomKeyRequestCancellation
 from ..event_builders import ToDeviceMessage
 from ..monitors import TransferMonitor
@@ -1654,15 +1655,20 @@ class AsyncClient(Client):
         """Yield chunks of bytes from data.
 
         If a monitor is passed, update its ``transfered`` property and
-        suspend yielding chunks while its ``pause`` attribute is True.
+        suspend yielding chunks while its ``pause`` attribute is ``True``.
+
+        Raise ``TransferCancelledError`` if ``monitor.cancel`` is ``True``.
         """
 
         async for value in async_generator_from_data(data):
             if monitor:
-                monitor.transfered += len(value)
+                if monitor.cancel:
+                    raise TransferCancelledError()
 
                 while monitor.pause:
                     await asyncio.sleep(1 / monitor.update_rate)
+
+                monitor.transfered += len(value)
 
             yield value
 
@@ -1671,9 +1677,11 @@ class AsyncClient(Client):
         """Yield encrypted chunks of bytes from data.
 
         If a monitor is passed, update its ``transfered`` property and
-        suspend yielding chunks while its ``pause`` attribute is True.
+        suspend yielding chunks while its ``pause`` attribute is ``True``.
 
         The last yielded value will be the decryption dict.
+
+        Raise ``TransferCancelledError`` if ``monitor.cancel`` is ``True``.
         """
 
         async for value in async_encrypt_attachment(data):
@@ -1681,10 +1689,13 @@ class AsyncClient(Client):
                 decryption_dict.update(value)
             else:
                 if monitor:
-                    monitor.transfered += len(value)
+                    if monitor.cancel:
+                        raise TransferCancelledError()
 
                     while monitor.pause:
                         await asyncio.sleep(1 / monitor.update_rate)
+
+                    monitor.transfered += len(value)
 
                 yield value
 
@@ -1706,6 +1717,9 @@ class AsyncClient(Client):
 
         - A dict with file decryption info if encrypt is ``True``,
           else ``None``.
+
+        Raises a ``TransferCancelledError`` if a monitor is passed and its
+        ``cancelled`` property becomes set to ``True``.
 
         Args:
             data (str/Path/bytes/Iterable[bytes]/AsyncIterable[bytes]/

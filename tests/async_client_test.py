@@ -33,7 +33,8 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  RoomRedactResponse, RoomSendResponse, RoomSummary,
                  ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
-                 Timeline, TransferMonitor, UploadResponse,
+                 Timeline, TransferMonitor, TransferCancelledError,
+                 UploadResponse,
                  RoomMessageText, RoomKeyRequest)
 from nio.api import ResizingMethod, RoomPreset, RoomVisibility
 from nio.crypto import OlmDevice, Session, decrypt_attachment
@@ -950,7 +951,7 @@ class TestClass(object):
         # we can't test wether it works as intended here.
 
     async def test_plain_data_generator(self, async_client):
-        original_data   = [b"123", b"456", b"789"]
+        original_data   = [b"123", b"456", b"789", b"0"]
         data_size       = len(b"".join(original_data))
         monitor         = TransferMonitor(data_size)
 
@@ -959,6 +960,8 @@ class TestClass(object):
 
         assert not monitor.pause
         data.append(await gen.__anext__())
+
+        # Pausing and resuming
 
         async def unpause():
             await asyncio.sleep(0.5)
@@ -971,10 +974,27 @@ class TestClass(object):
 
         assert time.time() - paused_at >= 0.5
 
+        # Cancelling and restarting
+
+        monitor.cancel = True
+
+        with pytest.raises(TransferCancelledError):
+            await gen.__anext__()
+
+        assert monitor.transfered == len(b"".join(data))
+        self._wait_monitor_thread_exited(monitor)
+
+        left      = original_data[len(data):]
+        left_size = len(b"".join(left))
+        monitor   = TransferMonitor(left_size)
+        gen       = async_client._plain_data_generator(left, monitor)
+
+        # Finish and integrity checks
+
         data += [chunk async for chunk in gen]
 
         assert data == original_data
-        self._verify_monitor_state_for_finished_transfer(monitor, data_size)
+        self._verify_monitor_state_for_finished_transfer(monitor, left_size)
 
     async def test_encrypted_data_generator(self, async_client):
         original_data   = b"x" * 4096 * 4
@@ -986,6 +1006,8 @@ class TestClass(object):
             original_data, decryption_dict, monitor,
         )
         encrypted_data = b""
+
+        # Pausing and resuming
 
         assert not monitor.pause
         encrypted_data += await gen.__anext__()
@@ -1001,7 +1023,27 @@ class TestClass(object):
 
         assert time.time() - paused_at >= 0.5
 
-        encrypted_data += b"".join([chunk async for chunk in gen])
+        # Cancelling
+
+        monitor.cancel = True
+
+        with pytest.raises(TransferCancelledError):
+            await gen.__anext__()
+
+        assert monitor.transfered == len(encrypted_data)
+        self._wait_monitor_thread_exited(monitor)
+
+        # Restart from scratch (avoid encrypted data SHA mismatch)
+
+        decryption_dict = {}
+        monitor         = TransferMonitor(data_size)
+        gen             = async_client._encrypted_data_generator(
+            original_data, decryption_dict, monitor,
+        )
+
+        # Finish and integrity checks
+
+        encrypted_data = b"".join([chunk async for chunk in gen])
 
         assert encrypted_data
         assert "key" in decryption_dict
