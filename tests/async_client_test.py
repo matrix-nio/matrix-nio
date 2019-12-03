@@ -950,27 +950,58 @@ class TestClass(object):
         # we can't test wether it works as intended here.
 
     async def test_plain_data_generator(self, async_client):
-        original_data   = b"Test bytes" * 16384
-        data_size       = len(original_data)
+        original_data   = [b"123", b"456", b"789"]
+        data_size       = len(b"".join(original_data))
         monitor         = TransferMonitor(data_size)
 
         gen  = async_client._plain_data_generator(original_data, monitor)
-        data = b"".join([chunk async for chunk in gen])
+        data = []
+
+        assert not monitor.pause
+        data.append(await gen.__anext__())
+
+        async def unpause():
+            await asyncio.sleep(0.5)
+            monitor.pause = False
+
+        paused_at     = time.time()
+        monitor.pause = True
+        asyncio.ensure_future(unpause())
+        data.append(await asyncio.wait_for(gen.__anext__(), 5))
+
+        assert time.time() - paused_at >= 0.5
+
+        data += [chunk async for chunk in gen]
 
         assert data == original_data
         self._verify_monitor_state_for_finished_transfer(monitor, data_size)
 
     async def test_encrypted_data_generator(self, async_client):
-        original_data   = [b"123", b"456"]
-        data_size       = len(b"".join(original_data))
+        original_data   = b"x" * 4096 * 4
+        data_size       = len(original_data)
         monitor         = TransferMonitor(data_size)
         decryption_dict = {}
 
         gen = async_client._encrypted_data_generator(
             original_data, decryption_dict, monitor,
         )
+        encrypted_data = b""
 
-        encrypted_data = b"".join([chunk async for chunk in gen])
+        assert not monitor.pause
+        encrypted_data += await gen.__anext__()
+
+        async def unpause():
+            await asyncio.sleep(0.5)
+            monitor.pause = False
+
+        paused_at     = time.time()
+        monitor.pause = True
+        asyncio.ensure_future(unpause())
+        encrypted_data += await asyncio.wait_for(gen.__anext__(), 5)
+
+        assert time.time() - paused_at >= 0.5
+
+        encrypted_data += b"".join([chunk async for chunk in gen])
 
         assert encrypted_data
         assert "key" in decryption_dict
@@ -984,7 +1015,7 @@ class TestClass(object):
             decryption_dict["iv"],
         )
 
-        assert decrypted_data == b"".join(original_data)
+        assert decrypted_data == original_data
         self._verify_monitor_state_for_finished_transfer(monitor, data_size)
 
     @staticmethod

@@ -1655,6 +1655,9 @@ class AsyncClient(Client):
             if monitor:
                 monitor.transfered += len(value)
 
+                while monitor.pause:
+                    await asyncio.sleep(1 / monitor.update_rate)
+
             yield value
 
     @staticmethod
@@ -1665,6 +1668,9 @@ class AsyncClient(Client):
             else:
                 if monitor:
                     monitor.transfered += len(value)
+
+                    while monitor.pause:
+                        await asyncio.sleep(1 / monitor.update_rate)
 
                 yield value
 
