@@ -37,6 +37,7 @@ from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
 from ..events import RoomKeyRequest, RoomKeyRequestCancellation
 from ..event_builders import ToDeviceMessage
+from ..monitors import TransferMonitor
 from ..responses import (DeleteDevicesError, DeleteDevicesResponse,
                          DeleteDevicesAuthResponse,
                          DevicesError, DevicesResponse,
@@ -1649,20 +1650,32 @@ class AsyncClient(Client):
         )
 
     @staticmethod
-    async def _encrypted_data_generator(original_data, decryption_dict):
-        async for value in async_encrypt_attachment(original_data):
+    async def _plain_data_generator(data, monitor):
+        async for value in async_generator_from_data(data):
+            if monitor:
+                monitor.transfered += len(value)
+
+            yield value
+
+    @staticmethod
+    async def _encrypted_data_generator(data, decryption_dict, monitor):
+        async for value in async_encrypt_attachment(data):
             if isinstance(value, dict):  # last yielded value
                 decryption_dict.update(value)
             else:
+                if monitor:
+                    monitor.transfered += len(value)
+
                 yield value
 
     @logged_in
     async def upload(
         self,
         data:         AsyncDataT,
-        content_type: str           = "application/octet-stream",
-        filename:     Optional[str] = None,
-        encrypt:      bool          = False,
+        content_type: str                       = "application/octet-stream",
+        filename:     Optional[str]             = None,
+        encrypt:      bool                      = False,
+        monitor:      Optional[TransferMonitor] = None,
     ) -> Tuple[Union[UploadResponse, UploadError], Optional[Dict[str, Any]]]:
         """Upload a file to the content repository.
 
@@ -1702,9 +1715,11 @@ class AsyncClient(Client):
         decryption_dict: Dict[str, Any] = {}
 
         if encrypt:
-            data = self._encrypted_data_generator(data, decryption_dict)
+            data = self._encrypted_data_generator(
+                data, decryption_dict, monitor,
+            )
         else:
-            data = async_generator_from_data(data)
+            data = self._plain_data_generator(data, monitor)
 
         response = await self._send(
             UploadResponse,

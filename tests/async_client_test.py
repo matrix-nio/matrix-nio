@@ -2,6 +2,7 @@ import json
 import sys
 import re
 import time
+from pathlib import Path
 from os import path
 from datetime import datetime, timedelta
 from urllib.parse import quote
@@ -32,7 +33,8 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  RoomRedactResponse, RoomSendResponse, RoomSummary,
                  ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
-                 Timeline, UploadResponse, RoomMessageText, RoomKeyRequest)
+                 Timeline, TransferMonitor, UploadResponse,
+                 RoomMessageText, RoomKeyRequest)
 from nio.api import ResizingMethod, RoomPreset, RoomVisibility
 from nio.crypto import OlmDevice, Session, decrypt_attachment
 
@@ -906,11 +908,20 @@ class TestClass(object):
             repeat=True,
         )
 
+        path     = Path("tests/data/file_response")
+        filesize = path.stat().st_size
+        monitor  = TransferMonitor(filesize)
+
         resp, decryption_info = await async_client.upload(
-            "tests/data/file_response", "image/png", "test.png",
+            path, "image/png", "test.png", monitor=monitor,
         )
         assert isinstance(resp, UploadResponse)
         assert decryption_info is None
+
+        # aioresponse doesn't do anything with the data_generator() in
+        # upload(), so the monitor isn't updated.
+        monitor.cancel = True
+        self._wait_monitor_thread_exited(monitor)
 
     async def test_encrypted_upload(self, async_client, aioresponse):
         await async_client.receive_response(
@@ -938,12 +949,25 @@ class TestClass(object):
         # upload(), so the decryption dict doesn't get updated and
         # we can't test wether it works as intended here.
 
+    async def test_plain_data_generator(self, async_client):
+        original_data   = b"Test bytes" * 16384
+        data_size       = len(original_data)
+        monitor         = TransferMonitor(data_size)
+
+        gen  = async_client._plain_data_generator(original_data, monitor)
+        data = b"".join([chunk async for chunk in gen])
+
+        assert data == original_data
+        self._verify_monitor_state_for_finished_transfer(monitor, data_size)
+
     async def test_encrypted_data_generator(self, async_client):
         original_data   = [b"123", b"456"]
+        data_size       = len(b"".join(original_data))
+        monitor         = TransferMonitor(data_size)
         decryption_dict = {}
 
         gen = async_client._encrypted_data_generator(
-            original_data, decryption_dict,
+            original_data, decryption_dict, monitor,
         )
 
         encrypted_data = b"".join([chunk async for chunk in gen])
@@ -961,7 +985,28 @@ class TestClass(object):
         )
 
         assert decrypted_data == b"".join(original_data)
+        self._verify_monitor_state_for_finished_transfer(monitor, data_size)
 
+    @staticmethod
+    def _wait_monitor_thread_exited(monitor):
+        for _ in range(100):
+            if not monitor._updater.is_alive():
+                break
+            time.sleep(0.1)
+        else:
+            raise RuntimeError("monitor._updater still alive after 10s")
+
+    def _verify_monitor_state_for_finished_transfer(self, monitor, data_size):
+        self._wait_monitor_thread_exited(monitor)
+        assert monitor.total_size == data_size
+        assert monitor.start_time and monitor.end_time
+        assert monitor.average_speed > 0
+        assert monitor.transfered == data_size
+        assert monitor.percent_done == 100
+        assert monitor.remaining == 0
+        assert monitor.spent_time.microseconds > 0
+        assert monitor.remaining_time.microseconds == 0
+        assert monitor.done is True
 
     async def test_download(self, async_client, aioresponse):
         server_name = "example.org"
