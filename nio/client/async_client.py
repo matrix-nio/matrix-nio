@@ -1781,10 +1781,10 @@ class AsyncClient(Client):
     @client_session
     async def download(
         self,
-        server_name,        # type: str
-        media_id,           # type: str
-        filename=None,      # type: Optional[str]
-        allow_remote=True,  # type: bool
+        server_name:  str,
+        media_id:     str,
+        filename:     Optional[str]             = None,
+        allow_remote: bool                      = True,
     ):
         # type: (...) -> Union[DownloadResponse, DownloadError]
         """Get the content of a file from the content repository.
@@ -1803,6 +1803,8 @@ class AsyncClient(Client):
                 This is to prevent routing loops where the server contacts
                 itself.
         """
+        # TODO: support TransferMonitor
+
         http_method, path = Api.download(
             server_name,
             media_id,

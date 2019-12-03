@@ -19,13 +19,12 @@ from datetime import datetime, timedelta
 from threading import Thread
 from typing import Deque, Optional
 
-
 @dataclass
 class TransferMonitor:
-    """Get statistics, pause or cancel a running upload or download.
+    """Get statistics, pause or cancel a running upload.
 
     A ``TransferMonitor`` object can be passed to the
-    ``AsyncClient.upload()`` and ``AsyncClient.download()`` methods;
+    ``AsyncClient.upload()`` methods;
     the methods will then update the object's statistics while the transfer
     is running.
 
@@ -54,6 +53,7 @@ class TransferMonitor:
             indicate to methods using this object that they should raise
             a ``TransferCancelledError``.
     """
+    # TODO: tell that this can be used for downloads too once implemented.
 
     total_size:  int  = field()
     update_rate: int  = 10
