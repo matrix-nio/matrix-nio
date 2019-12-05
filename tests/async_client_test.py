@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import aiofiles
 import pytest
+from aiohttp import ClientSession, TraceRequestChunkSentParams
 
 from helpers import faker
 from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
@@ -38,6 +39,7 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  RoomMessageText, RoomKeyRequest)
 from nio.api import ResizingMethod, RoomPreset, RoomVisibility
 from nio.crypto import OlmDevice, Session, decrypt_attachment
+from nio.client.async_client import on_request_chunk_sent
 
 from aioresponses import CallbackResult
 
@@ -950,6 +952,21 @@ class TestClass(object):
         # upload(), so the decryption dict doesn't get updated and
         # we can't test wether it works as intended here.
 
+    async def test_traceconfig_callbacks(self):
+        monitor = TransferMonitor(1)
+
+        class Context:
+            def __init__(self):
+                self.trace_request_ctx = monitor
+
+        session = ClientSession()
+        context = Context()
+        params  = TraceRequestChunkSentParams(chunk=b"x")
+
+        await on_request_chunk_sent(session, context, params)
+        assert monitor.transfered == 1
+        self._verify_monitor_state_for_finished_transfer(monitor, 1)
+
     async def test_plain_data_generator(self, async_client):
         original_data   = [b"123", b"456", b"789", b"0"]
         data_size       = len(b"".join(original_data))
@@ -981,6 +998,7 @@ class TestClass(object):
         with pytest.raises(TransferCancelledError):
             await gen.__anext__()
 
+        monitor.transfered += len(b"".join(data))
         assert monitor.transfered == len(b"".join(data))
         self._wait_monitor_thread_exited(monitor)
 
@@ -994,6 +1012,7 @@ class TestClass(object):
         data += [chunk async for chunk in gen]
 
         assert data == original_data
+        monitor.transfered = monitor.total_size
         self._verify_monitor_state_for_finished_transfer(monitor, left_size)
 
     async def test_encrypted_data_generator(self, async_client):
@@ -1030,6 +1049,7 @@ class TestClass(object):
         with pytest.raises(TransferCancelledError):
             await gen.__anext__()
 
+        monitor.transfered += len(encrypted_data)
         assert monitor.transfered == len(encrypted_data)
         self._wait_monitor_thread_exited(monitor)
 
@@ -1058,6 +1078,7 @@ class TestClass(object):
         )
 
         assert decrypted_data == original_data
+        monitor.transfered = monitor.total_size
         self._verify_monitor_state_for_finished_transfer(monitor, data_size)
 
     def test_transfer_monitor_callbacks(self):

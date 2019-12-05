@@ -65,7 +65,7 @@ class TransferMonitor:
     total_size:       int                               = field()
     on_transfered:    Optional[Callable[[int], None]]   = None
     on_speed_changed: Optional[Callable[[float], None]] = None
-    update_rate:      int                               = 4
+    update_rate:      int                               = 10
 
     average_speed: float              = field(init=False, default=0.0)
     start_time:    datetime           = field(init=False)

@@ -95,7 +95,8 @@ async def async_encrypt_attachment(data: AsyncDataT) -> _EncryptedReturnT:
 
 
 async def async_generator_from_data(
-    data: AsyncDataT,
+    data:       AsyncDataT,
+    chunk_size: int = 4 * 1024,
 ) -> AsyncGenerator[bytes, None]:
 
     aio_opened = False
@@ -106,20 +107,23 @@ async def async_generator_from_data(
     ###
 
     if isinstance(data, bytes):
-        for chunk in (data[i : i + 4096] for i in range(0, len(data), 4096)):
+        chunks = (
+            data[i : i + chunk_size] for i in range(0, len(data), chunk_size)
+        )
+        for chunk in chunks:
             yield chunk
 
     # Test if data is a file obj first, since it's considered Iterable too
     elif isinstance(data, io.BufferedIOBase):
        while True:
-            chunk = data.read(4096)
+            chunk = data.read(chunk_size)
             if not chunk:
                 return
             yield chunk
 
     elif isinstance(data, AsyncBufferedReader):
         while True:
-            chunk = await data.read(4096)
+            chunk = await data.read(chunk_size)
             if not chunk:
                 break
             yield chunk

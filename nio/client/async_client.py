@@ -24,7 +24,8 @@ from typing import (Any, AsyncIterable, BinaryIO, Coroutine, Dict,
 from uuid import UUID, uuid4
 
 import attr
-from aiohttp import ClientResponse, ClientSession, ContentTypeError
+from aiohttp import (ClientResponse, ClientSession, ContentTypeError,
+                     TraceConfig)
 from aiohttp.client_exceptions import ClientConnectionError
 
 from . import Client, ClientConfig
@@ -95,13 +96,28 @@ class ResponseCb(object):
     filter = attr.ib(default=None)
 
 
+async def on_request_chunk_sent(session, context, params):
+    """TraceConfig callback to run when a chunk is sent for client uploads."""
+
+    context_obj = context.trace_request_ctx
+
+    if isinstance(context_obj, TransferMonitor):
+        context_obj.transfered += len(params.chunk)
+
+
 def client_session(func):
     """Ensure that the Async client has a valid client session."""
+
     @wraps(func)
     async def wrapper(self, *args, **kwargs):
         if not self.client_session:
-            self.client_session = ClientSession()
+            trace = TraceConfig()
+            trace.on_request_chunk_sent.append(on_request_chunk_sent)
+
+            self.client_session = ClientSession(trace_configs=[trace])
+
         return await func(self, *args, **kwargs)
+
     return wrapper
 
 
@@ -480,6 +496,7 @@ class AsyncClient(Client):
             data=None,
             response_data=None,
             content_type=None,
+            trace_context=None,
     ):
         headers = {"content-type": content_type} if content_type else {}
 
@@ -491,7 +508,9 @@ class AsyncClient(Client):
 
         while True:
             try:
-                transport_resp = await self.send(method, path, data, headers)
+                transport_resp = await self.send(
+                    method, path, data, headers, trace_context,
+                )
 
                 resp = await self.create_matrix_response(
                     response_class,
@@ -525,10 +544,11 @@ class AsyncClient(Client):
     @client_session
     async def send(
             self,
-            method,       # type: str
-            path,         # type: str
-            data=None,    # type: Union[None, str, AsyncDataT]
-            headers=None  # type: Optional[Dict[str, str]]
+            method,                # type: str
+            path,                  # type: str
+            data          = None,  # type: Union[None, str, AsyncDataT]
+            headers       = None,  # type: Optional[Dict[str, str]]
+            trace_context = None,  # type: Any
     ):
         # type: (...) -> ClientResponse
         """Send a request to the homeserver.
@@ -540,16 +560,19 @@ class AsyncClient(Client):
             data (str, optional): Data that will be posted with the request.
             headers (Dict[str,str] , optional): Additional request headers that
                 should be used with the request.
+            trace_context (Any, optional): An object to use for the
+                ClientSession TraceConfig context
         """
         assert self.client_session
 
         return await self.client_session.request(
             method,
             self.homeserver + path,
-            data=data,
-            ssl=self.ssl,
-            proxy=self.proxy,
-            headers=headers
+            data              = data,
+            ssl               = self.ssl,
+            proxy             = self.proxy,
+            headers           = headers,
+            trace_request_ctx = trace_context,
         )
 
     async def mxc_to_http(
@@ -1661,14 +1684,11 @@ class AsyncClient(Client):
         """
 
         async for value in async_generator_from_data(data):
-            if monitor:
-                if monitor.cancel:
-                    raise TransferCancelledError()
+            if monitor and monitor.cancel:
+                raise TransferCancelledError()
 
-                while monitor.pause:
-                    await asyncio.sleep(1 / monitor.update_rate)
-
-                monitor.transfered += len(value)
+            while monitor and monitor.pause:
+                await asyncio.sleep(1 / monitor.update_rate)
 
             yield value
 
@@ -1688,14 +1708,11 @@ class AsyncClient(Client):
             if isinstance(value, dict):  # last yielded value
                 decryption_dict.update(value)
             else:
-                if monitor:
-                    if monitor.cancel:
-                        raise TransferCancelledError()
+                if monitor and monitor.cancel:
+                    raise TransferCancelledError()
 
-                    while monitor.pause:
-                        await asyncio.sleep(1 / monitor.update_rate)
-
-                    monitor.transfered += len(value)
+                while monitor and monitor.pause:
+                    await asyncio.sleep(1 / monitor.update_rate)
 
                 yield value
 
@@ -1771,6 +1788,7 @@ class AsyncClient(Client):
             data,
             content_type =
                 "application/octet-stream" if encrypt else content_type,
+            trace_context = monitor,
         )
 
         # After the upload finished and we get the response above, if encrypt
