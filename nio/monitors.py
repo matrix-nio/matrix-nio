@@ -17,7 +17,8 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from threading import Thread
-from typing import Deque, Optional
+from typing import Callable, Deque, Optional
+
 
 @dataclass
 class TransferMonitor:
@@ -33,8 +34,14 @@ class TransferMonitor:
     Args:
         total_size (int): Size in bytes of the data to transfer.
 
-        update_rate (int, optional): How many times per second the statistics
-            should be updated. Defaults to ``10``.
+        on_transfered (Callable[[int], None], optional): A callback to call
+            with the new value of ``transfered`` when it changes.
+
+        on_speed_changed (Callable[[float], None], optional): A callback to
+            call with the new value of ``average_speed`` when it changes.
+
+        update_rate (int, optional): How many times per second
+            ``average_speed`` should be updated. Defaults to ``10``.
 
     Attributes:
         average_speed (float): An average number of how many bytes
@@ -55,8 +62,10 @@ class TransferMonitor:
     """
     # TODO: tell that this can be used for downloads too once implemented.
 
-    total_size:  int  = field()
-    update_rate: int  = 10
+    total_size:       int                               = field()
+    on_transfered:    Optional[Callable[[int], None]]   = None
+    on_speed_changed: Optional[Callable[[float], None]] = None
+    update_rate:      int                               = 4
 
     average_speed: float              = field(init=False, default=0.0)
     start_time:    datetime           = field(init=False)
@@ -97,10 +106,15 @@ class TransferMonitor:
                 (datetime.now() - previous_date).total_seconds(),
             )
 
+            previous_speed = self._past_speeds[-1]
+
             self.average_speed = sum(self._past_speeds) / self.update_rate
 
             previous_transfered = transfered
             previous_date       = datetime.now()
+
+            if self.average_speed != previous_speed and self.on_speed_changed:
+                self.on_speed_changed(self.average_speed)
 
             time.sleep(1 / self.update_rate)
 
@@ -115,10 +129,14 @@ class TransferMonitor:
 
     @transfered.setter
     def transfered(self, size: int) -> None:
+        old_value        = self._transfered
         self._transfered = size
 
         if size >= self.total_size:
             self.end_time = datetime.now()
+
+        if size != old_value and self.on_transfered:
+            self.on_transfered(size)
 
     @property
     def percent_done(self) -> float:

@@ -1060,6 +1060,34 @@ class TestClass(object):
         assert decrypted_data == original_data
         self._verify_monitor_state_for_finished_transfer(monitor, data_size)
 
+    def test_transfer_monitor_callbacks(self):
+        called = {"transfered": (0, 0), "speed_changed": 0}
+
+        def on_transfered(transfered: int):
+            called["transfered"] = (called["transfered"][0] + 1, transfered)
+
+        def on_speed_changed(speed: float):
+            called["speed_changed"] += 1
+
+        monitor = TransferMonitor(100, on_transfered, on_speed_changed)
+        monitor.transfered += 50
+
+        slept = 0
+
+        while not called["transfered"] or not called["speed_changed"]:
+            time.sleep(0.1)
+            slept += 0.1
+
+            if slept >= 1:
+                raise RuntimeError("1+ callback not called after 1s", called)
+
+        assert called["transfered"] == (1, 50)
+        assert called["speed_changed"] == 1
+
+        monitor.transfered += 50
+        self._verify_monitor_state_for_finished_transfer(monitor, 100)
+
+
     @staticmethod
     def _wait_monitor_thread_exited(monitor):
         for _ in range(100):

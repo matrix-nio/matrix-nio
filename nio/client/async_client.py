@@ -1651,7 +1651,7 @@ class AsyncClient(Client):
         )
 
     @staticmethod
-    async def _plain_data_generator(data, monitor):
+    async def _plain_data_generator(data, monitor=None):
         """Yield chunks of bytes from data.
 
         If a monitor is passed, update its ``transfered`` property and
@@ -1673,7 +1673,7 @@ class AsyncClient(Client):
             yield value
 
     @staticmethod
-    async def _encrypted_data_generator(data, decryption_dict, monitor):
+    async def _encrypted_data_generator(data, decryption_dict, monitor=None):
         """Yield encrypted chunks of bytes from data.
 
         If a monitor is passed, update its ``transfered`` property and
