@@ -330,6 +330,19 @@ class HttpClient(Client):
     @connected
     @logged_in
     def room_redact(self, room_id, event_id, reason=None, tx_id=None):
+        """Strip information out of an event.
+
+        Returns a unique uuid that identifies the request and the bytes that
+        should be sent to the socket.
+
+        Args:
+            room_id (str): The room id of the room that contains the event that
+                will be redacted.
+            event_id (str): The ID of the event that will be redacted.
+            tx_id (str/UUID, optional): A transaction ID for this event.
+            reason(str, optional): A description explaining why the
+                event was redacted.
+        """
         uuid = tx_id or uuid4()
 
         request = self._build_request(

@@ -21,7 +21,7 @@ from functools import partial, wraps
 from json.decoder import JSONDecodeError
 from typing import (Any, AsyncIterable, BinaryIO, Coroutine, Dict,
                     Iterable, List, Optional, Sequence, Tuple, Type, Union)
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import attr
 from aiohttp import ClientResponse, ClientSession, ContentTypeError
@@ -56,6 +56,7 @@ from ..responses import (DownloadError, DownloadResponse,
                          RoomKeyRequestError, RoomKeyRequestResponse,
                          RoomLeaveResponse, RoomLeaveError,
                          RoomMessagesError, RoomMessagesResponse,
+                         RoomRedactError, RoomRedactResponse,
                          RoomSendResponse, RoomTypingResponse, RoomTypingError,
                          ShareGroupSessionError,
                          ShareGroupSessionResponse, SyncError, SyncResponse,
@@ -211,7 +212,10 @@ class AsyncClient(Client):
 
         self.sharing_session = dict()  # type: Dict[str, Event]
 
-        if isinstance(config, ClientConfig):
+        is_config       = isinstance(config, ClientConfig)
+        is_async_config = isinstance(config, AsyncClientConfig)
+
+        if is_config and not is_async_config:
             warnings.warn(
                 "Pass an AsyncClientConfig instead of ClientConfig.",
                 DeprecationWarning
@@ -833,13 +837,13 @@ class AsyncClient(Client):
         # type: (...) -> Union[ToDeviceResponse, ToDeviceError]
         """Send a to-device message.
 
+        Returns either a `ToDeviceResponse` if the request was successful or
+        a `ToDeviceError` if there was an error with the request.
+
         Args:
             message (ToDeviceMessage): The message that should be sent out.
             tx_id (str, optional): The transaction ID for this message. Should
                 be unique.
-
-        Returns either a `ToDeviceResponse` if the request was successful or
-        a `ToDeviceError` if there was an error with the request.
         """
         uuid = tx_id or uuid4()
 
@@ -917,12 +921,12 @@ class AsyncClient(Client):
         # type: (str) -> Union[JoinedMembersResponse, JoinedMembersError]
         """Send a message to a room.
 
+        Returns either a `JoinedMembersResponse` if the request was successful
+        or a `JoinedMembersError` if there was an error with the request.
+
         Args:
             room_id(str): The room id of the room for which we wan't to request
                 the joined member list.
-
-        Returns either a `JoinedMembersResponse` if the request was successful
-        or a `JoinedMembersError` if there was an error with the request.
         """
         method, path = Api.joined_members(
             self.access_token,
@@ -1020,6 +1024,43 @@ class AsyncClient(Client):
 
         raise SendRetryError("Max retries exceeded while trying to send "
                              "the message")
+
+    @logged_in
+    async def room_redact(
+            self,
+            room_id:  str,
+            event_id: str,
+            reason:   Optional[str]          = None,
+            tx_id:    Union[None, str, UUID] = None,
+    ) -> Union[RoomRedactResponse, RoomRedactError]:
+        """Strip information out of an event.
+
+        Returns either a `RoomRedactResponse` if the request was successful or
+        a `RoomRedactError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room that contains the event that
+                will be redacted.
+            event_id (str): The ID of the event that will be redacted.
+            tx_id (str/UUID, optional): A transaction ID for this event.
+            reason(str, optional): A description explaining why the
+                event was redacted.
+        """
+        method, path, data = Api.room_redact(
+            self.access_token,
+            room_id,
+            event_id,
+            tx_id  = tx_id or uuid4(),
+            reason = reason,
+        )
+
+        return await self._send(
+            RoomRedactResponse,
+            method,
+            path,
+            data,
+            response_data = (room_id,),
+        )
 
     @logged_in
     @store_loaded
@@ -1150,15 +1191,14 @@ class AsyncClient(Client):
         This sends out a message to other devices requesting a room key from
         them.
 
-        Args:
-            event (str): An undecrypted MegolmEvent for which we would like to
-                request the decryption key.
-
         Returns either a `RoomKeyRequestResponse` if the request was successful
         or a `RoomKeyRequestError` if there was an error with the request.
 
         Raises a LocalProtocolError if the room key was already requested.
 
+        Args:
+            event (MegolmEvent): An undecrypted MegolmEvent for which we would
+                like to request the decryption key.
         """
         uuid = tx_id or uuid4()
 
@@ -1442,6 +1482,9 @@ class AsyncClient(Client):
 
         It uses pagination query parameters to paginate history in the room.
 
+        Returns either a `RoomContextResponse` if the request was successful or
+        a `RoomContextError` if there was an error with the request.
+
         Args:
             room_id (str): The room id of the room for which we would like to
                 fetch the messages.
@@ -1457,9 +1500,6 @@ class AsyncClient(Client):
                 events from. Defaults to MessageDirection.back.
             limit (int, optional): The maximum number of events to return.
                 Defaults to 10.
-
-        Returns either a `RoomContextResponse` if the request was successful or
-        a `RoomContextError` if there was an error with the request.
 
         Example:
             >>> response = await client.room_messages(room_id, previous_batch)

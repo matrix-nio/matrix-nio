@@ -424,8 +424,9 @@ class Api(object):
             room_id (str): The room id of the room that contains the event that
                 will be redacted.
             event_id (str): The ID of the event that will be redacted.
-            tx_id (str): The transaction ID for this event.
-            reason(str): A description explaining why the event was redacted.
+            tx_id (str/UUID, optional): A transaction ID for this event.
+            reason(str, optional): A description explaining why the
+                event was redacted.
         """
         query_parameters = {"access_token": access_token}
 

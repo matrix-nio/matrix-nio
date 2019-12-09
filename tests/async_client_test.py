@@ -5,6 +5,7 @@ import time
 from os import path
 from datetime import datetime, timedelta
 from urllib.parse import quote
+from uuid import uuid4
 
 import aiofiles
 import pytest
@@ -25,7 +26,8 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  RoomTypingResponse, RoomCreateResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
-                 RoomSendResponse, RoomSummary, ShareGroupSessionResponse,
+                 RoomRedactResponse, RoomSendResponse, RoomSummary,
+                 ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
                  Timeline, UploadResponse, RoomMessageText, RoomKeyRequest)
 from nio.api import ResizingMethod, RoomPreset, RoomVisibility
@@ -756,7 +758,7 @@ class TestClass(object):
         assert async_client.logged_in
         await async_client.receive_response(self.encryption_sync_response)
 
-        room_id = list(async_client.rooms.keys())[0]
+        room_id = next(iter(async_client.rooms))
 
         aioresponse.post(
             "https://example.org/_matrix/client/r0/rooms/{}/forget"
@@ -769,6 +771,29 @@ class TestClass(object):
         resp = await async_client.room_forget(room_id)
         assert isinstance(resp, RoomForgetResponse)
         assert room_id not in async_client.rooms
+
+    async def test_room_redact(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+        await async_client.receive_response(self.encryption_sync_response)
+
+        room_id  = next(iter(async_client.rooms))
+        event_id = "$15163622445EBvZJ:localhost"
+        tx_id    = uuid4()
+        reason   = "for no reason"
+
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/rooms/{}/redact/{}/{}"
+            "?access_token=abc123".format(
+                room_id, event_id, tx_id
+            ),
+            status=200,
+            payload={"event_id": "$90813622447EBvZJ:localhost"},
+        )
+        resp = await async_client.room_redact(room_id, event_id, reason, tx_id)
+        assert isinstance(resp, RoomRedactResponse)
 
     async def test_context(self, async_client, aioresponse):
         await async_client.receive_response(
