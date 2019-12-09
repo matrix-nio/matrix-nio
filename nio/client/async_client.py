@@ -1191,8 +1191,8 @@ class AsyncClient(Client):
         Raises a LocalProtocolError if the room key was already requested.
 
         Args:
-            event (str): An undecrypted MegolmEvent for which we would like to
-                request the decryption key.
+            event (MegolmEvent): An undecrypted MegolmEvent for which we would
+                like to request the decryption key.
         """
         uuid = tx_id or uuid4()
 
