@@ -25,6 +25,7 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
                  RoomTypingResponse, RoomCreateResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
+                 RoomInviteResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomRedactResponse, RoomSendResponse, RoomSummary,
                  ShareGroupSessionResponse,
@@ -733,6 +734,22 @@ class TestClass(object):
         resp = await async_client.join(TEST_ROOM_ID)
         assert isinstance(resp, JoinResponse)
         assert resp.room_id == TEST_ROOM_ID
+
+    async def test_room_invite(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/rooms/{}/invite"
+            "?access_token=abc123".format(TEST_ROOM_ID),
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.room_invite(TEST_ROOM_ID, ALICE_ID)
+        assert isinstance(resp, RoomInviteResponse)
 
     async def test_room_leave(self, async_client, aioresponse):
         await async_client.receive_response(

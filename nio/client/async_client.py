@@ -53,6 +53,7 @@ from ..responses import (DownloadError, DownloadResponse,
                          RoomContextError, RoomContextResponse,
                          RoomCreateResponse, RoomCreateError,
                          RoomForgetResponse, RoomForgetError,
+                         RoomInviteResponse, RoomInviteError,
                          RoomKeyRequestError, RoomKeyRequestResponse,
                          RoomLeaveResponse, RoomLeaveError,
                          RoomMessagesError, RoomMessagesResponse,
@@ -1397,6 +1398,25 @@ class AsyncClient(Client):
         """
         method, path, data = Api.join(self.access_token, room_id)
         return await self._send(JoinResponse, method, path, data)
+
+    @logged_in
+    async def room_invite(
+        self, room_id: str, user_id: str,
+    ) -> Union[RoomInviteResponse, RoomInviteError]:
+        """Invite a user to a room.
+
+        Returns either a `RoomInviteResponse` if the request was successful or
+        a `RoomInviteError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room that the user will be
+                invited to.
+            user_id (str): The user id of the user that should be invited.
+        """
+        method, path, data = Api.room_invite(
+            self.access_token, room_id, user_id,
+        )
+        return await self._send(RoomInviteResponse, method, path, data)
 
     @logged_in
     async def room_leave(self, room_id):

@@ -484,7 +484,7 @@ class Api(object):
             access_token (str): The access token to be used with the request.
             room_id (str): The room id of the room that the user will be
                 invited to.
-            user_id (str): The user_id of the user that should be invited.
+            user_id (str): The user id of the user that should be invited.
         """
         query_parameters = {"access_token": access_token}
         body = {"user_id": user_id}
