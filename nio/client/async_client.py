@@ -920,7 +920,7 @@ class AsyncClient(Client):
     @logged_in
     async def joined_members(self, room_id):
         # type: (str) -> Union[JoinedMembersResponse, JoinedMembersError]
-        """Send a message to a room.
+        """Get the list of joined members for a room.
 
         Returns either a `JoinedMembersResponse` if the request was successful
         or a `JoinedMembersError` if there was an error with the request.

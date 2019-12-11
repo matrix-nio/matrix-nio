@@ -917,9 +917,6 @@ class Api(object):
         # type: (str, str) -> Tuple[str, str]
         """Get the list of joined members for a room.
 
-        This tells the server that the user is typing for the next N
-        milliseconds or that the user has stopped typing.
-
         Returns the HTTP method and HTTP path for the request.
 
         Args:
