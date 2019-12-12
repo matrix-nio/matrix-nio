@@ -210,11 +210,11 @@ class TestClass(object):
         assert not room.summary
 
         room.update_summary(RoomSummary(1, 2, []))
-        assert room.member_count == 2
+        assert room.member_count == 3
         assert room.summary
 
         room.update_summary(RoomSummary(1, 3, ["@alice:example.org"]))
-        assert room.member_count == 3
+        assert room.member_count == 4
         assert room.summary.heroes == ["@alice:example.org"]
 
     def test_invited_room(self):

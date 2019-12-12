@@ -32,6 +32,8 @@ TEST_EVENT_ID = "$15163622445EBvZJ:localhost"
 ALICE_ID = "@alice:example.org"
 ALICE_DEVICE_ID = "JLAFKJWSCS"
 
+CAROL_ID = "@carol:example.org"
+
 
 @pytest.fixture
 def synced_client(tempdir):
@@ -263,9 +265,18 @@ class TestClass(object):
                     None,
                     {"membership": "join"}
                 ),
+                RoomMemberEvent(
+                    {"event_id": "event_id_2",
+                     "sender": ALICE_ID,
+                     "origin_server_ts": 1516809890615},
+                    CAROL_ID,
+                    "invite",
+                    None,
+                    {"membership": "invite"},
+                ),
                 RoomEncryptionEvent(
                     {
-                        "event_id": "event_id_2",
+                        "event_id": "event_id_3",
                         "sender": ALICE_ID,
                         "origin_server_ts": 1516809890615
                     }
@@ -279,7 +290,7 @@ class TestClass(object):
             [],
             [TypingNoticeEvent([ALICE_ID])],
             [],
-            RoomSummary(1, 2, [])
+            RoomSummary(invited_member_count=1, joined_member_count=2),
         )
         rooms = Rooms(
             {},
@@ -420,8 +431,9 @@ class TestClass(object):
     def joined_members(self):
         return JoinedMembersResponse(
             [
-                RoomMember(BOB_ID, None, None),
-                RoomMember(ALICE_ID, None, None),
+                RoomMember(BOB_ID, None, None),    # joined
+                RoomMember(ALICE_ID, None, None),  # joined
+                RoomMember(CAROL_ID, None, None),  # invited
             ],
             TEST_ROOM_ID
         )
@@ -529,7 +541,7 @@ class TestClass(object):
         client.receive_response(self.sync_response)
         client.receive_response(self.keys_query_response)
 
-        assert list(client.device_store.users) == [ALICE_ID]
+        assert list(client.device_store.users) == [ALICE_ID, CAROL_ID]
         alice_device = client.device_store[ALICE_ID][ALICE_DEVICE_ID]
         assert alice_device
 
@@ -555,8 +567,9 @@ class TestClass(object):
 
         assert room.encrypted
         assert room.summary
-        assert len(room.users) == 1
-        assert room.member_count == 2
+        assert len(room.users) == 2
+        assert room.member_count == 3
+        assert room.summary.invited_member_count == 1
         assert room.summary.joined_member_count == 2
         assert client.should_query_keys
         assert not client.device_store.users
@@ -573,7 +586,7 @@ class TestClass(object):
         assert room.members_synced
         assert client.should_query_keys
 
-        assert client.users_for_key_query == set([BOB_ID])
+        assert client.users_for_key_query == {BOB_ID}
 
     @ephemeral
     def test_query_rule(self):
@@ -586,8 +599,8 @@ class TestClass(object):
         client.receive_response(self.sync_response)
         assert client.should_query_keys
         client.receive_response(self.keys_query_response)
-        assert client.olm.tracked_users == set([ALICE_ID])
-        assert list(client.device_store.users) == [ALICE_ID]
+        assert client.olm.tracked_users == {ALICE_ID, CAROL_ID}
+        assert list(client.device_store.users) == [ALICE_ID, CAROL_ID]
         assert not client.should_query_keys
 
         del client
@@ -606,15 +619,15 @@ class TestClass(object):
         client.receive_response(self.second_sync)
         assert client.should_query_keys
 
-        client.users_for_key_query == set([ALICE_ID])
+        client.users_for_key_query == {ALICE_ID}
 
         client.receive_response(self.joined_members)
 
-        client.users_for_key_query == set([ALICE_ID, BOB_ID])
+        client.users_for_key_query == {ALICE_ID, BOB_ID}
 
         client.receive_response(self.keys_query_response)
-        assert client.olm.tracked_users == set([ALICE_ID])
-        assert client.users_for_key_query == set([BOB_ID])
+        assert client.olm.tracked_users == {ALICE_ID, CAROL_ID}
+        assert client.users_for_key_query == {BOB_ID}
         assert client.should_query_keys
 
     @ephemeral
@@ -658,7 +671,7 @@ class TestClass(object):
         room = client.rooms[TEST_ROOM_ID]
 
         assert room.encrypted
-        assert len(room.users) == 2
+        assert len(room.users) == 3
         assert ALICE_ID in client.device_store.users
         assert BOB_ID not in client.device_store.users
 

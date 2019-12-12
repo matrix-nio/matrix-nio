@@ -41,6 +41,8 @@ TEST_ROOM_ID = "!testroom:example.org"
 ALICE_ID = "@alice:example.org"
 ALICE_DEVICE_ID = "JLAFKJWSCS"
 
+CAROL_ID = "@carol:example.org"
+
 if sys.version_info >= (3, 5):
     import asyncio
     from nio import AsyncClient, AsyncClientConfig
@@ -101,14 +103,18 @@ class TestClass(object):
     @property
     def joined_members_resopnse(self):
         return {
-            "joined": {
+            "joined": {  # joined
                 "@bar:example.com": {
                     "avatar_url": None,
                     "display_name": "Bar"
                 },
-                ALICE_ID: {
+                ALICE_ID: {  # joined
                     "avatar_url": None,
                     "display_name": "Alice"
+                },
+                CAROL_ID: {  # invited
+                    "avatar_url": None,
+                    "display_name": "Carol"
                 },
             }}
 
@@ -125,9 +131,18 @@ class TestClass(object):
                     None,
                     {"membership": "join"}
                 ),
+                RoomMemberEvent(
+                    {"event_id": "event_id_2",
+                     "sender": ALICE_ID,
+                     "origin_server_ts": 1516809890615},
+                    CAROL_ID,
+                    "invite",
+                    None,
+                    {"membership": "invite"}
+                ),
                 RoomEncryptionEvent(
                     {
-                        "event_id": "event_id_2",
+                        "event_id": "event_id_3",
                         "sender": ALICE_ID,
                         "origin_server_ts": 1516809890615
                     }
