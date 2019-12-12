@@ -25,6 +25,7 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
                  RoomTypingResponse, RoomCreateResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
+                 RoomInviteResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomRedactResponse, RoomSendResponse, RoomSummary,
                  ShareGroupSessionResponse,
@@ -39,6 +40,8 @@ TEST_ROOM_ID = "!testroom:example.org"
 
 ALICE_ID = "@alice:example.org"
 ALICE_DEVICE_ID = "JLAFKJWSCS"
+
+CAROL_ID = "@carol:example.org"
 
 if sys.version_info >= (3, 5):
     import asyncio
@@ -100,14 +103,18 @@ class TestClass(object):
     @property
     def joined_members_resopnse(self):
         return {
-            "joined": {
+            "joined": {  # joined
                 "@bar:example.com": {
                     "avatar_url": None,
                     "display_name": "Bar"
                 },
-                ALICE_ID: {
+                ALICE_ID: {  # joined
                     "avatar_url": None,
                     "display_name": "Alice"
+                },
+                CAROL_ID: {  # invited
+                    "avatar_url": None,
+                    "display_name": "Carol"
                 },
             }}
 
@@ -124,9 +131,18 @@ class TestClass(object):
                     None,
                     {"membership": "join"}
                 ),
+                RoomMemberEvent(
+                    {"event_id": "event_id_2",
+                     "sender": ALICE_ID,
+                     "origin_server_ts": 1516809890615},
+                    CAROL_ID,
+                    "invite",
+                    None,
+                    {"membership": "invite"}
+                ),
                 RoomEncryptionEvent(
                     {
-                        "event_id": "event_id_2",
+                        "event_id": "event_id_3",
                         "sender": ALICE_ID,
                         "origin_server_ts": 1516809890615
                     }
@@ -733,6 +749,22 @@ class TestClass(object):
         resp = await async_client.join(TEST_ROOM_ID)
         assert isinstance(resp, JoinResponse)
         assert resp.room_id == TEST_ROOM_ID
+
+    async def test_room_invite(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/rooms/{}/invite"
+            "?access_token=abc123".format(TEST_ROOM_ID),
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.room_invite(TEST_ROOM_ID, ALICE_ID)
+        assert isinstance(resp, RoomInviteResponse)
 
     async def test_room_leave(self, async_client, aioresponse):
         await async_client.receive_response(

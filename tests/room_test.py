@@ -4,12 +4,13 @@ from helpers import faker
 from nio.events import (InviteAliasEvent, InviteMemberEvent, InviteNameEvent,
                         RoomCreateEvent, RoomGuestAccessEvent,
                         RoomHistoryVisibilityEvent, RoomJoinRulesEvent,
-                        RoomNameEvent, TypingNoticeEvent)
+                        RoomMemberEvent, RoomNameEvent, TypingNoticeEvent)
 from nio.responses import RoomSummary
 from nio.rooms import MatrixInvitedRoom, MatrixRoom
 
 TEST_ROOM = "!test:example.org"
 BOB_ID = "@bob:example.org"
+ALICE_ID = "@alice:example.org"
 
 class TestClass(object):
     def _create_test_data(self):
@@ -210,11 +211,11 @@ class TestClass(object):
         assert not room.summary
 
         room.update_summary(RoomSummary(1, 2, []))
-        assert room.member_count == 2
+        assert room.member_count == 3
         assert room.summary
 
         room.update_summary(RoomSummary(1, 3, ["@alice:example.org"]))
-        assert room.member_count == 3
+        assert room.member_count == 4
         assert room.summary.heroes == ["@alice:example.org"]
 
     def test_invited_room(self):
@@ -248,3 +249,66 @@ class TestClass(object):
 
         assert room.remove_member(mx_id)
         assert not room.remove_member(mx_id)
+
+    def test_user_membership_changes(self):
+        invited_event = RoomMemberEvent(
+            {"event_id": "event1", "sender": BOB_ID, "origin_server_ts": 1},
+            ALICE_ID,
+            "invite",
+            None,
+            {"membership": "invite"},
+        )
+
+        joins_event = RoomMemberEvent(
+            {"event_id": "event2", "sender": ALICE_ID, "origin_server_ts": 2},
+            ALICE_ID,
+            "join",
+            None,
+            {"membership": "join"},
+        )
+
+        leaves_event = RoomMemberEvent(
+            {"event_id": "event3", "sender": ALICE_ID, "origin_server_ts": 3},
+            ALICE_ID,
+            "leave",
+            None,
+            {"membership": "leave"},
+        )
+
+        room = self.test_room
+        assert not room.users
+        assert not room.invited_users
+
+        # Alice is invited, accepts then leaves
+
+        room.handle_membership(invited_event)
+        assert set(room.users) == {ALICE_ID}
+        assert set(room.invited_users) == {ALICE_ID}
+
+        room.handle_membership(joins_event)
+        assert set(room.users) == {ALICE_ID}
+        assert not room.invited_users
+
+        room.handle_membership(leaves_event)
+        assert not room.users
+        assert not room.invited_users
+
+        # Alice is invited and declines
+
+        room.handle_membership(invited_event)
+        assert set(room.users) == {ALICE_ID}
+        assert set(room.invited_users) == {ALICE_ID}
+
+        room.handle_membership(leaves_event)
+        assert not room.users
+        assert not room.invited_users
+
+        # Alice joins without invite then leaves
+
+        room.handle_membership(joins_event)
+        assert set(room.users) == {ALICE_ID}
+        assert not room.invited_users
+
+        room.handle_membership(leaves_event)
+        assert not room.users
+        assert not room.invited_users

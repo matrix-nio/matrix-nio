@@ -61,6 +61,7 @@ class MatrixRoom(object):
         self.topic = None             # type: Optional[str]
         self.name = None              # type: Optional[str]
         self.users = dict()           # type: Dict[str, MatrixUser]
+        self.invited_users = dict()   # type: Dict[str, MatrixUser]
         self.names = defaultdict(list)  # type: DefaultDict[str, List[str]]
         self.encrypted = encrypted    # type: bool
         self.power_levels = PowerLevels()  # type: PowerLevels
@@ -204,18 +205,21 @@ class MatrixRoom(object):
         """
         return not self.is_named
 
-    def add_member(self, user_id, display_name, avatar_url):
-        # type (str, str, str) -> bool
+    def add_member(self, user_id, display_name, avatar_url, invited=False):
+        # type (str, str, str, bool) -> bool
         if user_id in self.users:
             return False
 
         level = self.power_levels.users.get(
             user_id,
-            self.power_levels.defaults.users_default
+            self.power_levels.defaults.users_default,
         )
 
-        user = MatrixUser(user_id, display_name, avatar_url, level)
+        user = MatrixUser(user_id, display_name, avatar_url, level, invited)
         self.users[user_id] = user
+
+        if invited:
+            self.invited_users[user_id] = user
 
         name = display_name if display_name else user_id
         self.names[name].append(user_id)
@@ -224,10 +228,11 @@ class MatrixRoom(object):
 
     def remove_member(self, user_id):
         # type (str) -> bool
-        if user_id in self.users:
-            user = self.users[user_id]
-            self.names[user.name].remove(user.user_id)
-            del self.users[user_id]
+        if user_id in self.users or user_id in self.invited_users:
+            user         = self.users.pop(user_id, None)
+            invited_user = self.invited_users.pop(user_id, None)
+
+            self.names[user.name].remove((user or invited_user).user_id)
             return True
 
         return False
@@ -243,16 +248,34 @@ class MatrixRoom(object):
         Returns True if the member list of the room has changed False
         otherwise.
         """
-        if event.content["membership"] == "join":
-            if event.state_key not in self.users:
+        target_user = event.state_key
+        invited     = event.membership == "invite"
+
+        if event.membership in ("invite", "join"):
+            # Add member if not already present in self.users,
+            # or the member is invited but not present in self.invited_users
+
+            if (target_user not in self.users or
+                    (invited and target_user not in self.invited_users)):
+
                 display_name = event.content.get("displayname", None)
-                avatar_url = event.content.get("avatar_url", None)
+                avatar_url   = event.content.get("avatar_url", None)
+
                 return self.add_member(
-                    event.state_key, display_name, avatar_url
+                    target_user, display_name, avatar_url, invited,
                 )
 
+            user = self.users[target_user]
+
+            # Handle membership change
+
+            user.invited = invited
+
+            if not invited and target_user in self.invited_users:
+                del self.invited_users[target_user]
+
             # Handle profile changes
-            user = self.users[event.sender]
+
             if "displayname" in event.content:
                 self.names[user.name].remove(user.user_id)
                 user.display_name = event.content["displayname"]
@@ -263,11 +286,8 @@ class MatrixRoom(object):
 
             return False
 
-        elif event.content["membership"] in ["leave", "ban"]:
-            return self.remove_member(event.state_key)
-
-        elif event.content["membership"] == "invite":
-            pass
+        elif event.membership in ("leave", "ban"):
+            return self.remove_member(target_user)
 
         return False
 
@@ -335,7 +355,7 @@ class MatrixRoom(object):
             self.summary.joined_member_count = summary.joined_member_count
 
         if summary.invited_member_count:
-            self.summary.invited_member_count = summary.joined_member_count
+            self.summary.invited_member_count = summary.invited_member_count
 
         if summary.heroes:
             self.summary.heroes = summary.heroes
@@ -354,15 +374,22 @@ class MatrixRoom(object):
         messages.
         """
         if self.summary:
-            if self.summary.joined_member_count is not None:
-                return self.summary.joined_member_count == len(self.users)
+            joined  = self.summary.joined_member_count
+            invited = self.summary.invited_member_count
+
+            if joined is not None and invited is not None:
+                return joined + invited == len(self.users)
 
         return True
 
     @property
     def member_count(self):
         if self.summary:
-            return self.summary.joined_member_count or len(self.users)
+            joined  = self.summary.joined_member_count
+            invited = self.summary.invited_member_count
+
+            if joined is not None and invited is not None:
+                return joined + invited
 
         return len(self.users)
 
@@ -384,7 +411,7 @@ class MatrixInvitedRoom(MatrixRoom):
         Returns True if the member list of the room has changed False
         otherwise.
         """
-        if (event.content["membership"] == "invite"
+        if (event.membership == "invite"
                 and event.state_key == self.own_user_id):
             self.inviter = event.sender
 
@@ -410,13 +437,15 @@ class MatrixInvitedRoom(MatrixRoom):
 
 class MatrixUser(object):
     def __init__(
-        self, user_id, display_name=None, avatar_url=None, power_level=0
+        self, user_id, display_name=None, avatar_url=None, power_level=0,
+        invited=False,
     ):
         # yapf: disable
         self.user_id = user_id            # type: str
         self.display_name = display_name  # type: str
         self.avatar_url = avatar_url      # type: str
         self.power_level = power_level    # type: int
+        self.invited = invited            # type: bool
         # yapf: enable
 
     @property
