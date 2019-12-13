@@ -15,9 +15,6 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import attr
-
-
 """Matrix state events module.
 
 This module contains classes that can be used to easily create
@@ -33,6 +30,8 @@ For example, to turn on encryption in a room with the ``HttpClient`` or
     ...     content      = event_dict["content"],
     ... )
 """
+
+import attr
 
 
 @attr.s
