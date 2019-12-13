@@ -24,9 +24,11 @@ from typing import Dict
 
 import attr
 
+from . import EventBuilder
+
 
 @attr.s
-class ToDeviceMessage(object):
+class ToDeviceMessage(EventBuilder):
     """A to-device message that can be sent to the homeserver.
 
     Attributes:
@@ -44,7 +46,6 @@ class ToDeviceMessage(object):
     content = attr.ib(type=Dict)
 
     def as_dict(self):
-        """Format the to-device message as a dictionary for a HTTP request."""
         return {
             "messages": {
                 self.recipient: {

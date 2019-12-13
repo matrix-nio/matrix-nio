@@ -33,9 +33,11 @@ For example, to turn on encryption in a room with the ``HttpClient`` or
 
 import attr
 
+from . import EventBuilder
+
 
 @attr.s
-class EnableEncryptionBuilder(object):
+class EnableEncryptionBuilder(EventBuilder):
     """A state event that can be sent to enable encryption in a room.
 
     Attributes:
@@ -57,7 +59,6 @@ class EnableEncryptionBuilder(object):
     rotation_msgs = attr.ib(type=int, default=100)
 
     def as_dict(self):
-        """Format the event as a dictionary."""
         return {
             "type":      "m.room.encryption",
             "state_key": "",
