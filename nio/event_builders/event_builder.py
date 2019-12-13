@@ -22,4 +22,4 @@ class EventBuilder(object):
 
     def as_dict(self):
         """Format the event as a dictionary, to be sent to the server."""
-        pass
+        raise NotImplementedError()

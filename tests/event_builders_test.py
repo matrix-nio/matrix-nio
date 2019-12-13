@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 
+import pytest
+
 import nio.event_builders as builders
 
 
 class TestClass(object):
+    def test_base_class(self):
+        with pytest.raises(NotImplementedError):
+            builders.EventBuilder().as_dict()
+
     def test_enable_encryption(self):
         event = builders.EnableEncryptionBuilder(
             algorithm="test", rotation_ms=9801, rotation_msgs=101
@@ -26,6 +32,10 @@ class TestClass(object):
             "state_key": "",
             "content":   {"name": "foo"},
         }
+
+        with pytest.raises(ValueError):
+            builders.ChangeNameBuilder("TooLongName" * 256)
+
 
     def test_change_topic(self):
         event = builders.ChangeTopicBuilder("Lorem ipsum").as_dict()
