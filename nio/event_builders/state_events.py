@@ -38,7 +38,7 @@ from . import EventBuilder
 
 @attr.s
 class EnableEncryptionBuilder(EventBuilder):
-    """A state event that can be sent to enable encryption in a room.
+    """A state event sent to enable encryption in a room.
 
     Attributes:
         algorithm (str): The algorithm to use for encrypting messages.
@@ -68,3 +68,117 @@ class EnableEncryptionBuilder(EventBuilder):
                 "rotation_period_msgs": self.rotation_msgs,
             },
         }
+
+
+@attr.s
+class ChangeNameBuilder(EventBuilder):
+    """A state event sent to change a room's name.
+
+    Attributes:
+        name (str): The name to set. Must not exceed 255 characters.
+            Can be empty to remove the room's name.
+    """
+
+    name = attr.ib(type=str)
+
+    def __attrs_post_init__(self):
+        if len(self.name) > 255:
+            raise ValueError(
+                "Room names exceeds 255 characters: {}".format(self.name),
+            )
+
+    def as_dict(self):
+        return {
+            "type":      "m.room.name",
+            "state_key": "",
+            "content":   {"name": self.name},
+        }
+
+
+@attr.s
+class ChangeTopicBuilder(EventBuilder):
+    """A state event sent to change a room's topic.
+
+    Attributes:
+        topic (str): The topic to set. Can be empty to remove the room's topic.
+    """
+
+    topic = attr.ib(type=str)
+
+    def as_dict(self):
+        return {
+            "type":      "m.room.topic",
+            "state_key": "",
+            "content":   {"topic": self.topic},
+        }
+
+
+@attr.s
+class ChangeJoinRulesBuilder(EventBuilder):
+    """A state event sent to change who can join a room.
+
+    Attributes:
+        rule (str): Can be ``public``, meaning any user can join;
+            or ``invite``, meaning users must be invited to join the room.
+            The matrix specification also reserves ``knock`` and ``private``
+            rules, which are currently not implemented.
+    """
+
+    rule = attr.ib(type=str)
+
+    def as_dict(self):
+        return {
+            "type":      "m.room.join_rules",
+            "state_key": "",
+            "content":   {"join_rule": self.rule},
+        }
+
+
+@attr.s
+class ChangeGuestAccessBuilder(EventBuilder):
+    """A state event sent to allow or forbid guest accounts in a room.
+
+    Attributes:
+        access (str): Whether guests can join the room.
+            Can be ``can_join`` or ``forbidden``.
+    """
+
+    access = attr.ib(type=str)
+
+    def as_dict(self):
+        return {
+            "type":      "m.room.guest_access",
+            "state_key": "",
+            "content":   {"guest_access": self.access},
+        }
+
+
+@attr.s
+class ChangeHistoryVisibilityBuilder(EventBuilder):
+    """A state event sent to set what can users see from the room history.
+
+    Attributes:
+        visibility (str): Can be:
+            - ``invited``: users can't see events that happened before they
+                were invited to the room
+
+            - ``joined``: users can't see events that happened before they
+                joined or accepted an invitation to the room.
+
+            - ``shared``: users that joined the room can see the entire
+                room's history
+
+            - ``world_readable``: anyone can see the entire room's history,
+                including users that aren't part of the room.
+    """
+
+    visibility = attr.ib(type=str)
+
+    def as_dict(self):
+        return {
+            "type":      "m.room.history_visibility",
+            "state_key": "",
+            "content":   {"history_visibility": self.visibility},
+        }
+
+# TODO: power_levels, canonical_alias, avatar, pinned_events
