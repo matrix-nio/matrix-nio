@@ -14,16 +14,15 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from typing import Dict
-
-import attr
-
-
 """Matrix direct messages module.
 
 This module contains classes that can be used to send direct events to a Matrix
 homeserver.
 """
+
+from typing import Dict
+
+import attr
 
 
 @attr.s
