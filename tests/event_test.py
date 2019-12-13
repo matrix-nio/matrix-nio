@@ -127,6 +127,35 @@ class TestClass(object):
         event = PowerLevelsEvent.from_dict(parsed_dict)
         assert isinstance(event, PowerLevelsEvent)
 
+        levels = event.power_levels
+        admin  = "@example:localhost"
+        user   = "@bob:localhost"
+
+        assert levels.get_state_event_required_level("m.room.name") == 50
+        assert levels.get_state_event_required_level("m.room.undefined") == 50
+        assert levels.get_message_event_required_level("m.room.message") == 25
+        assert levels.get_message_event_required_level("m.room.undefined") == 0
+
+        assert levels.get_user_level(admin) == 100
+        assert levels.get_user_level(user) == 0
+
+        assert levels.can_user_send_state(admin, "m.room.name") is True
+        assert levels.can_user_send_state(user, "m.room.name") is False
+        assert levels.can_user_send_message(admin) is True
+        assert levels.can_user_send_message(user, "m.room.message") is False
+
+        assert levels.can_user_ban(admin) is True
+        assert levels.can_user_ban(user) is False
+
+        assert levels.can_user_invite(admin) is True
+        assert levels.can_user_invite(user) is True
+
+        assert levels.can_user_kick(admin) is True
+        assert levels.can_user_kick(user) is False
+
+        assert levels.can_user_redact(admin) is True
+        assert levels.can_user_redact(user) is False
+
     def test_membership(self):
         parsed_dict = TestClass._load_response(
             "tests/data/events/member.json")

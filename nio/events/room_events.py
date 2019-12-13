@@ -568,8 +568,8 @@ class RoomCreateEvent(Event):
         federate (bool): A boolean flag telling us whether users on other
             homeservers are able to join this room.
         room_version (str): The version of the room. Different room versions
-            will have different event formats. Clients shouldn't worry about this
-            too much unless they want to perform room upgrades.
+            will have different event formats. Clients shouldn't worry about
+            this too much unless they want to perform room upgrades.
 
     """
     creator = attr.ib(type=str)
@@ -1100,6 +1100,7 @@ class DefaultLevels(object):
     state_default = attr.ib(default=0, type=int)
     events_default = attr.ib(default=0, type=int)
     users_default = attr.ib(default=0, type=int)
+    # TODO: notifications
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -1141,20 +1142,87 @@ class PowerLevels(object):
     users = attr.ib(default=attr.Factory(dict), type=Dict[str, int])
     events = attr.ib(default=attr.Factory(dict), type=Dict[str, int])
 
+    def get_state_event_required_level(self, event_type):
+        # type: (str) -> int
+        """Get required power level to send a certain type of state event.
+
+        Returns an integer representing the required power level.
+
+        Args:
+            event_type (str): The type of matrix state event we want the
+                required level for, e.g. `m.room.name` or `m.room.topic`.
+        """
+        return self.events.get(event_type, self.defaults.state_default)
+
+    def get_message_event_required_level(self, event_type):
+        # type: (str) -> int
+        """Get required power level to send a certain type of message event.
+
+        Returns an integer representing the required power level.
+
+        Args:
+            event_type (str): The type of matrix message event we want the
+                required level for, e.g. `m.room.message`.
+        """
+        return self.events.get(event_type, self.defaults.events_default)
+
     def get_user_level(self, user_id):
         # type: (str) -> int
         """Get the power level of a user.
 
+        Returns an integer representing the user's power level.
+
         Args:
             user_id (str): The fully-qualified ID of the user for whom we would
                 like to get the power level.
-
-        Returns the integer representing the user power level.
         """
-        if user_id in self.users:
-            return self.users[user_id]
+        return self.users.get(user_id, self.defaults.users_default)
 
-        return self.defaults.users_default
+    def can_user_send_state(self, user_id, event_type):
+        # type: (str, str) -> bool
+        """Return whether a user has enough power to send certain state events.
+
+        Args:
+            user_id (str): The user to check the power of.
+            event_type (str): The type of matrix state event to check the
+                required power of, e.g. `m.room.encryption`.
+        """
+        required_level = self.get_state_event_required_level(event_type)
+        return self.get_user_level(user_id) >= required_level
+
+    def can_user_send_message(self, user_id, event_type="m.room.message"):
+        # type: (str, str) -> bool
+        """
+        Return whether a user has enough power to send certain message events.
+
+        Args:
+            user_id (str): The user to check the power of.
+            event_type (str): The type of matrix message event to check the
+                required power of, `m.room.message` by default.
+        """
+        required_level = self.get_message_event_required_level(event_type)
+        return self.get_user_level(user_id) >= required_level
+
+    def can_user_ban(self, user_id):
+        # type: (str) -> bool
+        """Return whether a user has enough power to ban others."""
+        return self.get_user_level(user_id) >= self.defaults.ban
+
+    def can_user_invite(self, user_id):
+        # type: (str) -> bool
+        """Return whether a user has enough power to invite others."""
+        return self.get_user_level(user_id) >= self.defaults.invite
+
+    def can_user_kick(self, user_id):
+        # type: (str) -> bool
+        """Return whether a user has enough power to kick others."""
+        return self.get_user_level(user_id) >= self.defaults.kick
+
+    def can_user_redact(self, user_id):
+        # type: (str) -> bool
+        """Return whether a user has enough power to react other user's events.
+        """
+        return self.get_user_level(user_id) >= self.defaults.redact
 
     def update(self, new_levels):
         """Update the power levels object with new levels.

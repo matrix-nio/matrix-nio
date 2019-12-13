@@ -6,7 +6,8 @@
             "m.room.canonical_alias": 50,
             "m.room.history_visibility": 100,
             "m.room.name": 50,
-            "m.room.power_levels": 100
+            "m.room.power_levels": 100,
+            "m.room.message": 25
         },
         "events_default": 0,
         "invite": 0,
@@ -14,7 +15,8 @@
         "redact": 50,
         "state_default": 50,
         "users": {
-            "@example:localhost": 100
+            "@example:localhost": 100,
+            "@bob:localhost": 0
         },
         "users_default": 0
     },
