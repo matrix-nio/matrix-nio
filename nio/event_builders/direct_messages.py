@@ -14,20 +14,21 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from typing import Dict
-
-import attr
-
-
 """Matrix direct messages module.
 
 This module contains classes that can be used to send direct events to a Matrix
 homeserver.
 """
 
+from typing import Dict
+
+import attr
+
+from . import EventBuilder
+
 
 @attr.s
-class ToDeviceMessage(object):
+class ToDeviceMessage(EventBuilder):
     """A to-device message that can be sent to the homeserver.
 
     Attributes:
@@ -45,7 +46,6 @@ class ToDeviceMessage(object):
     content = attr.ib(type=Dict)
 
     def as_dict(self):
-        """Format the to-device message as a dictionary for a HTTP request."""
         return {
             "messages": {
                 self.recipient: {
