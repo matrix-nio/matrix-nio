@@ -1688,7 +1688,7 @@ class AsyncClient(Client):
                 raise TransferCancelledError()
 
             while monitor and monitor.pause:
-                await asyncio.sleep(1 / monitor.update_rate)
+                await asyncio.sleep(0.1)
 
             yield value
 
@@ -1712,7 +1712,7 @@ class AsyncClient(Client):
                     raise TransferCancelledError()
 
                 while monitor and monitor.pause:
-                    await asyncio.sleep(1 / monitor.update_rate)
+                    await asyncio.sleep(0.1)
 
                 yield value
 

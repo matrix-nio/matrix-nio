@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from threading import Thread
-from typing import Callable, Deque, Optional
+from typing import Callable, List, Optional
 
 
 @dataclass
@@ -40,8 +40,10 @@ class TransferMonitor:
         on_speed_changed (Callable[[float], None], optional): A callback to
             call with the new value of ``average_speed`` when it changes.
 
-        update_rate (int, optional): How many times per second
-            ``average_speed`` should be updated. Defaults to ``10``.
+        speed_period (float, optional): How many previous seconds are
+            considered to calculate ``average_speed``. Defaults to ``10``.
+            Lower values makes ``average_speed`` more accurate, but less smooth
+            and more susceptible to speed fluctuations.
 
     Attributes:
         average_speed (float): An average number of how many bytes
@@ -65,7 +67,7 @@ class TransferMonitor:
     total_size:       int                               = field()
     on_transfered:    Optional[Callable[[int], None]]   = None
     on_speed_changed: Optional[Callable[[float], None]] = None
-    update_rate:      int                               = 10
+    speed_period:     float                             = 10
 
     average_speed: float              = field(init=False, default=0.0)
     start_time:    datetime           = field(init=False)
@@ -73,50 +75,51 @@ class TransferMonitor:
     pause:         bool               = field(init=False, default=False)
     cancel:        bool               = field(init=False, default=False)
 
-    _transfered:  int          = field(init=False, default=0)
-    _past_speeds: Deque[float] = field(init=False)
-    _updater:     Thread       = field(init=False)
+    _transfered:            int       = field(init=False, default=0)
+    _updater:               Thread    = field(init=False)
+    _last_transfered_sizes: List[int] = field(init=False)
 
     def __post_init__(self) -> None:
-        self.start_time   = datetime.now()
-        self._past_speeds = Deque(maxlen=self.update_rate)
+        self.start_time             = datetime.now()
+        self._last_transfered_sizes = []
         self._start_update_loop()
 
     def _start_update_loop(self) -> None:
-        """Start a Thread running ``_update_loop()``."""
+        """Start a Thread running ``self._update_loop()``."""
 
         self._updater = Thread(target=self._update_loop, daemon=True)
         self._updater.start()
 
     def _update_loop(self) -> None:
-        """A loop to constantly update the average transfer speed.
+        """Calculate and update the average transfer speed every second."""
 
-        The speed is averaged over a period of one second.
-        The loop exits when the transfer is done or cancelled.
-        """
-
-        previous_transfered = 0
-        previous_date       = datetime.now()
+        times_we_got_data = 0
 
         while not self.done and not self.cancel:
-            transfered = self.transfered
+            if self.pause:
+                time.sleep(0.1)
+                continue
 
-            self._past_speeds.append(
-                (transfered - previous_transfered) /
-                (datetime.now() - previous_date).total_seconds(),
+            bytes_transfered_this_second = sum(self._last_transfered_sizes)
+            self._last_transfered_sizes.clear()
+
+            previous_speed = self.average_speed
+
+            consider_past_secs = min(times_we_got_data, self.speed_period) or 1
+
+            self.average_speed = (
+                self.average_speed *
+                (consider_past_secs - 1) / consider_past_secs +
+                bytes_transfered_this_second / consider_past_secs
             )
-
-            previous_speed = self._past_speeds[-1]
-
-            self.average_speed = sum(self._past_speeds) / self.update_rate
-
-            previous_transfered = transfered
-            previous_date       = datetime.now()
 
             if self.average_speed != previous_speed and self.on_speed_changed:
                 self.on_speed_changed(self.average_speed)
 
-            time.sleep(1 / self.update_rate)
+            if bytes_transfered_this_second:
+                times_we_got_data += 1
+
+            time.sleep(1)
 
         if self.done and not self.average_speed:
             # Transfer was fast enough to end before we had time to calculate
@@ -131,6 +134,8 @@ class TransferMonitor:
     def transfered(self, size: int) -> None:
         old_value        = self._transfered
         self._transfered = size
+
+        self._last_transfered_sizes.append(size - old_value)
 
         if size >= self.total_size:
             self.end_time = datetime.now()
