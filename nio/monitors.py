@@ -162,12 +162,13 @@ class TransferMonitor:
     def remaining_time(self) -> Optional[timedelta]:
         """Estimated remaining time to complete the transfer.
 
-        Returns None (for infinity) if the current transfer speed is 0 bytes/s.
+        Returns None (for infinity) if the current transfer speed is 0 bytes/s,
+        or the remaining time is so long it would cause an OverflowError.
         """
-        if not self.average_speed:
+        try:
+            return timedelta(seconds=self.remaining / self.average_speed)
+        except (ZeroDivisionError, OverflowError):
             return None
-
-        return timedelta(seconds=self.remaining / self.average_speed)
 
     @property
     def done(self) -> bool:
