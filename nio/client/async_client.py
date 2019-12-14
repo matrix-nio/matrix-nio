@@ -1674,7 +1674,16 @@ class AsyncClient(Client):
         )
 
     @staticmethod
-    async def _plain_data_generator(data, monitor=None):
+    async def _process_data_chunk(chunk, monitor=None):
+        if monitor and monitor.cancel:
+            raise TransferCancelledError()
+
+        while monitor and monitor.pause:
+            await asyncio.sleep(0.1)
+
+        return chunk
+
+    async def _plain_data_generator(self, data, monitor=None):
         """Yield chunks of bytes from data.
 
         If a monitor is passed, update its ``transfered`` property and
@@ -1684,16 +1693,11 @@ class AsyncClient(Client):
         """
 
         async for value in async_generator_from_data(data):
-            if monitor and monitor.cancel:
-                raise TransferCancelledError()
+            yield await self._process_data_chunk(value, monitor)
 
-            while monitor and monitor.pause:
-                await asyncio.sleep(0.1)
-
-            yield value
-
-    @staticmethod
-    async def _encrypted_data_generator(data, decryption_dict, monitor=None):
+    async def _encrypted_data_generator(
+        self, data, decryption_dict, monitor=None,
+    ):
         """Yield encrypted chunks of bytes from data.
 
         If a monitor is passed, update its ``transfered`` property and
@@ -1708,13 +1712,7 @@ class AsyncClient(Client):
             if isinstance(value, dict):  # last yielded value
                 decryption_dict.update(value)
             else:
-                if monitor and monitor.cancel:
-                    raise TransferCancelledError()
-
-                while monitor and monitor.pause:
-                    await asyncio.sleep(0.1)
-
-                yield value
+                yield await self._process_data_chunk(value, monitor)
 
     @logged_in
     async def upload(
