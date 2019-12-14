@@ -57,6 +57,8 @@ class TransferMonitor:
 
         pause (bool): Indicates to methods using this object if the transfer
             should be paused. ``False`` by default.
+            At this time, servers don't handle pausing uploads well and
+            will end up dropping the connection after some time.
 
         cancel (bool): When set to True, stop updating statistics and
             indicate to methods using this object that they should raise

@@ -15,15 +15,18 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import asyncio
+import io
 import warnings
 from asyncio import Event
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
-from typing import (Any, AsyncIterable, BinaryIO, Coroutine, Dict,
+from pathlib import Path
+from typing import (Any, AsyncIterable, BinaryIO, Callable, Coroutine, Dict,
                     Iterable, List, Optional, Sequence, Tuple, Type, Union)
 from uuid import UUID, uuid4
 
 import attr
+from aiofiles.threadpool.binary import AsyncBufferedReader
 from aiohttp import (ClientResponse, ClientSession, ContentTypeError,
                      TraceConfig)
 from aiohttp.client_exceptions import ClientConnectionError
@@ -86,6 +89,8 @@ _ProfileSetDisplayNameT = Union[
     ProfileSetDisplayNameResponse,
     ProfileSetDisplayNameError
 ]
+
+DataProvider = Callable[[int, int], AsyncDataT]
 
 
 @attr.s
@@ -489,14 +494,15 @@ class AsyncClient(Client):
         )
 
     async def _send(
-            self,
-            response_class,
-            method,
-            path,
-            data=None,
-            response_data=None,
-            content_type=None,
-            trace_context=None,
+        self,
+        response_class,
+        method,
+        path,
+        data          = None,
+        response_data = None,
+        content_type  = None,
+        trace_context = None,
+        data_provider: Optional[DataProvider] = None,
     ):
         headers = {"content-type": content_type} if content_type else {}
 
@@ -507,6 +513,9 @@ class AsyncClient(Client):
         max_timeouts = self.config.max_timeouts
 
         while True:
+            if data_provider:
+                data = data_provider(got_429, got_timeouts)
+
             try:
                 transport_resp = await self.send(
                     method, path, data, headers, trace_context,
@@ -515,7 +524,7 @@ class AsyncClient(Client):
                 resp = await self.create_matrix_response(
                     response_class,
                     transport_resp,
-                    response_data
+                    response_data,
                 )
 
                 if isinstance(resp, ErrorResponse) and resp.retry_after_ms:
@@ -543,12 +552,12 @@ class AsyncClient(Client):
 
     @client_session
     async def send(
-            self,
-            method,                # type: str
-            path,                  # type: str
-            data          = None,  # type: Union[None, str, AsyncDataT]
-            headers       = None,  # type: Optional[Dict[str, str]]
-            trace_context = None,  # type: Any
+        self,
+        method:        str,
+        path:          str,
+        data:          Union[None, str, AsyncDataT] = None,
+        headers:       Optional[Dict[str, str]]     = None,
+        trace_context: Any                          = None,
     ):
         # type: (...) -> ClientResponse
         """Send a request to the homeserver.
@@ -1717,12 +1726,13 @@ class AsyncClient(Client):
     @logged_in
     async def upload(
         self,
-        data:         AsyncDataT,
-        content_type: str                       = "application/octet-stream",
-        filename:     Optional[str]             = None,
-        encrypt:      bool                      = False,
-        monitor:      Optional[TransferMonitor] = None,
+        data_provider: DataProvider,
+        content_type:  str                       = "application/octet-stream",
+        filename:      Optional[str]             = None,
+        encrypt:       bool                      = False,
+        monitor:       Optional[TransferMonitor] = None,
     ) -> Tuple[Union[UploadResponse, UploadError], Optional[Dict[str, Any]]]:
+        # TODO: test retries
         """Upload a file to the content repository.
 
         Returns a tuple containing:
@@ -1737,15 +1747,22 @@ class AsyncClient(Client):
         ``cancelled`` property becomes set to ``True``.
 
         Args:
-            data (str/Path/bytes/Iterable[bytes]/AsyncIterable[bytes]/
-            io.BufferedIOBase/AsyncBufferedReader): The data to encrypt.
-                Passing a path string, Path, async iterable or aiofiles open
+            data_provider (Callable): A function returning the data to upload.
+                Returning a path string, Path, async iterable or aiofiles open
                 binary file object allows the file data to be read in an
                 asynchronous and lazy (without reading the entire file into
                 memory) way.
-                Passing a non-async iterable or standard open binary file
+                Returning a non-async iterable or standard open binary file
                 object will still allow the data to be read lazily, but
                 not asynchronously.
+
+                The function will be called again if the upload fails
+                due to a server timeout, in which case it must restart
+                from the beginning.
+                The function receives two arguments: the total number of
+                429 "Too many request" errors that occured, and the total
+                number of server timeout exceptions that occured, thus
+                cleanup operations can be performed for retries if necessary.
 
             content_type (str): The content MIME type of the file,
                 e.g. "image/png".
@@ -1772,19 +1789,26 @@ class AsyncClient(Client):
 
         decryption_dict: Dict[str, Any] = {}
 
-        if encrypt:
-            data = self._encrypted_data_generator(
-                data, decryption_dict, monitor,
-            )
-        else:
-            data = self._plain_data_generator(data, monitor)
+        def provider(got_429, got_timeouts):
+            if monitor and (got_429 or got_timeouts):
+                # We have to restart from scratch
+                monitor.transfered = 0
+
+            data = data_provider(got_429, got_timeouts)
+
+            if encrypt:
+                return self._encrypted_data_generator(
+                    data, decryption_dict, monitor,
+                )
+
+            return self._plain_data_generator(data, monitor)
 
         response = await self._send(
             UploadResponse,
             http_method,
             path,
-            data,
-            content_type =
+            data_provider = provider,
+            content_type  =
                 "application/octet-stream" if encrypt else content_type,
             trace_context = monitor,
         )

@@ -916,7 +916,7 @@ class TestClass(object):
         monitor  = TransferMonitor(filesize)
 
         resp, decryption_info = await async_client.upload(
-            path, "image/png", "test.png", monitor=monitor,
+            lambda *_: path, "image/png", "test.png", monitor=monitor,
         )
         assert isinstance(resp, UploadResponse)
         assert decryption_info is None
@@ -942,7 +942,7 @@ class TestClass(object):
 
         async with aiofiles.open("tests/data/file_response", "rb") as file:
             resp, decryption_info = await async_client.upload(
-                file, "image/png", "test.png", encrypt=True,
+                lambda *_: file, "image/png", "test.png", encrypt=True,
             )
 
         assert isinstance(resp, UploadResponse)
