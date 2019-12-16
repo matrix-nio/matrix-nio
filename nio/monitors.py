@@ -109,10 +109,11 @@ class TransferMonitor:
 
             consider_past_secs = min(times_we_got_data, self.speed_period) or 1
 
-            self.average_speed = (
+            self.average_speed = max(
+                0,
                 self.average_speed *
                 (consider_past_secs - 1) / consider_past_secs +
-                bytes_transfered_this_second / consider_past_secs
+                bytes_transfered_this_second / consider_past_secs,
             )
 
             if self.average_speed != previous_speed and self.on_speed_changed:
