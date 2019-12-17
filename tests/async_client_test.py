@@ -936,14 +936,28 @@ class TestClass(object):
         aioresponse.post(
             "https://example.org/_matrix/media/r0/upload"
             "?access_token=abc123&filename=test.png",
-            status=200,
-            payload=self.upload_response,
-            repeat=True,
+            status  = 429,
+            payload = self.limit_exceeded_error_response
         )
 
-        async with aiofiles.open("tests/data/file_response", "rb") as file:
+        aioresponse.post(
+            "https://example.org/_matrix/media/r0/upload"
+            "?access_token=abc123&filename=test.png",
+            status  = 200,
+            payload = self.upload_response,
+            repeat  = True,
+        )
+
+        path    = Path("tests/data/file_response")
+        monitor = TransferMonitor(path.stat().st_size)
+
+        async with aiofiles.open(path, "rb") as file:
             resp, decryption_info = await async_client.upload(
-                lambda *_: file, "image/png", "test.png", encrypt=True,
+                lambda *_: file,
+                "image/png",
+                "test.png",
+                encrypt = True,
+                monitor = monitor,
             )
 
         assert isinstance(resp, UploadResponse)
@@ -952,6 +966,7 @@ class TestClass(object):
         # aioresponse doesn't do anything with the data_generator() in
         # upload(), so the decryption dict doesn't get updated and
         # we can't test wether it works as intended here.
+        # Ditto for the monitor stats.
 
     async def test_traceconfig_callbacks(self):
         monitor = TransferMonitor(1)
