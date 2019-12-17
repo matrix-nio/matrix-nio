@@ -34,8 +34,8 @@ class TransferMonitor:
     Args:
         total_size (int): Size in bytes of the data to transfer.
 
-        on_transfered (Callable[[int], None], optional): A callback to call
-            with the new value of ``transfered`` when it changes.
+        on_transferred (Callable[[int], None], optional): A callback to call
+            with the new value of ``transferred`` when it changes.
 
         on_speed_changed (Callable[[float], None], optional): A callback to
             call with the new value of ``average_speed`` when it changes.
@@ -47,7 +47,7 @@ class TransferMonitor:
 
     Attributes:
         average_speed (float): An average number of how many bytes
-            are being transfered per second.
+            are being transferred per second.
 
         start_time (datetime): The date when the ``TransferMonitor` object
             was created.
@@ -67,7 +67,7 @@ class TransferMonitor:
     # TODO: tell that this can be used for downloads too once implemented.
 
     total_size:       int                               = field()
-    on_transfered:    Optional[Callable[[int], None]]   = None
+    on_transferred:   Optional[Callable[[int], None]]   = None
     on_speed_changed: Optional[Callable[[float], None]] = None
     speed_period:     float                             = 10
 
@@ -77,13 +77,13 @@ class TransferMonitor:
     pause:         bool               = field(init=False, default=False)
     cancel:        bool               = field(init=False, default=False)
 
-    _transfered:            int       = field(init=False, default=0)
-    _updater:               Thread    = field(init=False)
-    _last_transfered_sizes: List[int] = field(init=False)
+    _transferred:            int       = field(init=False, default=0)
+    _updater:                Thread    = field(init=False)
+    _last_transferred_sizes: List[int] = field(init=False)
 
     def __post_init__(self) -> None:
-        self.start_time             = datetime.now()
-        self._last_transfered_sizes = []
+        self.start_time              = datetime.now()
+        self._last_transferred_sizes = []
         self._start_update_loop()
 
     def _start_update_loop(self) -> None:
@@ -102,8 +102,8 @@ class TransferMonitor:
                 time.sleep(0.1)
                 continue
 
-            bytes_transfered_this_second = sum(self._last_transfered_sizes)
-            self._last_transfered_sizes.clear()
+            bytes_transferred_this_second = sum(self._last_transferred_sizes)
+            self._last_transferred_sizes.clear()
 
             previous_speed = self.average_speed
 
@@ -113,13 +113,13 @@ class TransferMonitor:
                 0,
                 self.average_speed *
                 (consider_past_secs - 1) / consider_past_secs +
-                bytes_transfered_this_second / consider_past_secs,
+                bytes_transferred_this_second / consider_past_secs,
             )
 
             if self.average_speed != previous_speed and self.on_speed_changed:
                 self.on_speed_changed(self.average_speed)
 
-            if bytes_transfered_this_second:
+            if bytes_transferred_this_second:
                 times_we_got_data += 1
 
             time.sleep(1)
@@ -129,32 +129,32 @@ class TransferMonitor:
             self.average_speed = self.total_size
 
     @property
-    def transfered(self) -> int:
-        """Number of currently transfered bytes."""
-        return self._transfered
+    def transferred(self) -> int:
+        """Number of currently transferred bytes."""
+        return self._transferred
 
-    @transfered.setter
-    def transfered(self, size: int) -> None:
-        old_value        = self._transfered
-        self._transfered = size
+    @transferred.setter
+    def transferred(self, size: int) -> None:
+        old_value        = self._transferred
+        self._transferred = size
 
-        self._last_transfered_sizes.append(size - old_value)
+        self._last_transferred_sizes.append(size - old_value)
 
         if size >= self.total_size:
             self.end_time = datetime.now()
 
-        if size != old_value and self.on_transfered:
-            self.on_transfered(size)
+        if size != old_value and self.on_transferred:
+            self.on_transferred(size)
 
     @property
     def percent_done(self) -> float:
         """Percentage of completion for the transfer."""
-        return self.transfered / self.total_size * 100
+        return self.transferred / self.total_size * 100
 
     @property
     def remaining(self) -> int:
         """Number of remaining bytes to transfer."""
-        return self.total_size - self.transfered
+        return self.total_size - self.transferred
 
     @property
     def spent_time(self) -> timedelta:

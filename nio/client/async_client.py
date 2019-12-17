@@ -107,7 +107,7 @@ async def on_request_chunk_sent(session, context, params):
     context_obj = context.trace_request_ctx
 
     if isinstance(context_obj, TransferMonitor):
-        context_obj.transfered += len(params.chunk)
+        context_obj.transferred += len(params.chunk)
 
 
 def client_session(func):
@@ -1695,7 +1695,7 @@ class AsyncClient(Client):
     async def _plain_data_generator(self, data, monitor=None):
         """Yield chunks of bytes from data.
 
-        If a monitor is passed, update its ``transfered`` property and
+        If a monitor is passed, update its ``transferred`` property and
         suspend yielding chunks while its ``pause`` attribute is ``True``.
 
         Raise ``TransferCancelledError`` if ``monitor.cancel`` is ``True``.
@@ -1709,7 +1709,7 @@ class AsyncClient(Client):
     ):
         """Yield encrypted chunks of bytes from data.
 
-        If a monitor is passed, update its ``transfered`` property and
+        If a monitor is passed, update its ``transferred`` property and
         suspend yielding chunks while its ``pause`` attribute is ``True``.
 
         The last yielded value will be the decryption dict.
@@ -1780,7 +1780,7 @@ class AsyncClient(Client):
                 object is passed, it will be updated by this function while
                 uploading.
                 From this object, statistics such as currently
-                transfered bytes or estimated remaining time can be gathered
+                transferred bytes or estimated remaining time can be gathered
                 while the upload is running as a task; it also allows
                 for pausing and cancelling.
         """
@@ -1792,7 +1792,7 @@ class AsyncClient(Client):
         def provider(got_429, got_timeouts):
             if monitor and (got_429 or got_timeouts):
                 # We have to restart from scratch
-                monitor.transfered = 0
+                monitor.transferred = 0
 
             data = data_provider(got_429, got_timeouts)
 

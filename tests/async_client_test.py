@@ -964,7 +964,7 @@ class TestClass(object):
         params  = TraceRequestChunkSentParams(chunk=b"x")
 
         await on_request_chunk_sent(session, context, params)
-        assert monitor.transfered == 1
+        assert monitor.transferred == 1
         self._verify_monitor_state_for_finished_transfer(monitor, 1)
 
     async def test_plain_data_generator(self, async_client):
@@ -998,8 +998,8 @@ class TestClass(object):
         with pytest.raises(TransferCancelledError):
             await gen.__anext__()
 
-        monitor.transfered += len(b"".join(data))
-        assert monitor.transfered == len(b"".join(data))
+        monitor.transferred += len(b"".join(data))
+        assert monitor.transferred == len(b"".join(data))
         self._wait_monitor_thread_exited(monitor)
 
         left      = original_data[len(data):]
@@ -1012,7 +1012,7 @@ class TestClass(object):
         data += [chunk async for chunk in gen]
 
         assert data == original_data
-        monitor.transfered = monitor.total_size
+        monitor.transferred = monitor.total_size
         self._verify_monitor_state_for_finished_transfer(monitor, left_size)
 
     async def test_encrypted_data_generator(self, async_client):
@@ -1049,8 +1049,8 @@ class TestClass(object):
         with pytest.raises(TransferCancelledError):
             await gen.__anext__()
 
-        monitor.transfered += len(encrypted_data)
-        assert monitor.transfered == len(encrypted_data)
+        monitor.transferred += len(encrypted_data)
+        assert monitor.transferred == len(encrypted_data)
         self._wait_monitor_thread_exited(monitor)
 
         # Restart from scratch (avoid encrypted data SHA mismatch)
@@ -1078,34 +1078,34 @@ class TestClass(object):
         )
 
         assert decrypted_data == original_data
-        monitor.transfered = monitor.total_size
+        monitor.transferred = monitor.total_size
         self._verify_monitor_state_for_finished_transfer(monitor, data_size)
 
     def test_transfer_monitor_callbacks(self):
-        called = {"transfered": (0, 0), "speed_changed": 0}
+        called = {"transferred": (0, 0), "speed_changed": 0}
 
-        def on_transfered(transfered: int):
-            called["transfered"] = (called["transfered"][0] + 1, transfered)
+        def on_transferred(transferred: int):
+            called["transferred"] = (called["transferred"][0] + 1, transferred)
 
         def on_speed_changed(speed: float):
             called["speed_changed"] += 1
 
-        monitor = TransferMonitor(100, on_transfered, on_speed_changed)
-        monitor.transfered += 50
+        monitor = TransferMonitor(100, on_transferred, on_speed_changed)
+        monitor.transferred += 50
 
         slept = 0
 
-        while not called["transfered"] or not called["speed_changed"]:
+        while not called["transferred"] or not called["speed_changed"]:
             time.sleep(0.1)
             slept += 0.1
 
             if slept >= 1:
                 raise RuntimeError("1+ callback not called after 1s", called)
 
-        assert called["transfered"] == (1, 50)
+        assert called["transferred"] == (1, 50)
         assert called["speed_changed"] == 1
 
-        monitor.transfered += 50
+        monitor.transferred += 50
         self._verify_monitor_state_for_finished_transfer(monitor, 100)
 
 
@@ -1123,7 +1123,7 @@ class TestClass(object):
         assert monitor.total_size == data_size
         assert monitor.start_time and monitor.end_time
         assert monitor.average_speed > 0
-        assert monitor.transfered == data_size
+        assert monitor.transferred == data_size
         assert monitor.percent_done == 100
         assert monitor.remaining == 0
         assert monitor.spent_time.microseconds > 0
