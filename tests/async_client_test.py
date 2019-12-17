@@ -971,7 +971,11 @@ class TestClass(object):
     async def test_plain_data_generator(self, async_client):
         original_data   = [b"123", b"456", b"789", b"0"]
         data_size       = len(b"".join(original_data))
-        monitor         = TransferMonitor(data_size)
+        monitor         = TransferMonitor(
+            data_size,
+            # Ensure the loop has time to land on the pause code
+            _update_loop_sleep_time = 0.1,
+        )
 
         gen  = async_client._plain_data_generator(original_data, monitor)
         data = []
@@ -981,13 +985,15 @@ class TestClass(object):
 
         # Pausing and resuming
 
-        async def unpause():
+        async def unpause(speed_when_paused):
             await asyncio.sleep(0.5)
             monitor.pause = False
+            assert speed_when_paused == monitor.speed
 
-        paused_at     = time.time()
-        monitor.pause = True
-        asyncio.ensure_future(unpause())
+        paused_at         = time.time()
+        monitor.pause     = True
+        speed_when_paused = monitor.average_speed
+        asyncio.ensure_future(unpause(speed_when_paused))
         data.append(await asyncio.wait_for(gen.__anext__(), 5))
 
         assert time.time() - paused_at >= 0.5

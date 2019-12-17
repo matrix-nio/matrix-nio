@@ -81,6 +81,8 @@ class TransferMonitor:
     _updater:                Thread    = field(init=False)
     _last_transferred_sizes: List[int] = field(init=False)
 
+    _update_loop_sleep_time: float = field(default=1)
+
     def __post_init__(self) -> None:
         self.start_time              = datetime.now()
         self._last_transferred_sizes = []
@@ -99,7 +101,7 @@ class TransferMonitor:
 
         while not self.done and not self.cancel:
             if self.pause:
-                time.sleep(0.1)
+                time.sleep(self._update_loop_sleep_time / 10)
                 continue
 
             bytes_transferred_this_second = sum(self._last_transferred_sizes)
@@ -122,7 +124,7 @@ class TransferMonitor:
             if bytes_transferred_this_second:
                 times_we_got_data += 1
 
-            time.sleep(1)
+            time.sleep(self._update_loop_sleep_time)
 
         if self.done and not self.average_speed:
             # Transfer was fast enough to end before we had time to calculate
