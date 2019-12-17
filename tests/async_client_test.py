@@ -1,4 +1,5 @@
 import json
+import math
 import sys
 import re
 import time
@@ -1108,6 +1109,13 @@ class TestClass(object):
         monitor.transferred += 50
         self._verify_monitor_state_for_finished_transfer(monitor, 100)
 
+    def test_transfer_monitor_bad_remaining_time(self):
+        monitor = TransferMonitor(100)
+        assert monitor.average_speed == 0.0
+        assert monitor.remaining_time is None
+
+        monitor.total_size = math.inf
+        assert monitor.remaining_time is None
 
     @staticmethod
     def _wait_monitor_thread_exited(monitor):
