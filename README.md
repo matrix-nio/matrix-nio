@@ -44,11 +44,14 @@ Usage
 =====
 
 Unless special requirements disallow the usage of asyncio, by far the easiest
-way to use nio is using the asyncio layer:
+way to use nio is using the asyncio layer.
+
+Please do note that these examples require python 3.5+ for the `async`/`await`
+syntax. nio on the other hand works with older python versions as well.
 
 
-Sending
--------
+Sending a message
+-----------------
 
 ```python
 import asyncio
@@ -59,7 +62,7 @@ async def main():
     
     await client.login("hunter1")
     await client.room_send(
-        "ROOM_ID_HERE:example.org",
+        "!test:example.org",
         "m.room.message",
         {
             "msgtype": "m.text",
@@ -71,8 +74,8 @@ async def main():
 asyncio.get_event_loop().run_until_complete(main())
 ```
 
-Receiving
----------
+Receiving messages
+------------------
 
 ```python
 import asyncio
@@ -96,5 +99,3 @@ asyncio.get_event_loop().run_until_complete(main())
 ```
 
 
-Please do note that this example requires python 3.5+ for the `async`/`await`
-syntax. nio on the other hand works with older python versions as well.
