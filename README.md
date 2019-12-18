@@ -62,9 +62,9 @@ async def main():
     
     await client.login("hunter1")
     await client.room_send(
-        "!test:example.org",
-        "m.room.message",
-        {
+        room_id="!test:example.org",
+        message_type="m.room.message",
+        content={
             "msgtype": "m.text",
             "body": "Hello World"
         }
