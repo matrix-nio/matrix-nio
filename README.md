@@ -46,6 +46,34 @@ Usage
 Unless special requirements disallow the usage of asyncio, by far the easiest
 way to use nio is using the asyncio layer:
 
+
+Sending
+-------
+
+```python
+import asyncio
+from nio import AsyncClient
+
+async def main():
+    client = AsyncClient("https://example.org", "@alice:example.org")
+    
+    await client.login("hunter1")
+    await client.room_send(
+        "ROOM_ID_HERE:example.org",
+        "m.room.message",
+        {
+            "msgtype": "m.text",
+            "body": "Hello World"
+        }
+    )
+    await client.close()
+
+asyncio.get_event_loop().run_until_complete(main())
+```
+
+Receiving
+---------
+
 ```python
 import asyncio
 from nio import (AsyncClient, RoomMessageText)
@@ -66,6 +94,7 @@ async def main():
 
 asyncio.get_event_loop().run_until_complete(main())
 ```
+
 
 Please do note that this example requires python 3.5+ for the `async`/`await`
 syntax. nio on the other hand works with older python versions as well.
