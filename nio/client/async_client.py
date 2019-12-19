@@ -37,7 +37,9 @@ from ..exceptions import (GroupEncryptionError, LocalProtocolError,
                           MembersSyncError, SendRetryError)
 from ..events import RoomKeyRequest, RoomKeyRequestCancellation
 from ..event_builders import ToDeviceMessage
-from ..responses import (DownloadError, DownloadResponse,
+from ..responses import (DeleteDevicesError, DeleteDevicesResponse,
+                         DevicesError, DevicesResponse,
+                         DownloadError, DownloadResponse,
                          ErrorResponse, FileResponse,
                          JoinResponse, JoinError,
                          JoinedMembersError, JoinedMembersResponse,
@@ -916,6 +918,58 @@ class AsyncClient(Client):
         )
 
         return await self._send(KeysQueryResponse, method, path, data)
+
+    @logged_in
+    async def devices(self) -> Union[DevicesResponse, DevicesError]:
+        """Get the list of devices for the current user.
+
+        Returns either a `DevicesResponse` if the request was successful
+        or a `DevicesError` if there was an error with the request.
+        """
+        method, path = Api.devices(self.access_token)
+
+        return await self._send(DevicesResponse, method, path)
+
+    @logged_in
+    async def delete_devices(
+            self,
+            devices: List[str],
+            auth:    Optional[Dict[str, str]] = None
+    ) -> Union[DeleteDevicesResponse, DeleteDevicesError]:
+        """Delete a list of devices.
+
+        This tells the server to delete the given devices and invalidate their
+        associated access tokens.
+
+        Returns either a `DeleteDevicesResponse` if the request was successful
+        or a `DeleteDevicesError` if there was an error with the request.
+
+        Args:
+            devices (List[str]): A list of devices which will be deleted.
+            auth (Dict): Additional authentication information for
+                the user-interactive authentication API.
+
+        Example:
+            >>> devices = ["QBUAZIFURK", "AUIECTSRND"]
+            >>> auth = {"type": "m.login.password",
+            ...         "user": "example",
+            ...         "password": "hunter1"}
+            >>> await client.delete_devices(devices, auth)
+
+
+        """
+        method, path, data = Api.delete_devices(
+            self.access_token,
+            devices,
+            auth_dict=auth
+        )
+
+        return await self._send(
+            DeleteDevicesResponse,
+            method,
+            path,
+            data
+        )
 
     @logged_in
     async def joined_members(self, room_id):
