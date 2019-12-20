@@ -38,6 +38,7 @@ from ..exceptions import (GroupEncryptionError, LocalProtocolError,
 from ..events import RoomKeyRequest, RoomKeyRequestCancellation
 from ..event_builders import ToDeviceMessage
 from ..responses import (DeleteDevicesError, DeleteDevicesResponse,
+                         DeleteDevicesAuthResponse,
                          DevicesError, DevicesResponse,
                          DownloadError, DownloadResponse,
                          ErrorResponse, FileResponse,
@@ -307,6 +308,11 @@ class AsyncClient(Client):
         elif issubclass(response_class, FileResponse):
             body = await transport_response.read()
             resp = response_class.from_data(body, content_type, name)
+
+        elif (transport_response.status == 401
+                and response_class == DeleteDevicesResponse):
+            parsed_dict = await self.parse_body(transport_response)
+            resp = DeleteDevicesAuthResponse.from_dict(parsed_dict)
 
         else:
             parsed_dict = await self.parse_body(transport_response)
@@ -943,6 +949,11 @@ class AsyncClient(Client):
 
         Returns either a `DeleteDevicesResponse` if the request was successful
         or a `DeleteDevicesError` if there was an error with the request.
+
+        This endpoint supports user-interactive auth, calling this method
+        without an auth dictionary will return a `DeleteDevicesAuthResponse`
+        which can be used to introspect the valid authentication methods that
+        the server supports.
 
         Args:
             devices (List[str]): A list of devices which will be deleted.
