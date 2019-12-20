@@ -12,6 +12,8 @@ import pytest
 
 from helpers import faker
 from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
+                 DevicesResponse, DeleteDevicesAuthResponse,
+                 DeleteDevicesResponse,
                  DownloadResponse, ErrorResponse,
                  GroupEncryptionError,
                  JoinResponse,
@@ -1092,6 +1094,49 @@ class TestClass(object):
         assert isinstance(resp, ProfileGetResponse)
         assert resp.displayname == name
         assert resp.avatar_url.replace("#auto", "") == avatar
+
+    async def test_devices(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+
+        base_url = "https://example.org/_matrix/client/r0"
+
+        delete_auth = {
+            "flows": [{"stages": ["m.login.password"]}],
+            "params": {},
+            "session": "DBVNTKnPYYEVIvazoJwLqsNJ"
+        }
+
+        devices = {
+            "devices": [
+                {
+                    "device_id": "ADJOYJBBHJ",
+                    "display_name": None,
+                    "last_seen_ip": "-",
+                    "last_seen_ts": 1573294480287,
+                    "user_id": "@example:localhost"
+                }
+            ]
+        }
+
+        aioresponse.post(f"{base_url}/delete_devices?access_token=abc123",
+                         status=401, payload=delete_auth)
+        aioresponse.post(f"{base_url}/delete_devices?access_token=abc123",
+                         status=200, payload={})
+        aioresponse.get(f"{base_url}/devices?access_token=abc123", status=200,
+                        payload=devices)
+
+        resp = await async_client.devices()
+        assert isinstance(resp, DevicesResponse)
+        assert len(resp.devices) == 1
+
+        devices = [resp.devices[0].id]
+
+        resp = await async_client.delete_devices(devices)
+        assert isinstance(resp, DeleteDevicesAuthResponse)
+        resp = await async_client.delete_devices(devices)
+        assert isinstance(resp, DeleteDevicesResponse)
 
     async def test_get_set_displayname(self, async_client, aioresponse):
         await async_client.receive_response(
