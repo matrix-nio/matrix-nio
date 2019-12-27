@@ -66,3 +66,7 @@ class EncryptionError(Exception):
 
 class GroupEncryptionError(Exception):
     pass
+
+
+class TransferCancelledError(Exception):
+    pass

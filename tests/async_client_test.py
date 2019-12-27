@@ -1,7 +1,9 @@
 import json
+import math
 import sys
 import re
 import time
+from pathlib import Path
 from os import path
 from datetime import datetime, timedelta
 from urllib.parse import quote
@@ -9,6 +11,7 @@ from uuid import uuid4
 
 import aiofiles
 import pytest
+from aiohttp import ClientSession, TraceRequestChunkSentParams
 
 from helpers import faker
 from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
@@ -32,9 +35,12 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  RoomRedactResponse, RoomSendResponse, RoomSummary,
                  ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
-                 Timeline, UploadResponse, RoomMessageText, RoomKeyRequest)
+                 Timeline, TransferMonitor, TransferCancelledError,
+                 UploadResponse,
+                 RoomMessageText, RoomKeyRequest)
 from nio.api import ResizingMethod, RoomPreset, RoomVisibility
 from nio.crypto import OlmDevice, Session, decrypt_attachment
+from nio.client.async_client import on_request_chunk_sent
 
 from aioresponses import CallbackResult
 
@@ -906,11 +912,20 @@ class TestClass(object):
             repeat=True,
         )
 
+        path     = Path("tests/data/file_response")
+        filesize = path.stat().st_size
+        monitor  = TransferMonitor(filesize)
+
         resp, decryption_info = await async_client.upload(
-            "tests/data/file_response", "image/png", "test.png",
+            lambda *_: path, "image/png", "test.png", monitor=monitor,
         )
         assert isinstance(resp, UploadResponse)
         assert decryption_info is None
+
+        # aioresponse doesn't do anything with the data_generator() in
+        # upload(), so the monitor isn't updated.
+        monitor.cancel = True
+        self._wait_monitor_thread_exited(monitor)
 
     async def test_encrypted_upload(self, async_client, aioresponse):
         await async_client.receive_response(
@@ -921,14 +936,28 @@ class TestClass(object):
         aioresponse.post(
             "https://example.org/_matrix/media/r0/upload"
             "?access_token=abc123&filename=test.png",
-            status=200,
-            payload=self.upload_response,
-            repeat=True,
+            status  = 429,
+            payload = self.limit_exceeded_error_response
         )
 
-        async with aiofiles.open("tests/data/file_response", "rb") as file:
+        aioresponse.post(
+            "https://example.org/_matrix/media/r0/upload"
+            "?access_token=abc123&filename=test.png",
+            status  = 200,
+            payload = self.upload_response,
+            repeat  = True,
+        )
+
+        path    = Path("tests/data/file_response")
+        monitor = TransferMonitor(path.stat().st_size)
+
+        async with aiofiles.open(path, "rb") as file:
             resp, decryption_info = await async_client.upload(
-                file, "image/png", "test.png", encrypt=True,
+                lambda *_: file,
+                "image/png",
+                "test.png",
+                encrypt = True,
+                monitor = monitor,
             )
 
         assert isinstance(resp, UploadResponse)
@@ -937,14 +966,124 @@ class TestClass(object):
         # aioresponse doesn't do anything with the data_generator() in
         # upload(), so the decryption dict doesn't get updated and
         # we can't test wether it works as intended here.
+        # Ditto for the monitor stats.
+
+    async def test_traceconfig_callbacks(self):
+        monitor = TransferMonitor(1)
+
+        class Context:
+            def __init__(self):
+                self.trace_request_ctx = monitor
+
+        session = ClientSession()
+        context = Context()
+        params  = TraceRequestChunkSentParams(chunk=b"x")
+
+        await on_request_chunk_sent(session, context, params)
+        assert monitor.transferred == 1
+        self._verify_monitor_state_for_finished_transfer(monitor, 1)
+
+    async def test_plain_data_generator(self, async_client):
+        original_data   = [b"123", b"456", b"789", b"0"]
+        data_size       = len(b"".join(original_data))
+        monitor         = TransferMonitor(
+            data_size,
+            # Ensure the loop has time to land on the pause code
+            _update_loop_sleep_time = 0.1,
+        )
+
+        gen  = async_client._plain_data_generator(original_data, monitor)
+        data = []
+
+        assert not monitor.pause
+        data.append(await gen.__anext__())
+
+        # Pausing and resuming
+
+        async def unpause(speed_when_paused):
+            await asyncio.sleep(0.5)
+            monitor.pause = False
+            assert speed_when_paused == monitor.speed
+
+        paused_at         = time.time()
+        monitor.pause     = True
+        speed_when_paused = monitor.average_speed
+        asyncio.ensure_future(unpause(speed_when_paused))
+        data.append(await asyncio.wait_for(gen.__anext__(), 5))
+
+        assert time.time() - paused_at >= 0.5
+
+        # Cancelling and restarting
+
+        monitor.cancel = True
+
+        with pytest.raises(TransferCancelledError):
+            await gen.__anext__()
+
+        monitor.transferred += len(b"".join(data))
+        assert monitor.transferred == len(b"".join(data))
+        self._wait_monitor_thread_exited(monitor)
+
+        left      = original_data[len(data):]
+        left_size = len(b"".join(left))
+        monitor   = TransferMonitor(left_size)
+        gen       = async_client._plain_data_generator(left, monitor)
+
+        # Finish and integrity checks
+
+        data += [chunk async for chunk in gen]
+
+        assert data == original_data
+        monitor.transferred = monitor.total_size
+        self._verify_monitor_state_for_finished_transfer(monitor, left_size)
 
     async def test_encrypted_data_generator(self, async_client):
-        original_data   = [b"123", b"456"]
+        original_data   = b"x" * 4096 * 4
+        data_size       = len(original_data)
+        monitor         = TransferMonitor(data_size)
         decryption_dict = {}
 
         gen = async_client._encrypted_data_generator(
-            original_data, decryption_dict,
+            original_data, decryption_dict, monitor,
         )
+        encrypted_data = b""
+
+        # Pausing and resuming
+
+        assert not monitor.pause
+        encrypted_data += await gen.__anext__()
+
+        async def unpause():
+            await asyncio.sleep(0.5)
+            monitor.pause = False
+
+        paused_at     = time.time()
+        monitor.pause = True
+        asyncio.ensure_future(unpause())
+        encrypted_data += await asyncio.wait_for(gen.__anext__(), 5)
+
+        assert time.time() - paused_at >= 0.5
+
+        # Cancelling
+
+        monitor.cancel = True
+
+        with pytest.raises(TransferCancelledError):
+            await gen.__anext__()
+
+        monitor.transferred += len(encrypted_data)
+        assert monitor.transferred == len(encrypted_data)
+        self._wait_monitor_thread_exited(monitor)
+
+        # Restart from scratch (avoid encrypted data SHA mismatch)
+
+        decryption_dict = {}
+        monitor         = TransferMonitor(data_size)
+        gen             = async_client._encrypted_data_generator(
+            original_data, decryption_dict, monitor,
+        )
+
+        # Finish and integrity checks
 
         encrypted_data = b"".join([chunk async for chunk in gen])
 
@@ -960,8 +1099,65 @@ class TestClass(object):
             decryption_dict["iv"],
         )
 
-        assert decrypted_data == b"".join(original_data)
+        assert decrypted_data == original_data
+        monitor.transferred = monitor.total_size
+        self._verify_monitor_state_for_finished_transfer(monitor, data_size)
 
+    def test_transfer_monitor_callbacks(self):
+        called = {"transferred": (0, 0), "speed_changed": 0}
+
+        def on_transferred(transferred: int):
+            called["transferred"] = (called["transferred"][0] + 1, transferred)
+
+        def on_speed_changed(speed: float):
+            called["speed_changed"] += 1
+
+        monitor = TransferMonitor(100, on_transferred, on_speed_changed)
+        monitor.transferred += 50
+
+        slept = 0
+
+        while not called["transferred"] or not called["speed_changed"]:
+            time.sleep(0.1)
+            slept += 0.1
+
+            if slept >= 1:
+                raise RuntimeError("1+ callback not called after 1s", called)
+
+        assert called["transferred"] == (1, 50)
+        assert called["speed_changed"] == 1
+
+        monitor.transferred += 50
+        self._verify_monitor_state_for_finished_transfer(monitor, 100)
+
+    def test_transfer_monitor_bad_remaining_time(self):
+        monitor = TransferMonitor(100)
+        assert monitor.average_speed == 0.0
+        assert monitor.remaining_time is None
+
+        monitor.total_size = math.inf
+        assert monitor.remaining_time is None
+
+    @staticmethod
+    def _wait_monitor_thread_exited(monitor):
+        for _ in range(100):
+            if not monitor._updater.is_alive():
+                break
+            time.sleep(0.1)
+        else:
+            raise RuntimeError("monitor._updater still alive after 10s")
+
+    def _verify_monitor_state_for_finished_transfer(self, monitor, data_size):
+        self._wait_monitor_thread_exited(monitor)
+        assert monitor.total_size == data_size
+        assert monitor.start_time and monitor.end_time
+        assert monitor.average_speed > 0
+        assert monitor.transferred == data_size
+        assert monitor.percent_done == 100
+        assert monitor.remaining == 0
+        assert monitor.spent_time.microseconds > 0
+        assert monitor.remaining_time.microseconds == 0
+        assert monitor.done is True
 
     async def test_download(self, async_client, aioresponse):
         server_name = "example.org"

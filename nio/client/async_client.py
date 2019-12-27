@@ -15,16 +15,20 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import asyncio
+import io
 import warnings
 from asyncio import Event
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
-from typing import (Any, AsyncIterable, BinaryIO, Coroutine, Dict,
+from pathlib import Path
+from typing import (Any, AsyncIterable, BinaryIO, Callable, Coroutine, Dict,
                     Iterable, List, Optional, Sequence, Tuple, Type, Union)
 from uuid import UUID, uuid4
 
 import attr
-from aiohttp import ClientResponse, ClientSession, ContentTypeError
+from aiofiles.threadpool.binary import AsyncBufferedReader
+from aiohttp import (ClientResponse, ClientSession, ContentTypeError,
+                     TraceConfig)
 from aiohttp.client_exceptions import ClientConnectionError
 
 from . import Client, ClientConfig
@@ -34,9 +38,11 @@ from ..api import (Api, MessageDirection, ResizingMethod, RoomVisibility,
 from ..crypto import (AsyncDataT, async_encrypt_attachment,
                       async_generator_from_data)
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
-                          MembersSyncError, SendRetryError)
+                          MembersSyncError, SendRetryError,
+                          TransferCancelledError)
 from ..events import RoomKeyRequest, RoomKeyRequestCancellation
 from ..event_builders import ToDeviceMessage
+from ..monitors import TransferMonitor
 from ..responses import (DeleteDevicesError, DeleteDevicesResponse,
                          DeleteDevicesAuthResponse,
                          DevicesError, DevicesResponse,
@@ -84,6 +90,8 @@ _ProfileSetDisplayNameT = Union[
     ProfileSetDisplayNameError
 ]
 
+DataProvider = Callable[[int, int], AsyncDataT]
+
 
 @attr.s
 class ResponseCb(object):
@@ -93,13 +101,28 @@ class ResponseCb(object):
     filter = attr.ib(default=None)
 
 
+async def on_request_chunk_sent(session, context, params):
+    """TraceConfig callback to run when a chunk is sent for client uploads."""
+
+    context_obj = context.trace_request_ctx
+
+    if isinstance(context_obj, TransferMonitor):
+        context_obj.transferred += len(params.chunk)
+
+
 def client_session(func):
     """Ensure that the Async client has a valid client session."""
+
     @wraps(func)
     async def wrapper(self, *args, **kwargs):
         if not self.client_session:
-            self.client_session = ClientSession()
+            trace = TraceConfig()
+            trace.on_request_chunk_sent.append(on_request_chunk_sent)
+
+            self.client_session = ClientSession(trace_configs=[trace])
+
         return await func(self, *args, **kwargs)
+
     return wrapper
 
 
@@ -471,13 +494,15 @@ class AsyncClient(Client):
         )
 
     async def _send(
-            self,
-            response_class,
-            method,
-            path,
-            data=None,
-            response_data=None,
-            content_type=None,
+        self,
+        response_class,
+        method,
+        path,
+        data          = None,
+        response_data = None,
+        content_type  = None,
+        trace_context = None,
+        data_provider: Optional[DataProvider] = None,
     ):
         headers = {"content-type": content_type} if content_type else {}
 
@@ -488,13 +513,18 @@ class AsyncClient(Client):
         max_timeouts = self.config.max_timeouts
 
         while True:
+            if data_provider:
+                data = data_provider(got_429, got_timeouts)
+
             try:
-                transport_resp = await self.send(method, path, data, headers)
+                transport_resp = await self.send(
+                    method, path, data, headers, trace_context,
+                )
 
                 resp = await self.create_matrix_response(
                     response_class,
                     transport_resp,
-                    response_data
+                    response_data,
                 )
 
                 if isinstance(resp, ErrorResponse) and resp.retry_after_ms:
@@ -522,11 +552,12 @@ class AsyncClient(Client):
 
     @client_session
     async def send(
-            self,
-            method,       # type: str
-            path,         # type: str
-            data=None,    # type: Union[None, str, AsyncDataT]
-            headers=None  # type: Optional[Dict[str, str]]
+        self,
+        method:        str,
+        path:          str,
+        data:          Union[None, str, AsyncDataT] = None,
+        headers:       Optional[Dict[str, str]]     = None,
+        trace_context: Any                          = None,
     ):
         # type: (...) -> ClientResponse
         """Send a request to the homeserver.
@@ -538,16 +569,19 @@ class AsyncClient(Client):
             data (str, optional): Data that will be posted with the request.
             headers (Dict[str,str] , optional): Additional request headers that
                 should be used with the request.
+            trace_context (Any, optional): An object to use for the
+                ClientSession TraceConfig context
         """
         assert self.client_session
 
         return await self.client_session.request(
             method,
             self.homeserver + path,
-            data=data,
-            ssl=self.ssl,
-            proxy=self.proxy,
-            headers=headers
+            data              = data,
+            ssl               = self.ssl,
+            proxy             = self.proxy,
+            headers           = headers,
+            trace_request_ctx = trace_context,
         )
 
     async def mxc_to_http(
@@ -1649,21 +1683,56 @@ class AsyncClient(Client):
         )
 
     @staticmethod
-    async def _encrypted_data_generator(original_data, decryption_dict):
-        async for value in async_encrypt_attachment(original_data):
+    async def _process_data_chunk(chunk, monitor=None):
+        if monitor and monitor.cancel:
+            raise TransferCancelledError()
+
+        while monitor and monitor.pause:
+            await asyncio.sleep(0.1)
+
+        return chunk
+
+    async def _plain_data_generator(self, data, monitor=None):
+        """Yield chunks of bytes from data.
+
+        If a monitor is passed, update its ``transferred`` property and
+        suspend yielding chunks while its ``pause`` attribute is ``True``.
+
+        Raise ``TransferCancelledError`` if ``monitor.cancel`` is ``True``.
+        """
+
+        async for value in async_generator_from_data(data):
+            yield await self._process_data_chunk(value, monitor)
+
+    async def _encrypted_data_generator(
+        self, data, decryption_dict, monitor=None,
+    ):
+        """Yield encrypted chunks of bytes from data.
+
+        If a monitor is passed, update its ``transferred`` property and
+        suspend yielding chunks while its ``pause`` attribute is ``True``.
+
+        The last yielded value will be the decryption dict.
+
+        Raise ``TransferCancelledError`` if ``monitor.cancel`` is ``True``.
+        """
+
+        async for value in async_encrypt_attachment(data):
             if isinstance(value, dict):  # last yielded value
                 decryption_dict.update(value)
             else:
-                yield value
+                yield await self._process_data_chunk(value, monitor)
 
     @logged_in
     async def upload(
         self,
-        data:         AsyncDataT,
-        content_type: str           = "application/octet-stream",
-        filename:     Optional[str] = None,
-        encrypt:      bool          = False,
+        data_provider: DataProvider,
+        content_type:  str                       = "application/octet-stream",
+        filename:      Optional[str]             = None,
+        encrypt:       bool                      = False,
+        monitor:       Optional[TransferMonitor] = None,
     ) -> Tuple[Union[UploadResponse, UploadError], Optional[Dict[str, Any]]]:
+        # TODO: test retries
         """Upload a file to the content repository.
 
         Returns a tuple containing:
@@ -1674,16 +1743,26 @@ class AsyncClient(Client):
         - A dict with file decryption info if encrypt is ``True``,
           else ``None``.
 
+        Raises a ``TransferCancelledError`` if a monitor is passed and its
+        ``cancelled`` property becomes set to ``True``.
+
         Args:
-            data (str/Path/bytes/Iterable[bytes]/AsyncIterable[bytes]/
-            io.BufferedIOBase/AsyncBufferedReader): The data to encrypt.
-                Passing a path string, Path, async iterable or aiofiles open
+            data_provider (Callable): A function returning the data to upload.
+                Returning a path string, Path, async iterable or aiofiles open
                 binary file object allows the file data to be read in an
                 asynchronous and lazy (without reading the entire file into
                 memory) way.
-                Passing a non-async iterable or standard open binary file
+                Returning a non-async iterable or standard open binary file
                 object will still allow the data to be read lazily, but
                 not asynchronously.
+
+                The function will be called again if the upload fails
+                due to a server timeout, in which case it must restart
+                from the beginning.
+                The function receives two arguments: the total number of
+                429 "Too many request" errors that occured, and the total
+                number of server timeout exceptions that occured, thus
+                cleanup operations can be performed for retries if necessary.
 
             content_type (str): The content MIME type of the file,
                 e.g. "image/png".
@@ -1696,23 +1775,42 @@ class AsyncClient(Client):
             encrypt (bool): If the file's content should be encrypted,
                 necessary for files that will be sent to encrypted rooms.
                 Defaults to ``False``.
+
+            monitor (TransferMonitor, optional): If a ``TransferMonitor``
+                object is passed, it will be updated by this function while
+                uploading.
+                From this object, statistics such as currently
+                transferred bytes or estimated remaining time can be gathered
+                while the upload is running as a task; it also allows
+                for pausing and cancelling.
         """
+
         http_method, path, _ = Api.upload(self.access_token, filename)
 
         decryption_dict: Dict[str, Any] = {}
 
-        if encrypt:
-            data = self._encrypted_data_generator(data, decryption_dict)
-        else:
-            data = async_generator_from_data(data)
+        def provider(got_429, got_timeouts):
+            if monitor and (got_429 or got_timeouts):
+                # We have to restart from scratch
+                monitor.transferred = 0
+
+            data = data_provider(got_429, got_timeouts)
+
+            if encrypt:
+                return self._encrypted_data_generator(
+                    data, decryption_dict, monitor,
+                )
+
+            return self._plain_data_generator(data, monitor)
 
         response = await self._send(
             UploadResponse,
             http_method,
             path,
-            data,
-            content_type =
+            data_provider = provider,
+            content_type  =
                 "application/octet-stream" if encrypt else content_type,
+            trace_context = monitor,
         )
 
         # After the upload finished and we get the response above, if encrypt
@@ -1723,10 +1821,10 @@ class AsyncClient(Client):
     @client_session
     async def download(
         self,
-        server_name,        # type: str
-        media_id,           # type: str
-        filename=None,      # type: Optional[str]
-        allow_remote=True,  # type: bool
+        server_name:  str,
+        media_id:     str,
+        filename:     Optional[str]             = None,
+        allow_remote: bool                      = True,
     ):
         # type: (...) -> Union[DownloadResponse, DownloadError]
         """Get the content of a file from the content repository.
@@ -1745,6 +1843,8 @@ class AsyncClient(Client):
                 This is to prevent routing loops where the server contacts
                 itself.
         """
+        # TODO: support TransferMonitor
+
         http_method, path = Api.download(
             server_name,
             media_id,

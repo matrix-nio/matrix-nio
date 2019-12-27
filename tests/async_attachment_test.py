@@ -21,8 +21,8 @@ class TestClass:
         return (data, b"".join(chunks), keys)
 
 
-    async def test_encrypt(self, data=b"Test bytes"):
-        data, cyphertext, keys = await self._get_data_cypher_keys(data)
+    async def test_encrypt(self, data=b"Test bytes", large=False):
+        _, cyphertext, keys = await self._get_data_cypher_keys(data)
 
         plaintext = decrypt_attachment(
             cyphertext,
@@ -31,7 +31,12 @@ class TestClass:
             keys["iv"],
         )
 
-        assert plaintext == b"Test bytes"
+        assert plaintext == b"Test bytes" * (16384 if large else 1)
+
+    async def test_encrypt_large_bytes(self):
+        # Makes sure our bytes chunking in async_generator_from_data
+        # is working correctly
+        await self.test_encrypt(b"Test bytes" * 16384, large=True)
 
     async def test_encrypt_str(self):
         await self.test_encrypt(FILEPATH)
