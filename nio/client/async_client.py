@@ -613,14 +613,15 @@ class AsyncClient(Client):
         return await self._send(LoginResponse, method, path, data)
 
     @logged_in
-    async def logout(self):
+    async def logout(self, all_devices=False):
         """Logout from the homeserver.
 
         Returns either 'LogoutResponse' if the request was successful or
         a `Logouterror` if there was an error with the request.
         """
         method, path, data = Api.logout(
-            self.access_token
+            self.access_token,
+            all_devices
         )
 
         return await self._send(LogoutResponse, method, path, data)
