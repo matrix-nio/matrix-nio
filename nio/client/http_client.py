@@ -592,7 +592,7 @@ class HttpClient(Client):
 
         Args:
             room_id (str): Room id of the room where the user is typing.
-            typign_state (bool): A flag representing whether the user started
+            typing_state (bool): A flag representing whether the user started
                 or stopped typing
             timeout (int): For how long should the new typing notice be
                 valid for in milliseconds.
