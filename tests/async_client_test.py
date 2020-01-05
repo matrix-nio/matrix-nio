@@ -419,7 +419,7 @@ class TestClass(object):
         )
 
         aioresponse.post(
-            "https://example.org/_matrix/client/r0/logout?access_token=abc123",
+            "https://example.org/_matrix/client/r0/logout/all?access_token=abc123",
             status=200,
             payload=self.logout_response
         )
@@ -444,7 +444,7 @@ class TestClass(object):
         )
 
         aioresponse.post(
-            "https://example.org/_matrix/client/r0/logout?access_token=abc123",
+            "https://example.org/_matrix/client/r0/logout/all?access_token=abc123",
             status=400,
             body=""
         )
