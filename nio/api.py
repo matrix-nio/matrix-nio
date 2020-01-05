@@ -289,6 +289,7 @@ class Api(object):
     @staticmethod
     def logout(
         access_token,     # type: str
+        all_devices=False         # type: bool
     ):
         """Logout the session.
 
@@ -296,13 +297,19 @@ class Api(object):
 
         Args:
             access_token (str): the access token to be used with the request.
+            all_devices (bool): Logout all sessions from all devices if set to True.
         """
         query_parameters = {"access_token": access_token}
+
+        if all_devices:
+            api_path = "logout/all"
+        else:
+            api_path = "logout"
 
         content_dict = {}  # type: Dict
         return (
             "POST",
-            Api._build_path("logout", query_parameters),
+            Api._build_path(api_path, query_parameters),
             Api.to_json(content_dict)
         )
 

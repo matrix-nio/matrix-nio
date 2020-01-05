@@ -262,10 +262,11 @@ class HttpClient(Client):
 
     @connected
     @logged_in
-    def logout(self):
+    def logout(self, all_devices=False):
         request = self._build_request(
             Api.logout(
-                self.access_token
+                self.access_token,
+                all_devices
             )
         )
 
