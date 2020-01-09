@@ -344,7 +344,9 @@ class Client(object):
         try:
             room = self.rooms[room_id]
         except KeyError:
-            LocalProtocolError("No room found with room id {}".format(room_id))
+            raise LocalProtocolError(
+                "No room found with room id {}".format(room_id)
+            )
 
         if not room.encrypted:
             return False
@@ -1173,7 +1175,9 @@ class Client(object):
         try:
             room = self.rooms[room_id]
         except KeyError:
-            LocalProtocolError("No room found with room id {}".format(room_id))
+            raise LocalProtocolError(
+                "No room found with room id {}".format(room_id)
+            )
 
         if not room.encrypted:
             return devices
