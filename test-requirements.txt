@@ -9,7 +9,7 @@ hpack
 faker
 aiohttp; python_version >= '3.5'
 pytest-aiohttp; python_version >= '3.5'
-aioresponses; python_version >= '3.5'
+aioresponses <= 0.6.1; python_version >= '3.5'
 python-olm >= '3.1.0'
 peewee >= '3.9.5'
 atomicwrites
