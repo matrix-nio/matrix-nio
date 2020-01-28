@@ -57,6 +57,8 @@ class Sas(olm.Sas):
             by us, otherwise false.
         sas_accepted (bool): Is true if we accepted that the short
             authentication string matches on both devices.
+        verified_devices(List[str]): The list of device ids that were verified
+            during the verification process.
 
     Args:
         own_user (str): The user id of our own user.
@@ -156,6 +158,8 @@ class Sas(olm.Sas):
         self.commitment = None
         self.cancel_reason = ""
         self.cancel_code = ""
+
+        self.verified_devices = []
 
         self.creation_time = datetime.now()
         self._last_event_time = self.creation_time
@@ -611,10 +615,13 @@ class Sas(olm.Sas):
                 )
                 return
 
-            if key_type != "ed25519" or device_id != self.other_olm_device.id:
+            if key_type != "ed25519":
                 self.state = SasState.canceled
                 self.cancel_code, self.cancel_reason = self._key_mismatch_error
                 return
+
+            if device_id != self.other_olm_device.id:
+                continue
 
             other_fp_key = self.other_olm_device.ed25519
 
@@ -622,5 +629,11 @@ class Sas(olm.Sas):
                 self.state = SasState.canceled
                 self.cancel_code, self.cancel_reason = self._key_mismatch_error
                 return
+
+            self.verified_devices.append(device_id)
+
+        if not self.verified_devices:
+            self.state = SasState.canceled
+            self.cancel_code, self.cancel_reason = self._key_mismatch_error
 
         self.state = SasState.mac_received
