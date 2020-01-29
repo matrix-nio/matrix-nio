@@ -1484,6 +1484,16 @@ class Olm(object):
                         f"{event.sender} {event.device_id}.")
             self.key_re_requests_events[(device.user_id, device.device_id)].append(event)
 
+    def _decrypt_megolm_no_error(
+        self,
+        event: MegolmEvent,
+        room_id: str = None
+    ) -> Optional[Union[Event, BadEvent]]:
+        try:
+            return self.decrypt_megolm_event(event, room_id)
+        except EncryptionError:
+            return None
+
     def decrypt_megolm_event(self, event, room_id=None):
         # type (MegolmEvent, Optional[str]) -> Union[Event, BadEvent]
         room_id = room_id or event.room_id
