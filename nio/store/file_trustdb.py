@@ -121,9 +121,8 @@ class KeyStore(object):
 
     def _save_store(f):
         @wraps(f)
-        def decorated(*args, **kwargs):
-            self = args[0]
-            ret = f(*args, **kwargs)
+        def decorated(self, *args, **kwargs):
+            ret = f(self, *args, **kwargs)
             self._save()
             return ret
 
@@ -136,7 +135,7 @@ class KeyStore(object):
                 line = entry.to_line()
                 f.write(line)
 
-    @_save_store
+    @_save_store # type: ignore
     def add_many(self, keys):
         # type: (List[Key]) -> None
         for key in keys:
@@ -164,19 +163,19 @@ class KeyStore(object):
         self._entries.append(key)
         return True
 
-    @_save_store
+    @_save_store # type: ignore
     def add(self, key):
         # type: (Key) -> bool
         return self._add_without_save(key)
 
-    @_save_store
+    @_save_store # type: ignore
     def remove_many(self, keys):
         # type: (List[Key]) -> None
         for key in keys:
             if key in self._entries:
                 self._entries.remove(key)
 
-    @_save_store
+    @_save_store # type: ignore
     def remove(self, key):
         # type: (Key) -> bool
         if key in self._entries:

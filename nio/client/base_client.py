@@ -23,9 +23,9 @@ from collections import defaultdict
 import warnings
 
 from ..crypto import ENCRYPTION_ENABLED
-from ..events import (BadEventType, Event, KeyVerificationEvent, MegolmEvent,
+from ..events import (BadEventType, Event, MegolmEvent,
                       RoomEncryptionEvent, RoomMemberEvent,
-                      ToDeviceEvent, EncryptedToDeviceEvent, RoomKeyRequest,
+                      ToDeviceEvent, RoomKeyRequest,
                       RoomKeyRequestCancellation)
 from ..exceptions import LocalProtocolError, MembersSyncError
 from ..log import logger_group
@@ -163,7 +163,8 @@ class Client(object):
         self.config = config or ClientConfig()
 
         self.user_id = ""
-        self.access_token = ""
+        # TODO Turn this into a optional string.
+        self.access_token: str = ""
         self.next_batch = ""
         self.loaded_sync_token = ""
 
@@ -922,7 +923,7 @@ class Client(object):
             self._handle_olm_response(response)
         elif isinstance(response, ErrorResponse):
             if response.soft_logout:
-                self.access_token = None
+                self.access_token = ""
 
     @store_loaded
     def export_keys(self, outfile, passphrase, count=10000):

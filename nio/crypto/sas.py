@@ -159,7 +159,7 @@ class Sas(olm.Sas):
         self.cancel_reason = ""
         self.cancel_code = ""
 
-        self.verified_devices = []
+        self.verified_devices: List[str] = []
 
         self.creation_time = datetime.now()
         self._last_event_time = self.creation_time

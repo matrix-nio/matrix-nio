@@ -243,7 +243,7 @@ class HttpClient(Client):
 
     @connected
     def login(self, password=None, device_name="", token=None):
-        # type: (str, Optional[str]) -> Tuple[UUID, bytes]
+        # type: (str, Optional[str], Optional[str]) -> Tuple[UUID, bytes]
         if password is None and token is None:
             raise ValueError("Either a password or a token needs to be "
                              "provided")
@@ -1182,7 +1182,7 @@ class HttpClient(Client):
     @connected
     @logged_in
     def sync(self, timeout=None, filter=None, full_state=False):
-        # type: (Optional[int], Optional[Dict[Any, Any]]) -> Tuple[UUID, bytes]
+        # type: (Optional[int], Optional[Dict[Any, Any]], bool) -> Tuple[UUID, bytes]
         request = self._build_request(
             Api.sync(
                 self.access_token,
