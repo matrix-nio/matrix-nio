@@ -17,7 +17,7 @@
 
 """Matrix encryption algorithms for file uploads."""
 
-import base64
+from binascii import Error as BinAsciiError
 from typing import Any, Dict, Generator, Iterable, Tuple, Union
 
 import unpaddedbase64
@@ -28,10 +28,10 @@ from Crypto.Util import Counter
 
 from ..exceptions import EncryptionError
 
-_DataT = Union[bytes, Iterable[bytes]]
+DataT = Union[bytes, Iterable[bytes]]
 
 
-def decrypt_attachment(ciphertext, key, hash, iv):
+def decrypt_attachment(ciphertext: bytes, key: str, hash: str, iv: str):
     """Decrypt an encrypted attachment.
 
     Args:
@@ -55,28 +55,27 @@ def decrypt_attachment(ciphertext, key, hash, iv):
         raise EncryptionError("Mismatched SHA-256 digest.")
 
     try:
-        key = unpaddedbase64.decode_base64(key)
-    except (base64.binascii.Error, TypeError):
+        byte_key: bytes = unpaddedbase64.decode_base64(key)
+    except (BinAsciiError, TypeError):
         raise EncryptionError("Error decoding key.")
 
     try:
         # Drop last 8 bytes, which are 0
-        iv = unpaddedbase64.decode_base64(iv)[:8]
-    except (base64.binascii.Error, TypeError):
+        byte_iv: bytes = unpaddedbase64.decode_base64(iv)[:8]
+    except (BinAsciiError, TypeError):
         raise EncryptionError("Error decoding initial values.")
 
-    ctr = Counter.new(64, prefix=iv, initial_value=0)
+    ctr = Counter.new(64, prefix=byte_iv, initial_value=0)
 
     try:
-        cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
+        cipher = AES.new(byte_key, AES.MODE_CTR, counter=ctr)
     except ValueError as e:
         raise EncryptionError(e)
 
     return cipher.decrypt(ciphertext)
 
 
-def encrypt_attachment(plaintext):
-    # (bytes) -> Tuple[bytes, Dict[str, Any]]
+def encrypt_attachment(plaintext: bytes) -> Tuple[bytes, Dict[str, Any]]:
     """Encrypt data in order to send it as an encrypted attachment.
 
     Args:
@@ -88,11 +87,14 @@ def encrypt_attachment(plaintext):
     """
 
     values = list(encrypted_attachment_generator(plaintext))
-    return (b"".join(values[:-1]), values[-1])
+    encrytped_bytes: bytes = b"".join(values[:-1])  # type: ignore
+    keys: Dict[str, Any] = values[-1]  # type: ignore
+    return (encrytped_bytes, keys)
 
 
-def encrypted_attachment_generator(data):
-    # (_DataT) -> Generator[Union[bytes, Dict[str, Any]], None, None]
+def encrypted_attachment_generator(
+    data: DataT,
+) -> Generator[Union[bytes, Dict[str, Any]], None, None]:
     """Generator to encrypt data in order to send it as an encrypted
     attachment.
 
@@ -132,9 +134,9 @@ def encrypted_attachment_generator(data):
     yield _get_decryption_info_dict(key, iv, sha256)
 
 
-def _get_decryption_info_dict(key, iv, sha256):
-    # type: (bytes, bytes, SHA256.SHA256Hash) -> Dict[str, Any]
-
+def _get_decryption_info_dict(
+    key: bytes, iv: bytes, sha256: SHA256.SHA256Hash
+) -> Dict[str, Any]:
     json_web_key = {
         "kty": "oct",
         "alg": "A256CTR",
@@ -148,7 +150,5 @@ def _get_decryption_info_dict(key, iv, sha256):
         "key": json_web_key,
         # Send IV concatenated with counter
         "iv": unpaddedbase64.encode_base64(iv + b"\x00" * 8),
-        "hashes": {
-            "sha256": unpaddedbase64.encode_base64(sha256.digest()),
-        },
+        "hashes": {"sha256": unpaddedbase64.encode_base64(sha256.digest()),},
     }
