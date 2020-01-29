@@ -24,7 +24,7 @@ HEADER = "-----BEGIN MEGOLM SESSION DATA-----"
 FOOTER = "-----END MEGOLM SESSION DATA-----"
 
 
-def encrypt_and_save(data, outfile, passphrase, count=100000):
+def encrypt_and_save(data: bytes, outfile: str, passphrase: str, count: int = 100000):
     """Encrypt keys data and write it to file.
 
     Args:
@@ -47,7 +47,7 @@ def encrypt_and_save(data, outfile, passphrase, count=100000):
         f.write(FOOTER)
 
 
-def decrypt_and_read(infile, passphrase):
+def decrypt_and_read(infile: str, passphrase: str) -> bytes:
     """Decrypt keys data from file.
 
     Args:
@@ -60,16 +60,14 @@ def decrypt_and_read(infile, passphrase):
         FileNotFoundError if the file was not found.
 
     """
-    with open(infile, 'r') as f:
+    with open(infile, "r") as f:
         encrypted_data = f.read()
-    encrypted_data = encrypted_data.replace('\n', '')
+    encrypted_data = encrypted_data.replace("\n", "")
 
-    if (not encrypted_data.startswith(HEADER)
-            or not encrypted_data.endswith(FOOTER)):
-        raise ValueError('Wrong file format.')
+    if not encrypted_data.startswith(HEADER) or not encrypted_data.endswith(FOOTER):
+        raise ValueError("Wrong file format.")
 
-    encrypted_data = encrypted_data[len(HEADER):-len(FOOTER)]
-    return decrypt(encrypted_data, passphrase)
+    return decrypt(encrypted_data[len(HEADER) : -len(FOOTER)], passphrase)
 
 
 def prf(passphrase, salt):
@@ -77,60 +75,62 @@ def prf(passphrase, salt):
     return HMAC.new(passphrase, salt, SHA512).digest()
 
 
-def encrypt(data, passphrase, count=100000):
+def encrypt(data: bytes, passphrase: str, count: int = 100000):
     # 128 bits salt
     salt = Random.new().read(16)
     # 512 bits derived key
-    derived_key = PBKDF2(passphrase, salt, 64, count, prf)
+    derived_key = PBKDF2(passphrase, salt, 64, count, prf)  # type: ignore
     aes_key = derived_key[:32]
     hmac_key = derived_key[32:64]
 
     # 128 bits IV, which will be the initial value initial
-    iv = int.from_bytes(Random.new().read(16), byteorder='big')
+    iv = int.from_bytes(Random.new().read(16), byteorder="big")
     # Set bit 63 to 0, as specified
     iv &= ~(1 << 63)
     ctr = Counter.new(128, initial_value=iv)
     cipher = AES.new(aes_key, AES.MODE_CTR, counter=ctr)
     encrypted_data = cipher.encrypt(data)
 
-    payload = b''.join((
-        bytes([1]),  # Version
-        salt,
-        int.to_bytes(iv, length=16, byteorder='big'),
-        # 32 bits big-endian round count
-        int.to_bytes(count, length=4, byteorder='big'),
-        encrypted_data
-    ))
+    payload = b"".join(
+        (
+            bytes([1]),  # Version
+            salt,
+            int.to_bytes(iv, length=16, byteorder="big"),
+            # 32 bits big-endian round count
+            int.to_bytes(count, length=4, byteorder="big"),
+            encrypted_data,
+        )
+    )
 
     hmac = HMAC.new(hmac_key, payload, SHA256).digest()
     return encode_base64(payload + hmac)
 
 
-def decrypt(encrypted_payload, passphrase):
-    encrypted_payload = decode_base64(encrypted_payload)
+def decrypt(encrypted_payload: str, passphrase: str):
+    decoded_payload = decode_base64(encrypted_payload)
 
-    version = encrypted_payload[0]
+    version = decoded_payload[0]
 
     if isinstance(version, str):
         version = ord(version)
 
     if version != 1:
-        raise ValueError('Unsupported export format version.')
+        raise ValueError("Unsupported export format version.")
 
-    salt = encrypted_payload[1:17]
-    iv = int.from_bytes(encrypted_payload[17:33], byteorder='big')
-    count = int.from_bytes(encrypted_payload[33:37], byteorder='big')
-    encrypted_data = encrypted_payload[37:-32]
-    expected_hmac = encrypted_payload[-32:]
+    salt = decoded_payload[1:17]
+    iv = int.from_bytes(decoded_payload[17:33], byteorder="big")
+    count = int.from_bytes(decoded_payload[33:37], byteorder="big")
+    encrypted_data = decoded_payload[37:-32]
+    expected_hmac = decoded_payload[-32:]
 
-    derived_key = PBKDF2(passphrase, salt, 64, count, prf)
+    derived_key = PBKDF2(passphrase, salt, 64, count, prf)  # type: ignore
     aes_key = derived_key[:32]
     hmac_key = derived_key[32:64]
 
-    hmac = HMAC.new(hmac_key, encrypted_payload[:-32], SHA256).digest()
+    hmac = HMAC.new(hmac_key, decoded_payload[:-32], SHA256).digest()
 
     if hmac != expected_hmac:
-        raise ValueError('HMAC check failed for encrypted payload.')
+        raise ValueError("HMAC check failed for encrypted payload.")
 
     ctr = Counter.new(128, initial_value=iv)
     cipher = AES.new(aes_key, AES.MODE_CTR, counter=ctr)
