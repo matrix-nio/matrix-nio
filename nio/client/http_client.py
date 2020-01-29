@@ -756,10 +756,7 @@ class HttpClient(Client):
         Returns a unique uuid that identifies the request and the bytes that
         should be sent to the socket.
         """
-        user_list = [
-            user_id for room in self.rooms.values()
-            if room.encrypted for user_id in room.users
-        ]
+        user_list = self.users_for_key_query
 
         if not user_list:
             raise LocalProtocolError("No key query required.")

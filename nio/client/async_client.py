@@ -941,12 +941,7 @@ class AsyncClient(Client):
         Raises LocalProtocolError if the client isn't logged in, if the session
         store isn't loaded or if no key query needs to be performed.
         """
-        # TODO refactor that out into the base client, and use our knowledge of
-        # already queried users to limit the user list.
-        user_list = [
-            user_id for room in self.rooms.values()
-            if room.encrypted for user_id in room.users
-        ]
+        user_list = self.users_for_key_query
 
         if not user_list:
             raise LocalProtocolError("No key query required.")
