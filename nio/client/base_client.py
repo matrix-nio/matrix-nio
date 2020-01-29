@@ -15,7 +15,8 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import (Any, Callable, Dict, List, Optional, Set, Tuple, Type,
+                    Union, Coroutine)
 
 import attr
 from logbook import Logger
@@ -631,7 +632,7 @@ class Client(object):
 
         return self.invited_rooms[room_id]
 
-    def _handle_invited_rooms(self, response):
+    def _handle_invited_rooms(self, response: SyncType):
         for room_id, info in response.rooms.invite.items():
             room = self._get_invited_room(room_id)
 
@@ -767,11 +768,10 @@ class Client(object):
 
         self.olm.add_changed_users(changed_users)
 
-    def _handle_sync(self, response):
-        # type: (SyncType) -> None
+    def _handle_sync(self, response: SyncType) -> Union[None, Coroutine[Any, Any, None]]:
         # We already recieved such a sync response, do nothing in that case.
         if self.next_batch == response.next_batch:
-            return
+            return None
 
         if isinstance(response, SyncResponse):
             self.next_batch = response.next_batch
@@ -789,6 +789,8 @@ class Client(object):
             self._handle_expired_verifications()
             self._handle_olm_events(response)
             self._collect_key_requests()
+
+        return None
 
     def _collect_key_requests(self):
         events = self.olm.collect_key_requests()
@@ -896,8 +898,7 @@ class Client(object):
         elif response.room_id in self.invited_rooms:
             del self.invited_rooms[response.room_id]
 
-    def receive_response(self, response):
-        # type: (Response) -> None
+    def receive_response(self, response: Response) -> Union[None, Coroutine[Any, Any, None]]:
         """Receive a Matrix Response and change the client state accordingly.
 
         Some responses will get edited for the callers convenience e.g. sync
@@ -941,6 +942,8 @@ class Client(object):
         elif isinstance(response, ErrorResponse):
             if response.soft_logout:
                 self.access_token = ""
+
+        return None
 
     @store_loaded
     def export_keys(self, outfile, passphrase, count=10000):
