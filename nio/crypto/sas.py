@@ -15,6 +15,7 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from __future__ import unicode_literals
+from __future__ import annotations
 
 from builtins import bytes, super
 from datetime import datetime, timedelta
@@ -26,7 +27,7 @@ import olm
 from future.moves.itertools import zip_longest
 
 from ..api import Api
-from ..events import KeyVerificationStart
+from ..events import KeyVerificationEvent, KeyVerificationStart
 from ..exceptions import LocalProtocolError
 from ..event_builders import ToDeviceMessage
 from .sessions import OlmDevice
@@ -93,54 +94,89 @@ class Sas(olm.Sas):
     _key_mismatch_error = ("m.key_mismatch", "Key mismatch")
     _user_mismatch_error = ("m.user_error", "User mismatch")
     _invalid_message_error = ("m.invalid_message", "Invalid message")
-    _commitment_mismatch_error = (
-        "m.mismatched_commitment",
-        "Mismatched commitment"
-    )
-    _sas_mismatch_error = (
-        "m.mismatched_sas",
-        "Mismatched short authentication string"
-    )
+    _commitment_mismatch_error = ("m.mismatched_commitment", "Mismatched commitment")
+    _sas_mismatch_error = ("m.mismatched_sas", "Mismatched short authentication string")
 
     _max_age = timedelta(minutes=5)
     _max_event_timeout = timedelta(minutes=1)
 
     emoji = [
-        ("🐶", "Dog"), ("🐱", "Cat"), ("🦁", "Lion"),
-        ("🐎", "Horse"), ("🦄", "Unicorn"), ("🐷", "Pig"),
-        ("🐘", "Elephant"), ("🐰", "Rabbit"), ("🐼", "Panda"),
-        ("🐓", "Rooster"), ("🐧", "Penguin"), ("🐢", "Turtle"),
-        ("🐟", "Fish"), ("🐙", "Octopus"), ("🦋", "Butterfly"),
-        ("🌷", "Flower"), ("🌳", "Tree"), ("🌵", "Cactus"),
-        ("🍄", "Mushroom"), ("🌏", "Globe"), ("🌙", "Moon"),
-        ("☁️", "Cloud"), ("🔥", "Fire"), ("🍌", "Banana"),
-        ("🍎", "Apple"), ("🍓", "Strawberry"), ("🌽", "Corn"),
-        ("🍕", "Pizza"), ("🎂", "Cake"), ("❤️", "Heart"),
-        ("😀", "Smiley"), ("🤖", "Robot"), ("🎩", "Hat"),
-        ("👓", "Glasses"), ("🔧", "Wrench"), ("🎅", "Santa"),
-        ("👍", "Thumbs up"), ("☂️", "Umbrella"), ("⌛", "Hourglass"),
-        ("⏰", "Clock"), ("🎁", "Gift"), ("💡", "Light Bulb"),
-        ("📕", "Book"), ("✏️", "Pencil"), ("📎", "Paperclip"),
-        ("✂️", "Scissors"), ("🔒", "Lock"), ("🔑", "Key"),
-        ("🔨", "Hammer"), ("☎️", "Telephone"), ("🏁", "Flag"),
-        ("🚂", "Train"), ("🚲", "Bicycle"), ("✈️", "Airplane"),
-        ("🚀", "Rocket"), ("🏆", "Trophy"), ("⚽", "Ball"),
-        ("🎸", "Guitar"), ("🎺", "Trumpet"), ("🔔", "Bell"),
-        ("⚓", "Anchor"), ("🎧", "Headphones"), ("📁", "Folder"),
-        ("📌", "Pin")
+        ("🐶", "Dog"),
+        ("🐱", "Cat"),
+        ("🦁", "Lion"),
+        ("🐎", "Horse"),
+        ("🦄", "Unicorn"),
+        ("🐷", "Pig"),
+        ("🐘", "Elephant"),
+        ("🐰", "Rabbit"),
+        ("🐼", "Panda"),
+        ("🐓", "Rooster"),
+        ("🐧", "Penguin"),
+        ("🐢", "Turtle"),
+        ("🐟", "Fish"),
+        ("🐙", "Octopus"),
+        ("🦋", "Butterfly"),
+        ("🌷", "Flower"),
+        ("🌳", "Tree"),
+        ("🌵", "Cactus"),
+        ("🍄", "Mushroom"),
+        ("🌏", "Globe"),
+        ("🌙", "Moon"),
+        ("☁️", "Cloud"),
+        ("🔥", "Fire"),
+        ("🍌", "Banana"),
+        ("🍎", "Apple"),
+        ("🍓", "Strawberry"),
+        ("🌽", "Corn"),
+        ("🍕", "Pizza"),
+        ("🎂", "Cake"),
+        ("❤️", "Heart"),
+        ("😀", "Smiley"),
+        ("🤖", "Robot"),
+        ("🎩", "Hat"),
+        ("👓", "Glasses"),
+        ("🔧", "Wrench"),
+        ("🎅", "Santa"),
+        ("👍", "Thumbs up"),
+        ("☂️", "Umbrella"),
+        ("⌛", "Hourglass"),
+        ("⏰", "Clock"),
+        ("🎁", "Gift"),
+        ("💡", "Light Bulb"),
+        ("📕", "Book"),
+        ("✏️", "Pencil"),
+        ("📎", "Paperclip"),
+        ("✂️", "Scissors"),
+        ("🔒", "Lock"),
+        ("🔑", "Key"),
+        ("🔨", "Hammer"),
+        ("☎️", "Telephone"),
+        ("🏁", "Flag"),
+        ("🚂", "Train"),
+        ("🚲", "Bicycle"),
+        ("✈️", "Airplane"),
+        ("🚀", "Rocket"),
+        ("🏆", "Trophy"),
+        ("⚽", "Ball"),
+        ("🎸", "Guitar"),
+        ("🎺", "Trumpet"),
+        ("🔔", "Bell"),
+        ("⚓", "Anchor"),
+        ("🎧", "Headphones"),
+        ("📁", "Folder"),
+        ("📌", "Pin"),
     ]
 
     def __init__(
         self,
-        own_user,                # type: str
-        own_device,              # type: str
-        own_fp_key,              # type: str
-        other_olm_device,        # type: OlmDevice
-        transaction_id=None,     # type: str
-        short_auth_string=None,  # type: Optional[List[str]]
-        mac_methods=None         # type: Optional[List[str]]
+        own_user: str,
+        own_device: str,
+        own_fp_key: str,
+        other_olm_device: OlmDevice,
+        transaction_id: str= None,
+        short_auth_string: Optional[List[str]] = None,
+        mac_methods: Optional[List[str]] = None,
     ):
-        # type: (...) -> None
         self.own_user = own_user
         self.own_device = own_device
         self.own_fp_key = own_fp_key
@@ -167,14 +203,9 @@ class Sas(olm.Sas):
 
     @classmethod
     def from_key_verification_start(
-        cls,
-        own_user,
-        own_device,
-        own_fp_key,
-        other_olm_device,
-        event
-    ):
-        # type: (str, str, str, OlmDevice, KeyVerificationStart) -> Sas
+            cls, own_user: str, own_device: str, own_fp_key: str,
+            other_olm_device: OlmDevice, event: KeyVerificationStart
+    ) -> Sas:
         """Create a SAS object from a KeyVerificationStart event.
 
         Args:
@@ -195,7 +226,7 @@ class Sas(olm.Sas):
             other_olm_device,
             event.transaction_id,
             event.short_authentication_string,
-            event.message_authentication_codes
+            event.message_authentication_codes,
         )
         obj.we_started_it = False
         obj.state = SasState.started
@@ -203,61 +234,75 @@ class Sas(olm.Sas):
         string_content = Api.to_canonical_json(event.source["content"])
         obj.commitment = olm.sha256(obj.pubkey + string_content)
 
-        if (Sas._sas_method_v1 != event.method
-                or Sas._key_agreement_v1 not in event.key_agreement_protocols
-                or Sas._hash_v1 not in event.hashes
-                or (Sas._mac_normal not in event.message_authentication_codes
-                    and Sas._mac_old not in event.message_authentication_codes)
-                or ("emoji" not in event.short_authentication_string
-                    and "decimal" not in event.short_authentication_string)):
+        if (
+            Sas._sas_method_v1 != event.method
+            or Sas._key_agreement_v1 not in event.key_agreement_protocols
+            or Sas._hash_v1 not in event.hashes
+            or (
+                Sas._mac_normal not in event.message_authentication_codes
+                and Sas._mac_old not in event.message_authentication_codes
+            )
+            or (
+                "emoji" not in event.short_authentication_string
+                and "decimal" not in event.short_authentication_string
+            )
+        ):
             obj.state = SasState.canceled
             obj.cancel_code, obj.cancel_reason = obj._unknonw_method_error
 
         return obj
 
     @property
-    def canceled(self):
+    def canceled(self) -> bool:
         """Is the verification request canceled."""
         return self.state == SasState.canceled
 
     @property
-    def timed_out(self):
+    def timed_out(self) -> bool:
         """Did the verification process time out."""
         if self.verified or self.canceled:
             return False
 
         now = datetime.now()
-        if (now - self.creation_time >= self._max_age
-                or now - self._last_event_time >= self._max_event_timeout):
+        if (
+            now - self.creation_time >= self._max_age
+            or now - self._last_event_time >= self._max_event_timeout
+        ):
             self.state = SasState.canceled
             self.cancel_code, self.cancel_reason = self._timeout_error
             return True
         return False
 
     @property
-    def verified(self):
+    def verified(self) -> bool:
         """Is the device verified and the request done."""
         return self.state == SasState.mac_received and self.sas_accepted
 
     def accept_sas(self):
         """Accept the short authentication string."""
         if self.state == SasState.canceled:
-            raise LocalProtocolError("Key verification process was canceled "
-                                     "can't accept short authentication "
-                                     "string")
+            raise LocalProtocolError(
+                "Key verification process was canceled "
+                "can't accept short authentication "
+                "string"
+            )
 
         if not self.other_key_set:
-            raise LocalProtocolError("Other public key isn't set yet, can't "
-                                     "generate nor accept a short "
-                                     "authentication string.")
+            raise LocalProtocolError(
+                "Other public key isn't set yet, can't "
+                "generate nor accept a short "
+                "authentication string."
+            )
         self.sas_accepted = True
 
     def reject_sas(self):
         """Reject the authentication string."""
         if not self.other_key_set:
-            raise LocalProtocolError("Other public key isn't set yet, can't "
-                                     "generate nor reject a short "
-                                     "authentication string.")
+            raise LocalProtocolError(
+                "Other public key isn't set yet, can't "
+                "generate nor reject a short "
+                "authentication string."
+            )
 
         self.state = SasState.canceled
         self.cancel_code, self.cancel_reason = self._sas_mismatch_error
@@ -267,7 +312,7 @@ class Sas(olm.Sas):
         self.state = SasState.canceled
         self.cancel_code, self.cancel_reason = self._user_cancel_error
 
-    def _check_commitment(self, key):
+    def _check_commitment(self, key: str):
         assert self.commitment
         calculated_commitment = olm.sha256(
             key + Api.to_canonical_json(self.start_verification().content)
@@ -281,29 +326,33 @@ class Sas(olm.Sas):
         return zip_longest(*args, fillvalue=fillvalue)
 
     @property
-    def _extra_info(self):
+    def _extra_info(self) -> str:
         if self.we_started_it:
-            return ("MATRIX_KEY_VERIFICATION_SAS"
-                    "{first_user}{first_device}"
-                    "{second_user}{second_device}{transaction_id}".format(
-                        first_user=self.own_user,
-                        first_device=self.own_device,
-                        second_user=self.other_olm_device.user_id,
-                        second_device=self.other_olm_device.id,
-                        transaction_id=self.transaction_id
-                    ))
+            return (
+                "MATRIX_KEY_VERIFICATION_SAS"
+                "{first_user}{first_device}"
+                "{second_user}{second_device}{transaction_id}".format(
+                    first_user=self.own_user,
+                    first_device=self.own_device,
+                    second_user=self.other_olm_device.user_id,
+                    second_device=self.other_olm_device.id,
+                    transaction_id=self.transaction_id,
+                )
+            )
         else:
-            return ("MATRIX_KEY_VERIFICATION_SAS"
-                    "{first_user}{first_device}"
-                    "{second_user}{second_device}{transaction_id}".format(
-                        first_user=self.other_olm_device.user_id,
-                        first_device=self.other_olm_device.id,
-                        second_user=self.own_user,
-                        second_device=self.own_device,
-                        transaction_id=self.transaction_id))
+            return (
+                "MATRIX_KEY_VERIFICATION_SAS"
+                "{first_user}{first_device}"
+                "{second_user}{second_device}{transaction_id}".format(
+                    first_user=self.other_olm_device.user_id,
+                    first_device=self.other_olm_device.id,
+                    second_user=self.own_user,
+                    second_device=self.own_device,
+                    transaction_id=self.transaction_id,
+                )
+            )
 
-    def get_emoji(self):
-        # type: () -> List[Tuple[str, str]]
+    def get_emoji(self) -> List[Tuple[str, str]]:
         """Get the emoji short authentication string.
 
         Returns a list of tuples that contain the emoji and the description of
@@ -311,7 +360,7 @@ class Sas(olm.Sas):
         """
         return self._generate_emoji(self._extra_info)
 
-    def get_decimals(self):
+    def get_decimals(self) -> Tuple[int, ...]:
         """Get the decimal short authentication string.
 
         Returns a tuple that contains three 4 digit integer numbers that
@@ -319,34 +368,36 @@ class Sas(olm.Sas):
         """
         return self._generate_decimals(self._extra_info)
 
-    def _generate_emoji(self, extra_info):
+    def _generate_emoji(self, extra_info: str) -> List[Tuple[str, str]]:
         """Create a list of emojies from our shared secret."""
         generated_bytes = self.generate_bytes(extra_info, 6)
         number = "".join([format(x, "08b") for x in bytes(generated_bytes)])
         return [
-            self.emoji[int(x, 2)] for x in
-            map("".join, list(self._grouper(number[:42], 6)))
+            self.emoji[int(x, 2)]
+            for x in map("".join, list(self._grouper(number[:42], 6)))
         ]
 
-    def _generate_decimals(self, extra_info):
+    def _generate_decimals(self, extra_info: str) -> Tuple[int, ...]:
         """Create a decimal number from our shared secret."""
         generated_bytes = self.generate_bytes(extra_info, 5)
         number = "".join([format(x, "08b") for x in bytes(generated_bytes)])
         return tuple(
-            int(x, 2) + 1000 for x in
-            map("".join, list(self._grouper(number[:-1], 13)))
+            int(x, 2) + 1000 for x in map("".join, list(self._grouper(number[:-1], 13)))
         )
 
-    def start_verification(self):
-        # type: () -> ToDeviceMessage
+    def start_verification(self) -> ToDeviceMessage:
         """Create a content dictionary to start the verification."""
         if not self.we_started_it:
-            raise LocalProtocolError("Verification was not started by us, "
-                                     "can't send start verification message.")
+            raise LocalProtocolError(
+                "Verification was not started by us, "
+                "can't send start verification message."
+            )
 
         if self.state == SasState.canceled:
-            raise LocalProtocolError("SAS verification was canceled, "
-                                     "can't send start verification message.")
+            raise LocalProtocolError(
+                "SAS verification was canceled, "
+                "can't send start verification message."
+            )
 
         content = {
             "from_device": self.own_device,
@@ -355,27 +406,29 @@ class Sas(olm.Sas):
             "key_agreement_protocols": [self._key_agreement_v1],
             "hashes": [self._hash_v1],
             "message_authentication_codes": self._mac_v1,
-            "short_authentication_string": self._strings_v1
+            "short_authentication_string": self._strings_v1,
         }
 
         message = ToDeviceMessage(
             "m.key.verification.start",
             self.other_olm_device.user_id,
             self.other_olm_device.id,
-            content
+            content,
         )
 
         return message
 
-    def accept_verification(self):
+    def accept_verification(self) -> ToDeviceMessage:
         """Create a content dictionary to accept the verification offer."""
         if self.we_started_it:
-            raise LocalProtocolError("Verification was started by us, can't "
-                                     "accept offer.")
+            raise LocalProtocolError(
+                "Verification was started by us, can't " "accept offer."
+            )
 
         if self.state == SasState.canceled:
-            raise LocalProtocolError("SAS verification was canceled, can't "
-                                     "accept offer.")
+            raise LocalProtocolError(
+                "SAS verification was canceled, can't " "accept offer."
+            )
 
         sas_methods = []
 
@@ -403,60 +456,60 @@ class Sas(olm.Sas):
             "m.key.verification.accept",
             self.other_olm_device.user_id,
             self.other_olm_device.id,
-            content
+            content,
         )
 
         return message
 
-    def share_key(self):
+    def share_key(self) -> ToDeviceMessage:
         """Create a dictionary containing our public key."""
         if self.state == SasState.canceled:
-            raise LocalProtocolError("SAS verification was canceled, can't "
-                                     "share our public key.")
+            raise LocalProtocolError(
+                "SAS verification was canceled, can't " "share our public key."
+            )
 
-        content = {
-            "transaction_id": self.transaction_id,
-            "key": self.pubkey
-        }
+        content = {"transaction_id": self.transaction_id, "key": self.pubkey}
 
         message = ToDeviceMessage(
             "m.key.verification.key",
             self.other_olm_device.user_id,
             self.other_olm_device.id,
-            content
+            content,
         )
 
         return message
 
-    def get_mac(self):
+    def get_mac(self) -> ToDeviceMessage:
         """Create a dictionary containing our MAC."""
         if not self.sas_accepted:
             raise LocalProtocolError("SAS string wasn't yet accepted")
 
         if self.state == SasState.canceled:
-            raise LocalProtocolError("SAS verification was canceled, can't "
-                                     "generate MAC.")
+            raise LocalProtocolError(
+                "SAS verification was canceled, can't " "generate MAC."
+            )
 
         key_id = "ed25519:{}".format(self.own_device)
 
-        assert(self.chosen_mac_method)
+        assert self.chosen_mac_method
         if self.chosen_mac_method == self._mac_normal:
             calculate_mac = self.calculate_mac
         elif self.chosen_mac_method == self._mac_old:
             calculate_mac = self.calculate_mac_long_kdf
 
-        info = ("MATRIX_KEY_VERIFICATION_MAC"
-                "{first_user}{first_device}"
-                "{second_user}{second_device}{transaction_id}".format(
-                    first_user=self.own_user,
-                    first_device=self.own_device,
-                    second_user=self.other_olm_device.user_id,
-                    second_device=self.other_olm_device.id,
-                    transaction_id=self.transaction_id))
+        info = (
+            "MATRIX_KEY_VERIFICATION_MAC"
+            "{first_user}{first_device}"
+            "{second_user}{second_device}{transaction_id}".format(
+                first_user=self.own_user,
+                first_device=self.own_device,
+                second_user=self.other_olm_device.user_id,
+                second_device=self.other_olm_device.id,
+                transaction_id=self.transaction_id,
+            )
+        )
 
-        mac = {
-            key_id: calculate_mac(self.own_fp_key, info + key_id)
-        }
+        mac = {key_id: calculate_mac(self.own_fp_key, info + key_id)}
 
         content = {
             "mac": mac,
@@ -468,12 +521,12 @@ class Sas(olm.Sas):
             "m.key.verification.mac",
             self.other_olm_device.user_id,
             self.other_olm_device.id,
-            content
+            content,
         )
 
         return message
 
-    def get_cancellation(self):
+    def get_cancellation(self) -> ToDeviceMessage:
         """Create a dictionary containing our verification cancellation."""
         if self.state != SasState.canceled:
             raise LocalProtocolError("Sas process isn't canceled.")
@@ -491,12 +544,12 @@ class Sas(olm.Sas):
             "m.key.verification.cancel",
             self.other_olm_device.user_id,
             self.other_olm_device.id,
-            content
+            content,
         )
 
         return message
 
-    def _event_ok(self, event):
+    def _event_ok(self, event: KeyVerificationEvent):
         if self.state == SasState.canceled:
             return False
 
@@ -519,16 +572,18 @@ class Sas(olm.Sas):
 
         if self.state != SasState.created:
             self.state = SasState.canceled
-            self.cancel_code, self.cancel_reason = (
-                Sas._unexpected_message_error
-            )
+            self.cancel_code, self.cancel_reason = Sas._unexpected_message_error
             return
 
-        if (event.key_agreement_protocol != Sas._key_agreement_v1
-                or event.hash != Sas._hash_v1
-                or event.message_authentication_code not in Sas._mac_v1
-                or ("emoji" not in event.short_authentication_string
-                    and "decimal" not in event.short_authentication_string)):
+        if (
+            event.key_agreement_protocol != Sas._key_agreement_v1
+            or event.hash != Sas._hash_v1
+            or event.message_authentication_code not in Sas._mac_v1
+            or (
+                "emoji" not in event.short_authentication_string
+                and "decimal" not in event.short_authentication_string
+            )
+        ):
             self.state = SasState.canceled
             self.cancel_code, self.cancel_reason = Sas._unknonw_method_error
             return
@@ -542,9 +597,7 @@ class Sas(olm.Sas):
         """Receive a KeyVerificationKey event."""
         if self.other_key_set:
             self.state = SasState.canceled
-            self.cancel_code, self.cancel_reason = (
-                self._unexpected_message_error
-            )
+            self.cancel_code, self.cancel_reason = self._unexpected_message_error
             return
 
         if not self._event_ok(event):
@@ -553,9 +606,7 @@ class Sas(olm.Sas):
         if self.we_started_it:
             if not self._check_commitment(event.key):
                 self.state = SasState.canceled
-                self.cancel_code, self.cancel_reason = (
-                    self._commitment_mismatch_error
-                )
+                self.cancel_code, self.cancel_reason = self._commitment_mismatch_error
                 return
 
         self.set_their_pubkey(event.key)
@@ -577,19 +628,20 @@ class Sas(olm.Sas):
 
         if self.state != SasState.key_received:
             self.state = SasState.canceled
-            self.cancel_code, self.cancel_reason = (
-                Sas._unexpected_message_error
-            )
+            self.cancel_code, self.cancel_reason = Sas._unexpected_message_error
             return
 
-        info = ("MATRIX_KEY_VERIFICATION_MAC"
-                "{first_user}{first_device}"
-                "{second_user}{second_device}{transaction_id}".format(
-                    first_user=self.other_olm_device.user_id,
-                    first_device=self.other_olm_device.id,
-                    second_user=self.own_user,
-                    second_device=self.own_device,
-                    transaction_id=self.transaction_id))
+        info = (
+            "MATRIX_KEY_VERIFICATION_MAC"
+            "{first_user}{first_device}"
+            "{second_user}{second_device}{transaction_id}".format(
+                first_user=self.other_olm_device.user_id,
+                first_device=self.other_olm_device.id,
+                second_user=self.own_user,
+                second_device=self.own_device,
+                transaction_id=self.transaction_id,
+            )
+        )
 
         key_ids = ",".join(sorted(event.mac.keys()))
 
@@ -610,9 +662,7 @@ class Sas(olm.Sas):
                 key_type, device_id = key_id.split(":", 2)
             except ValueError:
                 self.state = SasState.canceled
-                self.cancel_code, self.cancel_reason = (
-                    self._invalid_message_error
-                )
+                self.cancel_code, self.cancel_reason = self._invalid_message_error
                 return
 
             if key_type != "ed25519":

@@ -2229,10 +2229,10 @@ class Olm(object):
 
             elif isinstance(event, KeyVerificationKey):
                 sas.receive_key_event(event)
-                message = None
+                to_device_message: Optional[ToDeviceMessage] = None
 
                 if sas.canceled:
-                    message = sas.get_cancellation()
+                    to_device_message = sas.get_cancellation()
                 else:
                     logger.info("Received a key verification pubkey "
                                 "from {} {} {}.".format(
@@ -2241,17 +2241,16 @@ class Olm(object):
                                     sas.transaction_id))
 
                 if not sas.we_started_it and not sas.canceled:
-                    message = sas.share_key()
+                    to_device_message = sas.share_key()
 
-                if message:
-                    self.outgoing_to_device_messages.append(message)
+                if to_device_message:
+                    self.outgoing_to_device_messages.append(to_device_message)
 
             elif isinstance(event, KeyVerificationMac):
                 sas.receive_mac_event(event)
 
                 if sas.canceled:
-                    message = sas.get_cancellation()
-                    self.outgoing_to_device_messages.append(message)
+                    self.outgoing_to_device_messages.append(sas.get_cancellation())
                     return
 
                 logger.info("Received a valid key verification MAC "
