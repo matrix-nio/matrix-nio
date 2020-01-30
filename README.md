@@ -1,4 +1,4 @@
-nio  
+nio
 ===
 
 [![Build Status](https://img.shields.io/travis/poljar/matrix-nio.svg?style=flat-square)](https://travis-ci.org/poljar/matrix-nio)
@@ -59,7 +59,7 @@ from nio import AsyncClient
 
 async def main():
     client = AsyncClient("https://example.org", "@alice:example.org")
-    
+
     await client.login("hunter1")
     await client.room_send(
         room_id="!test:example.org",
