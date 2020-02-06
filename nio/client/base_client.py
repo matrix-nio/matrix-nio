@@ -164,7 +164,7 @@ class Client(object):
 
         self.user_id = ""
         # TODO Turn this into a optional string.
-        self.access_token: str = ""
+        self.access_token = ""  # type: str
         self.next_batch = ""
         self.loaded_sync_token = ""
 
