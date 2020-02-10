@@ -111,7 +111,7 @@ class TestClass(object):
             "tests/data/keys_query.json")
 
     @property
-    def joined_members_resopnse(self):
+    def joined_members_response(self):
         return {
             "joined": {  # joined
                 "@bar:example.com": {
@@ -553,7 +553,7 @@ class TestClass(object):
             "https://example.org/_matrix/client/r0/rooms/{}/"
             "joined_members?access_token=abc123".format(TEST_ROOM_ID),
             status=200,
-            payload=self.joined_members_resopnse
+            payload=self.joined_members_response
         )
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/query?access_token=abc123",
@@ -778,7 +778,7 @@ class TestClass(object):
             "https://example.org/_matrix/client/r0/rooms/{}/"
             "joined_members?access_token=abc123".format(TEST_ROOM_ID),
             status=200,
-            payload=self.joined_members_resopnse
+            payload=self.joined_members_response
         )
 
         room = async_client.rooms[TEST_ROOM_ID]
