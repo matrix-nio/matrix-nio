@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2020 Famedly GmbH
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -79,6 +80,10 @@ __all__ = [
     "RoomMember",
     "RoomMessagesResponse",
     "RoomMessagesError",
+    "RoomGetStateResponse",
+    "RoomGetStateError",
+    "RoomGetStateEventResponse",
+    "RoomGetStateEventError",
     "RoomPutStateResponse",
     "RoomPutStateError",
     "RoomRedactResponse",
@@ -353,7 +358,18 @@ class RoomSendError(_ErrorWithRoomId):
     pass
 
 
+class RoomGetStateError(_ErrorWithRoomId):
+    """A response representing an unsuccessful room state query."""
+    pass
+
+
+class RoomGetStateEventError(_ErrorWithRoomId):
+    """A response representing an unsuccessful room state query."""
+    pass
+
+
 class RoomPutStateError(_ErrorWithRoomId):
+    """A response representing an unsuccessful room state sending request."""
     pass
 
 
@@ -652,7 +668,71 @@ class RoomSendResponse(RoomEventIdResponse):
         return RoomSendError.from_dict(parsed_dict, room_id)
 
 
+@attr.s
+class RoomGetStateResponse(Response):
+    """A response containing the state of a room.
+
+    Attributes:
+        events (List): The events making up the room state.
+        room_id (str): The ID of the room.
+    """
+
+    events = attr.ib(type=List)
+    room_id = attr.ib(type=str)
+
+    @staticmethod
+    def create_error(parsed_dict, room_id):
+        return RoomGetStateError.from_dict(parsed_dict, room_id)
+
+    @classmethod
+    def from_dict(
+        cls,
+        parsed_dict,  # type: ignore
+        room_id       # type: str
+    ):
+        # type: (...) -> Union[RoomGetStateResponse, RoomGetStateError]
+        try:
+            validate_json(parsed_dict, Schemas.room_state)
+        except (SchemaError, ValidationError):
+            return cls.create_error(parsed_dict, room_id)
+
+        return cls(parsed_dict, room_id)
+
+
+@attr.s
+class RoomGetStateEventResponse(Response):
+    """A response containing the content of a specific bit of room state.
+
+    Attributes:
+        content (Dict): The content of the state event.
+        event_type (str): The type of the state event.
+        state_key (str): The key of the state event.
+        room_id (str): The ID of the room that the state event comes from.
+    """
+
+    content = attr.ib(type=Dict)
+    event_type = attr.ib(type=str)
+    state_key = attr.ib(type=str)
+    room_id = attr.ib(type=str)
+
+    @staticmethod
+    def create_error(parsed_dict, room_id):
+        return RoomGetStateEventError.from_dict(parsed_dict, room_id)
+
+    @classmethod
+    def from_dict(
+        cls,
+        parsed_dict,  # type: ignore
+        event_type,   # type: str
+        state_key,    # type: str
+        room_id       # type: str
+    ):
+        # type: (...) -> Union[RoomGetStateEventResponse, RoomGetStateEventError]
+        return cls(parsed_dict, event_type, state_key, room_id)
+
+
 class RoomPutStateResponse(RoomEventIdResponse):
+    """A response indicating successful sending of room state."""
     @staticmethod
     def create_error(parsed_dict, room_id):
         return RoomPutStateError.from_dict(parsed_dict, room_id)
@@ -1240,7 +1320,7 @@ class _SyncResponse(Response):
 
     @staticmethod
     def _get_state(parsed_dict, max_events=0):
-        validate_json(parsed_dict, Schemas.room_state)
+        validate_json(parsed_dict, Schemas.sync_room_state)
         counter, events = _SyncResponse._get_room_events(
             parsed_dict["events"],
             max_events
@@ -1250,7 +1330,7 @@ class _SyncResponse(Response):
 
     @staticmethod
     def _get_invite_state(parsed_dict):
-        validate_json(parsed_dict, Schemas.room_state)
+        validate_json(parsed_dict, Schemas.sync_room_state)
         events = []
 
         for event_dict in parsed_dict["events"]:

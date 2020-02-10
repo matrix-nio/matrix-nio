@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2020 Famedly GmbH
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -387,8 +388,14 @@ class Api(object):
         )
 
     @staticmethod
-    def room_put_state(access_token, room_id, event_type, body):
-        # type (str, str, str, Dict[Any, Any]) -> Tuple[str, str, str]
+    def room_put_state(
+        access_token, # type str
+        room_id,      # type str
+        event_type,   # type str
+        body,         # type Dict[Any, Any]
+        state_key=""  # type str
+    ):
+        # type (...) -> Tuple[str, str, str]
         """Send a state event.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -400,11 +407,13 @@ class Api(object):
             event_type (str): The type of the event that will be sent.
             body(Dict): The body of the event. The fields in this
                 object will vary depending on the type of event.
+            state_key: The key of the state to look up. Defaults to an empty
+                string.
         """
         query_parameters = {"access_token": access_token}
 
-        path = "rooms/{room}/state/{event_type}".format(
-            room=room_id, event_type=event_type
+        path = "rooms/{room}/state/{event_type}/{state_key}".format(
+            room=room_id, event_type=event_type, state_key=state_key
         )
 
         return (
@@ -413,6 +422,52 @@ class Api(object):
             Api.to_json(body)
         )
 
+    @staticmethod
+    def room_get_state_event(access_token, room_id, event_type, state_key=""):
+        # type (str, str, str) -> Tuple[str, str]
+        """Fetch a state event.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room id of the room where the state is fetched
+                from.
+            event_type (str): The type of the event that will be fetched.
+            state_key: The key of the state to look up. Defaults to an empty
+                string.
+        """
+        query_parameters = {"access_token": access_token}
+
+        path = "rooms/{room}/state/{event_type}/{state_key}".format(
+            room=room_id, event_type=event_type, state_key=state_key
+        )
+
+        return (
+            "GET",
+            Api._build_path(path, query_parameters)
+        )
+
+    @staticmethod
+    def room_get_state(access_token, room_id):
+        # type (str, str) -> Tuple[str, str]
+        """Fetch the current state for a room.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room id of the room where the state is fetched
+                from.
+        """
+        query_parameters = {"access_token": access_token}
+
+        path = "rooms/{room}/state".format(room=room_id)
+
+        return (
+            "GET",
+            Api._build_path(path, query_parameters)
+        )
     @staticmethod
     def room_redact(
         access_token,  # type: str

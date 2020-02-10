@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2020 Famedly GmbH
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -66,6 +67,9 @@ from ..responses import (DeleteDevicesError, DeleteDevicesResponse,
                          RoomKeyRequestError, RoomKeyRequestResponse,
                          RoomLeaveResponse, RoomLeaveError,
                          RoomMessagesError, RoomMessagesResponse,
+                         RoomGetStateError, RoomGetStateResponse,
+                         RoomGetStateEventError, RoomGetStateEventResponse,
+                         RoomPutStateError, RoomPutStateResponse,
                          RoomRedactError, RoomRedactResponse,
                          RoomSendResponse, RoomTypingResponse, RoomTypingError,
                          ShareGroupSessionError,
@@ -1120,6 +1124,99 @@ class AsyncClient(Client):
 
         raise SendRetryError("Max retries exceeded while trying to send "
                              "the message")
+
+    @logged_in
+    async def room_put_state(
+            self,
+            room_id:    str,
+            event_type: str,
+            content:    Dict[Any, Any],
+            state_key:  str            = ""
+    ) -> Union[RoomPutStateResponse, RoomPutStateError]:
+        """Send a state event to a room.
+
+        Returns either a `RoomPutStateResponse` if the request was successful
+        or a `RoomPutStateError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room to send the event to.
+            event_type (str): The type of the state to send.
+            content (Dict[Any, Any]): The content of the event to be sent.
+            state_key (str): The key of the state event to send.
+        """
+
+        method, path, data = Api.room_put_state(
+            self.access_token,
+            room_id,
+            event_type,
+            content,
+            state_key = state_key
+        )
+
+        return await self._send(
+            RoomPutStateResponse,
+            method,
+            path,
+            data,
+            response_data = (room_id,),
+        )
+
+    @logged_in
+    async def room_get_state(
+            self,
+            room_id: str,
+    ) -> Union[RoomGetStateResponse, RoomGetStateError]:
+        """Fetch state for a room.
+
+        Returns either a `RoomGetStateResponse` if the request was successful
+        or a `RoomGetStateError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room to fetch state from.
+        """
+
+        method, path = Api.room_get_state(
+            self.access_token,
+            room_id,
+        )
+
+        return await self._send(
+            RoomGetStateResponse,
+            method,
+            path,
+            response_data = (room_id,),
+        )
+    @logged_in
+    async def room_get_state_event(
+            self,
+            room_id:    str,
+            event_type: str,
+            state_key:  str  = ""
+    ) -> Union[RoomGetStateEventResponse, RoomGetStateEventError]:
+        """Fetch a state event from a room.
+
+        Returns either a `RoomGetStateEventResponse` if the request was successful
+        or a `RoomGetStateEventError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room to fetch the event from.
+            event_type (str): The type of the state to fetch.
+            state_key (str): The key of the state event to fetch.
+        """
+
+        method, path = Api.room_get_state_event(
+            self.access_token,
+            room_id,
+            event_type,
+            state_key = state_key
+        )
+
+        return await self._send(
+            RoomGetStateEventResponse,
+            method,
+            path,
+            response_data = (event_type, state_key, room_id,),
+        )
 
     @logged_in
     async def room_redact(

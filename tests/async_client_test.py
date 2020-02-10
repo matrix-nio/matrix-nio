@@ -33,6 +33,8 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  RoomInviteResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomRedactResponse, RoomSendResponse, RoomSummary,
+                 RoomGetStateResponse, RoomGetStateEventResponse,
+                 RoomPutStateResponse,
                  ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
                  Timeline, TransferMonitor, TransferCancelledError,
@@ -125,6 +127,11 @@ class TestClass(object):
                     "display_name": "Carol"
                 },
             }}
+
+    @property
+    def room_get_state_response(self):
+        return self._load_response(
+            "tests/data/room_state.json")
 
     @property
     def encryption_sync_response(self):
@@ -571,6 +578,89 @@ class TestClass(object):
         )
 
         assert isinstance(response, RoomSendResponse)
+
+    async def test_room_put_state(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        base_url = "https://example.org/_matrix/client/r0"
+
+        aioresponse.put(
+            "{base}/rooms/{room}/state/{event}/{key}?{query}".format(
+                base = base_url,
+                room = TEST_ROOM_ID,
+                event = "org.example.event_type",
+                key = "",
+                query = "access_token=abc123"
+            ),
+            status = 200,
+            payload={"event_id": "$1337stateeventid2342:example.org"}
+        )
+
+        resp = await async_client.room_put_state(
+                TEST_ROOM_ID,
+                "org.example.event_type",
+                {}
+        )
+
+        assert isinstance(resp, RoomPutStateResponse)
+
+
+    async def test_room_get_state_event(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        base_url = "https://example.org/_matrix/client/r0"
+        path = "{base}/rooms/{room}/state/{event}/{key}?{query}".format(
+            base = base_url,
+            room = TEST_ROOM_ID,
+            event = "m.room.name",
+            key = "",
+            query = "access_token=abc123"
+        )
+
+        aioresponse.get(
+            path,
+            status = 200,
+            payload={"name": "Test Room"}
+        )
+
+        resp = await async_client.room_get_state_event(
+                TEST_ROOM_ID,
+                "m.room.name"
+        )
+
+        assert isinstance(resp, RoomGetStateEventResponse)
+
+
+    async def test_room_get_state(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        base_url = "https://example.org/_matrix/client/r0"
+
+        aioresponse.get(
+            "{base}/rooms/{room}/state?{query}".format(
+                base = base_url,
+                room = TEST_ROOM_ID,
+                query = "access_token=abc123"
+            ),
+            status = 200,
+            payload=self.room_get_state_response
+        )
+
+        resp = await async_client.room_get_state(
+                TEST_ROOM_ID,
+        )
+
+        assert isinstance(resp, RoomGetStateResponse)
+
 
     def keys_claim_dict(self, client):
         to_share = client.olm.share_keys()

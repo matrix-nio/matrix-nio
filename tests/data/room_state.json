@@ -1,0 +1,82 @@
+[
+    {
+        "content": {
+            "join_rule": "public"
+        },
+        "type": "m.room.join_rules",
+        "event_id": "$143273582443PhrSn:example.org",
+        "room_id": "!636q39766251:example.com",
+        "sender": "@example:example.org",
+        "origin_server_ts": 1432735824653,
+        "unsigned": {
+            "age": 1234
+        },
+        "state_key": ""
+    },
+    {
+        "content": {
+            "membership": "join",
+            "avatar_url": "mxc://example.org/SEsfnsuifSDFSSEF",
+            "displayname": "Alice Margatroid"
+        },
+        "type": "m.room.member",
+        "event_id": "$143273582443PhrSn:example.org",
+        "room_id": "!636q39766251:example.com",
+        "sender": "@example:example.org",
+        "origin_server_ts": 1432735824653,
+        "unsigned": {
+            "age": 1234
+        },
+        "state_key": "@alice:example.org"
+    },
+    {
+        "content": {
+            "creator": "@example:example.org",
+            "room_version": "1",
+            "m.federate": true,
+            "predecessor": {
+                "event_id": "$something:example.org",
+                "room_id": "!oldroom:example.org"
+            }
+        },
+        "type": "m.room.create",
+        "event_id": "$143273582443PhrSn:example.org",
+        "room_id": "!636q39766251:example.com",
+        "sender": "@example:example.org",
+        "origin_server_ts": 1432735824653,
+        "unsigned": {
+            "age": 1234
+        },
+        "state_key": ""
+    },
+    {
+        "content": {
+            "ban": 50,
+            "events": {
+                "m.room.name": 100,
+                "m.room.power_levels": 100
+            },
+            "events_default": 0,
+            "invite": 50,
+            "kick": 50,
+            "redact": 50,
+            "state_default": 50,
+            "users": {
+                "@example:localhost": 100
+            },
+            "users_default": 0,
+            "notifications": {
+                "room": 20
+            }
+        },
+        "type": "m.room.power_levels",
+        "event_id": "$143273582443PhrSn:example.org",
+        "room_id": "!636q39766251:example.com",
+        "sender": "@example:example.org",
+        "origin_server_ts": 1432735824653,
+        "unsigned": {
+            "age": 1234
+        },
+        "state_key": ""
+    }
+]

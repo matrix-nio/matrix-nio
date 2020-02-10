@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2020 Famedly GmbH
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -409,7 +410,36 @@ class Schemas(object):
         "required": ["event_id", "sender", "type", "origin_server_ts"],
     }
 
+    state_event = {
+        "type": "object",
+        "properties": {
+            "event_id": {"type": "string"},
+            "sender": {"type": "string", "format": "user_id"},
+            "type": {"type": "string"},
+            "state_key": {"type": "string"},
+            "origin_server_ts": {"type": "integer", "minimum": 0},
+            "unsigned": {
+                "type": "object",
+                "properties": {
+                    "transaction_id": {"type": "string"},
+                }
+            },
+        },
+        "required": [
+            "event_id",
+            "sender",
+            "type",
+            "state_key",
+            "origin_server_ts"
+        ],
+    }
+
     room_state = {
+        "type": "array",
+        "items": state_event,
+    }
+
+    sync_room_state = {
         "type": "object",
         "properties": {"events": {"type": "array"}},
         "required": ["events"],
