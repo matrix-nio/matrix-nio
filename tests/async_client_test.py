@@ -19,7 +19,7 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  DeleteDevicesResponse,
                  DownloadResponse, ErrorResponse,
                  GroupEncryptionError,
-                 JoinResponse,
+                 JoinResponse, JoinedRoomsResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginError,
                  LoginResponse, LogoutError, LogoutResponse,
@@ -127,6 +127,12 @@ class TestClass(object):
                     "display_name": "Carol"
                 },
             }}
+
+    @property
+    def joined_rooms_response(self):
+        return {
+            "joined_rooms": [TEST_ROOM_ID]
+        }
 
     @property
     def room_get_state_response(self):
@@ -788,6 +794,22 @@ class TestClass(object):
 
         assert isinstance(response, JoinedMembersResponse)
         assert room.members_synced
+
+    async def test_joined_rooms(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/joined_rooms?access_token=abc123",
+            status=200,
+            payload=self.joined_rooms_response
+        )
+
+        response = await async_client.joined_rooms()
+
+        assert isinstance(response, JoinedRoomsResponse)
 
     async def test_session_sharing(self, alice_client, async_client, aioresponse):
         await async_client.receive_response(

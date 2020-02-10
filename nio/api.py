@@ -991,6 +991,21 @@ class Api(object):
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
+    def joined_rooms(access_token):
+        # type: (str) -> Tuple[str, str]
+        """Get the list of joined rooms for the logged in account.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+        """
+        query_parameters = {"access_token": access_token}
+        path = "joined_rooms"
+
+        return "GET", Api._build_path(path, query_parameters)
+
+    @staticmethod
     def room_typing(
         access_token,       # type: str
         room_id,            # type: str

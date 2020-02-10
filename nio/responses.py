@@ -53,6 +53,8 @@ __all__ = [
     "JoinError",
     "JoinedMembersResponse",
     "JoinedMembersError",
+    "JoinedRoomsResponse",
+    "JoinedRoomsError",
     "KeysClaimResponse",
     "KeysClaimError",
     "KeysQueryResponse",
@@ -481,6 +483,11 @@ class JoinedMembersError(_ErrorWithRoomId):
     pass
 
 
+class JoinedRoomsError(ErrorResponse):
+    """A response representing an unsuccessful joined rooms query."""
+    pass
+
+
 class ProfileGetError(ErrorResponse):
     pass
 
@@ -579,6 +586,26 @@ class JoinedMembersResponse(Response):
             members.append(user)
 
         return cls(members, room_id)
+
+
+@attr.s
+class JoinedRoomsResponse(Response):
+    """A response containing a list of joined rooms.
+
+    Attributes:
+        rooms (List[str]): The rooms joined by the account.
+    """
+
+    rooms = attr.ib(type=List[str])
+
+    @classmethod
+    @verify(Schemas.joined_rooms, JoinedRoomsError)
+    def from_dict(
+        cls,
+        parsed_dict  # type: Dict[Any, Any]
+    ):
+        # type: (...) -> Union[JoinedRoomsResponse, ErrorResponse]
+        return cls(parsed_dict["joined_rooms"])
 
 
 @attr.s

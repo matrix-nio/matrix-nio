@@ -51,6 +51,7 @@ from ..responses import (DeleteDevicesError, DeleteDevicesResponse,
                          ErrorResponse, FileResponse,
                          JoinResponse, JoinError,
                          JoinedMembersError, JoinedMembersResponse,
+                         JoinedRoomsError, JoinedRoomsResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
                          KeysUploadResponse, LoginError, LoginResponse,
                          LogoutError, LogoutResponse,
@@ -1041,6 +1042,24 @@ class AsyncClient(Client):
         )
 
     @logged_in
+    async def joined_rooms(self):
+        # type: () -> Union[JoinedRoomsResponse, JoinedRoomsError]
+        """Get the list of joined rooms.
+
+        Returns either a `JoinedRoomsResponse` if the request was successful
+        or a `JoinedRoomsError` if there was an error with the request.
+        """
+        method, path = Api.joined_rooms(
+            self.access_token
+        )
+
+        return await self._send(
+            JoinedRoomsResponse,
+            method,
+            path
+        )
+
+    @logged_in
     async def room_send(
             self,
             room_id,
@@ -1186,6 +1205,7 @@ class AsyncClient(Client):
             path,
             response_data = (room_id,),
         )
+
     @logged_in
     async def room_get_state_event(
             self,

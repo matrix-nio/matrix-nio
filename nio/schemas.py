@@ -1236,6 +1236,17 @@ class Schemas(object):
         "required": ["joined"]
     }
 
+    joined_rooms = {
+        "type": "object",
+        "properties": {
+            "joined_rooms": {
+                "type": "array",
+                "items": {"type": "string"}
+            }
+        },
+        "required": ["joined_rooms"]
+    }
+
     call_invite = {
         "type": "object",
         "properties": {
