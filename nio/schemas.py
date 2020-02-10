@@ -991,6 +991,12 @@ class Schemas(object):
         "additionalProperties": False,
     }
 
+    room_create_response = {
+        "type": "object",
+        "properties": {"room_id": {"type": "string"}},
+        "required": ["room_id"],
+    }
+
     room_messages = {
         "type": "object",
         "properties": {

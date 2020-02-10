@@ -936,12 +936,21 @@ class RoomIdResponse(Response):
 
         return cls(parsed_dict["room_id"])
 
-
-class RoomCreateResponse(RoomIdResponse):
+@attr.s
+class RoomCreateResponse(Response):
     """Response representing a successful create room request."""
-    @staticmethod
-    def create_error(parsed_dict):
-        return RoomCreateError.from_dict(parsed_dict)
+    room_id = attr.ib(type=str)
+
+
+    @classmethod
+    @verify(Schemas.room_create_response, RoomCreateError, pass_arguments=False)
+    def from_dict(
+        cls,
+        parsed_dict  # type: Dict[Any, Any]
+    ):
+        # type: (...) -> Union[RoomCreateResponse, RoomCreateError]
+        return cls(parsed_dict["room_id"])
+
 
 
 class JoinResponse(RoomIdResponse):
