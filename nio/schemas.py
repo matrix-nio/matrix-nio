@@ -977,6 +977,16 @@ class Schemas(object):
         "required": ["sender", "redacts"],
     }
 
+    room_resolve_alias = {
+        "type": "object",
+        "properties": {
+            "room_id": {"type": "string"},
+            "servers": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["room_id", "servers"],
+    }
+
+
     room_event_id = {
         "type": "object",
         "properties": {"event_id": {"type": "string"}},

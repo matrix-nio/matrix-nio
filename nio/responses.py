@@ -90,6 +90,8 @@ __all__ = [
     "RoomPutStateError",
     "RoomRedactResponse",
     "RoomRedactError",
+    "RoomResolveAliasResponse",
+    "RoomResolveAliasError",
     "RoomSendResponse",
     "RoomSendError",
     "RoomSummary",
@@ -376,6 +378,11 @@ class RoomPutStateError(_ErrorWithRoomId):
 
 
 class RoomRedactError(_ErrorWithRoomId):
+    pass
+
+
+class RoomResolveAliasError(ErrorResponse):
+    """A response representing an unsuccessful room alias query."""
     pass
 
 
@@ -769,6 +776,31 @@ class RoomRedactResponse(RoomEventIdResponse):
     @staticmethod
     def create_error(parsed_dict, room_id):
         return RoomRedactError.from_dict(parsed_dict, room_id)
+
+@attr.s
+class RoomResolveAliasResponse(Response):
+    """A response containing the result of resolving an alias.
+
+    Attributes:
+        room_alias (str): The alias of the room.
+        room_id (str): The resolved id of the room.
+        servers (List[str]): Servers participating in the room.
+    """
+    room_alias = attr.ib(type=str)
+    room_id = attr.ib(type=str)
+    servers = attr.ib(type=List[str])
+
+    @classmethod
+    @verify(Schemas.room_resolve_alias, RoomResolveAliasError, pass_arguments=False)
+    def from_dict(
+        cls,
+        parsed_dict,  # type: Dict[Any, Any]
+        room_alias
+    ):
+        # type: (...) -> Union[RoomResolveAliasResponse, ErrorResponse]
+        room_id = parsed_dict["room_id"]
+        servers = parsed_dict["servers"]
+        return cls(room_alias, room_id, servers)
 
 
 class EmptyResponse(Response):

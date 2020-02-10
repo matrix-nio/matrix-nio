@@ -1006,6 +1006,20 @@ class Api(object):
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
+    def room_resolve_alias(room_alias):
+        # type: (str) -> Tuple[str, str]
+        """Resolve a room alias to a room ID.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            room_alias (str): The alias to resolve
+        """
+        path = "directory/room/{}".format(room_alias)
+
+        return "GET", Api._build_path(path)
+
+    @staticmethod
     def room_typing(
         access_token,       # type: str
         room_id,            # type: str

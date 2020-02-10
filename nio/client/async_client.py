@@ -72,6 +72,7 @@ from ..responses import (DeleteDevicesError, DeleteDevicesResponse,
                          RoomGetStateEventError, RoomGetStateEventResponse,
                          RoomPutStateError, RoomPutStateResponse,
                          RoomRedactError, RoomRedactResponse,
+                         RoomResolveAliasError, RoomResolveAliasResponse,
                          RoomSendResponse, RoomTypingResponse, RoomTypingError,
                          ShareGroupSessionError,
                          ShareGroupSessionResponse, SyncError, SyncResponse,
@@ -1273,6 +1274,28 @@ class AsyncClient(Client):
             path,
             data,
             response_data = (room_id,),
+        )
+
+    async def room_resolve_alias(
+            self,
+            room_alias: str,
+    ) -> Union[RoomResolveAliasResponse, RoomResolveAliasError]:
+        """Resolve a room alias to a room ID.
+
+        Returns either a `RoomResolveAliasResponse` if the request was
+        successful or a `RoomResolveAliasError if there was an error
+        with the request.
+
+        Args:
+            room_alias (str): The alias to resolve
+        """
+        method, path = Api.room_resolve_alias(room_alias)
+
+        return await self._send(
+            RoomResolveAliasResponse,
+            method,
+            path,
+            response_data = (room_alias,),
         )
 
     @logged_in

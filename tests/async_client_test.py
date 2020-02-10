@@ -32,9 +32,10 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
                  RoomInviteResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
-                 RoomRedactResponse, RoomSendResponse, RoomSummary,
                  RoomGetStateResponse, RoomGetStateEventResponse,
                  RoomPutStateResponse,
+                 RoomRedactResponse, RoomResolveAliasResponse,
+                 RoomSendResponse, RoomSummary,
                  ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
                  Timeline, TransferMonitor, TransferCancelledError,
@@ -323,6 +324,13 @@ class TestClass(object):
     @staticmethod
     def get_avatar_response(avatar_url):
         return {"avatar_url": avatar_url}
+
+    @property
+    def room_resolve_alias_response(self):
+        return {
+            "room_id": TEST_ROOM_ID,
+            "servers": ["example.org", "matrix.org"]
+        }
 
     async def test_mxc_to_http(self, async_client):
         mxc      = "mxc://privacytools.io/123foo"
@@ -1569,6 +1577,17 @@ class TestClass(object):
         resp3 = await async_client.get_avatar()
         assert isinstance(resp3, ProfileGetAvatarResponse)
         assert resp3.avatar_url.replace("#auto", "") == new_avatar
+
+    async def test_room_resolve_alias(self, async_client, aioresponse):
+        aioresponse.get(
+                "https://example.org/_matrix/client/r0/directory/room/%23test%3Aexample.org",
+            status=200,
+            payload=self.room_resolve_alias_response
+        )
+
+        resp = await async_client.room_resolve_alias("#test:example.org")
+
+        assert isinstance(resp, RoomResolveAliasResponse)
 
     async def test_limit_exceeded(self, async_client, aioresponse):
         aioresponse.post(
