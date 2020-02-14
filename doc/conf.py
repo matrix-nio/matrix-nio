@@ -21,13 +21,13 @@ sys.path.insert(0, os.path.abspath('../'))
 # -- Project information -----------------------------------------------------
 
 project = 'nio'
-copyright = '2019, Damir Jelić'
+copyright = '2020, Damir Jelić'
 author = 'Damir Jelić'
 
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '0.7.1'
+release = '0.7.2'
 
 
 # -- General configuration ---------------------------------------------------
