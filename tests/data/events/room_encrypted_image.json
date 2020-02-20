@@ -1,0 +1,39 @@
+{
+    "room_id": "!testroom:localhost",
+    "event_id": "$15163622445EBvZK:localhost",
+    "origin_server_ts": 1516362244030,
+    "sender": "@example2:localhost",
+    "type": "m.room.message",
+    "content": {
+        "body": "orange_cat.jpg",
+        "msgtype": "m.image",
+        "file": {
+            "v": "v2",
+            "key": {
+                "alg": "A256CTR",
+                "ext": true,
+                "k": "yx0QvkgYlasdWEsdalkejaHBzCkKEBAp3tB7dGtWgrs",
+                "key_ops": ["encrypt", "decrypt"],
+                "kty": "oct"
+            },
+            "iv": "0pglXX7fspIBBBBAEERLFd",
+            "hashes": {"sha256": "eXRDFvh+aXsQRj8a+5ZVVWUQ9Y6u9DYiz4tq1NvbLu8"},
+            "url": "mxc://localhost/maDtasSiPFjROFMnlwxIhhyW",
+            "mimetype": "image/jpeg"
+        },
+        "thumbnail_file": {
+            "v": "v2",
+            "key": {
+                "alg": "A256CTR",
+                "ext": true,
+                "k": "E--asljaerlkjmaKLAJD_WN7t6aSfAgiw3wSl_X2Lv0",
+                "key_ops": ["encrypt", "decrypt"],
+                "kty": "oct"
+            },
+            "iv": "LKAJSAfuJxkAAAAAAAAAAA",
+            "hashes": {"sha256": "lkajsdl-aldsjfasrSlJA9xnr7P2BjWja3vczIyGeN4"},
+            "url": "mxc://localhost/askdlrioaKLAJKlkdahsdsoM",
+            "mimetype": "image/jpeg"
+        }
+    }
+}

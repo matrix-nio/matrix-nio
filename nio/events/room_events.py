@@ -854,11 +854,18 @@ class RoomEncryptedMedia(RoomMessage):
     Attributes:
         url (str): The URL of the file.
         body (str): The description of the message.
-        key (str): The key that can be used to decrypt the file.
+        key (dict): The key that can be used to decrypt the file.
         hashes (dict): A mapping from an algorithm name to a hash of the
             ciphertext encoded as base64.
         iv (str): The initialisation vector that was used to encrypt the file.
 
+        thumbnail_url (str, optional): The URL of the thumbnail file.
+        thumbnail_key (dict, optional): The key that can be used to decrypt the
+            thumbnail file.
+        thumbnail_hashes (dict, optional): A mapping from an algorithm name to a hash of the
+            thumbnail ciphertext encoded as base64.
+        thumbnail_iv (str, optional): The initialisation vector that was used to
+            encrypt the thumbnail file.
     """
 
     url = attr.ib()
@@ -867,9 +874,21 @@ class RoomEncryptedMedia(RoomMessage):
     hashes = attr.ib()
     iv = attr.ib()
 
+    thumbnail_url = attr.ib(type=Optional[str], default=None)
+    thumbnail_key = attr.ib(type=Optional[Dict], default=None)
+    thumbnail_hashes = attr.ib(type=Optional[Dict], default=None)
+    thumbnail_iv = attr.ib(type=Optional[str], default=None)
+
     @classmethod
     @verify(Schemas.room_encrypted_media)
     def from_dict(cls, parsed_dict):
+        thumbnail_file = parsed_dict["content"].get("thumbnail_file")
+
+        thumbnail_url = thumbnail_file.get("url")
+        thumbnail_key = thumbnail_file.get("key")
+        thumbnail_hashes = thumbnail_file.get("hashes")
+        thumbnail_iv = thumbnail_file.get("iv")
+
         return cls(
             parsed_dict,
             parsed_dict["content"]["file"]["url"],
@@ -877,6 +896,10 @@ class RoomEncryptedMedia(RoomMessage):
             parsed_dict["content"]["file"]["key"],
             parsed_dict["content"]["file"]["hashes"],
             parsed_dict["content"]["file"]["iv"],
+            thumbnail_url,
+            thumbnail_key,
+            thumbnail_hashes,
+            thumbnail_iv,
         )
 
 

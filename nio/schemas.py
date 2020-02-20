@@ -174,8 +174,30 @@ class Schemas(object):
                                 "required": ["alg", "k"],
                             },
                         },
+                        "required": ["url", "hashes", "iv", "key"],
                     },
-                    "required": ["url", "hashes", "iv", "key"],
+                    "thumbnail_file": {
+                        "type": "object",
+                        "properties": {
+                            "url": {"type": "string"},
+                            "hashes": {
+                                "type": "object",
+                                "properties": {
+                                    "sha256": {"type": "string"}
+                                }
+                            },
+                            "iv": {"type": "string"},
+                            "key": {
+                                "type": "object",
+                                "properties": {
+                                    "alg": {"type": "string"},
+                                    "k": {"type": "string"},
+                                },
+                                "required": ["alg", "k"],
+                            },
+                        },
+                        "required": ["url", "hashes", "iv", "key"],
+                    },
                 },
                 "required": ["body", "file", "msgtype"],
             }
