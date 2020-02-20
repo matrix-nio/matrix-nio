@@ -42,14 +42,14 @@ class TestClass(object):
 
         # Encrypt a message and check that the use time increased.
         message = session.encrypt(plaintext)
-        assert session.use_time > creation_time
+        assert session.use_time >= creation_time
 
         inbound = InboundSession(bob, message)
         creation_time = inbound.use_time
 
         # Decrypt a message and check that the use time increased.
         decrypted_plaintext = inbound.decrypt(message)
-        assert inbound.use_time > creation_time
+        assert inbound.use_time >= creation_time
 
         assert decrypted_plaintext == plaintext
 
@@ -68,7 +68,7 @@ class TestClass(object):
                                         session.use_time)
         use_time = unpickled.use_time
         decrypted_plaintext = unpickled.decrypt(message)
-        assert unpickled.use_time > use_time
+        assert unpickled.use_time >= use_time
         assert decrypted_plaintext == plaintext
 
     def test_outbound_group_session(self):
