@@ -21,19 +21,21 @@
             "url": "mxc://localhost/maDtasSiPFjROFMnlwxIhhyW",
             "mimetype": "image/jpeg"
         },
-        "thumbnail_file": {
-            "v": "v2",
-            "key": {
-                "alg": "A256CTR",
-                "ext": true,
-                "k": "E--asljaerlkjmaKLAJD_WN7t6aSfAgiw3wSl_X2Lv0",
-                "key_ops": ["encrypt", "decrypt"],
-                "kty": "oct"
-            },
-            "iv": "LKAJSAfuJxkAAAAAAAAAAA",
-            "hashes": {"sha256": "lkajsdl-aldsjfasrSlJA9xnr7P2BjWja3vczIyGeN4"},
-            "url": "mxc://localhost/askdlrioaKLAJKlkdahsdsoM",
-            "mimetype": "image/jpeg"
+        "info": {
+            "thumbnail_file": {
+                "v": "v2",
+                "key": {
+                    "alg": "A256CTR",
+                    "ext": true,
+                    "k": "E--asljaerlkjmaKLAJD_WN7t6aSfAgiw3wSl_X2Lv0",
+                    "key_ops": ["encrypt", "decrypt"],
+                    "kty": "oct"
+                },
+                "iv": "LKAJSAfuJxkAAAAAAAAAAA",
+                "hashes": {"sha256": "lkajsdl-aldsjfasrSlJA9xnr7P2BjWja3vczIyGeN4"},
+                "url": "mxc://localhost/askdlrioaKLAJKlkdahsdsoM",
+                "mimetype": "image/jpeg"
+            }
         }
     }
 }

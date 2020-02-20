@@ -882,7 +882,8 @@ class RoomEncryptedMedia(RoomMessage):
     @classmethod
     @verify(Schemas.room_encrypted_media)
     def from_dict(cls, parsed_dict):
-        thumbnail_file = parsed_dict["content"].get("thumbnail_file")
+        info = parsed_dict["content"].get("info", {})
+        thumbnail_file = info.get("thumbnail_file", {})
 
         thumbnail_url = thumbnail_file.get("url")
         thumbnail_key = thumbnail_file.get("key")
