@@ -107,7 +107,7 @@ Account Data
 
 Building events
 ---------------------
-.. automodule:: nio.event_builder
+.. automodule:: nio.event_builders
     :members:
     :show-inheritance:
 
