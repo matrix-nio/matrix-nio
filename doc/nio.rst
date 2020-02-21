@@ -31,6 +31,10 @@ AsyncClient
     :undoc-members:
     :show-inheritance:
 
+.. autoclass:: nio.TransferMonitor
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 HttpClient
 ^^^^^^^^^^^^^^^^
@@ -101,10 +105,11 @@ Account Data
     :show-inheritance:
 
 
-Messages
+Building events
 ---------------------
-.. automodule:: nio.messages
+.. automodule:: nio.event_builder
     :members:
+    :show-inheritance:
 
 
 Exceptions
