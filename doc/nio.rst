@@ -111,13 +111,19 @@ Building events
     :members:
     :show-inheritance:
 
-.. automodule:: nio.event_builders.event_builder
+.. autoclass:: nio.event_builders.EventBuilder
     :members:
     :show-inheritance:
+
+Direct messages
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. automodule:: nio.event_builders.direct_messages
     :members:
     :show-inheritance:
+
+State events
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. automodule:: nio.event_builders.state_events
     :members:
