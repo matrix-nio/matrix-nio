@@ -24,7 +24,7 @@ import attr
 from ..schemas import Schemas
 from .misc import (BadEventType, UnknownBadEvent, validate_or_badevent, verify,
                    BadEvent)
-from ..event_builders import ToDeviceMessage
+from ..event_builders import RoomKeyRequestMessage
 
 
 @attr.s
@@ -313,8 +313,8 @@ class MegolmEvent(Event):
 
         return event
 
-    def as_key_request(self, user_id, requesting_device_id, request_id=None):
-        # type: (str, str, Optional[str]) -> ToDeviceMessage
+    def as_key_request(self, user_id, requesting_device_id, request_id=None, device_id=None):
+        # type: (str, str, Optional[str], Optional[str]) -> RoomKeyRequestMessage
         """Make a to-device message for a room key request.
 
         MegolmEvents are presented to library users only if the library fails
@@ -327,8 +327,16 @@ class MegolmEvent(Event):
         Args:
             user_id (str): The user id of the user that should receive the key
                 request.
-
+            requesting_device_id (str): The device id of the user that is
+                requesting the key.
+            request_id (str, optional): A unique string identifying the request.
+                Defaults to the session id of the missing megolm session.
+            device_id (str, optional): The device id of the device that should
+                receive the request. Defaults to all the users devices.
         """
+        assert self.session_id
+        request_id = request_id or self.session_id
+
         content = {
             "action": "request",
             "body": {
@@ -337,15 +345,19 @@ class MegolmEvent(Event):
                 "room_id": self.room_id,
                 "sender_key": self.sender_key
             },
-            "request_id": request_id or self.session_id,
+            "request_id": request_id,
             "requesting_device_id": requesting_device_id,
         }
 
-        return ToDeviceMessage(
+        return RoomKeyRequestMessage(
             "m.room_key_request",
             user_id,
-            "*",
-            content
+            device_id or "*",
+            content,
+            request_id,
+            self.session_id,
+            self.room_id,
+            self.algorithm,
         )
 
 
