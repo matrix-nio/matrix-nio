@@ -53,3 +53,27 @@ class ToDeviceMessage(EventBuilder):
                 }
             }
         }
+
+
+@attr.s
+class DummyMessage(ToDeviceMessage):
+    """A dummy to-device mssage that is sent to restart a Olm session."""
+    pass
+
+
+@attr.s
+class RoomKeyRequestMessage(ToDeviceMessage):
+    """A to-device message that requests room keys from other devices.
+
+    Attributes:
+        request_id (str): The unique request id that identifies this key
+            request.
+        session_id (str): The session id that uniquely identifies the room key.
+        room_id (str): The room id of the room that the key belongs to.
+        algorithm (str): The algorithm of the room key.
+
+    """
+    request_id = attr.ib(type=str)
+    session_id = attr.ib(type=str)
+    room_id = attr.ib(type=str)
+    algorithm = attr.ib(type=str)
