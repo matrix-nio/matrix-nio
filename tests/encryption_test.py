@@ -20,6 +20,7 @@ from nio.exceptions import EncryptionError, GroupEncryptionError, OlmTrustError
 from nio.responses import (KeysClaimResponse, KeysQueryResponse,
                            KeysUploadResponse)
 from nio.store import DefaultStore, Ed25519Key, Key, KeyStore
+from nio.event_builders import RoomKeyRequestMessage
 
 from helpers import faker
 
@@ -1951,3 +1952,225 @@ class TestClass(object):
         assert not bob.outgoing_to_device_messages
         bob.collect_key_requests()
         assert not bob.outgoing_to_device_messages
+
+    def test_key_re_request(self, olm_account, bob_account):
+        alice = olm_account
+        bob = bob_account
+
+        alice_device = OlmDevice(
+            alice.user_id,
+            alice.device_id,
+            alice.account.identity_keys
+        )
+        bob_device = OlmDevice(
+            bob.user_id,
+            bob.device_id,
+            bob.account.identity_keys
+        )
+
+        alice.device_store.add(bob_device)
+        bob.device_store.add(alice_device)
+
+        alice.verify_device(bob_device)
+
+        bob.account.generate_one_time_keys(1)
+        one_time = list(bob.account.one_time_keys["curve25519"].values())[0]
+        bob.account.mark_keys_as_published()
+
+        alice.create_session(one_time, bob_device.curve25519)
+
+        # Let us pickle our session with bob here so we can later unpickle it
+        # and wedge our session.
+        alice_pickle = alice.session_store[bob_device.curve25519][0].pickle("")
+
+        # Share a initial olm encrypted message
+        _, to_device = alice.share_group_session(
+            TEST_ROOM,
+            [bob.user_id],
+            ignore_unverified_devices=True
+        )
+
+        outbound_session = alice.outbound_group_sessions[TEST_ROOM]
+
+        olm_message = self.olm_message_to_event(to_device, bob, alice)
+
+        # Pass the to-device event to bob and make sure we get the right events
+        event = ToDeviceEvent.parse_event(olm_message)
+        assert isinstance(event, OlmEvent)
+        decrypted_event = bob.decrypt_event(event)
+        assert isinstance(decrypted_event, RoomKeyEvent)
+
+        # Make sure bob got the room-key
+        assert bob.inbound_group_store
+        bob_session = bob.inbound_group_store.get(
+            TEST_ROOM,
+            alice_device.curve25519,
+            outbound_session.id
+        )
+
+        assert bob_session.id == outbound_session.id
+
+        # Now bob shares a room-key with alice
+        _, to_device = bob.share_group_session(
+            TEST_ROOM,
+            [alice.user_id],
+            ignore_unverified_devices=True
+        )
+
+        olm_message = self.olm_message_to_event(to_device, alice, bob)
+        event = ToDeviceEvent.parse_event(olm_message)
+        assert isinstance(event, OlmEvent)
+        decrypted_event = alice.decrypt_event(event)
+        assert isinstance(decrypted_event, RoomKeyEvent)
+
+        # Let us wedge the session now
+        session = alice.session_store[bob_device.curve25519][0]
+        alice.session_store[bob_device.curve25519][0] = (
+            Session.from_pickle(alice_pickle, session.creation_time, "",
+                                session.use_time))
+
+        alice.rotate_outbound_group_session(TEST_ROOM)
+
+        # Try to share a room-key now
+        _, to_device = alice.share_group_session(
+            TEST_ROOM,
+            [bob.user_id],
+            ignore_unverified_devices=True
+        )
+
+        # Set the creation time to be older than an hour, otherwise we will not
+        # be able to unwedge the session.
+        alice_session = bob.session_store.get(alice_device.curve25519)
+        alice_session.creation_time = datetime.now() - timedelta(hours=2)
+
+        olm_message = self.olm_message_to_event(to_device, bob, alice)
+        # Pass the to-device event to bob and make sure we get the right events
+        event = ToDeviceEvent.parse_event(olm_message)
+        assert isinstance(event, OlmEvent)
+        decrypted_event = bob.decrypt_event(event)
+
+        # Make sure that decryption failed
+        assert decrypted_event is None
+
+        # Make sure that we have queued a m.dummy message to be sent out as a
+        # to-device message
+
+        assert alice_device in bob.wedged_devices
+
+        # Alice now encrypts a room message for bob.
+
+        # Mark the session as shared.
+        session = alice.outbound_group_sessions[TEST_ROOM]
+        session.shared = True
+        session.users_shared_with.add((bob.user_id, bob.device_id))
+
+        message = {
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": "hello wordl",
+            },
+        }
+
+        encrypted_content = alice.group_encrypt(TEST_ROOM, message)
+        encrypted_message = {
+            "event_id": "!event_id",
+            "type": "m.room.encrypted",
+            "sender": alice.user_id,
+            "origin_server_ts": int(time.time()),
+            "content": encrypted_content,
+            "room_id": TEST_ROOM
+        }
+        megolm_event = MegolmEvent.from_dict(encrypted_message)
+
+        # Bob tries to decrypt the event, but no key is found. Since the Olm
+        # session was marked as wedged, this event should get cached until we
+        # send out the dummy event.
+        with pytest.raises(EncryptionError):
+            bob.decrypt_megolm_event(megolm_event)
+
+        # Let's check if bob had cached the event for a key re-request.
+        assert megolm_event in bob.key_re_requests_events[(megolm_event.sender,
+                                                           megolm_event.device_id)]
+
+        # Bob should now claim new keys from alice, we're simulating this over
+        # here since the olm machine doesn't know how to do requests.
+        to_share = alice.share_keys()
+        one_time_key = list(to_share["one_time_keys"].items())[0]
+
+        key_claim_dict = {
+            "one_time_keys": {
+                alice.user_id: {
+                    alice.device_id: {one_time_key[0]: one_time_key[1]},
+                },
+            },
+            "failures": {},
+        }
+
+        response = KeysClaimResponse.from_dict(key_claim_dict, TEST_ROOM)
+
+        assert not bob.outgoing_to_device_messages
+
+        assert isinstance(response, KeysClaimResponse)
+        bob.handle_response(response)
+
+        # After we claimed the keys a new Olm session will be created and a
+        # to-device message will be prepared for alice.
+        assert bob.outgoing_to_device_messages
+
+        message = bob.outgoing_to_device_messages[0]
+
+        assert message.type == "m.room.encrypted"
+        assert message.recipient == alice.user_id
+        assert message.recipient_device == alice.device_id
+
+        # Forward the message to alice.
+        event = ToDeviceEvent.parse_event(
+            self.olm_message_to_event(message.as_dict(), alice, bob)
+        )
+
+        # Alice receives the message and successfully decrypts it with the new
+        # session.
+        assert isinstance(event, OlmEvent)
+        decrypted_event = alice.decrypt_event(event)
+        assert isinstance(decrypted_event, DummyEvent)
+
+        # Bob marks the message as sent, we check that we have a new to-device
+        # message queued. It's the key re-request for the previous megolm event
+        # that failed to decrypt.
+        bob._mark_to_device_message_as_sent(message)
+        assert bob.outgoing_to_device_messages
+        message = bob.outgoing_to_device_messages[0]
+
+        # Bob sends out the key request.
+        assert isinstance(message, RoomKeyRequestMessage)
+        bob._mark_to_device_message_as_sent(message)
+        assert not bob.outgoing_to_device_messages
+
+        key_request = {
+            "sender": bob.user_id,
+            "type": "m.room_key_request",
+            "content": message.as_dict()["messages"][alice.user_id][alice.device_id]
+        }
+
+        key_request_event = RoomKeyRequest.from_dict(key_request)
+        assert isinstance(key_request_event, RoomKeyRequest)
+
+        # Alice receives the key request.
+        assert not alice.outgoing_to_device_messages
+        alice.handle_to_device_event(key_request_event)
+        assert key_request_event in alice.received_key_requests.values()
+        # Convert the key request event into a to-device message.
+        alice.collect_key_requests()
+        assert alice.outgoing_to_device_messages
+
+        message = alice.outgoing_to_device_messages[0]
+
+        olm_message = self.olm_message_to_event(message.as_dict(), bob,
+                                                alice)
+        forwarded_key_event = ToDeviceEvent.parse_event(olm_message)
+        assert isinstance(forwarded_key_event, OlmEvent)
+
+        bob.handle_to_device_event(forwarded_key_event)
+        event = bob.decrypt_megolm_event(megolm_event)
+        assert isinstance(event, RoomMessageText)

@@ -50,7 +50,8 @@ from ..responses import (KeysClaimResponse, KeysQueryResponse,
 from ..schemas import Schemas, validate_json
 from ..store import MatrixStore
 from .key_export import decrypt_and_read, encrypt_and_save
-from .sas import Sas, ToDeviceMessage
+from .sas import Sas
+from ..event_builders import ToDeviceMessage, DummyMessage, RoomKeyRequestMessage
 from .sessions import OutgoingKeyRequest
 
 try:
@@ -175,6 +176,13 @@ class Olm(object):
         # it will be removed from this list and a dummy encrypted message will
         # be queued to be sent as a to-device message.
         self.wedged_devices = list()  # type: List[OlmDevice]
+
+        # A cache of megolm events that failed to decrypt because the Olm
+        # session was wedged and thus the decryption key was missed.
+        # We need to unwedge the session and only then send out key re-requests,
+        # otherwise we might again fail to decrypt the Olm message.
+        self.key_re_requests_events = defaultdict(list)  \
+            # type: DefaultDict[Tuple[str, str], List[MegolmEvent]]
 
         # A mapping from a transaction id to a Sas key verification object. The
         # transaction id uniquely identifies the key verification session.
@@ -367,7 +375,7 @@ class Olm(object):
                     "{}".format(device.device_id, device.user_id))
 
         self.outgoing_to_device_messages.append(
-            ToDeviceMessage(
+            DummyMessage(
                 "m.room.encrypted",
                 device.user_id,
                 device.device_id,
@@ -939,10 +947,36 @@ class Olm(object):
         This removes the to-device message from our outgoing to-device list.
         """
 
-        # TODO if the to-device message was a m.dummy message resend key
-        # requests that were sent to the recipient of the message.
         try:
             self.outgoing_to_device_messages.remove(message)
+
+            if isinstance(message, DummyMessage):
+                # Queue up key requests to be sent out that happened because of
+                # this wedged session.
+                events = self.key_re_requests_events.pop((message.recipient, message.recipient_device), [])
+
+                requested_sessions = []
+
+                for event in events:
+                    # Don't send out key re-requests for the same session twice.
+                    # TODO filter this when putting the events in.
+                    if event.session_id in requested_sessions:
+                        continue
+
+                    message = event.as_key_request(event.sender, self.device_id,
+                                                   event.session_id, event.device_id)
+                    logger.info(f"Queuing a room key re-request for a unwedged "
+                                f"Olm session: {event.sender} {event.sender} "
+                                f"{event.session_id}.")
+                    self.outgoing_to_device_messages.append(message)
+
+                    requested_sessions.append(event.session_id)
+
+            elif isinstance(message, RoomKeyRequestMessage):
+                key_request = OutgoingKeyRequest.from_message(message)
+                self.outgoing_key_requests[message.request_id] = key_request
+                self.store.add_outgoing_key_request(key_request)
+
         except ValueError:
             pass
 
@@ -1410,6 +1444,46 @@ class Olm(object):
 
         return True
 
+    def check_if_wedged(self, event: MegolmEvent):
+        """Check if a Megolm event failed decryption because they keys got lost
+        because of a wedged Olm session.
+        """
+        try:
+            device = self.device_store[event.sender][event.device_id]
+        except KeyError:
+            logger.warn(f"Received a undecryptable Megolm event from a unknown "
+                        f"device: {event.sender} {event.device_id}")
+            self.users_for_key_query.add(event.sender)
+            return
+
+        session = self.session_store.get(device.curve25519)
+
+        if not session:
+            logger.warn(f"Received a undecryptable Megolm event from a device "
+                        f"with no Olm sessions: {event.sender} {event.device_id}")
+            return
+
+        session_age = datetime.now() - session.creation_time
+
+        # We received a undecryptable Megolm event from a device that is
+        # currently wedged or has been recently unwedged. If it's recently
+        # unwedged send out a key request, otherwise queue up a key request to
+        # be sent out after we send the dummy message.
+        if (session_age < self._unwedging_interval and
+            event.session_id not in self.outgoing_key_requests):
+            logger.info(f"Received a undecryptable Megolm event from a device "
+                        f"that we recently established an Olm session with: "
+                        f"{event.sender} {event.device_id}.")
+            message = event.as_key_request(event.sender, self.device_id,
+                                           event.session_id, event.device_id)
+            self.outgoing_to_device_messages.append(message)
+
+        if device in self.wedged_devices:
+            logger.info(f"Received a undecryptable Megolm event from a device "
+                        f"that has a wedged Olm session: "
+                        f"{event.sender} {event.device_id}.")
+            self.key_re_requests_events[(device.user_id, device.device_id)].append(event)
+
     def decrypt_megolm_event(self, event, room_id=None):
         # type (MegolmEvent, Optional[str]) -> Union[Event, BadEvent]
         room_id = room_id or event.room_id
@@ -1433,6 +1507,7 @@ class Olm(object):
                     room_id
                 )
             )
+            self.check_if_wedged(event)
             logger.warn(message)
             raise EncryptionError(message)
 
