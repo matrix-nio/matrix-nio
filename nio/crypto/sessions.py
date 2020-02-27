@@ -24,7 +24,7 @@ import attr
 import olm
 
 from ..exceptions import EncryptionError
-from ..event_builders import ToDeviceMessage
+from ..event_builders import ToDeviceMessage, RoomKeyRequestMessage
 
 if False:
     from ..responses import RoomKeyRequestResponse
@@ -345,6 +345,17 @@ class OutgoingKeyRequest(object):
             response.session_id,
             response.room_id,
             response.algorithm
+        )
+
+    @classmethod
+    def from_message(cls, message):
+        # type: (RoomKeyRequestMessage) -> OutgoingKeyRequest
+        """Create a key request object from a RoomKeyRequestMessage."""
+        return cls(
+            message.request_id,
+            message.session_id,
+            message.room_id,
+            message.algorithm,
         )
 
     @classmethod
