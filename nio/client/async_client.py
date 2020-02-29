@@ -596,6 +596,22 @@ class AsyncClient(Client):
         """Convert a matrix content URI to a HTTP URI."""
         return Api.mxc_to_http(mxc, homeserver or self.homeserver)
 
+    async def login_with_auth_string(self, auth_string):
+        # type: (str) -> Union[LoginResponse, LoginError]
+        """Login to the homeserver.
+
+        Args:
+            auth_string (str): The auth string.
+
+        Returns either a `LoginResponse` if the request was successful or
+        a `LoginError` if there was an error with the request.
+        """
+        method, path, data = Api.login_with_auth_string(
+            auth_string
+        )
+
+        return await self._send(LoginResponse, method, path, data)
+
     async def login(self, password, device_name=""):
         # type: (str, str) -> Union[LoginResponse, LoginError]
         """Login to the homeserver.

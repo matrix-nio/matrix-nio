@@ -288,6 +288,24 @@ class Api(object):
         return "POST", path, Api.to_json(content_dict)
 
     @staticmethod
+    def login_with_auth_string(
+        auth_string      # type: str
+    ):
+        # type: (...) -> Tuple[str, str, str]
+        """Authenticate the user.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            auth_string (str): The authentication string containing the
+                elements for the logon
+        """
+        path = Api._build_path("login")
+
+        return "POST", path, Api.to_json(auth_string)
+
+
+    @staticmethod
     def logout(
         access_token,     # type: str
         all_devices=False         # type: bool
