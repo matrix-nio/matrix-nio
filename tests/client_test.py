@@ -722,6 +722,29 @@ class TestClass(object):
         assert isinstance(response, LoginResponse)
         assert http_client.access_token == "ABCD"
 
+    def test_http_client_login_with_auth_string(self, http_client):
+        http_client.connect(TransportType.HTTP2)
+        auth_string = {
+            "type": "m.login.password",
+            "identifier": {
+                "type": "m.id.thirdparty",
+                "medium": "email",
+                "address": "testemail@mail.org"
+            },
+            "password": "PASSWORDABCD",
+            "initial_device_display_name": "Citadel bot"
+        }
+        _, _ = http_client.login_with_auth_string(
+            auth_string
+        )
+
+        http_client.receive(self.login_byte_response)
+        response = http_client.next_response()
+
+        assert isinstance(response, LoginResponse)
+        assert http_client.access_token == "ABCD"
+
+
     def test_http_client_sync(self, http_client):
         http_client.connect(TransportType.HTTP2)
 
