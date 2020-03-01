@@ -291,7 +291,7 @@ class Api(object):
     def login_raw(
         auth_dict      # type: Dict[str, Any]
     ):
-        # type: (Dict[str, Any]) -> Tuple[str, str, str]
+        # type: (...) -> Tuple[str, str, str]
         """Login to the homeserver using a raw dictionary.
 
         Returns the HTTP method, HTTP path and data for the request.
