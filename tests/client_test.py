@@ -744,6 +744,27 @@ class TestClass(object):
         assert isinstance(response, LoginResponse)
         assert http_client.access_token == "ABCD"
 
+    def test_http_client_login_with_empty_auth_string(self, http_client):
+        http_client.connect(TransportType.HTTP2)
+        auth_string = ""
+
+        with pytest.raises(ValueError):
+            _, _ = http_client.login_with_auth_string(
+                auth_string
+            )
+
+        assert not http_client.access_token == "ABCD"
+
+    def test_http_client_login_with_none_auth_string(self, http_client):
+        http_client.connect(TransportType.HTTP2)
+        auth_string = None
+
+        with pytest.raises(ValueError):
+            _, _ = http_client.login_with_auth_string(
+                auth_string
+            )
+
+        assert not http_client.access_token == "ABCD"
 
     def test_http_client_sync(self, http_client):
         http_client.connect(TransportType.HTTP2)

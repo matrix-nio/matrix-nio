@@ -263,7 +263,7 @@ class HttpClient(Client):
     @connected
     def login_with_auth_string(self, auth_string):
         # type: (str) -> Tuple[UUID, bytes]
-        if auth_string is None and auth_string == "":
+        if auth_string is None or auth_string == "":
             raise ValueError("Auth string shall not be empty")
 
         request = self._build_request(
