@@ -596,19 +596,21 @@ class AsyncClient(Client):
         """Convert a matrix content URI to a HTTP URI."""
         return Api.mxc_to_http(mxc, homeserver or self.homeserver)
 
-    async def login_with_auth_string(self, auth_string):
-        # type: (str) -> Union[LoginResponse, LoginError]
-        """Login to the homeserver.
+    async def login_raw(self, auth_dict):
+        # type: (Dict[str, Any]) -> Union[LoginResponse, LoginError]
+        """Login to the homeserver using a raw dictionary.
 
         Args:
-            auth_string (str): The auth string.
-
+            auth_dict (Dict[str, Any]): The auth dictionary.
+            See https://matrix.org/docs/spec/client_server/r0.6.0#authentication-types
+            for valid authentication dictionaries.
         Returns either a `LoginResponse` if the request was successful or
         a `LoginError` if there was an error with the request.
         """
-        method, path, data = Api.login_with_auth_string(
-            auth_string
-        )
+        if auth_dict is None or auth_dict == {}:
+            raise ValueError("Auth dictionary shall not be empty")
+
+        method, path, data = Api.login_raw(auth_dict)
 
         return await self._send(LoginResponse, method, path, data)
 

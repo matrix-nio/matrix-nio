@@ -261,16 +261,12 @@ class HttpClient(Client):
         return self._send(request, RequestInfo(LoginResponse))
 
     @connected
-    def login_with_auth_string(self, auth_string):
-        # type: (str) -> Tuple[UUID, bytes]
-        if auth_string is None or auth_string == "":
-            raise ValueError("Auth string shall not be empty")
+    def login_raw(self, auth_dict):
+        # type: (Dict[str, Any]) -> Tuple[UUID, bytes]
+        if auth_dict is None or auth_dict == {}:
+            raise ValueError("Auth dictionary shall not be empty")
 
-        request = self._build_request(
-            Api.login_with_auth_string(
-                auth_string
-            )
-        )
+        request = self._build_request(Api.login_raw(auth_dict))
 
         return self._send(request, RequestInfo(LoginResponse))
 

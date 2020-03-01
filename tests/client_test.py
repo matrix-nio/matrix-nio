@@ -722,9 +722,9 @@ class TestClass(object):
         assert isinstance(response, LoginResponse)
         assert http_client.access_token == "ABCD"
 
-    def test_http_client_login_with_auth_string(self, http_client):
+    def test_http_client_login_raw(self, http_client):
         http_client.connect(TransportType.HTTP2)
-        auth_string = {
+        auth_dict = {
             "type": "m.login.password",
             "identifier": {
                 "type": "m.id.thirdparty",
@@ -734,9 +734,7 @@ class TestClass(object):
             "password": "PASSWORDABCD",
             "initial_device_display_name": "Citadel bot"
         }
-        _, _ = http_client.login_with_auth_string(
-            auth_string
-        )
+        _, _ = http_client.login_raw(auth_dict)
 
         http_client.receive(self.login_byte_response)
         response = http_client.next_response()
@@ -744,24 +742,22 @@ class TestClass(object):
         assert isinstance(response, LoginResponse)
         assert http_client.access_token == "ABCD"
 
-    def test_http_client_login_with_empty_auth_string(self, http_client):
+    def test_http_client_login_raw_with_empty_dict(self, http_client):
         http_client.connect(TransportType.HTTP2)
-        auth_string = ""
+        auth_dict = {}
 
         with pytest.raises(ValueError):
-            _, _ = http_client.login_with_auth_string(
-                auth_string
-            )
+            _, _ = http_client.login_raw(auth_dict)
 
         assert not http_client.access_token == "ABCD"
 
-    def test_http_client_login_with_none_auth_string(self, http_client):
+    def test_http_client_login_raw_with_none_dict(self, http_client):
         http_client.connect(TransportType.HTTP2)
-        auth_string = None
+        auth_dict = None
 
         with pytest.raises(ValueError):
-            _, _ = http_client.login_with_auth_string(
-                auth_string
+            _, _ = http_client.login_raw(
+                auth_dict
             )
 
         assert not http_client.access_token == "ABCD"

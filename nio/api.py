@@ -288,21 +288,24 @@ class Api(object):
         return "POST", path, Api.to_json(content_dict)
 
     @staticmethod
-    def login_with_auth_string(
-        auth_string      # type: str
+    def login_raw(
+        auth_dict      # type: Dict[str, Any]
     ):
-        # type: (...) -> Tuple[str, str, str]
-        """Authenticate the user.
+        # type: (Dict[str, Any]) -> Tuple[str, str, str]
+        """Login to the homeserver using a raw dictionary.
 
         Returns the HTTP method, HTTP path and data for the request.
 
         Args:
-            auth_string (str): The authentication string containing the
-                elements for the logon
+            auth_dict (Dict[str, Any): The authentication dictionary
+                containing the elements for the logon.
         """
+        if auth_dict is None or auth_dict == {}:
+            raise ValueError("Auth dictionary shall not be empty")
+
         path = Api._build_path("login")
 
-        return "POST", path, Api.to_json(auth_string)
+        return "POST", path, Api.to_json(auth_dict)
 
 
     @staticmethod

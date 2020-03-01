@@ -380,7 +380,7 @@ class TestClass(object):
         loop.run_until_complete(async_client.close())
         assert not async_client.client_session
 
-    def test_login_with_auth_string(self, async_client, aioresponse):
+    def test_login_raw(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
 
         assert not async_client.access_token
@@ -391,7 +391,7 @@ class TestClass(object):
             status=200,
             payload=self.login_response
         )
-        auth_string = {
+        auth_dict = {
             "type": "m.login.password",
             "identifier": {
                 "type": "m.id.thirdparty",
@@ -402,8 +402,8 @@ class TestClass(object):
             "initial_device_display_name": "Test user"
         }
         resp = loop.run_until_complete(
-            async_client.login_with_auth_string(
-                auth_string
+            async_client.login_raw(
+                auth_dict
             )
         )
 
@@ -411,7 +411,7 @@ class TestClass(object):
         assert async_client.access_token
         assert async_client.logged_in
 
-    def test_failed_login_with_auth_string(self, async_client, aioresponse):
+    def test_failed_login_raw(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
 
         assert not async_client.access_token
@@ -423,7 +423,7 @@ class TestClass(object):
             body=""
         )
 
-        auth_string = {
+        auth_dict = {
             "type": "m.login.password",
             "identifier": {
                 "type": "m.id.thirdparty",
@@ -435,14 +435,55 @@ class TestClass(object):
         }
 
         resp = loop.run_until_complete(
-            async_client.login_with_auth_string(
-                auth_string
-            )
+            async_client.login_raw(auth_dict)
         )
+
         assert isinstance(resp, LoginError)
         assert not async_client.logged_in
 
         assert async_client.client_session
+        loop.run_until_complete(async_client.close())
+        assert not async_client.client_session
+
+    def test_login_raw_with_empty_dict(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+
+        assert not async_client.access_token
+        assert not async_client.logged_in
+
+        auth_dict = {}
+        resp = None
+
+        with pytest.raises(ValueError):
+            resp = loop.run_until_complete(
+                async_client.login_raw(auth_dict)
+            )
+
+        assert not resp
+        assert not async_client.logged_in
+
+        assert not async_client.client_session
+        loop.run_until_complete(async_client.close())
+        assert not async_client.client_session
+
+    def test_login_raw_with_none_dict(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+
+        assert not async_client.access_token
+        assert not async_client.logged_in
+
+        auth_dict = None
+        resp = None
+
+        with pytest.raises(ValueError):
+            resp = loop.run_until_complete(
+                async_client.login_raw(auth_dict)
+            )
+
+        assert not resp
+        assert not async_client.logged_in
+
+        assert not async_client.client_session
         loop.run_until_complete(async_client.close())
         assert not async_client.client_session
 
