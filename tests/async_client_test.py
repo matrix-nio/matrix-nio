@@ -344,37 +344,6 @@ class TestClass(object):
         expected     = f"{other_server}{url_path}"
         assert await async_client.mxc_to_http(mxc, other_server) == expected
 
-    def test_login_with_auth_string(self, async_client, aioresponse):
-        loop = asyncio.get_event_loop()
-
-        assert not async_client.access_token
-        assert not async_client.logged_in
-
-        aioresponse.post(
-            "https://example.org/_matrix/client/r0/login",
-            status=200,
-            payload=self.login_response
-        )
-        auth_string = {
-            "type": "m.login.password",
-            "identifier": {
-                "type": "m.id.thirdparty",
-                "medium": "email",
-                "address": "testemail@mail.org"
-            },
-            "password": "PASSWORDABCD",
-            "initial_device_display_name": "Citadel bot"
-        }
-        resp = loop.run_until_complete(
-            async_client.login_with_auth_string(
-                auth_string
-            )
-        )
-
-        assert isinstance(resp, LoginResponse)
-        assert async_client.access_token
-        assert async_client.logged_in
-
     def test_login(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
 
@@ -404,6 +373,72 @@ class TestClass(object):
             body=""
         )
         resp = loop.run_until_complete(async_client.login("wordpass"))
+        assert isinstance(resp, LoginError)
+        assert not async_client.logged_in
+
+        assert async_client.client_session
+        loop.run_until_complete(async_client.close())
+        assert not async_client.client_session
+
+    def test_login_with_auth_string(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+
+        assert not async_client.access_token
+        assert not async_client.logged_in
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/login",
+            status=200,
+            payload=self.login_response
+        )
+        auth_string = {
+            "type": "m.login.password",
+            "identifier": {
+                "type": "m.id.thirdparty",
+                "medium": "email",
+                "address": "testemail@mail.org"
+            },
+            "password": "PASSWORDABCD",
+            "initial_device_display_name": "Test user"
+        }
+        resp = loop.run_until_complete(
+            async_client.login_with_auth_string(
+                auth_string
+            )
+        )
+
+        assert isinstance(resp, LoginResponse)
+        assert async_client.access_token
+        assert async_client.logged_in
+
+    def test_failed_login_with_auth_string(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+
+        assert not async_client.access_token
+        assert not async_client.logged_in
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/login",
+            status=400,
+            body=""
+        )
+
+        auth_string = {
+            "type": "m.login.password",
+            "identifier": {
+                "type": "m.id.thirdparty",
+                "medium": "email",
+                "address": "testemail@mail.org"
+            },
+            "password": "WRONGPASSWORD",
+            "initial_device_display_name": "Test user"
+        }
+
+        resp = loop.run_until_complete(
+            async_client.login_with_auth_string(
+                auth_string
+            )
+        )
         assert isinstance(resp, LoginError)
         assert not async_client.logged_in
 
