@@ -602,8 +602,19 @@ class AsyncClient(Client):
 
         Args:
             auth_dict (Dict[str, Any]): The auth dictionary.
+            For example :
+                auth_dict = {
+                    "type": "m.login.password",
+                    "identifier": {
+                        "type": "m.id.thirdparty",
+                        "medium": "email",
+                        "address": "testemail@mail.org"
+                    },
+                    "password": "PASSWORDABCD",
+                    "initial_device_display_name": "Test user"
+                }
             See https://matrix.org/docs/spec/client_server/r0.6.0#authentication-types
-            for valid authentication dictionaries.
+            for detailed documentation.
         Returns either a `LoginResponse` if the request was successful or
         a `LoginError` if there was an error with the request.
         """
