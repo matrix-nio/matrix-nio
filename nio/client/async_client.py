@@ -630,9 +630,9 @@ class AsyncClient(Client):
 
     async def login(
             self,
-            password=None,     # type: Optional[str]
+            password=None,     # type: str
             device_name="",    # type: Optional[str]
-            token=None,        # type: Optional[str]
+            token=None,        # type: str
     ):
         # type: (...) -> Union[LoginResponse, LoginError]
         """Login to the homeserver.
