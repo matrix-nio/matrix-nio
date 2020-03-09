@@ -1484,6 +1484,11 @@ class Schemas(object):
         "additionalProperties": False,
     }
 
+    content_repository_config = {
+        "type": "object",
+        "properties": {"m.upload.size": {"type": ["number", "null"]}},
+    }
+
     megolm_key_import = {
         "type": "array",
         "items": {
