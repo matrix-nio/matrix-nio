@@ -18,6 +18,7 @@
 from __future__ import unicode_literals
 
 from builtins import str
+from dataclasses import dataclass
 from datetime import datetime
 from functools import wraps
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
@@ -36,6 +37,8 @@ logger_group.add_logger(logger)
 
 
 __all__ = [
+    "ContentRepositoryConfigResponse",
+    "ContentRepositoryConfigError",
     "FileResponse",
     "DeleteDevicesAuthResponse",
     "DeleteDevicesResponse",
@@ -439,22 +442,20 @@ class KeysClaimError(_ErrorWithRoomId):
     pass
 
 
+class ContentRepositoryConfigError(ErrorResponse):
+    """A response for a unsuccessful content repository config request."""
+
+
 class UploadError(ErrorResponse):
     """A response representing a unsuccessful upload request."""
-
-    pass
 
 
 class DownloadError(ErrorResponse):
     """A response representing a unsuccessful download request."""
 
-    pass
-
 
 class ThumbnailError(ErrorResponse):
     """A response representing a unsuccessful thumbnail request."""
-
-    pass
 
 
 @attr.s
@@ -613,6 +614,26 @@ class JoinedRoomsResponse(Response):
     ):
         # type: (...) -> Union[JoinedRoomsResponse, ErrorResponse]
         return cls(parsed_dict["joined_rooms"])
+
+
+@dataclass
+class ContentRepositoryConfigResponse(Response):
+    """A response for a successful content repository config request.
+
+    Attributes:
+        upload_size (Optional[int]): The maximum file size in bytes for an
+            upload. If `None`, the limit is unknown.
+    """
+
+    upload_size: Optional[int] = None
+
+    @classmethod
+    @verify(Schemas.content_repository_config, ContentRepositoryConfigError)
+    def from_dict(
+        cls,
+        parsed_dict: dict,
+    ) -> Union["ContentRepositoryConfigResponse", ErrorResponse]:
+        return cls(parsed_dict.get("m.upload.size"))
 
 
 @attr.s

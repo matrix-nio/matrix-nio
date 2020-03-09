@@ -14,7 +14,8 @@ import pytest
 from aiohttp import ClientSession, TraceRequestChunkSentParams
 
 from helpers import faker
-from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
+from nio import (ContentRepositoryConfigResponse,
+                 DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  DevicesResponse, DeleteDevicesAuthResponse,
                  DeleteDevicesResponse,
                  DownloadResponse, ErrorResponse,
@@ -1174,6 +1175,22 @@ class TestClass(object):
         )
         resp = await async_client.room_typing(room_id, typing_state=True)
         assert isinstance(resp, RoomTypingResponse)
+
+    async def test_content_repository_config(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        aioresponse.get(
+            "https://example.org/_matrix/media/r0/config?access_token=abc123",
+            status  = 200,
+            payload = {"m.upload.size": 1024},
+        )
+
+        response = await async_client.content_repository_config()
+        assert isinstance(response, ContentRepositoryConfigResponse)
+        assert response.upload_size == 1024
 
     async def test_upload(self, async_client, aioresponse):
         await async_client.receive_response(

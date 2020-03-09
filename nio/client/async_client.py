@@ -44,7 +44,9 @@ from ..exceptions import (GroupEncryptionError, LocalProtocolError,
 from ..events import RoomKeyRequest, RoomKeyRequestCancellation
 from ..event_builders import ToDeviceMessage
 from ..monitors import TransferMonitor
-from ..responses import (DeleteDevicesError, DeleteDevicesResponse,
+from ..responses import (ContentRepositoryConfigError,
+                         ContentRepositoryConfigResponse,
+                         DeleteDevicesError, DeleteDevicesResponse,
                          DeleteDevicesAuthResponse,
                          DevicesError, DevicesResponse,
                          DownloadError, DownloadResponse,
@@ -1849,6 +1851,20 @@ class AsyncClient(Client):
             data,
             response_data=(room_id, )
         )
+
+    @logged_in
+    async def content_repository_config(
+        self,
+    ) -> Union[ContentRepositoryConfigResponse, ContentRepositoryConfigError]:
+        """Get the content repository configuration, such as upload limits.
+
+        Returns either a `ContentRepositoryConfigResponse` if the request
+        was successful or a `ContentRepositoryConfigError` if there was an
+        error with the request.
+        """
+        method, path = Api.content_repository_config(self.access_token)
+
+        return await self._send(ContentRepositoryConfigResponse, method, path)
 
     @staticmethod
     async def _process_data_chunk(chunk, monitor=None):

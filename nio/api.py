@@ -1137,6 +1137,23 @@ class Api(object):
         )
 
     @staticmethod
+    def content_repository_config(access_token: str) -> Tuple[str, str]:
+        """Get the content repository configuration, such as upload limits.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+        """
+        query_parameters = {"access_token": access_token}
+        path             = "config"
+
+        return (
+            "GET",
+            Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH),
+        )
+
+    @staticmethod
     def upload(
         access_token,       # type: str
         filename=None,      # type: Optional[str]
