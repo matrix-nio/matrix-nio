@@ -618,7 +618,12 @@ class JoinedRoomsResponse(Response):
 
 @dataclass
 class ContentRepositoryConfigResponse(Response):
-    """A response for a successful content repository config request."""
+    """A response for a successful content repository config request.
+
+    Attributes:
+        upload_size (Optional[int]): The maximum file size in bytes for an
+            upload. If `None`, the limit is unknown.
+    """
 
     upload_size: Optional[int] = None
 
