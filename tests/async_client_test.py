@@ -11,7 +11,9 @@ from uuid import uuid4
 
 import aiofiles
 import pytest
-from aiohttp import ClientSession, TraceRequestChunkSentParams
+from aiohttp import (ClientRequest, ClientSession, ClientTimeout,
+                     TraceRequestChunkSentParams)
+from yarl import URL
 
 from helpers import faker
 from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
@@ -43,7 +45,7 @@ from nio import (DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  RoomMessageText, RoomKeyRequest)
 from nio.api import ResizingMethod, RoomPreset, RoomVisibility
 from nio.crypto import OlmDevice, Session, decrypt_attachment
-from nio.client.async_client import on_request_chunk_sent
+from nio.client.async_client import connect_wrapper, on_request_chunk_sent
 
 from aioresponses import CallbackResult
 
@@ -3308,3 +3310,27 @@ class TestClass(object):
 
         assert event.body == "It's a secret to everybody."
         assert cb_ran
+
+    async def test_connect_wrapper(self, async_client, aioresponse):
+        domain = "https://example.org"
+
+        aioresponse.post(
+            f"{domain}/_matrix/client/r0/login",
+            status=200,
+            payload=self.login_response
+        )
+        await async_client.login("wordpass")
+
+        assert async_client.client_session
+
+        conn = await connect_wrapper(
+            self    = async_client.client_session.connector,
+            req     = ClientRequest(method="GET", url=URL(domain)),
+            traces  = [],
+            timeout = ClientTimeout(),
+        )
+
+        # Using conn.transport.get_write_buffer_limits() directly raises
+        # "AttributeError: _low_water", but the set... method works?
+        ssl_transport = conn.transport._ssl_protocol._transport
+        assert ssl_transport.get_write_buffer_limits()[1] == 16 * 1024
