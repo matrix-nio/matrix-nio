@@ -31,6 +31,7 @@ from aiofiles.threadpool.binary import AsyncBufferedReader
 from aiohttp import (ClientResponse, ClientSession, ContentTypeError,
                      TraceConfig)
 from aiohttp.client_exceptions import ClientConnectionError
+from aiohttp.connector import Connection
 
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
@@ -118,6 +119,12 @@ async def on_request_chunk_sent(session, context, params):
         context_obj.transferred += len(params.chunk)
 
 
+async def connect_wrapper(self, *args, **kwargs) -> Connection:
+    connection = await type(self).connect(self, *args, **kwargs)
+    connection.transport.set_write_buffer_limits(16 * 1024)
+    return connection
+
+
 def client_session(func):
     """Ensure that the Async client has a valid client session."""
 
@@ -128,6 +135,9 @@ def client_session(func):
             trace.on_request_chunk_sent.append(on_request_chunk_sent)
 
             self.client_session = ClientSession(trace_configs=[trace])
+            self.client_session.connector.connect = partial(
+                connect_wrapper, self.client_session.connector,
+            )
 
         return await func(self, *args, **kwargs)
 
