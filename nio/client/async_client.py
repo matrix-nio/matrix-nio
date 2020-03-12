@@ -135,7 +135,7 @@ def client_session(func):
             trace.on_request_chunk_sent.append(on_request_chunk_sent)
 
             self.client_session = ClientSession(
-                timeout       = ClientTimeout(total=self.config.timeout),
+                timeout = ClientTimeout(total=self.config.request_timeout),
                 trace_configs = [trace],
             )
 
@@ -173,8 +173,8 @@ class AsyncClientConfig(ClientConfig):
         max_timeout_retry_wait_time (float): The maximum time in seconds to
             wait between retries for timeouts, by default 60.
 
-        timeout (float): How many seconds a request has to finish, before it is
-            retried or raise an `asycio.TimeoutError` depending
+        request_timeout (float): How many seconds a request has to finish,
+            before it is retried or raise an `asycio.TimeoutError` depending
             on `max_timeouts`.
             Defaults to 30 seconds, and can be disabled with `0`.
             `AsyncClient.sync()` overrides this option with its
@@ -187,7 +187,7 @@ class AsyncClientConfig(ClientConfig):
     max_timeouts = attr.ib(type=Optional[int], default=None)
     backoff_factor = attr.ib(type=float, default=0.1)
     max_timeout_retry_wait_time = attr.ib(type=float, default=60)
-    timeout = attr.ib(type=float, default=30)
+    request_timeout = attr.ib(type=float, default=30)
 
 
 class AsyncClient(Client):
@@ -607,7 +607,7 @@ class AsyncClient(Client):
                 ClientSession TraceConfig context
             timeout (int, optional): How many seconds the request has before
                 raising `asyncio.TimeoutError`.
-                Overrides `AsyncClient.config.timeout` if not `None`.
+                Overrides `AsyncClient.config.request_timeout` if not `None`.
         """
         assert self.client_session
 
@@ -620,7 +620,7 @@ class AsyncClient(Client):
             headers           = headers,
             trace_request_ctx = trace_context,
             timeout           =
-                self.config.timeout if timeout is None else timeout,
+                self.config.request_timeout if timeout is None else timeout,
         )
 
     async def mxc_to_http(
@@ -1961,7 +1961,7 @@ class AsyncClient(Client):
         # TODO: test retries
         """Upload a file to the content repository.
 
-        This method ignores `AsyncClient.config.timeout` and uses `0`.
+        This method ignores `AsyncClient.config.request_timeout` and uses `0`.
 
         Returns a tuple containing:
 
@@ -2058,7 +2058,7 @@ class AsyncClient(Client):
         # type: (...) -> Union[DownloadResponse, DownloadError]
         """Get the content of a file from the content repository.
 
-        This method ignores `AsyncClient.config.timeout` and uses `0`.
+        This method ignores `AsyncClient.config.request_timeout` and uses `0`.
 
         Returns either a `DownloadResponse` if the request was successful or
         a `DownloadError` if there was an error with the request.
@@ -2102,7 +2102,7 @@ class AsyncClient(Client):
         """Get the thumbnail of a file from the content repository.
 
         The actual thumbnail may be larger than the size specified.
-        This method ignores `AsyncClient.config.timeout` and uses `0`.
+        This method ignores `AsyncClient.config.request_timeout` and uses `0`.
 
         Returns either a `ThumbnailResponse` if the request was successful or
         a `ThumbnailError` if there was an error with the request.
