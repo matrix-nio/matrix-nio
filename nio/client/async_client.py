@@ -28,8 +28,8 @@ from uuid import UUID, uuid4
 
 import attr
 from aiofiles.threadpool.binary import AsyncBufferedReader
-from aiohttp import (ClientResponse, ClientSession, ContentTypeError,
-                     TraceConfig)
+from aiohttp import (ClientResponse, ClientSession, ClientTimeout,
+                     ContentTypeError, TraceConfig)
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.connector import Connection
 
@@ -134,7 +134,11 @@ def client_session(func):
             trace = TraceConfig()
             trace.on_request_chunk_sent.append(on_request_chunk_sent)
 
-            self.client_session = ClientSession(trace_configs=[trace])
+            self.client_session = ClientSession(
+                timeout       = ClientTimeout(total=self.config.timeout),
+                trace_configs = [trace],
+            )
+
             self.client_session.connector.connect = partial(
                 connect_wrapper, self.client_session.connector,
             )
@@ -166,14 +170,24 @@ class AsyncClientConfig(ClientConfig):
             For example, with the default backoff_factor of 0.1,
             nio will sleep for 0.0, 0.2, 0.4, ... seconds between retries.
 
-        max_timeout_retry_wait_time (float): The maximum time to wait between
-            retries for timeouts, by default 60.
+        max_timeout_retry_wait_time (float): The maximum time in seconds to
+            wait between retries for timeouts, by default 60.
+
+        timeout (float): How many seconds a request has to finish, before it is
+            retried or raise an `asycio.TimeoutError` depending
+            on `max_timeouts`.
+            Defaults to 30 seconds, and can be disabled with `0`.
+            `AsyncClient.sync()` overrides this option with its
+            `timeout` argument.
+            The `download()`, `thumbnail()` and `upload()` methods ignore
+            this option and use `0`.
     """
 
     max_limit_exceeded = attr.ib(type=Optional[int], default=None)
     max_timeouts = attr.ib(type=Optional[int], default=None)
     backoff_factor = attr.ib(type=float, default=0.1)
     max_timeout_retry_wait_time = attr.ib(type=float, default=60)
+    timeout = attr.ib(type=float, default=30)
 
 
 class AsyncClient(Client):
@@ -516,11 +530,12 @@ class AsyncClient(Client):
         response_class,
         method,
         path,
-        data          = None,
-        response_data = None,
-        content_type  = None,
-        trace_context = None,
+        data                                  = None,
+        response_data                         = None,
+        content_type                          = None,
+        trace_context                         = None,
         data_provider: Optional[DataProvider] = None,
+        timeout:       Optional[float]        = None,
     ):
         headers = {"content-type": content_type} if content_type else {}
 
@@ -536,7 +551,7 @@ class AsyncClient(Client):
 
             try:
                 transport_resp = await self.send(
-                    method, path, data, headers, trace_context,
+                    method, path, data, headers, trace_context, timeout,
                 )
 
                 resp = await self.create_matrix_response(
@@ -576,6 +591,7 @@ class AsyncClient(Client):
         data:          Union[None, str, AsyncDataT] = None,
         headers:       Optional[Dict[str, str]]     = None,
         trace_context: Any                          = None,
+        timeout:       Optional[float]              = None,
     ):
         # type: (...) -> ClientResponse
         """Send a request to the homeserver.
@@ -589,6 +605,9 @@ class AsyncClient(Client):
                 should be used with the request.
             trace_context (Any, optional): An object to use for the
                 ClientSession TraceConfig context
+            timeout (int, optional): How many seconds the request has before
+                raising `asyncio.TimeoutError`.
+                Overrides `AsyncClient.config.timeout` if not `None`.
         """
         assert self.client_session
 
@@ -600,6 +619,8 @@ class AsyncClient(Client):
             proxy             = self.proxy,
             headers           = headers,
             trace_request_ctx = trace_context,
+            timeout           =
+                self.config.timeout if timeout is None else timeout,
         )
 
     async def mxc_to_http(
@@ -691,6 +712,8 @@ class AsyncClient(Client):
             timeout(int, optional): The maximum time that the server should
                 wait for new events before it should return the request
                 anyways, in milliseconds.
+                If the server fails to return after 5 seconds of expected
+                timeout, the client will timeout by itself.
             sync_filter (Dict[Any, Any], optional): A filter that should be
                 used for this sync request.
             full_state(bool, optional): Controls whether to include the full
@@ -715,7 +738,13 @@ class AsyncClient(Client):
             full_state=full_state
         )
 
-        response = await self._send(SyncResponse, method, path)
+        response = await self._send(
+            SyncResponse,
+            method,
+            path,
+            # + 5: give server a chance to naturally return before we timeout
+            timeout = None if timeout is None else timeout / 1000 + 5,
+        )
 
         self.synced.set()
         self.synced.clear()
@@ -767,6 +796,8 @@ class AsyncClient(Client):
             timeout (int, optional): The maximum time that the server should
                 wait for new events before it should return the request
                 anyways, in milliseconds.
+                If the server fails to return after 5 seconds of expected
+                timeout, the client will timeout by itself.
             sync_filter (Dict[Any, Any], optional): A filter that should be
                 used for this sync request.
             full_state (bool, optional): Controls whether to include the full
@@ -1260,8 +1291,9 @@ class AsyncClient(Client):
     ) -> Union[RoomGetStateEventResponse, RoomGetStateEventError]:
         """Fetch a state event from a room.
 
-        Returns either a `RoomGetStateEventResponse` if the request was successful
-        or a `RoomGetStateEventError` if there was an error with the request.
+        Returns either a `RoomGetStateEventResponse` if the request was
+        successful or a `RoomGetStateEventError` if there was an error with
+        the request.
 
         Args:
             room_id (str): The room id of the room to fetch the event from.
@@ -1929,6 +1961,8 @@ class AsyncClient(Client):
         # TODO: test retries
         """Upload a file to the content repository.
 
+        This method ignores `AsyncClient.config.timeout` and uses `0`.
+
         Returns a tuple containing:
 
         - Either a `UploadResponse` if the request was successful, or a
@@ -2005,6 +2039,7 @@ class AsyncClient(Client):
             content_type  =
                 "application/octet-stream" if encrypt else content_type,
             trace_context = monitor,
+            timeout       = 0,
         )
 
         # After the upload finished and we get the response above, if encrypt
@@ -2022,6 +2057,8 @@ class AsyncClient(Client):
     ):
         # type: (...) -> Union[DownloadResponse, DownloadError]
         """Get the content of a file from the content repository.
+
+        This method ignores `AsyncClient.config.timeout` and uses `0`.
 
         Returns either a `DownloadResponse` if the request was successful or
         a `DownloadError` if there was an error with the request.
@@ -2046,7 +2083,9 @@ class AsyncClient(Client):
             allow_remote
         )
 
-        return await self._send(DownloadResponse, http_method, path)
+        return await self._send(
+            DownloadResponse, http_method, path, timeout=0,
+        )
 
 
     @client_session
@@ -2062,7 +2101,8 @@ class AsyncClient(Client):
         # type: (...) -> Union[ThumbnailResponse, ThumbnailError]
         """Get the thumbnail of a file from the content repository.
 
-        Note: The actual thumbnail may be larger than the size specified.
+        The actual thumbnail may be larger than the size specified.
+        This method ignores `AsyncClient.config.timeout` and uses `0`.
 
         Returns either a `ThumbnailResponse` if the request was successful or
         a `ThumbnailError` if there was an error with the request.
@@ -2087,7 +2127,9 @@ class AsyncClient(Client):
             allow_remote
         )
 
-        return await self._send(ThumbnailResponse, http_method, path)
+        return await self._send(
+            ThumbnailResponse, http_method, path, timeout=0,
+        )
 
     @client_session
     async def get_profile(self, user_id=None):
