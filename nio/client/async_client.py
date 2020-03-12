@@ -176,7 +176,7 @@ class AsyncClientConfig(ClientConfig):
         request_timeout (float): How many seconds a request has to finish,
             before it is retried or raise an `asycio.TimeoutError` depending
             on `max_timeouts`.
-            Defaults to 30 seconds, and can be disabled with `0`.
+            Defaults to 60 seconds, and can be disabled with `0`.
             `AsyncClient.sync()` overrides this option with its
             `timeout` argument.
             The `download()`, `thumbnail()` and `upload()` methods ignore
@@ -187,7 +187,7 @@ class AsyncClientConfig(ClientConfig):
     max_timeouts = attr.ib(type=Optional[int], default=None)
     backoff_factor = attr.ib(type=float, default=0.1)
     max_timeout_retry_wait_time = attr.ib(type=float, default=60)
-    request_timeout = attr.ib(type=float, default=30)
+    request_timeout = attr.ib(type=float, default=60)
 
 
 class AsyncClient(Client):
@@ -712,7 +712,7 @@ class AsyncClient(Client):
             timeout(int, optional): The maximum time that the server should
                 wait for new events before it should return the request
                 anyways, in milliseconds.
-                If the server fails to return after 5 seconds of expected
+                If the server fails to return after 15 seconds of expected
                 timeout, the client will timeout by itself.
             sync_filter (Dict[Any, Any], optional): A filter that should be
                 used for this sync request.
@@ -742,8 +742,8 @@ class AsyncClient(Client):
             SyncResponse,
             method,
             path,
-            # + 5: give server a chance to naturally return before we timeout
-            timeout = None if timeout is None else timeout / 1000 + 5,
+            # + 15: give server a chance to naturally return before we timeout
+            timeout = None if timeout is None else timeout / 1000 + 15,
         )
 
         self.synced.set()
