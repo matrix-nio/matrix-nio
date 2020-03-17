@@ -148,6 +148,9 @@ class TestClass(object):
         response = ThumbnailResponse.from_data("123", "image/png")
         assert isinstance(response, ThumbnailError)
 
+        response = ThumbnailResponse.from_data(b"5xx error", "text/html")
+        assert isinstance(response, ThumbnailError)
+
     def test_sync_fail(self):
         parsed_dict = {}
         response = SyncResponse.from_dict(parsed_dict, 0)

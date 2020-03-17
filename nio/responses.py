@@ -684,6 +684,9 @@ class ThumbnailResponse(FileResponse):
             filename=None  # type: Optional[str]
     ):
         # type: (...) -> Union[ThumbnailResponse, ThumbnailError]
+        if not content_type.startswith("image/"):
+            return ThumbnailError(f"invalid content type: {content_type}")
+
         if isinstance(data, bytes):
             return cls(body=data, content_type=content_type, filename=filename)
 
