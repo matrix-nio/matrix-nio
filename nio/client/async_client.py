@@ -537,7 +537,11 @@ class AsyncClient(Client):
         data_provider: Optional[DataProvider] = None,
         timeout:       Optional[float]        = None,
     ):
-        headers = {"content-type": content_type} if content_type else {}
+        headers = {
+            "Content-Type": content_type
+        } if content_type else {
+            "Content-Type": "application/json"
+        }
 
         got_429 = 0
         max_429 = self.config.max_limit_exceeded
