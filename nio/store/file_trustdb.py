@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from functools import wraps
 from typing import Any, Iterator, List, Optional
 
@@ -22,7 +20,8 @@ class Key(object):
         self.key = key
 
     @classmethod
-    def from_line(cls, line: str) -> Optional[Key]:
+    def from_line(cls, line):
+        # type: (str) -> Optional[Key]
         fields = line.split(" ")
 
         if len(fields) < 4:
@@ -51,7 +50,8 @@ class Key(object):
         return line
 
     @classmethod
-    def from_olmdevice(cls, device: OlmDevice) -> Ed25519Key:
+    def from_olmdevice(cls, device):
+        # type: (OlmDevice) -> Ed25519Key
         user_id = device.user_id
         device_id = device.id
         return Ed25519Key(user_id, device_id, device.ed25519)
