@@ -1193,7 +1193,7 @@ class AsyncClient(Client):
             return await self._send(RoomSendResponse, method, path, data,
                                     (room_id, ))
 
-        retries = 5
+        retries = 10
 
         uuid = tx_id or uuid4()
 
