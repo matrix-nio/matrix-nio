@@ -18,7 +18,7 @@ from __future__ import unicode_literals
 
 from builtins import super
 from collections import defaultdict
-from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional
+from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
@@ -237,8 +237,7 @@ class MatrixRoom(object):
 
         return False
 
-    def handle_membership(self, event):
-        # type: (RoomMemberEvent) -> bool
+    def handle_membership(self, event: Union[RoomMemberEvent, InviteMemberEvent]) -> bool:
         """Handle a membership event for the room.
 
         Args:
@@ -295,8 +294,7 @@ class MatrixRoom(object):
         if isinstance(event, TypingNoticeEvent):
             self.typing_users = event.users
 
-    def handle_event(self, event):
-        # type: (Event) -> None
+    def handle_event(self, event: Event):
         logger.info(
             "Room {} handling event of type {}".format(
                 self.room_id, type(event).__name__
@@ -361,8 +359,7 @@ class MatrixRoom(object):
             self.summary.heroes = summary.heroes
 
     @property
-    def members_synced(self):
-        # type: () -> bool
+    def members_synced(self) -> bool:
         """Check if the room member state is fully synced.
 
         Room members can be missing from the room if syncs are done using lazy
@@ -400,8 +397,7 @@ class MatrixInvitedRoom(MatrixRoom):
         self.inviter = None  # type: Optional[str]
         super().__init__(room_id, own_user_id)
 
-    def handle_membership(self, event):
-        # type: (RoomMemberEvent) -> bool
+    def handle_membership(self, event: Union[RoomMemberEvent, InviteMemberEvent]) -> bool:
         """Handle a membership event for the invited room.
 
         Args:
@@ -417,8 +413,7 @@ class MatrixInvitedRoom(MatrixRoom):
 
         return super().handle_membership(event)
 
-    def handle_event(self, event):
-        # type: (Event) -> None
+    def handle_event(self, event: Event):
         logger.info(
             "Room {} handling event of type {}".format(
                 self.room_id, type(event).__name__
