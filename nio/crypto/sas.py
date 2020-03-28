@@ -15,7 +15,6 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from __future__ import unicode_literals
-from __future__ import annotations
 
 from builtins import bytes, super
 from datetime import datetime, timedelta
@@ -203,9 +202,10 @@ class Sas(olm.Sas):
 
     @classmethod
     def from_key_verification_start(
-            cls, own_user: str, own_device: str, own_fp_key: str,
-            other_olm_device: OlmDevice, event: KeyVerificationStart
-    ) -> Sas:
+            cls, own_user, own_device, own_fp_key,
+            other_olm_device, event
+    ):
+        # type: (str, str, str, OlmDevice, KeyVerificationStart) -> Sas
         """Create a SAS object from a KeyVerificationStart event.
 
         Args:
