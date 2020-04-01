@@ -234,6 +234,16 @@ class Schemas(object):
         "required": ["unsigned"],
     }
 
+    register = {
+        "type": "object",
+        "properties": {
+            "user_id": {"type": "string", "format": "user_id"},
+            "device_id": {"type": "string"},
+            "access_token": {"type": "string"},
+        },
+        "required": ["user_id", "device_id", "access_token"],
+    }
+
     login = {
         "type": "object",
         "properties": {
