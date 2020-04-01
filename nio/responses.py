@@ -518,6 +518,11 @@ class ProfileSetAvatarError(ErrorResponse):
 
 
 @attr.s
+class RegisterErrorResponse(ErrorResponse):
+    pass
+
+
+@attr.s
 class RegisterResponse(Response):
     user_id = attr.ib(type=str)
     device_id = attr.ib(type=str)
@@ -528,7 +533,7 @@ class RegisterResponse(Response):
         return "Registered {}, device id {}.".format(self.user_id, self.device_id)
 
     @classmethod
-    @verify(Schemas.register)
+    @verify(Schemas.register, RegisterErrorResponse)
     def from_dict(cls, parsed_dict):
         return cls(
             parsed_dict["user_id"],
