@@ -56,7 +56,7 @@ from ..responses import (ContentRepositoryConfigError,
                          JoinedMembersError, JoinedMembersResponse,
                          JoinedRoomsError, JoinedRoomsResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
-                         KeysUploadResponse, LoginError, LoginResponse,
+                         KeysUploadResponse, RegisterResponse, LoginError, LoginResponse,
                          LogoutError, LogoutResponse,
                          ProfileGetAvatarResponse, ProfileGetAvatarError,
                          ProfileGetDisplayNameResponse,
@@ -664,6 +664,27 @@ class AsyncClient(Client):
         method, path, data = Api.login_raw(auth_dict)
 
         return await self._send(LoginResponse, method, path, data)
+
+    async def register(self, username, password, device_name=""):
+        """Register with homeserver.
+
+        Args:
+            username (str): Username to register the new user as.
+            password (str): New password for the user.
+            device_name (str): A display name to assign to a newly-created
+                device. Ignored if the logged in device corresponds to a
+                known device.
+
+        Returns a 'RegisterResponse' if successful.
+        """
+        method, path, data = Api.register(
+            user=username,
+            password=password,
+            device_name=device_name,
+            device_id=self.device_id
+        )
+
+        return await self._send(RegisterResponse, method, path, data)
 
     async def login(self, password, device_name=""):
         # type: (str, str) -> Union[LoginResponse, LoginError]
