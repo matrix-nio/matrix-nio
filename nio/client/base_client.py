@@ -528,6 +528,18 @@ class Client(object):
 
         return changed
 
+    def _handle_register(self, response):
+        # type: (Union[LoginResponse, ErrorResponse]) -> None
+        if isinstance(response, ErrorResponse):
+            return
+
+        self.access_token = response.access_token
+        self.user_id = response.user_id
+        self.device_id = response.device_id
+
+        if self.store_path and not (self.store and self.olm):
+            self.load_store()
+
     def _handle_login(self, response):
         # type: (Union[LoginResponse, ErrorResponse]) -> None
         if isinstance(response, ErrorResponse):
@@ -899,6 +911,8 @@ class Client(object):
             self._handle_login(response)
         elif isinstance(response, LogoutResponse):
             self._handle_logout(response)
+        elif isinstance(response, RegisterResponse):
+            self._handle_register(response)
         elif isinstance(response, (SyncResponse, PartialSyncResponse)):
             self._handle_sync(response)
         elif isinstance(response, RoomMessagesResponse):
