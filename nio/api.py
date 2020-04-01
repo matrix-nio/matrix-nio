@@ -280,6 +280,7 @@ class Api(object):
         password=None,   # type: str
         device_name="",  # type: Optional[str]
         device_id="",    # type: Optional[str]
+        token=None       # type: str
     ):
         # type: (...) -> Tuple[str, str, str]
         """Authenticate the user.
