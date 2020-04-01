@@ -26,7 +26,7 @@ from nio import (ContentRepositoryConfigResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginError,
                  LoginResponse, LogoutError, LogoutResponse,
-                 MegolmEvent, MembersSyncError, OlmTrustError,
+                 MegolmEvent, MembersSyncError, OlmTrustError, RegisterResponse,
                  RoomContextResponse, RoomForgetResponse,
                  ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
@@ -84,6 +84,10 @@ class TestClass(object):
     def _load_response(filename):
         with open(filename) as f:
             return json.loads(f.read())
+
+    @property
+    def register_response(self):
+        return self._load_response("tests/data/register_response.json")
 
     @property
     def login_response(self):
@@ -346,6 +350,21 @@ class TestClass(object):
         other_server = "http://localhost:8081"
         expected     = f"{other_server}{url_path}"
         assert await async_client.mxc_to_http(mxc, other_server) == expected
+
+    def test_register(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+
+        assert not async_client.access_token
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/register",
+            status=200,
+            payload=self.register_response
+        )
+        resp = loop.run_until_complete(async_client.register("user", "password"))
+
+        assert isinstance(resp, RegisterResponse)
+        assert async_client.access_token
 
     def test_login(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
