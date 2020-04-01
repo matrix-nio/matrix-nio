@@ -64,6 +64,7 @@ __all__ = [
     "KeysQueryError",
     "KeysUploadResponse",
     "KeysUploadError",
+    "RegisterResponse",
     "LoginResponse",
     "LoginError",
     "LoginInfoResponse",
@@ -514,6 +515,26 @@ class ProfileGetAvatarError(ErrorResponse):
 
 class ProfileSetAvatarError(ErrorResponse):
     pass
+
+
+@attr.s
+class RegisterResponse(Response):
+    user_id = attr.ib(type=str)
+    device_id = attr.ib(type=str)
+    access_token = attr.ib(type=str)
+
+    def __str__(self):
+        # type () -> str
+        return "Registered {}, device id {}.".format(self.user_id, self.device_id)
+
+    @classmethod
+    @verify(Schemas.register)
+    def from_dict(cls, parsed_dict):
+        return cls(
+            parsed_dict["user_id"],
+            parsed_dict["device_id"],
+            parsed_dict["access_token"],
+        )
 
 
 @attr.s
