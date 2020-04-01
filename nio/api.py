@@ -241,12 +241,45 @@ class Api(object):
         return "GET", path
 
     @staticmethod
+    def register(
+            user,           # type: str
+            password=None,  # type: str
+            device_name="",  # type: Optional[str]
+            device_id="",    # type: Optional[str]
+    ):
+        """Register a new user.
+
+        Args:
+            user (str): The fully qualified user ID or just local part of the
+                user ID, to log in.
+            password (str): The user's password.
+            device_name (str): A display name to assign to a newly-created
+                device. Ignored if device_id corresponds to a known device
+            device_id (str): ID of the client device. If this does not
+                correspond to a known client device, a new device will be
+                created.
+        """
+        path = Api._build_path("register")
+
+        content_dict = {
+            "username": user,
+            "password": password
+        }
+
+        if device_id:
+            content_dict["device_id"] = device_id
+
+        if device_name:
+            content_dict["initial_device_display_name"] = device_name
+
+        return "POST", path, Api.to_json(content_dict)
+
+    @staticmethod
     def login(
         user,            # type: str
         password=None,   # type: str
         device_name="",  # type: Optional[str]
         device_id="",    # type: Optional[str]
-        token=None,      # type: str
     ):
         # type: (...) -> Tuple[str, str, str]
         """Authenticate the user.
