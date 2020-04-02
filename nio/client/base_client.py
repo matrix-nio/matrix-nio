@@ -32,7 +32,7 @@ from ..log import logger_group
 from ..responses import (ErrorResponse, JoinedMembersResponse,
                          KeysClaimResponse, KeysQueryResponse,
                          KeysUploadResponse, LoginResponse, LogoutResponse,
-                         PartialSyncResponse, Response, RoomContextResponse,
+                         PartialSyncResponse, RegisterResponse, Response, RoomContextResponse,
                          RoomForgetResponse, RoomKeyRequestResponse,
                          RoomMessagesResponse, ShareGroupSessionResponse,
                          SyncResponse, SyncType, ToDeviceResponse)
@@ -529,7 +529,7 @@ class Client(object):
         return changed
 
     def _handle_register(self, response):
-        # type: (Union[LoginResponse, ErrorResponse]) -> None
+        # type: (Union[RegisterResponse, ErrorResponse]) -> None
         if isinstance(response, ErrorResponse):
             return
 
