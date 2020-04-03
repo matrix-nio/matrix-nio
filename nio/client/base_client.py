@@ -135,6 +135,9 @@ class Client(object):
        rooms (Dict[str, MatrixRoom)): A dictionary containing a mapping of room
            ids to MatrixRoom objects. All the rooms a user is joined to will be
            here after a sync.
+       invited_rooms (Dict[str, MatrixInvitedRoom)): A dictionary containing
+           a mapping of room ids to MatrixInvitedRoom objects. All the rooms
+           a user is invited to will be here after a sync.
 
     Args:
        user (str): User that will be used to log in.
