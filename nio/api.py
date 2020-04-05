@@ -263,7 +263,7 @@ class Api(object):
 
         content_dict = {
             "username": user,
-            "password": password
+            "password": password,
         }
 
         if device_id:
@@ -272,7 +272,11 @@ class Api(object):
         if device_name:
             content_dict["initial_device_display_name"] = device_name
 
-        return "POST", path, Api.to_json(content_dict)
+        second_half = Api.to_json(content_dict)
+
+        first_half = '{"auth": {"type": "m.login.dummy"},'
+
+        return "POST", path, first_half + second_half[1:]
 
     @staticmethod
     def login(
