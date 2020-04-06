@@ -45,6 +45,8 @@ except ImportError:
 MATRIX_API_PATH = "/_matrix/client/r0"  # type: str
 MATRIX_MEDIA_API_PATH = "/_matrix/media/r0"  # type: str
 
+_FilterT = Union[None, str, Dict[Any, Any]]
+
 
 @unique
 class MessageDirection(Enum):
@@ -387,11 +389,11 @@ class Api(object):
 
     @staticmethod
     def sync(
-        access_token,     # type: str
-        since=None,       # type: Optional[str]
-        timeout=None,     # type: Optional[int]
-        filter=None,      # type: Optional[Dict[Any, Any]]
-        full_state=None   # type: Optional[bool]
+        access_token: str,
+        since:        Optional[str]  = None,
+        timeout:      Optional[int]  = None,
+        filter:       _FilterT       = None,
+        full_state:   Optional[bool] = None,
     ):
         # type: (...) -> Tuple[str, str]
         """Synchronise the client's state with the latest state on the server.
@@ -402,10 +404,15 @@ class Api(object):
             access_token (str): The access token to be used with the request.
             since (str): The room id of the room where the event will be sent
                 to.
-            timeout(int): The maximum time to wait, in milliseconds, before
+            timeout (int): The maximum time to wait, in milliseconds, before
                 returning this request.
-            filter (Dict): A dictionary containing a filter configuration for
-                the request.
+            sync_filter (Union[None, str, Dict[Any, Any]):
+                A filter ID or dict that should be used for this sync request.
+            full_state (bool, optional): Controls whether to include the full
+                state for all rooms the user is a member of. If this is set to
+                true, then all state events will be returned, even if since is
+                non-empty. The timeline will still be limited by the since
+                parameter.
         """
         query_parameters = {"access_token": access_token}
 
@@ -804,12 +811,13 @@ class Api(object):
 
     @staticmethod
     def room_messages(
-        access_token,                     # type: str
-        room_id,                          # type: str
-        start,                            # type: str
-        end=None,                         # type: Optional[str]
-        direction=MessageDirection.back,  # type: MessageDirection
-        limit=10,                         # type: int
+        access_token:   str,
+        room_id:        str,
+        start:          str,
+        end:            Optional[str]    = None,
+        direction:      MessageDirection = MessageDirection.back,
+        limit:          int              = 10,
+        message_filter: _FilterT         = None,
     ):
         # type (...) -> Tuple[str, str]
         """Get room messages.
@@ -824,11 +832,15 @@ class Api(object):
             end (str): The token to stop returning events at.
             direction (MessageDirection): The direction to return events from.
             limit (int): The maximum number of events to return.
+            message_filter (Union[None, str, Dict[Any, Any]]):
+                A filter ID or dict that should be used for this room messages
+                request.
+
         """
         query_parameters = {
             "access_token": access_token,
             "from": start,
-            "limit": limit
+            "limit": limit,
         }
 
         if end:
@@ -846,6 +858,10 @@ class Api(object):
             query_parameters["dir"] = "f"
         else:
             query_parameters["dir"] = "b"
+
+        if message_filter is not None:
+            filter_json = json.dumps(message_filter, separators=(",", ":"))
+            query_parameters["filter"] = filter_json
 
         path = "rooms/{room}/messages".format(room=room_id)
 

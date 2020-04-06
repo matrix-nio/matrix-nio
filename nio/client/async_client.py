@@ -35,8 +35,8 @@ from aiohttp.connector import Connection
 
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
-from ..api import (Api, MessageDirection, ResizingMethod, RoomVisibility,
-                   RoomPreset)
+from ..api import (_FilterT, Api, MessageDirection, ResizingMethod,
+                   RoomVisibility, RoomPreset)
 from ..crypto import (AsyncDataT, async_encrypt_attachment,
                       async_generator_from_data)
 from ..exceptions import (GroupEncryptionError, LocalProtocolError,
@@ -724,11 +724,11 @@ class AsyncClient(Client):
 
     @logged_in
     async def sync(
-            self,
-            timeout=None,      # type: Optional[int]
-            sync_filter=None,  # type: Optional[Dict[Any, Any]]
-            since=None,        # type: Optional[str]
-            full_state=None    # type: Optional[bool]
+        self,
+        timeout:     Optional[int]  = None,
+        sync_filter: _FilterT       = None,
+        since:       Optional[str]  = None,
+        full_state:  Optional[bool] = None,
     ):
         # type: (...) -> Union[SyncResponse, SyncError]
         """Synchronise the client's state with the latest state on the server.
@@ -739,14 +739,14 @@ class AsyncClient(Client):
                 anyways, in milliseconds.
                 If the server fails to return after 15 seconds of expected
                 timeout, the client will timeout by itself.
-            sync_filter (Dict[Any, Any], optional): A filter that should be
-                used for this sync request.
-            full_state(bool, optional): Controls whether to include the full
+            sync_filter (Union[None, str, Dict[Any, Any]):
+                A filter ID or dict that should be used for this sync request.
+            full_state (bool, optional): Controls whether to include the full
                 state for all rooms the user is a member of. If this is set to
                 true, then all state events will be returned, even if since is
                 non-empty. The timeline will still be limited by the since
                 parameter.
-            since(str, optional): A token specifying a point in time where to
+            since (str, optional): A token specifying a point in time where to
                 continue the sync from. Defaults to the last sync token we
                 received from the server using this API call.
 
@@ -801,12 +801,12 @@ class AsyncClient(Client):
 
     @logged_in
     async def sync_forever(
-            self,
-            timeout=None,         # type: Optional[int]
-            sync_filter=None,     # type: Optional[Dict[Any, Any]]
-            since=None,           # type: Optional[str]
-            full_state=None,      # type: Optional[bool]
-            loop_sleep_time=None  # type: Optional[int]
+        self,
+        timeout:         Optional[int]  = None,
+        sync_filter:     _FilterT       = None,
+        since:           Optional[str]  = None,
+        full_state:      Optional[bool] = None,
+        loop_sleep_time: Optional[int]  = None,
     ):
         # type: (...) -> None
         """Continuously sync with the configured homeserver.
@@ -823,8 +823,8 @@ class AsyncClient(Client):
                 anyways, in milliseconds.
                 If the server fails to return after 5 seconds of expected
                 timeout, the client will timeout by itself.
-            sync_filter (Dict[Any, Any], optional): A filter that should be
-                used for this sync request.
+            sync_filter (Union[None, str, Dict[Any, Any]):
+                A filter ID or dict that should be used for this sync request.
             full_state (bool, optional): Controls whether to include the full
                 state for all rooms the user is a member of. If this is set to
                 true, then all state events will be returned, even if since is
@@ -1826,12 +1826,13 @@ class AsyncClient(Client):
 
     @logged_in
     async def room_messages(
-            self,
-            room_id,                          # type: str
-            start,                            # type: str
-            end=None,                         # type: Optional[str]
-            direction=MessageDirection.back,  # type: MessageDirection
-            limit=10                          # type: int
+        self,
+        room_id:        str,
+        start:          str,
+        end:            Optional[str]    = None,
+        direction:      MessageDirection = MessageDirection.back,
+        limit:          int              = 10,
+        message_filter: _FilterT         = None,
     ):
         # type: (...) -> Union[RoomMessagesResponse, RoomMessagesError]
         """Fetch a list of message and state events for a room.
@@ -1856,6 +1857,9 @@ class AsyncClient(Client):
                 events from. Defaults to MessageDirection.back.
             limit (int, optional): The maximum number of events to return.
                 Defaults to 10.
+            message_filter (Union[None, str, Dict[Any, Any]]):
+                A filter ID or dict that should be used for this room messages
+                request.
 
         Example:
             >>> response = await client.room_messages(room_id, previous_batch)
@@ -1870,7 +1874,8 @@ class AsyncClient(Client):
             start,
             end=end,
             direction=direction,
-            limit=limit
+            limit=limit,
+            message_filter=message_filter,
         )
 
         return await self._send(
