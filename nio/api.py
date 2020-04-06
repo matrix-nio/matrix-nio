@@ -262,6 +262,7 @@ class Api(object):
         path = Api._build_path("register")
 
         content_dict = {
+            "auth": {"type": "m.login.dummy"},
             "username": user,
             "password": password,
         }
@@ -272,11 +273,7 @@ class Api(object):
         if device_name:
             content_dict["initial_device_display_name"] = device_name
 
-        second_half = Api.to_json(content_dict)
-
-        first_half = '{"auth": {"type": "m.login.dummy"},'
-
-        return "POST", path, first_half + second_half[1:]
+        return "POST", path, Api.to_json(content_dict)
 
     @staticmethod
     def login(
