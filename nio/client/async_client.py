@@ -56,7 +56,8 @@ from ..responses import (ContentRepositoryConfigError,
                          JoinedMembersError, JoinedMembersResponse,
                          JoinedRoomsError, JoinedRoomsResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
-                         KeysUploadResponse, RegisterResponse, LoginError, LoginResponse,
+                         KeysUploadResponse,
+                         RegisterResponse, LoginError, LoginResponse,
                          LogoutError, LogoutResponse,
                          ProfileGetAvatarResponse, ProfileGetAvatarError,
                          ProfileGetDisplayNameResponse,
@@ -802,11 +803,12 @@ class AsyncClient(Client):
     @logged_in
     async def sync_forever(
         self,
-        timeout:         Optional[int]  = None,
-        sync_filter:     _FilterT       = None,
-        since:           Optional[str]  = None,
-        full_state:      Optional[bool] = None,
-        loop_sleep_time: Optional[int]  = None,
+        timeout:           Optional[int]  = None,
+        sync_filter:       _FilterT       = None,
+        since:             Optional[str]  = None,
+        full_state:        Optional[bool] = None,
+        loop_sleep_time:   Optional[int]  = None,
+        first_sync_filter: _FilterT       = None,
     ):
         # type: (...) -> None
         """Continuously sync with the configured homeserver.
@@ -823,29 +825,44 @@ class AsyncClient(Client):
                 anyways, in milliseconds.
                 If the server fails to return after 5 seconds of expected
                 timeout, the client will timeout by itself.
+
             sync_filter (Union[None, str, Dict[Any, Any]):
-                A filter ID or dict that should be used for this sync request.
+                A filter ID or dict that should be used for sync requests.
+
             full_state (bool, optional): Controls whether to include the full
                 state for all rooms the user is a member of. If this is set to
                 true, then all state events will be returned, even if since is
                 non-empty. The timeline will still be limited by the since
                 parameter. This argument will be used only for the first sync
                 request.
+
             since (str, optional): A token specifying a point in time where to
                 continue the sync from. Defaults to the last sync token we
                 received from the server using this API call. This argument
                 will be used only for the first sync request, the subsequent
                 sync requests will use the token from the last sync response.
+
             loop_sleep_time (int, optional): The sleep time, if any, between
                 successful sync loop iterations in milliseconds.
 
+            first_sync_filter (Union[None, str, Dict[Any, Any]):
+                A filter ID or dict to use for the first sync request only.
+                If `None` (default), the `sync_filter` parameter's value
+                is used.
+                To have no filtering for the first sync regardless of
+                `sync_filter`'s value, pass `{}`.
         """
+
+        first_sync = True
+
         while True:
             try:
+                used_filter = first_sync_filter if first_sync else sync_filter
+
                 tasks = [
                     asyncio.ensure_future(coro) for coro in (
-                        self.sync(timeout, sync_filter, since, full_state),
-                        self.send_to_device_messages()
+                        self.sync(timeout, used_filter, since, full_state),
+                        self.send_to_device_messages(),
                     )
                 ]
 
@@ -857,14 +874,15 @@ class AsyncClient(Client):
 
                 if self.should_claim_keys:
                     tasks.append(asyncio.ensure_future(
-                        self.keys_claim(self.get_users_for_key_claiming())
+                        self.keys_claim(self.get_users_for_key_claiming()),
                     ))
 
                 for response in asyncio.as_completed(tasks):
                     await self.run_response_callbacks((await response,))
 
+                first_sync = False
                 full_state = None
-                since = None
+                since      = None
 
                 if loop_sleep_time:
                     await asyncio.sleep(loop_sleep_time / 1000)
