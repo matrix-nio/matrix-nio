@@ -425,9 +425,11 @@ class Api(object):
         if timeout is not None:
             query_parameters["timeout"] = str(timeout)
 
-        if filter is not None:
+        if isinstance(filter, dict):
             filter_json = json.dumps(filter, separators=(",", ":"))
             query_parameters["filter"] = filter_json
+        elif isinstance(filter, str):
+            query_parameters["filter"] = filter
 
         return "GET", Api._build_path("sync", query_parameters)
 
@@ -859,9 +861,11 @@ class Api(object):
         else:
             query_parameters["dir"] = "b"
 
-        if message_filter is not None:
+        if isinstance(message_filter, dict):
             filter_json = json.dumps(message_filter, separators=(",", ":"))
             query_parameters["filter"] = filter_json
+        elif isinstance(message_filter, str):
+            query_parameters["filter"] = message_filter
 
         path = "rooms/{room}/messages".format(room=room_id)
 
