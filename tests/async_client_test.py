@@ -1162,19 +1162,43 @@ class TestClass(object):
         )
 
         await async_client.receive_response(self.encryption_sync_response)
-        aioresponse.get(
-            "https://example.org/_matrix/client/r0/rooms/{}/"
+
+        # No filter
+
+        url = (
+            f"https://example.org/_matrix/client/r0/rooms/{TEST_ROOM_ID}/"
             "messages?access_token=abc123"
-            "&dir=b&from=start_token&limit=10".format(
-                TEST_ROOM_ID
-            ),
-            status=200,
-            payload=self.messages_response
+            "&dir=b&from=start_token&limit=10"
         )
+        aioresponse.get(url, status=200, payload=self.messages_response)
+        resp = await async_client.room_messages(TEST_ROOM_ID, "start_token")
+        assert isinstance(resp, RoomMessagesResponse)
 
-        response = await async_client.room_messages(TEST_ROOM_ID, "start_token")
+        # ID filter
 
-        assert isinstance(response, RoomMessagesResponse)
+        aioresponse.get(
+            f"{url}&filter=test_id",
+            status=200,
+            payload=self.messages_response,
+        )
+        resp = await async_client.room_messages(
+            TEST_ROOM_ID, "start_token", message_filter="test_id",
+        )
+        assert isinstance(resp, RoomMessagesResponse)
+
+        # Dict filter
+
+        aioresponse.get(
+            url + '&filter={"room":{"state":{"limit":1}}}',
+            status=200,
+            payload=self.messages_response,
+        )
+        resp = await async_client.room_messages(
+            TEST_ROOM_ID,
+            "start_token",
+            message_filter = {"room": {"state": {"limit": 1}}},
+        )
+        assert isinstance(resp, RoomMessagesResponse)
 
     async def test_room_typing(self, async_client, aioresponse):
         await async_client.receive_response(
