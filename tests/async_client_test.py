@@ -609,27 +609,51 @@ class TestClass(object):
         assert async_client.access_token
         assert async_client.logged_in
 
-    def test_sync(self, async_client, aioresponse):
-        loop = asyncio.get_event_loop()
-
+    async def test_sync(self, async_client, aioresponse):
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
             payload=self.login_response
         )
+
+        url = (
+            r"^https://example\.org/_matrix/client/r0/"
+            r"sync\?access_token=abc123"
+        )
+
         aioresponse.get(
-            "https://example.org/_matrix/client/r0/sync?access_token=abc123",
+            re.compile(fr"{url}$"),
             status=200,
             payload=self.sync_response
         )
+
         with pytest.raises(LocalProtocolError):
-            resp2 = loop.run_until_complete(async_client.sync())
+            resp2 = await async_client.sync()
 
-        resp = loop.run_until_complete(async_client.login("wordpass"))
-        resp2 = loop.run_until_complete(async_client.sync())
-
+        resp = await async_client.login("wordpass")
+        resp2 = await async_client.sync()
         assert isinstance(resp, LoginResponse)
         assert isinstance(resp2, SyncResponse)
+
+        # Test with filter ID
+
+        aioresponse.get(
+            re.compile(fr"{url}&filter=test_id&since=.*"),
+            status=200,
+            payload=self.sync_response
+        )
+        resp3 = await async_client.sync(sync_filter="test_id")
+        assert isinstance(resp3, SyncResponse)
+
+        # Test with filter dict
+
+        aioresponse.get(
+            re.compile(url + r"&filter=" + quote("{}") + "&since=.*"),
+            status=200,
+            payload=self.sync_response,
+        )
+        resp4 = await async_client.sync(sync_filter={})
+        assert isinstance(resp4, SyncResponse)
 
     def test_keys_upload(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
