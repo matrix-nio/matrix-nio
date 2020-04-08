@@ -23,7 +23,7 @@ Ephemeral events are used for typing notifications and read receipts.
 
 """
 
-from typing import List
+from typing import List, Dict
 
 import attr
 
@@ -55,6 +55,8 @@ class EphemeralEvent(object):
         """
         if event_dict["type"] == "m.typing":
             return TypingNoticeEvent.from_dict(event_dict)
+        if event_dict["type"] == "m.receipt":
+            return ReadReceiptEvent.from_dict(event_dict)
 
         return None
 
@@ -84,3 +86,38 @@ class TypingNoticeEvent(EphemeralEvent):
     @verify_or_none(Schemas.m_typing)
     def from_dict(cls, parsed_dict):
         return cls(parsed_dict["content"]["user_ids"])
+
+
+@attr.s
+class ReadReceiptEvent(EphemeralEvent):
+    """Informs the client of changes in the newest events seen by users.
+
+    Each ReadReceiptEvent can contain multiple event_ids, each with many users
+    who have seen that event most recently.
+
+    Attributes:
+        receipts (dict): A dictionary mapping event_ids as keys to a list of
+            receipts. Each receipt is a dictionary with a `receipt_type`,
+            `user_id` and `timestamp`.
+    """
+
+    receipts = attr.ib(type=Dict)
+
+    @classmethod
+    @verify_or_none(Schemas.m_read)
+    def from_dict(cls, parsed_dict):
+        event_receipts = {}
+
+        for event_id, event in parsed_dict["content"].items():
+            receipts = []
+            for receipt_type, receipt in event.items():
+                for user_id, user in receipt.items():
+                    receipts.append({
+                        "receipt_type": receipt_type,
+                        "user_id": user_id,
+                        "timestamp": user["ts"]
+                    })
+
+            event_receipts[event_id] = receipts
+
+        return cls(event_receipts)

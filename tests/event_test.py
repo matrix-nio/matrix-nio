@@ -37,6 +37,7 @@ from nio.events import (
     InviteNameEvent,
     EphemeralEvent,
     TypingNoticeEvent,
+    ReadReceiptEvent,
     AccountDataEvent,
     UnknownAccountDataEvent,
     FullyReadEvent,
@@ -315,6 +316,16 @@ class TestClass(object):
         assert isinstance(event, TypingNoticeEvent)
 
         assert "@bob:example.com" in event.users
+    
+    def test_read_receipt_event(self):
+        parsed_dict = TestClass._load_response("tests/data/events/receipt.json")
+        event = EphemeralEvent.parse_event(parsed_dict)
+
+        assert isinstance(event, ReadReceiptEvent)
+
+        assert "$152037280074GZeOm:localhost" in event.receipts
+        assert "@bob:example.com" == \
+            event.receipts["$152037280074GZeOm:localhost"][0]["user_id"]
 
     def test_account_data_event(self):
         event = AccountDataEvent.parse_event({})
