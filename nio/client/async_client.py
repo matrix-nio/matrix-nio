@@ -1630,8 +1630,9 @@ class AsyncClient(Client):
             infile (str): The file containing the keys.
             passphrase (str): The decryption passphrase.
 
-        Raises `EncryptionError` if the file is invalid or couldn't be
-            decrypted.
+        Raises `ValueError` if the file's format is invalid.
+
+        Raises `EncryptionError` if the file couldn't be parsed or decrypted.
 
         Raises the usual file errors if the file couldn't be opened.
         """
@@ -1643,11 +1644,14 @@ class AsyncClient(Client):
         import_keys = partial(self.olm.import_keys_static, infile, passphrase)
         sessions = await loop.run_in_executor(None, import_keys)
 
+        to_save = []
+
         for session in sessions:
-            # This could be improved by writing everything to db at once at
-            # the end
             if self.olm.inbound_group_store.add(session):
-                self.store.save_inbound_group_session(session)
+                to_save.append(session)
+
+        save = partial(self.store.save_inbound_group_sessions, *to_save)
+        await loop.run_in_executor(None, save)
 
     @logged_in
     async def room_create(
