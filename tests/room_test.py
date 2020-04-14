@@ -4,7 +4,8 @@ from helpers import faker
 from nio.events import (InviteAliasEvent, InviteMemberEvent, InviteNameEvent,
                         RoomCreateEvent, RoomGuestAccessEvent,
                         RoomHistoryVisibilityEvent, RoomJoinRulesEvent,
-                        RoomMemberEvent, RoomNameEvent, TypingNoticeEvent)
+                        RoomMemberEvent, RoomNameEvent, TypingNoticeEvent,
+                        Receipt, ReceiptEvent)
 from nio.responses import RoomSummary
 from nio.rooms import MatrixInvitedRoom, MatrixRoom
 
@@ -128,6 +129,43 @@ class TestClass(object):
 
         room.handle_ephemeral_event(TypingNoticeEvent([BOB_ID]))
         assert room.typing_users == [BOB_ID]
+
+    def test_read_receipt_event(self):
+        """Verify that m.read ReceiptEvents update a room's read_receipt dict.
+
+        Successive m.read receipts should replace the first receipt with the
+        second.
+        """
+        room = self.test_room
+        assert room.read_receipts == {}
+
+        r1 = Receipt("event_id", "m.read", BOB_ID, 10)
+        r2 = Receipt("event_id2", "m.read", BOB_ID, 15)
+
+        r1_event = ReceiptEvent([r1])
+        r2_event = ReceiptEvent([r2])
+
+        room.handle_ephemeral_event(r1_event)
+        assert room.read_receipts == {
+            BOB_ID: r1
+        }
+
+        room.handle_ephemeral_event(r2_event)
+        assert room.read_receipts == {
+            BOB_ID: r2
+        }
+    
+    def test_non_read_receipt_event(self):
+        """Verify that non-m.read receipts don't leak into a room's read_receipt
+        dict.
+        """
+        room = self.test_room
+        room.handle_ephemeral_event(
+            ReceiptEvent([
+                Receipt("event_id", "m.downvoted", BOB_ID, 0)
+            ])
+        )
+        assert room.read_receipts == {}
 
     def test_create_event(self):
         room = self.test_room

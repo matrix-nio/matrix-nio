@@ -56,7 +56,7 @@ class EphemeralEvent(object):
         if event_dict["type"] == "m.typing":
             return TypingNoticeEvent.from_dict(event_dict)
         if event_dict["type"] == "m.receipt":
-            return ReadReceiptEvent.from_dict(event_dict)
+            return ReceiptEvent.from_dict(event_dict)
 
         return None
 
@@ -89,35 +89,47 @@ class TypingNoticeEvent(EphemeralEvent):
 
 
 @attr.s
-class ReadReceiptEvent(EphemeralEvent):
-    """Informs the client of changes in the newest events seen by users.
-
-    Each ReadReceiptEvent can contain multiple event_ids, each with many users
-    who have seen that event most recently.
+class Receipt(object):
+    """Receipt of a user acknowledging an event.
+    
+    If `receipt_type` is "m.read", then it is a read receipt and shows the last
+    event that a user has read.
 
     Attributes:
-        receipts (dict): A dictionary mapping event_ids as keys to a list of
-            receipts. Each receipt is a dictionary with a `receipt_type`,
-            `user_id` and `timestamp`.
+        event_id (str): the ID of the event being acknowleged
+        receipt_type (str): the type of receipt being received; this is
+            commonly "m.read" for read receipts.
+        user_id (str): the ID of the user who is acknowledging the event.
+        timestamp (int): The timestamp the receipt was sent at.
     """
+    event_id = attr.ib(type=str)
+    receipt_type = attr.ib(type=str)
+    user_id = attr.ib(type=str)
+    timestamp = attr.ib(type=int)
 
-    receipts = attr.ib(type=Dict)
+@attr.s
+class ReceiptEvent(EphemeralEvent):
+    """Informs the client of changes in the newest events seen by users.
+
+    A ReceiptEvent can contain multiple event_ids seen by many different users.
+    At the time of writing, all Receipts have a `receipt_type` of "m.read" and
+    are read receipts, but this may change in the future.
+
+    Attributes:
+        receipts (List[Receipt]): The list of `Receipt`s in this event.
+    """
+    receipts = attr.ib(type=List[Receipt])
 
     @classmethod
-    @verify_or_none(Schemas.m_read)
+    @verify_or_none(Schemas.m_receipt)
     def from_dict(cls, parsed_dict):
-        event_receipts = {}
+        event_receipts: List[Receipt] = []
 
         for event_id, event in parsed_dict["content"].items():
-            receipts = []
             for receipt_type, receipt in event.items():
                 for user_id, user in receipt.items():
-                    receipts.append({
-                        "receipt_type": receipt_type,
-                        "user_id": user_id,
-                        "timestamp": user["ts"]
-                    })
-
-            event_receipts[event_id] = receipts
+                    event_receipts.append(
+                        Receipt(event_id, receipt_type, user_id, user["ts"])
+                    )
 
         return cls(event_receipts)

@@ -22,7 +22,6 @@ from jsonschema import Draft4Validator, FormatChecker, validators
 RoomRegex = "^!.+:.+$"
 UserIdRegex = "^@.*:.+$"
 EventTypeRegex = r"^.+\..+"
-EventIdRegex = r"^\$.+:.+$"
 Base64Regex = r"[^-A-Za-z0-9+/=]|=[^=]|={3,}$"
 KeyRegex = r"(ed25519|curve25519):.+"
 SignedCurveRegex = r"(signed_curve25519|curve25519):.+"
@@ -1115,13 +1114,13 @@ class Schemas(object):
         "additionalProperties": False,
     }
 
-    m_read = {
+    m_receipt = {
         "type": "object",
         "properties": {
             "content": {
                 "type": "object",
                 "patternProperties": {
-                    EventIdRegex: {
+                    r".*": {
                         "type": "object",
                         "properties": {
                             "m.read": {
@@ -1143,7 +1142,7 @@ class Schemas(object):
             "room_id": {"type": "string"}
         },
         "required": ["content", "type"],
-        "additionalProperties": False,
+        "additionalProperties": True,
     }
 
     keys_upload = {
