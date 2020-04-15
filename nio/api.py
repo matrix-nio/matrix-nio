@@ -1017,7 +1017,7 @@ class Api(object):
                 updated for the device.
         """
         query_parameters = {"access_token": access_token}
-        path = "devices/{}".format(device_id)
+        path = "devices/{}".format(quote(device_id))
 
         return (
             "PUT",
