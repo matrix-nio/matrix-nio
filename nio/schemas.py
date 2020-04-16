@@ -1130,7 +1130,8 @@ class Schemas(object):
                                         "type": "object",
                                         "properties": {
                                             "ts": {"type" : "integer"}
-                                        }
+                                        },
+                                        "required": ["ts"]
                                     }
                                 }
                             }
