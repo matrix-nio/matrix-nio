@@ -2,6 +2,7 @@ import pytest
 
 from helpers import faker
 from nio.events import (InviteAliasEvent, InviteMemberEvent, InviteNameEvent,
+                        RoomAvatarEvent,
                         RoomCreateEvent, RoomGuestAccessEvent,
                         RoomHistoryVisibilityEvent, RoomJoinRulesEvent,
                         RoomMemberEvent, RoomNameEvent, TypingNoticeEvent)
@@ -39,6 +40,10 @@ class TestClass(object):
         room.summary.heroes.append(mx_id)
         room.summary.joined_member_count += 1
         assert room.users
+        assert room.members_synced
+        assert room.member_count == 1
+
+        room.summary = None
         assert room.members_synced
         assert room.member_count == 1
 
@@ -210,8 +215,9 @@ class TestClass(object):
         assert room.gen_avatar_url is None
 
         room.add_member("@carol:example.org", "Carol", "mxc://bar", True)
-        room.summary.heroes.append("@carol:example.org")
         room.summary.invited_member_count += 1
+        assert room.gen_avatar_url is None
+        room.summary.heroes.append("@carol:example.org")
         assert room.gen_avatar_url == "mxc://bar"
 
         room.name = "Test"
@@ -250,6 +256,7 @@ class TestClass(object):
 
     def test_user_name_calculation(self):
         room = self.test_room
+        assert room.user_name("@not_in_the_room:example.org") is None
 
         room.add_member("@alice:example.org", "Alice", None)
         assert room.user_name("@alice:example.org") == "Alice"
@@ -275,6 +282,14 @@ class TestClass(object):
         assert room.user_name("@alice:example.org") == "@alice:example.org"
         assert room.user_name("@malory:example.org") == "@alice:example.org (@malory:example.org)"
         assert room.user_name_clashes("@alice:example.org") == ["@alice:example.org", "@malory:example.org"]
+
+    def test_avatar_url(self):
+        room = self.test_room
+        assert room.user_name("@not_in_the_room:example.org") is None
+        assert room.avatar_url("@not_in_the_room:example.org") is None
+
+        room.add_member("@alice:example.org", "Alice", "mxc://foo")
+        assert room.avatar_url("@alice:example.org") == "mxc://foo"
 
     def test_machine_name(self):
         room = self.test_room
@@ -366,6 +381,21 @@ class TestClass(object):
         )
         assert room.name == "test name"
 
+    def test_room_avatar_event(self):
+        room = self.test_room
+        assert not room.gen_avatar_url
+        room.handle_event(
+            RoomAvatarEvent(
+                {
+                    "event_id": "event_id",
+                    "sender": BOB_ID,
+                    "origin_server_ts": 0
+                },
+                "mxc://foo"
+            )
+        )
+        assert room.gen_avatar_url == "mxc://foo"
+
     def test_summary_update(self):
         room = self.test_room
         room.summary = None
@@ -416,7 +446,7 @@ class TestClass(object):
             ALICE_ID,
             "invite",
             None,
-            {"membership": "invite"},
+            {"membership": "invite", "displayname": "Alice Margarine"},
         )
 
         joins_event = RoomMemberEvent(
@@ -424,7 +454,11 @@ class TestClass(object):
             ALICE_ID,
             "join",
             None,
-            {"membership": "join"},
+            {
+                "membership": "join",
+                "displayname": "Alice Margatroid",
+                "avatar_url": "mxc://new",
+            },
         )
 
         leaves_event = RoomMemberEvent(
@@ -435,11 +469,19 @@ class TestClass(object):
             {"membership": "leave"},
         )
 
+        unknown_event = RoomMemberEvent(
+            {"event_id": "event4", "sender": ALICE_ID, "origin_server_ts": 4},
+            ALICE_ID,
+            "bad_membership",
+            None,
+            {"membership": "bad_membership"},
+        )
+
         room = self.test_room
         assert not room.users
         assert not room.invited_users
 
-        # Alice is invited, accepts then leaves
+        # Alice is invited, accepts (her name and avatar changed) then leaves
 
         room.handle_membership(invited_event)
         assert set(room.users) == {ALICE_ID}
@@ -448,6 +490,10 @@ class TestClass(object):
         room.handle_membership(joins_event)
         assert set(room.users) == {ALICE_ID}
         assert not room.invited_users
+        assert room.names["Alice Margatroid"] == [ALICE_ID]
+        assert room.users[ALICE_ID].display_name == "Alice Margatroid"
+        assert room.users[ALICE_ID].avatar_url == "mxc://new"
+
 
         room.handle_membership(leaves_event)
         assert not room.users
@@ -472,3 +518,9 @@ class TestClass(object):
         room.handle_membership(leaves_event)
         assert not room.users
         assert not room.invited_users
+
+        # Ensure we get False if we handle an event that changes nothing or
+        # has an unknown new membership
+
+        assert not room.handle_membership(leaves_event)
+        assert not room.handle_membership(unknown_event)
