@@ -22,7 +22,9 @@ class TestClass(object):
 
     @property
     def test_room(self):
-        return MatrixRoom(TEST_ROOM, BOB_ID)
+        room = MatrixRoom(TEST_ROOM, BOB_ID)
+        room.update_summary(RoomSummary(0, 0, []))
+        return room
 
     def test_room_creation(self):
         room = self.test_room
@@ -31,11 +33,15 @@ class TestClass(object):
     def test_adding_members(self):
         room = self.test_room
         assert not room.users
+
         mx_id, name, avatar = self.new_user
         room.add_member(mx_id, name, avatar)
+        room.summary.heroes.append(mx_id)
+        room.summary.joined_member_count += 1
         assert room.users
         assert room.members_synced
         assert room.member_count == 1
+
         member = list(room.users.values())[0]
         assert member.user_id == mx_id
         assert member.display_name == name
@@ -51,25 +57,78 @@ class TestClass(object):
         assert room.is_named
         assert not room.is_group
 
-    def test_name_calculation_when_unnamed_with_no_members(self):
+    def test_name_calculation_when_unnamed(self):
         room = self.test_room
-        assert room.display_name is None
         assert room.named_room_name() is None
+        assert room.display_name == "Empty Room"
 
-    def test_name_calculation_when_unnamed_with_members(self):
-        room = self.test_room
+        # Members join
+
+        room.add_member(BOB_ID, "Bob", None)  # us
+        room.summary.joined_member_count += 1
+        assert room.display_name == "Empty Room"
+
         room.add_member("@alice:example.org", "Alice", None)
-        assert room.display_name == "Alice"
-
-        room.add_member(BOB_ID, "Bob", None)
+        room.summary.heroes.append("@alice:example.org")
+        room.summary.joined_member_count += 1
         assert room.display_name == "Alice"
 
         room.add_member("@malory:example.org", "Alice", None)
+        room.summary.heroes.append("@malory:example.org")
+        room.summary.joined_member_count += 1
         assert (room.display_name ==
                 "Alice (@alice:example.org) and Alice (@malory:example.org)")
+
         room.add_member("@steve:example.org", "Steve", None)
+        room.summary.heroes.append("@steve:example.org")
+        room.summary.joined_member_count += 1
         assert (room.display_name ==
-                "Alice (@alice:example.org) and 2 others")
+                "Alice (@alice:example.org), Alice (@malory:example.org) "
+                "and Steve")
+
+        room.add_member("@carol:example.org", "Carol", None)
+        room.summary.joined_member_count += 1
+        assert (room.display_name ==
+                "Alice (@alice:example.org), Alice (@malory:example.org), "
+                "Steve and 1 other")
+
+        room.add_member("@dave:example.org", "Dave", None)
+        room.summary.joined_member_count += 1
+        assert (room.display_name ==
+                "Alice (@alice:example.org), Alice (@malory:example.org), "
+                "Steve and 2 others")
+
+        room.add_member("@erin:example.org", "Eirin", None)
+        room.summary.invited_member_count += 1
+        assert (room.display_name ==
+                "Alice (@alice:example.org), Alice (@malory:example.org), "
+                "Steve and 3 others")
+
+        # Members leave
+
+        room.summary.joined_member_count = 1
+        room.summary.invited_member_count = 0
+        assert (room.display_name ==
+                "Empty Room (had Alice (@alice:example.org), "
+                "Alice (@malory:example.org) and Steve)")
+
+        room.remove_member("@steve:example.org")
+        room.summary.heroes.remove("@steve:example.org")
+        assert (room.display_name ==
+                "Empty Room (had Alice (@alice:example.org) and "
+                "Alice (@malory:example.org))")
+
+        room.remove_member("@malory:example.org")
+        room.summary.heroes.remove("@malory:example.org")
+        assert room.display_name == "Empty Room (had Alice)"
+
+        room.remove_member("@alice:example.org")
+        room.summary.heroes.remove("@alice:example.org")
+        assert room.display_name == "Empty Room"
+
+        room.remove_member("@bob:example.org")  # us
+        assert not room.summary.heroes
+        assert room.display_name == "Empty Room"
 
     def test_name_calculation_with_canonical_alias(self):
         room = self.test_room
@@ -87,6 +146,35 @@ class TestClass(object):
 
         room.name = "#test"
         assert room.display_name == "#test"
+
+    def test_set_room_avatar(self):
+        room = self.test_room
+        room.room_avatar_url = "mxc://foo"
+        assert room.gen_avatar_url == "mxc://foo"
+
+    def test_room_avatar_calculation_when_no_set_avatar(self):
+        room = self.test_room
+        assert room.room_avatar_url is None
+        assert room.summary
+        assert room.is_group
+
+        room.add_member("@bob:example.org", "Bob", "mxc://abc", True)  # us
+        room.summary.joined_member_count += 1
+        assert room.gen_avatar_url is None
+
+        room.add_member("@carol:example.org", "Carol", "mxc://bar", True)
+        room.summary.heroes.append("@carol:example.org")
+        room.summary.invited_member_count += 1
+        assert room.gen_avatar_url == "mxc://bar"
+
+        room.add_member("@alice:example.org", "Alice", "mxc://baz")
+        room.summary.heroes.append("@alice:matrix.org")
+        room.summary.joined_member_count += 1
+        assert room.gen_avatar_url == "mxc://bar"
+
+        room.name = "Test"
+        assert not room.is_group
+        assert room.gen_avatar_url is None
 
     def test_user_name_calculation(self):
         room = self.test_room
@@ -208,7 +296,7 @@ class TestClass(object):
 
     def test_summary_update(self):
         room = self.test_room
-        assert not room.summary
+        room.summary = None
 
         room.update_summary(RoomSummary(1, 2, []))
         assert room.member_count == 3

@@ -18,7 +18,8 @@ from __future__ import unicode_literals
 
 from builtins import super
 from collections import defaultdict
-from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional, Union
+from typing import (Any, DefaultDict, Dict, List, NamedTuple, Optional, Tuple,
+                    Union)
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
@@ -71,62 +72,65 @@ class MatrixRoom(object):
         # yapf: enable
 
     @property
-    def display_name(self):
+    def display_name(self) -> str:
         """Calculate display name for a room.
 
         Prefer returning the room name if it exists, falling back to
         a group-style name if not.
 
         Follows:
-        https://matrix.org/docs/spec/client_server/r0.3.0.html#id268
+        https://matrix.org/docs/spec/client_server/r0.6.0#id342
         """
-        if self.is_named:
-            return self.named_room_name()
+        return self.named_room_name() or self.group_name()
 
-        return self.group_name()
+    def named_room_name(self) -> Optional[str]:
+        """Return the name of the room if it's a named room, otherwise None."""
+        return self.name or self.canonical_alias or None
 
-    def named_room_name(self):
-        """Return the name of the room, if it's a named room.
-
-        Otherwise, return None.
-        """
-        if self.name:
-            return self.name
-        elif self.canonical_alias:
-            return self.canonical_alias
-        else:
-            return None
-
-    def group_name(self):
+    def group_name(self) -> str:
         """Return the group-style name of the room.
 
         In other words, a display name based on the names of room members. This
         is used for ad-hoc groups of people (usually direct chats).
-
-        Returns None if there are no users.
         """
-        # Sort user display names, excluding our own user and using the
-        # mxid as the sorting key.
 
-        user_names = [
-            self.user_name(u)
-            for u in sorted(self.users.keys())
-            if u != self.own_user_id
-        ]
-        num_users = len(user_names)
+        empty, user_ids, others = self.group_name_structure()
 
-        if num_users == 1:
-            return user_names[0]
-        elif num_users == 2:
-            return " and ".join(user_names)
-        elif num_users >= 3:
-            return "{first_user} and {num} others".format(
-                first_user=user_names[0], num=num_users - 1
+        names = [self.user_name(u) or u for u in user_ids]
+
+        if others:
+            text = "{} and {} other{}".format(
+                ", ".join(names), others, "" if others == 1 else "s",
             )
+        elif len(names) == 0:
+            text = ""
+        elif len(names) == 1:
+            text = names[0]
         else:
-            return None
+            text = "{} and {}".format(", ".join(names[:-1]), names[-1])
 
-    def user_name(self, user_id):
+        if empty and text:
+            text = f"Empty Room (had {text})"
+        elif empty:
+            text = "Empty Room"
+
+        return text
+
+    def group_name_structure(self) -> Tuple[bool, List[str], int]:
+        """Get if room is empty, ID for listed users and the N others count.
+        """
+        if not self.summary:
+            return (True, [], 0)
+
+        users = self.summary.heroes
+        empty = self.member_count <= 1
+
+        if len(users) >= self.member_count - 1:
+            return (empty, users, 0)
+        else:
+            return (empty, users, self.member_count - 1 - len(users))
+
+    def user_name(self, user_id: str) -> Optional[str]:
         """Get disambiguated display name for a user.
 
         Returns display name of a user if display name is unique or returns
@@ -141,12 +145,11 @@ class MatrixRoom(object):
             return user.disambiguated_name
         return user.name
 
-    def user_name_clashes(self, name):
+    def user_name_clashes(self, name: str) -> List[str]:
         """Get a list of users that have same display name."""
         return self.names[name]
 
-    def avatar_url(self, user_id):
-        # type: (str) -> Optional[str]
+    def avatar_url(self, user_id: str) -> Optional[str]:
         """Get avatar url for a user.
 
         Returns a matrix content URI, or None if the user has no avatar.
@@ -157,7 +160,7 @@ class MatrixRoom(object):
         return self.users[user_id].avatar_url
 
     @property
-    def gen_avatar_url(self):
+    def gen_avatar_url(self) -> Optional[str]:
         """
         Get the calculated room's avatar url.
 
@@ -168,45 +171,46 @@ class MatrixRoom(object):
         if self.room_avatar_url:
             return self.room_avatar_url
 
-        if self.is_group or len(self.users) == 2:
-            user = next(
-                (u for u in self.users if u != self.own_user_id),
-                None
-            )
-            return self.avatar_url(user)
+        if self.summary and (self.is_group or self.member_count == 2):
+            try:
+                return self.avatar_url(self.summary.heroes[0])
+            except IndexError:
+                return None
 
         return None
 
     @property
-    def machine_name(self):
+    def machine_name(self) -> str:
         """Calculate an unambiguous, unique machine name for a room.
 
         Either use the more human-friendly canonical alias, if it exists, or
         the internal room ID if not.
         """
-        if self.canonical_alias:
-            return self.canonical_alias
-        else:
-            return self.room_id
+        return self.canonical_alias or self.room_id
 
     @property
-    def is_named(self):
-        """Determine whether a room is name.
+    def is_named(self) -> bool:
+        """Determine whether a room is named.
 
         A named room is a room with either the name or a canonical alias set.
         """
-        return self.canonical_alias or self.name
+        return bool(self.canonical_alias or self.name)
 
     @property
-    def is_group(self):
+    def is_group(self) -> bool:
         """Determine whether a room is an ad-hoc group (often a direct chat).
 
         A group is an unnamed room with no canonical alias.
         """
         return not self.is_named
 
-    def add_member(self, user_id, display_name, avatar_url, invited=False):
-        # type (str, str, str, bool) -> bool
+    def add_member(
+        self,
+        user_id:      str,
+        display_name: str,
+        avatar_url:   str,
+        invited:      bool = False,
+    ) -> bool:
         if user_id in self.users:
             return False
 
@@ -226,18 +230,25 @@ class MatrixRoom(object):
 
         return True
 
-    def remove_member(self, user_id):
-        # type (str) -> bool
-        if user_id in self.users or user_id in self.invited_users:
-            user         = self.users.pop(user_id, None)
-            invited_user = self.invited_users.pop(user_id, None)
+    def remove_member(self, user_id: str) -> bool:
+        user = self.users.pop(user_id, None)
 
-            self.names[user.name].remove((user or invited_user).user_id)
-            return True
+        if user:
+            self.names[user.name].remove(user.user_id)
 
-        return False
+        invited_user = self.invited_users.pop(user_id, None)
 
-    def handle_membership(self, event: Union[RoomMemberEvent, InviteMemberEvent]) -> bool:
+        if invited_user:
+            try:
+                self.names[invited_user.name].remove(invited_user.user_id)
+            except ValueError:
+                pass
+
+        return bool(user or invited_user)
+
+    def handle_membership(
+        self, event: Union[RoomMemberEvent, InviteMemberEvent],
+    ) -> bool:
         """Handle a membership event for the room.
 
         Args:
@@ -290,11 +301,11 @@ class MatrixRoom(object):
 
         return False
 
-    def handle_ephemeral_event(self, event):
+    def handle_ephemeral_event(self, event) -> None:
         if isinstance(event, TypingNoticeEvent):
             self.typing_users = event.users
 
-    def handle_event(self, event: Event):
+    def handle_event(self, event: Event) -> None:
         logger.info(
             "Room {} handling event of type {}".format(
                 self.room_id, type(event).__name__
@@ -344,7 +355,7 @@ class MatrixRoom(object):
                     )
                     self.users[user_id].power_level = level
 
-    def update_summary(self, summary):
+    def update_summary(self, summary: RoomSummary) -> None:
         if not self.summary:
             self.summary = summary
             return
@@ -380,24 +391,23 @@ class MatrixRoom(object):
         return True
 
     @property
-    def member_count(self):
-        if self.summary:
-            joined  = self.summary.joined_member_count
-            invited = self.summary.invited_member_count
+    def member_count(self) -> int:
+        if not self.summary:
+            return len(self.users)
 
-            if joined is not None and invited is not None:
-                return joined + invited
-
-        return len(self.users)
+        joined  = self.summary.joined_member_count or 0
+        invited = self.summary.invited_member_count or 0
+        return joined + invited
 
 
 class MatrixInvitedRoom(MatrixRoom):
-    def __init__(self, room_id, own_user_id):
-        # type: (str, str) -> None
-        self.inviter = None  # type: Optional[str]
+    def __init__(self, room_id: str, own_user_id: str) -> None:
+        self.inviter: Optional[str] = None
         super().__init__(room_id, own_user_id)
 
-    def handle_membership(self, event: Union[RoomMemberEvent, InviteMemberEvent]) -> bool:
+    def handle_membership(
+        self, event: Union[RoomMemberEvent, InviteMemberEvent],
+    ) -> bool:
         """Handle a membership event for the invited room.
 
         Args:
@@ -413,7 +423,7 @@ class MatrixInvitedRoom(MatrixRoom):
 
         return super().handle_membership(event)
 
-    def handle_event(self, event: Event):
+    def handle_event(self, event: Event) -> None:
         logger.info(
             "Room {} handling event of type {}".format(
                 self.room_id, type(event).__name__
@@ -432,25 +442,27 @@ class MatrixInvitedRoom(MatrixRoom):
 
 class MatrixUser(object):
     def __init__(
-        self, user_id, display_name=None, avatar_url=None, power_level=0,
-        invited=False,
+        self,
+        user_id:      str,
+        display_name: str  = None,
+        avatar_url:   str  = None,
+        power_level:  int  = 0,
+        invited:      bool = False,
     ):
         # yapf: disable
-        self.user_id = user_id            # type: str
-        self.display_name = display_name  # type: str
-        self.avatar_url = avatar_url      # type: str
-        self.power_level = power_level    # type: int
-        self.invited = invited            # type: bool
+        self.user_id = user_id
+        self.display_name = display_name
+        self.avatar_url = avatar_url
+        self.power_level = power_level
+        self.invited = invited
         # yapf: enable
 
     @property
-    def name(self):
-        if self.display_name:
-            return self.display_name
-        return self.user_id
+    def name(self) -> str:
+        return self.display_name or self.user_id
 
     @property
-    def disambiguated_name(self):
+    def disambiguated_name(self) -> str:
         # as per https://matrix.org/docs/spec/client_server/r0.4.0.html#id346
         if self.display_name:
             return "{name} ({user_id})".format(name=self.display_name,
