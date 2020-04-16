@@ -57,7 +57,7 @@ class TestClass(object):
         assert room.is_named
         assert not room.is_group
 
-    def test_name_calculation_when_unnamed(self):
+    def _test_name_calculation_when_unnamed(self):
         room = self.test_room
         assert room.named_room_name() is None
         assert room.display_name == "Empty Room"
@@ -130,6 +130,53 @@ class TestClass(object):
         assert not room.summary.heroes
         assert room.display_name == "Empty Room"
 
+    def test_name_calculation_when_unnamed_no_summary(self):
+        room = self.test_room
+        room.summary = None
+        assert room.named_room_name() is None
+        assert room.display_name == "Empty Room"
+
+        # Members join
+
+        room.add_member(BOB_ID, "Bob", None)  # us
+        assert room.display_name == "Empty Room"
+
+        room.add_member("@alice:example.org", "Alice", None)
+        assert room.display_name == "Alice"
+
+        room.add_member("@malory:example.org", "Alice", None)
+        assert (room.display_name ==
+                "Alice (@alice:example.org) and Alice (@malory:example.org)")
+
+        room.add_member("@steve:example.org", "Steve", None)
+        room.add_member("@carol:example.org", "Carol", None)
+        room.add_member("@dave:example.org", "Dave", None)
+        assert (room.display_name ==
+                "Alice (@alice:example.org), Alice (@malory:example.org), "
+                "Steve, Carol and Dave")
+
+        room.add_member("@erin:example.org", "Eirin", None)
+        assert (room.display_name ==
+                "Alice (@alice:example.org), Alice (@malory:example.org), "
+                "Steve, Carol, Dave and 1 other")
+
+        room.add_member("@frank:example.org", "Frank", None)
+        assert (room.display_name ==
+                "Alice (@alice:example.org), Alice (@malory:example.org), "
+                "Steve, Carol, Dave and 2 others")
+
+        room.add_member("@gregor:example.org", "Gregor", None)
+        assert (room.display_name ==
+                "Alice (@alice:example.org), Alice (@malory:example.org), "
+                "Steve, Carol, Dave and 3 others")
+
+        # Members leave
+
+        for member in room.users.copy():
+            room.remove_member(member)
+
+        assert room.display_name == "Empty Room"
+
     def test_name_calculation_with_canonical_alias(self):
         room = self.test_room
         room.canonical_alias = "#test:termina.org.uk"
@@ -167,13 +214,38 @@ class TestClass(object):
         room.summary.invited_member_count += 1
         assert room.gen_avatar_url == "mxc://bar"
 
+        room.name = "Test"
+        assert not room.is_group
+        assert room.gen_avatar_url is None
+        room.name = None
+        assert room.is_group
+        assert room.gen_avatar_url == "mxc://bar"
+
         room.add_member("@alice:example.org", "Alice", "mxc://baz")
         room.summary.heroes.append("@alice:matrix.org")
         room.summary.joined_member_count += 1
+        assert room.gen_avatar_url is None
+
+    def test_room_avatar_calculation_when_no_set_avatar_no_summary(self):
+        room = self.test_room
+        room.summary = None
+        assert room.room_avatar_url is None
+        assert room.is_group
+
+        room.add_member("@bob:example.org", "Bob", "mxc://abc", True)  # us
+        assert room.gen_avatar_url is None
+
+        room.add_member("@carol:example.org", "Carol", "mxc://bar", True)
         assert room.gen_avatar_url == "mxc://bar"
 
         room.name = "Test"
         assert not room.is_group
+        assert room.gen_avatar_url is None
+        room.name = None
+        assert room.is_group
+        assert room.gen_avatar_url == "mxc://bar"
+
+        room.add_member("@alice:example.org", "Alice", "mxc://baz")
         assert room.gen_avatar_url is None
 
     def test_user_name_calculation(self):

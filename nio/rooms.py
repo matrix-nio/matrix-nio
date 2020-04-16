@@ -119,16 +119,22 @@ class MatrixRoom(object):
     def group_name_structure(self) -> Tuple[bool, List[str], int]:
         """Get if room is empty, ID for listed users and the N others count.
         """
-        if not self.summary:
-            return (True, [], 0)
+        if self.summary:
+            users = self.summary.heroes
+            empty = self.member_count <= 1
 
-        users = self.summary.heroes
-        empty = self.member_count <= 1
+            if len(users) >= self.member_count - 1:
+                return (empty, users, 0)
 
-        if len(users) >= self.member_count - 1:
-            return (empty, users, 0)
-        else:
             return (empty, users, self.member_count - 1 - len(users))
+
+        users = [u for u in self.users if u != self.own_user_id]
+        empty = not users
+
+        if len(users) <= 5:
+            return (empty, users, 0)
+
+        return (empty, users[:5], len(users) - 5)
 
     def user_name(self, user_id: str) -> Optional[str]:
         """Get disambiguated display name for a user.
@@ -171,11 +177,15 @@ class MatrixRoom(object):
         if self.room_avatar_url:
             return self.room_avatar_url
 
-        if self.summary and (self.is_group or self.member_count == 2):
+        if self.summary and (self.is_group and self.member_count == 2):
             try:
                 return self.avatar_url(self.summary.heroes[0])
             except IndexError:
                 return None
+        elif not self.summary and (self.is_group and len(self.users) == 2):
+            return self.avatar_url(
+                next(u for u in self.users if u != self.own_user_id),
+            )
 
         return None
 
@@ -207,8 +217,8 @@ class MatrixRoom(object):
     def add_member(
         self,
         user_id:      str,
-        display_name: str,
-        avatar_url:   str,
+        display_name: Optional[str],
+        avatar_url:   Optional[str],
         invited:      bool = False,
     ) -> bool:
         if user_id in self.users:
