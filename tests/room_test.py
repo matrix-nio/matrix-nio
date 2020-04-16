@@ -57,7 +57,7 @@ class TestClass(object):
         assert room.is_named
         assert not room.is_group
 
-    def _test_name_calculation_when_unnamed(self):
+    def test_name_calculation_when_unnamed(self):
         room = self.test_room
         assert room.named_room_name() is None
         assert room.display_name == "Empty Room"
