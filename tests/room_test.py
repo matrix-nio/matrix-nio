@@ -52,6 +52,28 @@ class TestClass(object):
         assert member.display_name == name
         assert member.avatar_url == avatar
 
+    def test_summary_details(self):
+        room = self.test_room
+
+        room.summary = None
+        with pytest.raises(ValueError):
+            assert room._summary_details()
+
+        room.summary = RoomSummary(None, None, [])
+        with pytest.raises(ValueError):
+            assert room._summary_details()
+
+        room.summary = RoomSummary(0, None, [])
+        with pytest.raises(ValueError):
+            assert room._summary_details()
+
+        room.summary = RoomSummary(None, 0, [])
+        with pytest.raises(ValueError):
+            assert room._summary_details()
+
+        room.summary = RoomSummary(0, 0, [])
+        assert room._summary_details() == ([], 0, 0)
+
     def test_named_checks(self):
         room = self.test_room
         assert not room.is_named
@@ -137,7 +159,7 @@ class TestClass(object):
 
     def test_name_calculation_when_unnamed_no_summary(self):
         room = self.test_room
-        room.summary = None
+        room.summary = RoomSummary()
         assert room.named_room_name() is None
         assert room.display_name == "Empty Room"
 
@@ -158,22 +180,22 @@ class TestClass(object):
         room.add_member("@dave:example.org", "Dave", None)
         assert (room.display_name ==
                 "Alice (@alice:example.org), Alice (@malory:example.org), "
-                "Steve, Carol and Dave")
+                "Carol, Dave and Steve")
 
         room.add_member("@erin:example.org", "Eirin", None)
         assert (room.display_name ==
                 "Alice (@alice:example.org), Alice (@malory:example.org), "
-                "Steve, Carol, Dave and 1 other")
+                "Carol, Dave, Eirin and 1 other")
 
         room.add_member("@frank:example.org", "Frank", None)
         assert (room.display_name ==
                 "Alice (@alice:example.org), Alice (@malory:example.org), "
-                "Steve, Carol, Dave and 2 others")
+                "Carol, Dave, Eirin and 2 others")
 
         room.add_member("@gregor:example.org", "Gregor", None)
         assert (room.display_name ==
                 "Alice (@alice:example.org), Alice (@malory:example.org), "
-                "Steve, Carol, Dave and 3 others")
+                "Carol, Dave, Eirin and 3 others")
 
         # Members leave
 

@@ -119,22 +119,26 @@ class MatrixRoom(object):
     def group_name_structure(self) -> Tuple[bool, List[str], int]:
         """Get if room is empty, ID for listed users and the N others count.
         """
-        if self.summary:
-            users = self.summary.heroes
-            empty = self.member_count <= 1
+        try:
+            heroes, joined, invited = self._summary_details()
+        except ValueError:
+            users = [
+                u for u in sorted(self.users, key=lambda u: self.user_name(u))
+                if u != self.own_user_id
+            ]
+            empty = not users
 
-            if len(users) >= self.member_count - 1:
+            if len(users) <= 5:
                 return (empty, users, 0)
 
-            return (empty, users, self.member_count - 1 - len(users))
+            return (empty, users[:5], len(users) - 5)
 
-        users = [u for u in self.users if u != self.own_user_id]
-        empty = not users
+        empty = self.member_count <= 1
 
-        if len(users) <= 5:
-            return (empty, users, 0)
+        if len(heroes) >= self.member_count - 1:
+            return (empty, heroes, 0)
 
-        return (empty, users[:5], len(users) - 5)
+        return (empty, heroes, self.member_count - 1 - len(heroes))
 
     def user_name(self, user_id: str) -> Optional[str]:
         """Get disambiguated display name for a user.
@@ -177,15 +181,19 @@ class MatrixRoom(object):
         if self.room_avatar_url:
             return self.room_avatar_url
 
-        if self.summary and (self.is_group and self.member_count == 2):
-            try:
-                return self.avatar_url(self.summary.heroes[0])
-            except IndexError:
-                return None
-        elif not self.summary and (self.is_group and len(self.users) == 2):
-            return self.avatar_url(
-                next(u for u in self.users if u != self.own_user_id),
-            )
+        try:
+            heroes, _, _ = self._summary_details()
+        except ValueError:
+            if self.is_group and len(self.users) == 2:
+                return self.avatar_url(next(
+                    u for u in sorted(self.users,
+                                      key=lambda u: self.user_name(u))
+                    if u != self.own_user_id
+                ))
+            return None
+
+        if self.is_group and self.member_count == 2 and len(heroes) >= 1:
+            return self.avatar_url(heroes[0])
 
         return None
 
@@ -379,6 +387,22 @@ class MatrixRoom(object):
         if summary.heroes:
             self.summary.heroes = summary.heroes
 
+    def _summary_details(self) -> Tuple[List[str], int, int]:
+        """Return the summary attributes if it can be used for calculations."""
+        valid = bool(
+            self.summary is not None and
+            self.summary.joined_member_count is not None and
+            self.summary.invited_member_count is not None,
+        )
+        if not valid:
+            raise ValueError("Unusable summary")
+
+        return (  # type: ignore
+            self.summary.heroes,                # type: ignore
+            self.summary.joined_member_count,   # type: ignore
+            self.summary.invited_member_count,  # type: ignore
+        )
+
     @property
     def members_synced(self) -> bool:
         """Check if the room member state is fully synced.
@@ -391,22 +415,20 @@ class MatrixRoom(object):
         member list. This is crucial for encrypted rooms before sending any
         messages.
         """
-        if self.summary:
-            joined  = self.summary.joined_member_count
-            invited = self.summary.invited_member_count
+        try:
+            _, joined, invited = self._summary_details()
+        except ValueError:
+            return True
 
-            if joined is not None and invited is not None:
-                return joined + invited == len(self.users)
-
-        return True
+        return joined + invited == len(self.users)
 
     @property
     def member_count(self) -> int:
-        if not self.summary:
+        try:
+            _, joined, invited = self._summary_details()
+        except ValueError:
             return len(self.users)
 
-        joined  = self.summary.joined_member_count or 0
-        invited = self.summary.invited_member_count or 0
         return joined + invited
 
 
