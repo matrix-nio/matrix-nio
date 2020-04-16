@@ -57,7 +57,8 @@ from ..responses import (ContentRepositoryConfigError,
                          JoinedRoomsError, JoinedRoomsResponse,
                          KeysClaimError, KeysClaimResponse, KeysQueryResponse,
                          KeysUploadResponse,
-                         RegisterResponse, LoginError, LoginResponse,
+                         RegisterResponse, DeactivateResponse, RegisterErrorResponse, DeactivateErrorResponse,
+                         LoginError, LoginResponse,
                          LogoutError, LogoutResponse,
                          ProfileGetAvatarResponse, ProfileGetAvatarError,
                          ProfileGetDisplayNameResponse,
@@ -686,6 +687,19 @@ class AsyncClient(Client):
         )
 
         return await self._send(RegisterResponse, method, path, data)
+
+    async def deactivate(self, username, admin_token):
+        """Deactivate a user.
+
+        Args:
+            username (str): The fully qualified user ID to deactivate
+            admin_token (str): The user token (received during login) of a user with admin powers.
+
+        Returns a 'DeactivateResponse' if successful.
+        """
+        method, path, data = Api.deactivate(user=username, admin_token=admin_token)
+
+        return await self._send(DeactivateResponse, method, path, data)
 
     async def login(self, password, device_name=""):
         # type: (str, str) -> Union[LoginResponse, LoginError]

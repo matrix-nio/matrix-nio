@@ -278,6 +278,24 @@ class Api(object):
         return "POST", path, Api.to_json(content_dict)
 
     @staticmethod
+    def deactivate(
+            user,           # type: str
+            admin_token,    # type: str
+    ):
+        """Deactivate a user.
+
+        Args:
+            user (str): The fully qualified user ID to deactivate
+            admin_token (str): The user token (received during login) of a user with admin powers.
+        """
+
+        path = Api._build_path("/admin/deactivate/"+user, {"access_token": admin_token})
+
+        content_dict = {}
+
+        return "POST", path, Api.to_json(content_dict)
+
+    @staticmethod
     def login(
         user,            # type: str
         password=None,   # type: str

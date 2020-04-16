@@ -26,7 +26,7 @@ from nio import (ContentRepositoryConfigResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginError,
                  LoginResponse, LogoutError, LogoutResponse,
-                 MegolmEvent, MembersSyncError, OlmTrustError, RegisterResponse,
+                 MegolmEvent, MembersSyncError, OlmTrustError, RegisterResponse, DeactivateResponse,
                  RoomContextResponse, RoomForgetResponse,
                  ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
@@ -365,6 +365,21 @@ class TestClass(object):
 
         assert isinstance(resp, RegisterResponse)
         assert async_client.access_token
+
+    def test_deactivate(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+
+        assert not async_client.access_token
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/admin/deactivate",
+            status=200,
+            payload=self.deactivate_response
+        )
+        resp = loop.run_until_complete(async_client.deactivate("user", "admin_token"))
+
+        assert isinstance(resp, DeactivateResponse)
+        assert async_client.id_server_unbind_result
 
     def test_login(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()

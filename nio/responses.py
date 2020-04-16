@@ -65,6 +65,8 @@ __all__ = [
     "KeysUploadResponse",
     "KeysUploadError",
     "RegisterResponse",
+    "DeactivateResponse",
+    "DeactivateErrorResponse",
     "LoginResponse",
     "LoginError",
     "LoginInfoResponse",
@@ -523,6 +525,11 @@ class RegisterErrorResponse(ErrorResponse):
 
 
 @attr.s
+class DeactivateErrorResponse(ErrorResponse):
+    pass
+
+
+@attr.s
 class RegisterResponse(Response):
     user_id = attr.ib(type=str)
     device_id = attr.ib(type=str)
@@ -539,6 +546,22 @@ class RegisterResponse(Response):
             parsed_dict["user_id"],
             parsed_dict["device_id"],
             parsed_dict["access_token"],
+        )
+
+
+@attr.s
+class DeactivateResponse(Response):
+    id_server_unbind_result = attr.ib(type=str)
+
+    def __str__(self):
+        # type () -> str
+        return "id_server_unbind_result {}".format(self.id_server_unbind_result)
+
+    @classmethod
+    @verify(Schemas.deactivate, DeactivateErrorResponse)
+    def from_dict(cls, parsed_dict):
+        return cls(
+            parsed_dict["id_server_unbind_result"]
         )
 
 
