@@ -29,7 +29,8 @@ from .events import (Event, InviteAliasEvent, InviteMemberEvent,
                      RoomAliasEvent, RoomCreateEvent, RoomEncryptionEvent,
                      RoomGuestAccessEvent, RoomHistoryVisibilityEvent,
                      RoomJoinRulesEvent, RoomMemberEvent, RoomNameEvent,
-                     RoomTopicEvent, RoomAvatarEvent, TypingNoticeEvent)
+                     RoomTopicEvent, RoomAvatarEvent, TypingNoticeEvent,
+                     ReceiptEvent, Receipt)
 from .log import logger_group
 from .responses import RoomSummary
 
@@ -67,6 +68,7 @@ class MatrixRoom(object):
         self.encrypted = encrypted    # type: bool
         self.power_levels = PowerLevels()  # type: PowerLevels
         self.typing_users = []        # type: List[str]
+        self.read_receipts = {}       # type: Dict[str, Receipt]
         self.summary = None           # type: Optional[RoomSummary]
         self.room_avatar_url = None        # type: Optional[str]
         # yapf: enable
@@ -322,6 +324,14 @@ class MatrixRoom(object):
     def handle_ephemeral_event(self, event) -> None:
         if isinstance(event, TypingNoticeEvent):
             self.typing_users = event.users
+
+        if isinstance(event, ReceiptEvent):
+            read_receipts = filter(
+                lambda x: x.receipt_type == "m.read", event.receipts
+            )
+
+            for read_receipt in read_receipts:
+                self.read_receipts[read_receipt.user_id] = read_receipt
 
     def handle_event(self, event: Event) -> None:
         logger.info(

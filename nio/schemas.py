@@ -1114,6 +1114,38 @@ class Schemas(object):
         "additionalProperties": False,
     }
 
+    m_receipt = {
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "object",
+                "patternProperties": {
+                    r".*": {
+                        "type": "object",
+                        "properties": {
+                            "m.read": {
+                                "type": "object",
+                                "patternProperties": {
+                                    UserIdRegex: {
+                                        "type": "object",
+                                        "properties": {
+                                            "ts": {"type" : "integer"}
+                                        },
+                                        "required": ["ts"]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "type": {"type": "string"},
+            "room_id": {"type": "string"}
+        },
+        "required": ["content", "type"],
+        "additionalProperties": True,
+    }
+
     keys_upload = {
         "type": "object",
         "properties": {
