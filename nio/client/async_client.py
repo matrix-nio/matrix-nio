@@ -687,8 +687,13 @@ class AsyncClient(Client):
 
         return await self._send(RegisterResponse, method, path, data)
 
-    async def login(self, password, device_name=""):
-        # type: (str, str) -> Union[LoginResponse, LoginError]
+    async def login(
+            self,
+            password=None,     # type: str
+            device_name="",    # type: Optional[str]
+            token=None,        # type: str
+    ):
+        # type: (...) -> Union[LoginResponse, LoginError]
         """Login to the homeserver.
 
         Args:
@@ -696,15 +701,23 @@ class AsyncClient(Client):
             device_name (str): A display name to assign to a newly-created
                 device. Ignored if the logged in device corresponds to a
                 known device.
+            token (str): A login token, for example provided by a single sign-on
+                service.
 
         Returns either a `LoginResponse` if the request was successful or
         a `LoginError` if there was an error with the request.
         """
+
+        if password is None and token is None:
+            raise ValueError("Either a password or a token needs to be "
+                             "provided")
+
         method, path, data = Api.login(
             self.user,
             password=password,
             device_name=device_name,
-            device_id=self.device_id
+            device_id=self.device_id,
+            token=token
         )
 
         return await self._send(LoginResponse, method, path, data)
