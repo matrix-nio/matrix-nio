@@ -642,11 +642,17 @@ class AsyncClient(Client):
             device_name (str): A display name to assign to a newly-created
                 device. Ignored if the logged in device corresponds to a
                 known device.
-            token (str): The session token of an old session
+            token (str): A login token, for example provided by a single sign-on
+                service.
 
         Returns either a `LoginResponse` if the request was successful or
         a `LoginError` if there was an error with the request.
         """
+
+        if password is None and token is None:
+            raise ValueError("Either a password or a token needs to be "
+                             "provided")
+
         method, path, data = Api.login(
             self.user,
             password=password,
