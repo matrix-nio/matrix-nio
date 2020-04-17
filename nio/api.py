@@ -289,7 +289,7 @@ class Api(object):
             admin_token (str): The user token (received during login) of a user with admin powers.
         """
 
-        path = Api._build_path("/admin/deactivate/"+user, {"access_token": admin_token})
+        path = Api._build_path("admin/deactivate/"+user, {"access_token": admin_token})
 
         content_dict = {}
 
