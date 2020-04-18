@@ -374,7 +374,7 @@ class TestClass(object):
         aioresponse.post(
             "https://example.org/_matrix/client/r0/admin/deactivate",
             status=200,
-            payload=self.Deactivate_response
+            payload=self.DeactivateResponse
         )
         resp = loop.run_until_complete(async_client.deactivate("user", "admin_token"))
 
