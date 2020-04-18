@@ -31,7 +31,8 @@ from cachetools import LRUCache
 
 from . import (DeviceStore, GroupSessionStore, InboundGroupSession,
                InboundSession, OlmAccount, OlmDevice, OutboundGroupSession,
-               OutboundSession, Session, SessionStore, logger)
+               OutboundSession, Session, SessionStore, logger,
+               OutgoingKeyRequest)
 from ..api import Api
 from ..events import (BadEvent, BadEventType, Event,
                       ForwardedRoomKeyEvent, KeyVerificationAccept,
@@ -52,7 +53,6 @@ from ..store import MatrixStore
 from .key_export import decrypt_and_read, encrypt_and_save
 from .sas import Sas
 from ..event_builders import ToDeviceMessage, DummyMessage, RoomKeyRequestMessage
-from .sessions import OutgoingKeyRequest
 
 try:
     from json.decoder import JSONDecodeError

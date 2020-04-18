@@ -70,11 +70,16 @@ from ..responses import (
 )
 from ..rooms import MatrixInvitedRoom, MatrixRoom
 
+from ..crypto import DeviceStore, OlmDevice, OutgoingKeyRequest
+
 if ENCRYPTION_ENABLED:
-    from ..crypto import Olm, OlmDevice, DeviceStore, OutgoingKeyRequest, Sas
+    from ..crypto import Olm
     from ..store import DefaultStore, MatrixStore
 
 from ..event_builders import ToDeviceMessage
+
+if False:
+    from ..crypto import Sas
 
 try:
     from json.decoder import JSONDecodeError
@@ -294,7 +299,8 @@ class Client(object):
         return self.olm.outgoing_key_requests if self.olm else dict()
 
     @property
-    def key_verifications(self) -> Dict[str, Sas]:
+    def key_verifications(self):
+        # type () -> Dict[str, Sas]
         """Key verifications that the client is participating in."""
         return self.olm.key_verifications if self.olm else dict()
 
@@ -303,7 +309,8 @@ class Client(object):
         """To-device messages that we need to send out."""
         return self.olm.outgoing_to_device_messages if self.olm else []
 
-    def get_active_sas(self, user_id: str, device_id: str) -> Optional[Sas]:
+    def get_active_sas(self, user_id, device_id):
+        # type (str, str) -> Optional[Sas]
         """Find a non-canceled SAS verification object for the provided user.
 
         Args:
