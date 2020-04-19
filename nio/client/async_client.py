@@ -351,7 +351,8 @@ class AsyncClient(Client):
 
         if is_config and not is_async_config:
             warnings.warn(
-                "Pass an AsyncClientConfig instead of ClientConfig.", DeprecationWarning
+                "Pass an AsyncClientConfig instead of ClientConfig.",
+                DeprecationWarning,
             )
             config = AsyncClientConfig(**config.__dict__)
 
@@ -386,7 +387,9 @@ class AsyncClient(Client):
         cb = ResponseCb(func, cb_filter)
         self.response_callbacks.append(cb)
 
-    async def parse_body(self, transport_response: ClientResponse) -> Dict[Any, Any]:
+    async def parse_body(
+        self, transport_response: ClientResponse
+    ) -> Dict[Any, Any]:
         """Parse the body of the response.
 
         Args:
@@ -436,7 +439,8 @@ class AsyncClient(Client):
             resp = response_class.from_data(body, content_type, name)
 
         elif (
-            transport_response.status == 401 and response_class == DeleteDevicesResponse
+            transport_response.status == 401
+            and response_class == DeleteDevicesResponse
         ):
             parsed_dict = await self.parse_body(transport_response)
             resp = DeleteDevicesAuthResponse.from_dict(parsed_dict)
@@ -684,7 +688,9 @@ class AsyncClient(Client):
             proxy=self.proxy,
             headers=headers,
             trace_request_ctx=trace_context,
-            timeout=self.config.request_timeout if timeout is None else timeout,
+            timeout=self.config.request_timeout
+            if timeout is None
+            else timeout,
         )
 
     async def mxc_to_http(
@@ -770,7 +776,9 @@ class AsyncClient(Client):
         """
 
         if password is None and token is None:
-            raise ValueError("Either a password or a token needs to be provided")
+            raise ValueError(
+                "Either a password or a token needs to be provided"
+            )
 
         method, path, data = Api.login(
             self.user,
@@ -988,7 +996,10 @@ class AsyncClient(Client):
     @logged_in
     @store_loaded
     async def cancel_key_verification(
-        self, transaction_id: str, reject: bool = False, tx_id: Optional[str] = None,
+        self,
+        transaction_id: str,
+        reject: bool = False,
+        tx_id: Optional[str] = None,
     ) -> Union[ToDeviceResponse, ToDeviceError]:
         """Cancel a interactive key verification with the given device.
 
@@ -1201,7 +1212,9 @@ class AsyncClient(Client):
         )
 
     @logged_in
-    async def joined_rooms(self) -> Union[JoinedRoomsResponse, JoinedRoomsError]:
+    async def joined_rooms(
+        self,
+    ) -> Union[JoinedRoomsResponse, JoinedRoomsError]:
         """Get the list of joined rooms.
 
         Returns either a `JoinedRoomsResponse` if the request was successful
@@ -1257,13 +1270,17 @@ class AsyncClient(Client):
                     )
 
                 if room.encrypted:
-                    message_type, content = self.encrypt(room_id, message_type, content)
+                    message_type, content = self.encrypt(
+                        room_id, message_type, content
+                    )
 
             method, path, data = Api.room_send(
                 self.access_token, room_id, message_type, content, tx_id
             )
 
-            return await self._send(RoomSendResponse, method, path, data, (room_id,))
+            return await self._send(
+                RoomSendResponse, method, path, data, (room_id,)
+            )
 
         retries = 10
 
@@ -1279,7 +1296,8 @@ class AsyncClient(Client):
                     await sharing_event.wait()
                 else:
                     share = await self.share_group_session(
-                        room_id, ignore_unverified_devices=ignore_unverified_devices
+                        room_id,
+                        ignore_unverified_devices=ignore_unverified_devices,
                     )
                     await self.run_response_callbacks([share])
 
@@ -1292,7 +1310,9 @@ class AsyncClient(Client):
 
                 await self.run_response_callbacks(responses)
 
-        raise SendRetryError("Max retries exceeded while trying to send " "the message")
+        raise SendRetryError(
+            "Max retries exceeded while trying to send " "the message"
+        )
 
     @logged_in
     async def room_put_state(
@@ -1315,7 +1335,11 @@ class AsyncClient(Client):
         """
 
         method, path, data = Api.room_put_state(
-            self.access_token, room_id, event_type, content, state_key=state_key
+            self.access_token,
+            room_id,
+            event_type,
+            content,
+            state_key=state_key,
         )
 
         return await self._send(
@@ -1390,7 +1414,11 @@ class AsyncClient(Client):
                 event was redacted.
         """
         method, path, data = Api.room_redact(
-            self.access_token, room_id, event_id, tx_id=tx_id or uuid4(), reason=reason,
+            self.access_token,
+            room_id,
+            event_id,
+            tx_id=tx_id or uuid4(),
+            reason=reason,
         )
 
         return await self._send(
@@ -1412,7 +1440,10 @@ class AsyncClient(Client):
         method, path = Api.room_resolve_alias(room_alias)
 
         return await self._send(
-            RoomResolveAliasResponse, method, path, response_data=(room_alias,),
+            RoomResolveAliasResponse,
+            method,
+            path,
+            response_data=(room_alias,),
         )
 
     @logged_in
@@ -1471,7 +1502,9 @@ class AsyncClient(Client):
             raise LocalProtocolError("No such room with id {}".format(room_id))
 
         if not room.encrypted:
-            raise LocalProtocolError("Room with id {} is not encrypted".format(room_id))
+            raise LocalProtocolError(
+                "Room with id {} is not encrypted".format(room_id)
+            )
 
         if room_id in self.sharing_session:
             raise LocalProtocolError(
@@ -1503,7 +1536,11 @@ class AsyncClient(Client):
                 )
 
                 response = await self._send(
-                    ShareGroupSessionResponse, method, path, data, (room_id, user_set)
+                    ShareGroupSessionResponse,
+                    method,
+                    path,
+                    data,
+                    (room_id, user_set),
                 )
 
                 if isinstance(response, ShareGroupSessionResponse):
@@ -1540,7 +1577,8 @@ class AsyncClient(Client):
 
         if event.session_id in self.outgoing_key_requests:
             raise LocalProtocolError(
-                "A key sharing request is already sent" " out for this session id."
+                "A key sharing request is already sent"
+                " out for this session id."
             )
 
         assert self.user_id
@@ -1557,7 +1595,12 @@ class AsyncClient(Client):
             method,
             path,
             data,
-            (event.session_id, event.session_id, event.room_id, event.algorithm),
+            (
+                event.session_id,
+                event.session_id,
+                event.room_id,
+                event.algorithm,
+            ),
         )
 
     async def close(self):
@@ -1567,7 +1610,9 @@ class AsyncClient(Client):
             self.client_session = None
 
     @store_loaded
-    async def export_keys(self, outfile: str, passphrase: str, count: int = 10000):
+    async def export_keys(
+        self, outfile: str, passphrase: str, count: int = 10000
+    ):
         """Export all the Megolm decryption keys of this device.
 
         The keys will be encrypted using the passphrase.
@@ -1589,7 +1634,11 @@ class AsyncClient(Client):
 
         inbound_group_store = self.store.load_inbound_group_sessions()
         export_keys = partial(
-            self.olm.export_keys_static, inbound_group_store, outfile, passphrase, count
+            self.olm.export_keys_static,
+            inbound_group_store,
+            outfile,
+            passphrase,
+            count,
         )
 
         await loop.run_in_executor(None, export_keys)
@@ -1741,7 +1790,9 @@ class AsyncClient(Client):
                 invited to.
             user_id (str): The user id of the user that should be invited.
         """
-        method, path, data = Api.room_invite(self.access_token, room_id, user_id,)
+        method, path, data = Api.room_invite(
+            self.access_token, room_id, user_id,
+        )
         return await self._send(RoomInviteResponse, method, path, data)
 
     @logged_in
@@ -1802,7 +1853,9 @@ class AsyncClient(Client):
             limit(int, optional): The maximum number of events to request.
         """
 
-        method, path = Api.room_context(self.access_token, room_id, event_id, limit)
+        method, path = Api.room_context(
+            self.access_token, room_id, event_id, limit
+        )
 
         return await self._send(
             RoomContextResponse, method, path, response_data=(room_id,)
@@ -2023,7 +2076,9 @@ class AsyncClient(Client):
             data = data_provider(got_429, got_timeouts)
 
             if encrypt:
-                return self._encrypted_data_generator(data, decryption_dict, monitor,)
+                return self._encrypted_data_generator(
+                    data, decryption_dict, monitor,
+                )
 
             return self._plain_data_generator(data, monitor)
 
@@ -2032,7 +2087,9 @@ class AsyncClient(Client):
             http_method,
             path,
             data_provider=provider,
-            content_type="application/octet-stream" if encrypt else content_type,
+            content_type="application/octet-stream"
+            if encrypt
+            else content_type,
             trace_context=monitor,
             timeout=0,
         )
@@ -2070,9 +2127,13 @@ class AsyncClient(Client):
         """
         # TODO: support TransferMonitor
 
-        http_method, path = Api.download(server_name, media_id, filename, allow_remote)
+        http_method, path = Api.download(
+            server_name, media_id, filename, allow_remote
+        )
 
-        return await self._send(DownloadResponse, http_method, path, timeout=0,)
+        return await self._send(
+            DownloadResponse, http_method, path, timeout=0,
+        )
 
     @client_session
     async def thumbnail(
@@ -2107,7 +2168,9 @@ class AsyncClient(Client):
             server_name, media_id, width, height, method, allow_remote
         )
 
-        return await self._send(ThumbnailResponse, http_method, path, timeout=0,)
+        return await self._send(
+            ThumbnailResponse, http_method, path, timeout=0,
+        )
 
     @client_session
     async def get_profile(
@@ -2151,7 +2214,9 @@ class AsyncClient(Client):
         return await self._send(ProfileGetDisplayNameResponse, method, path,)
 
     @logged_in
-    async def set_displayname(self, displayname: str) -> _ProfileSetDisplayNameT:
+    async def set_displayname(
+        self, displayname: str
+    ) -> _ProfileSetDisplayNameT:
         """Set user's display name.
 
         This tells the server to set display name of the currently logged
@@ -2168,7 +2233,9 @@ class AsyncClient(Client):
             self.access_token, self.user_id, displayname
         )
 
-        return await self._send(ProfileSetDisplayNameResponse, method, path, data,)
+        return await self._send(
+            ProfileSetDisplayNameResponse, method, path, data,
+        )
 
     @client_session
     async def get_avatar(

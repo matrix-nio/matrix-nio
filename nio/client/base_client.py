@@ -105,7 +105,9 @@ def store_loaded(fn):
     @wraps(fn)
     def inner(self, *args, **kwargs):
         if not self.store or not self.olm:
-            raise LocalProtocolError("Matrix store and olm account is not loaded.")
+            raise LocalProtocolError(
+                "Matrix store and olm account is not loaded."
+            )
         return fn(self, *args, **kwargs)
 
     return inner
@@ -291,7 +293,9 @@ class Client(object):
         if not self.olm:
             return False
 
-        return bool(self.olm.wedged_devices or self.olm.key_request_devices_no_session)
+        return bool(
+            self.olm.wedged_devices or self.olm.key_request_devices_no_session
+        )
 
     @property
     def outgoing_key_requests(self) -> Dict[str, OutgoingKeyRequest]:
@@ -345,7 +349,9 @@ class Client(object):
             raise LocalProtocolError("Device id is not set")
 
         if not self.config.store:
-            raise LocalProtocolError("No store class was provided in the config.")
+            raise LocalProtocolError(
+                "No store class was provided in the config."
+            )
 
         if self.config.encryption_enabled:
             self.store = self.config.store(
@@ -376,7 +382,9 @@ class Client(object):
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError("No room found with room id {}".format(room_id))
+            raise LocalProtocolError(
+                "No room found with room id {}".format(room_id)
+            )
 
         if not room.encrypted:
             return False
@@ -603,7 +611,9 @@ class Client(object):
         return None
 
     def _replace_decrypted_to_device(
-        self, decrypted_events: List[Tuple[int, ToDeviceEvent]], response: SyncType
+        self,
+        decrypted_events: List[Tuple[int, ToDeviceEvent]],
+        response: SyncType,
     ):
         # Replace the encrypted to_device events with decrypted ones
         for decrypted_event in decrypted_events:
@@ -640,7 +650,9 @@ class Client(object):
     def _get_invited_room(self, room_id: str) -> MatrixInvitedRoom:
         if room_id not in self.invited_rooms:
             logger.info("New invited room {}".format(room_id))
-            self.invited_rooms[room_id] = MatrixInvitedRoom(room_id, self.user_id)
+            self.invited_rooms[room_id] = MatrixInvitedRoom(
+                room_id, self.user_id
+            )
 
         return self.invited_rooms[room_id]
 
@@ -766,7 +778,9 @@ class Client(object):
         assert self.olm
 
         changed_users = set()
-        self.olm.uploaded_key_count = response.device_key_count.signed_curve25519
+        self.olm.uploaded_key_count = (
+            response.device_key_count.signed_curve25519
+        )
 
         for user in response.device_list.changed:
             for room in self.rooms.values():
@@ -836,7 +850,9 @@ class Client(object):
     def _handle_context_response(self, response: RoomContextResponse):
         if isinstance(response.event, MegolmEvent):
             if self.olm:
-                decrypted_event = self.olm._decrypt_megolm_no_error(response.event)
+                decrypted_event = self.olm._decrypt_megolm_no_error(
+                    response.event
+                )
                 response.event = decrypted_event
 
         self._decrypt_event_array(response.events_after)
@@ -909,7 +925,9 @@ class Client(object):
         room = self.rooms[response.room_id]
 
         for member in response.members:
-            room.add_member(member.user_id, member.display_name, member.avatar_url)
+            room.add_member(
+                member.user_id, member.display_name, member.avatar_url
+            )
 
         if room.encrypted and self.olm is not None:
             self.olm.update_tracked_users(room)
@@ -1027,11 +1045,15 @@ class Client(object):
         assert self.olm
 
         if room_id not in self.rooms:
-            raise LocalProtocolError("No room found with room id {}".format(room_id))
+            raise LocalProtocolError(
+                "No room found with room id {}".format(room_id)
+            )
         room = self.rooms[room_id]
 
         if not room.encrypted:
-            raise LocalProtocolError("Room with id {} is not encrypted".format(room_id))
+            raise LocalProtocolError(
+                "Room with id {} is not encrypted".format(room_id)
+            )
 
         return self.olm.get_missing_sessions(list(room.users))
 
@@ -1074,10 +1096,14 @@ class Client(object):
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError("No such room with id {} found.".format(room_id))
+            raise LocalProtocolError(
+                "No such room with id {} found.".format(room_id)
+            )
 
         if not room.encrypted:
-            raise LocalProtocolError("Room {} is not encrypted".format(room_id))
+            raise LocalProtocolError(
+                "Room {} is not encrypted".format(room_id)
+            )
 
         if not room.members_synced:
             raise MembersSyncError(
@@ -1211,7 +1237,9 @@ class Client(object):
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError("No room found with room id {}".format(room_id))
+            raise LocalProtocolError(
+                "No room found with room id {}".format(room_id)
+            )
 
         if not room.encrypted:
             return devices

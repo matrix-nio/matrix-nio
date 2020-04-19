@@ -93,8 +93,14 @@ class Sas(olm.Sas):
     _key_mismatch_error = ("m.key_mismatch", "Key mismatch")
     _user_mismatch_error = ("m.user_error", "User mismatch")
     _invalid_message_error = ("m.invalid_message", "Invalid message")
-    _commitment_mismatch_error = ("m.mismatched_commitment", "Mismatched commitment")
-    _sas_mismatch_error = ("m.mismatched_sas", "Mismatched short authentication string")
+    _commitment_mismatch_error = (
+        "m.mismatched_commitment",
+        "Mismatched commitment",
+    )
+    _sas_mismatch_error = (
+        "m.mismatched_sas",
+        "Mismatched short authentication string",
+    )
 
     _max_age = timedelta(minutes=5)
     _max_event_timeout = timedelta(minutes=1)
@@ -381,7 +387,8 @@ class Sas(olm.Sas):
         generated_bytes = self.generate_bytes(extra_info, 5)
         number = "".join([format(x, "08b") for x in bytes(generated_bytes)])
         return tuple(
-            int(x, 2) + 1000 for x in map("".join, list(self._grouper(number[:-1], 13)))
+            int(x, 2) + 1000
+            for x in map("".join, list(self._grouper(number[:-1], 13)))
         )
 
     def start_verification(self) -> ToDeviceMessage:
@@ -571,7 +578,10 @@ class Sas(olm.Sas):
 
         if self.state != SasState.created:
             self.state = SasState.canceled
-            self.cancel_code, self.cancel_reason = Sas._unexpected_message_error
+            (
+                self.cancel_code,
+                self.cancel_reason,
+            ) = Sas._unexpected_message_error
             return
 
         if (
@@ -596,7 +606,10 @@ class Sas(olm.Sas):
         """Receive a KeyVerificationKey event."""
         if self.other_key_set:
             self.state = SasState.canceled
-            self.cancel_code, self.cancel_reason = self._unexpected_message_error
+            (
+                self.cancel_code,
+                self.cancel_reason,
+            ) = self._unexpected_message_error
             return
 
         if not self._event_ok(event):
@@ -605,7 +618,10 @@ class Sas(olm.Sas):
         if self.we_started_it:
             if not self._check_commitment(event.key):
                 self.state = SasState.canceled
-                self.cancel_code, self.cancel_reason = self._commitment_mismatch_error
+                (
+                    self.cancel_code,
+                    self.cancel_reason,
+                ) = self._commitment_mismatch_error
                 return
 
         self.set_their_pubkey(event.key)
@@ -627,7 +643,10 @@ class Sas(olm.Sas):
 
         if self.state != SasState.key_received:
             self.state = SasState.canceled
-            self.cancel_code, self.cancel_reason = Sas._unexpected_message_error
+            (
+                self.cancel_code,
+                self.cancel_reason,
+            ) = Sas._unexpected_message_error
             return
 
         info = (
@@ -661,7 +680,10 @@ class Sas(olm.Sas):
                 key_type, device_id = key_id.split(":", 2)
             except ValueError:
                 self.state = SasState.canceled
-                self.cancel_code, self.cancel_reason = self._invalid_message_error
+                (
+                    self.cancel_code,
+                    self.cancel_reason,
+                ) = self._invalid_message_error
                 return
 
             if key_type != "ed25519":
