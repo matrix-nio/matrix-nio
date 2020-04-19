@@ -136,6 +136,8 @@ from ..responses import (
     RoomInviteError,
     RoomKeyRequestError,
     RoomKeyRequestResponse,
+    RoomKickError,
+    RoomKickResponse,
     RoomLeaveResponse,
     RoomLeaveError,
     RoomMessagesError,
@@ -1837,6 +1839,30 @@ class AsyncClient(Client):
         return await self._send(
             RoomForgetResponse, method, path, data, response_data=(room_id,)
         )
+
+    @logged_in
+    async def room_kick(
+        self, room_id: str, user_id: str, reason: Optional[str] = None,
+    ) -> Union[RoomKickResponse, RoomKickError]:
+        """Kick a user from a room, or withdraw their invitation.
+
+        Kicking a user adjusts their membership to "leave" with an optional
+        reason.
+
+        Returns either a `RoomKickResponse` if the request was successful or
+        a `RoomKickError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room that the user will be
+                kicked from.
+            user_id (str): The user_id of the user that should be kicked.
+            reason (str, optional): A reason for which the user is kicked.
+        """
+
+        method, path, data = Api.room_kick(
+            self.access_token, room_id, user_id, reason,
+        )
+        return await self._send(RoomKickResponse, method, path, data)
 
     @logged_in
     async def room_context(
