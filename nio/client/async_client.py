@@ -604,12 +604,16 @@ class AsyncClient(Client):
         trace_context: Optional[Any] = None,
         data_provider: Optional[DataProvider] = None,
         timeout: Optional[float] = None,
+        content_length: Optional[int] = None,
     ):
         headers = (
             {"Content-Type": content_type}
             if content_type
             else {"Content-Type": "application/json"}
         )
+
+        if content_length is not None:
+            headers["Content-Length"] = str(content_length)
 
         got_429 = 0
         max_429 = self.config.max_limit_exceeded
@@ -2008,8 +2012,8 @@ class AsyncClient(Client):
         filename: Optional[str] = None,
         encrypt: bool = False,
         monitor: Optional[TransferMonitor] = None,
+        filesize: Optional[int] = None,
     ) -> Tuple[Union[UploadResponse, UploadError], Optional[Dict[str, Any]]]:
-        # TODO: test retries
         """Upload a file to the content repository.
 
         This method ignores `AsyncClient.config.request_timeout` and uses `0`.
@@ -2062,6 +2066,9 @@ class AsyncClient(Client):
                 transferred bytes or estimated remaining time can be gathered
                 while the upload is running as a task; it also allows
                 for pausing and cancelling.
+
+            filesize (int, optional): Size in bytes for the file to transfer.
+                If left as ``None``, some servers might refuse the upload.
         """
 
         http_method, path, _ = Api.upload(self.access_token, filename)
@@ -2092,6 +2099,7 @@ class AsyncClient(Client):
             else content_type,
             trace_context=monitor,
             timeout=0,
+            content_length=filesize,
         )
 
         # After the upload finished and we get the response above, if encrypt
