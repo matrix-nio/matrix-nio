@@ -16,6 +16,8 @@
         "state_default": 50,
         "users": {
             "@example:localhost": 100,
+            "@alice:localhost": 50,
+            "@carol:localhost": 25,
             "@bob:localhost": 0
         },
         "users_default": 0
