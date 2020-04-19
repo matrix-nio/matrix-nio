@@ -26,7 +26,8 @@ from nio import (ContentRepositoryConfigResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginError,
                  LoginResponse, LogoutError, LogoutResponse,
-                 MegolmEvent, MembersSyncError, OlmTrustError, RegisterResponse,
+                 MegolmEvent, MembersSyncError, OlmTrustError,
+                 RegisterResponse,
                  RoomContextResponse, RoomForgetResponse,
                  ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
@@ -36,6 +37,7 @@ from nio import (ContentRepositoryConfigResponse,
                  RoomInviteResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomGetStateResponse, RoomGetStateEventResponse,
+                 RoomKickResponse,
                  RoomPutStateResponse,
                  RoomRedactResponse, RoomResolveAliasResponse,
                  RoomSendResponse, RoomSummary,
@@ -1134,6 +1136,25 @@ class TestClass(object):
         resp = await async_client.room_forget(room_id)
         assert isinstance(resp, RoomForgetResponse)
         assert room_id not in async_client.rooms
+
+    async def test_room_kick(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+        await async_client.receive_response(self.encryption_sync_response)
+
+        room_id = next(iter(async_client.rooms))
+
+        aioresponse.post(
+            f"https://example.org/_matrix/client/r0/rooms/{room_id}/kick"
+            f"?access_token=abc123",
+            status=200,
+            body={"user_id": ALICE_ID, "reason": "test"},
+            payload={},
+        )
+        resp = await async_client.room_kick(room_id, ALICE_ID, "test")
+        assert isinstance(resp, RoomKickResponse)
 
     async def test_room_redact(self, async_client, aioresponse):
         await async_client.receive_response(

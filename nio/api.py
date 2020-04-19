@@ -590,7 +590,7 @@ class Api(object):
     @staticmethod
     def room_kick(access_token, room_id, user_id, reason=None):
         # type (str, str, str, Optional[str]) -> Tuple[str, str, str]
-        """Kick a user from a room.
+        """Kick a user from a room, or withdraw their invitation.
 
         Returns the HTTP method, HTTP path and data for the request.
 
@@ -599,6 +599,7 @@ class Api(object):
             room_id (str): The room id of the room that the user will be
                 kicked from.
             user_id (str): The user_id of the user that should be kicked.
+            reason (str, optional): A reason for which the user is kicked.
         """
         query_parameters = {"access_token": access_token}
 
