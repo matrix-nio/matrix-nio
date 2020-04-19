@@ -153,6 +153,8 @@ class TestClass(object):
 
         levels = event.power_levels
         admin = "@example:localhost"
+        mod = "@alice:localhost"
+        higher_user = "@carol:localhost"
         user = "@bob:localhost"
 
         assert levels.get_state_event_required_level("m.room.name") == 50
@@ -168,14 +170,24 @@ class TestClass(object):
         assert levels.can_user_send_message(admin) is True
         assert levels.can_user_send_message(user, "m.room.message") is False
 
-        assert levels.can_user_ban(admin) is True
-        assert levels.can_user_ban(user) is False
-
         assert levels.can_user_invite(admin) is True
         assert levels.can_user_invite(user) is True
 
         assert levels.can_user_kick(admin) is True
         assert levels.can_user_kick(user) is False
+        assert levels.can_user_kick(admin, admin) is False
+        assert levels.can_user_kick(admin, mod) is True
+        assert levels.can_user_kick(mod, admin) is False
+        assert levels.can_user_kick(mod, higher_user) is True
+        assert levels.can_user_kick(higher_user, user) is False
+
+        assert levels.can_user_ban(admin) is True
+        assert levels.can_user_ban(user) is False
+        assert levels.can_user_ban(admin, admin) is False
+        assert levels.can_user_ban(admin, mod) is True
+        assert levels.can_user_ban(mod, admin) is False
+        assert levels.can_user_ban(mod, higher_user) is True
+        assert levels.can_user_ban(higher_user, user) is False
 
         assert levels.can_user_redact(admin) is True
         assert levels.can_user_redact(user) is False
@@ -317,7 +329,7 @@ class TestClass(object):
         assert isinstance(event, TypingNoticeEvent)
 
         assert "@bob:example.com" in event.users
-    
+
     def test_read_receipt_event(self):
         parsed_dict = TestClass._load_response("tests/data/events/receipt.json")
         event = EphemeralEvent.parse_event(parsed_dict)
@@ -333,7 +345,7 @@ class TestClass(object):
 
         assert isinstance(event, ReceiptEvent)
         assert receipt in event.receipts
-        
+
     def test_account_data_event(self):
         event = AccountDataEvent.parse_event({})
 
