@@ -612,6 +612,9 @@ class AsyncClient(Client):
             else {"Content-Type": "application/json"}
         )
 
+        if content_length is not None:
+            headers["Content-Length"] = str(content_length)
+
         got_429 = 0
         max_429 = self.config.max_limit_exceeded
 
@@ -621,14 +624,6 @@ class AsyncClient(Client):
         while True:
             if data_provider:
                 data = data_provider(got_429, got_timeouts)
-
-                if content_length is None and isinstance(data, (str, Path)):
-                    content_length = Path(data).stat().st_size
-                elif content_length is None and isinstance(data, bytes):
-                    content_length = len(data)
-
-                if content_length is not None:
-                    headers["Content-Length"] = str(content_length)
 
             try:
                 transport_resp = await self.send(
@@ -2073,11 +2068,7 @@ class AsyncClient(Client):
                 for pausing and cancelling.
 
             filesize (int, optional): Size in bytes for the file to transfer.
-                If the passed ``data_provider`` returns a path string, Path
-                object or bytes, the size can be determined automatically
-                and there is no need to specify this argument.
-                If it can't be determined and no ``filesize`` is
-                explicitely passed, some servers might refuse the upload.
+                If left as ``None``, some servers might refuse the upload.
         """
 
         http_method, path, _ = Api.upload(self.access_token, filename)
