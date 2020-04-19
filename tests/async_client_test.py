@@ -1267,6 +1267,10 @@ class TestClass(object):
         )
         assert async_client.logged_in
 
+        path     = Path("tests/data/file_response")
+        filesize = path.stat().st_size
+        monitor  = TransferMonitor(filesize)
+
         aioresponse.post(
             "https://example.org/_matrix/media/r0/upload"
             "?access_token=abc123&filename=test.png",
@@ -1274,10 +1278,6 @@ class TestClass(object):
             payload=self.upload_response,
             repeat=True,
         )
-
-        path     = Path("tests/data/file_response")
-        filesize = path.stat().st_size
-        monitor  = TransferMonitor(filesize)
 
         resp, decryption_info = await async_client.upload(
             lambda *_: path, "image/png", "test.png", monitor=monitor,
@@ -1296,6 +1296,10 @@ class TestClass(object):
         )
         assert async_client.logged_in
 
+        path     = Path("tests/data/file_response")
+        filesize = path.stat().st_size
+        monitor  = TransferMonitor(filesize)
+
         aioresponse.post(
             "https://example.org/_matrix/media/r0/upload"
             "?access_token=abc123&filename=test.png",
@@ -1311,16 +1315,14 @@ class TestClass(object):
             repeat  = True,
         )
 
-        path    = Path("tests/data/file_response")
-        monitor = TransferMonitor(path.stat().st_size)
-
         async with aiofiles.open(path, "rb") as file:
             resp, decryption_info = await async_client.upload(
                 lambda *_: file,
                 "image/png",
                 "test.png",
-                encrypt = True,
-                monitor = monitor,
+                encrypt  = True,
+                monitor  = monitor,
+                filesize = filesize,
             )
 
         assert isinstance(resp, UploadResponse)
