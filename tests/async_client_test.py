@@ -32,6 +32,7 @@ from nio import (ContentRepositoryConfigResponse,
                  ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
+                 RoomBanResponse,
                  RoomTypingResponse, RoomCreateResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
                  RoomInviteResponse,
@@ -41,6 +42,7 @@ from nio import (ContentRepositoryConfigResponse,
                  RoomPutStateResponse,
                  RoomRedactResponse, RoomResolveAliasResponse,
                  RoomSendResponse, RoomSummary,
+                 RoomUnbanResponse,
                  ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
                  Timeline, TransferMonitor, TransferCancelledError,
@@ -1155,6 +1157,44 @@ class TestClass(object):
         )
         resp = await async_client.room_kick(room_id, ALICE_ID, "test")
         assert isinstance(resp, RoomKickResponse)
+
+    async def test_room_ban(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+        await async_client.receive_response(self.encryption_sync_response)
+
+        room_id = next(iter(async_client.rooms))
+
+        aioresponse.post(
+            f"https://example.org/_matrix/client/r0/rooms/{room_id}/ban"
+            f"?access_token=abc123",
+            status=200,
+            body={"user_id": ALICE_ID, "reason": "test"},
+            payload={},
+        )
+        resp = await async_client.room_ban(room_id, ALICE_ID, "test")
+        assert isinstance(resp, RoomBanResponse)
+
+    async def test_room_unban(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+        await async_client.receive_response(self.encryption_sync_response)
+
+        room_id = next(iter(async_client.rooms))
+
+        aioresponse.post(
+            f"https://example.org/_matrix/client/r0/rooms/{room_id}/unban"
+            f"?access_token=abc123",
+            status=200,
+            body={"user_id": ALICE_ID},
+            payload={},
+        )
+        resp = await async_client.room_unban(room_id, ALICE_ID)
+        assert isinstance(resp, RoomUnbanResponse)
 
     async def test_room_redact(self, async_client, aioresponse):
         await async_client.receive_response(

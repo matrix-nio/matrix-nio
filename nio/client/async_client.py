@@ -126,6 +126,8 @@ from ..responses import (
     ProfileSetDisplayNameResponse,
     ProfileSetDisplayNameError,
     Response,
+    RoomBanError,
+    RoomBanResponse,
     RoomContextError,
     RoomContextResponse,
     RoomCreateResponse,
@@ -155,6 +157,8 @@ from ..responses import (
     RoomSendResponse,
     RoomTypingResponse,
     RoomTypingError,
+    RoomUnbanError,
+    RoomUnbanResponse,
     ShareGroupSessionError,
     ShareGroupSessionResponse,
     SyncError,
@@ -1863,6 +1867,54 @@ class AsyncClient(Client):
             self.access_token, room_id, user_id, reason,
         )
         return await self._send(RoomKickResponse, method, path, data)
+
+    @logged_in
+    async def room_ban(
+        self, room_id: str, user_id: str, reason: Optional[str] = None,
+    ) -> Union[RoomBanResponse, RoomBanError]:
+        """Ban a user from a room.
+
+        When a user is banned from a room, they may not join it or be
+        invited to it until they are unbanned.
+        If they are currently in the room, they will be kicked or have their
+        invitation withdrawn first.
+
+        Returns either a `RoomBanResponse` if the request was successful or
+        a `RoomBanError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room that the user will be
+                banned from.
+            user_id (str): The user_id of the user that should be banned.
+            reason (str, optional): A reason for which the user is banned.
+        """
+
+        method, path, data = Api.room_ban(
+            self.access_token, room_id, user_id, reason,
+        )
+        return await self._send(RoomBanResponse, method, path, data)
+
+    @logged_in
+    async def room_unban(
+        self, room_id: str, user_id: str,
+    ) -> Union[RoomBanResponse, RoomBanError]:
+        """Unban a user from a room.
+
+        This allows them to be invited and join the room again.
+
+        Returns either a `RoomUnbanResponse` if the request was successful or
+        a `RoomUnbanError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room that the user will be
+                unbanned from.
+            user_id (str): The user_id of the user that should be unbanned.
+        """
+
+        method, path, data = Api.room_unban(
+            self.access_token, room_id, user_id,
+        )
+        return await self._send(RoomUnbanResponse, method, path, data)
 
     @logged_in
     async def room_context(
