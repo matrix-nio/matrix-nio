@@ -540,7 +540,7 @@ class RegisterErrorResponse(ErrorResponse):
 
 
 @dataclass
-class DeactivateErrorResponse(ErrorResponse)
+class DeactivateErrorResponse(ErrorResponse):
     pass
 
 
