@@ -540,6 +540,11 @@ class RegisterErrorResponse(ErrorResponse):
 
 
 @dataclass
+class DeactivateErrorResponse(ErrorResponse)
+    pass
+
+
+@dataclass
 class RegisterResponse(Response):
     user_id: str = field()
     device_id: str = field()

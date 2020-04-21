@@ -370,7 +370,7 @@ class TestClass:
         assert isinstance(resp, RegisterResponse)
         assert async_client.access_token
 
-    def test_deactivate(self, async_client, aioresponse):
+    async def test_deactivate(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
 
         assert not async_client.access_token
@@ -380,7 +380,7 @@ class TestClass:
             status=200,
             payload=self.DeactivateResponse
         )
-        resp = loop.run_until_complete(async_client.deactivate("user", "admin_token"))
+        resp = async_client.deactivate("user", "admin_token")
 
         assert isinstance(resp, DeactivateResponse)
         assert async_client.id_server_unbind_result
