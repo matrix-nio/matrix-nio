@@ -608,7 +608,7 @@ class Api(object):
     @staticmethod
     def room_kick(access_token, room_id, user_id, reason=None):
         # type (str, str, str, Optional[str]) -> Tuple[str, str, str]
-        """Kick a user from a room.
+        """Kick a user from a room, or withdraw their invitation.
 
         Returns the HTTP method, HTTP path and data for the request.
 
@@ -617,6 +617,7 @@ class Api(object):
             room_id (str): The room id of the room that the user will be
                 kicked from.
             user_id (str): The user_id of the user that should be kicked.
+            reason (str, optional): A reason for which the user is kicked.
         """
         query_parameters = {"access_token": access_token}
 
@@ -631,6 +632,63 @@ class Api(object):
             "POST",
             Api._build_path(path, query_parameters),
             Api.to_json(body)
+        )
+
+    @staticmethod
+    def room_ban(
+        access_token: str,
+        room_id: str,
+        user_id: str,
+        reason: Optional[str] = None,
+    ) -> Tuple[str, str, str]:
+        """Ban a user from a room.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room id of the room that the user will be
+                banned from.
+            user_id (str): The user_id of the user that should be banned.
+            reason (str, optional): A reason for which the user is banned.
+        """
+
+        path = f"rooms/{room_id}/ban"
+        query_parameters = {"access_token": access_token}
+        body = {"user_id": user_id}
+
+        if reason:
+            body["reason"] = reason
+
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body),
+        )
+
+    @staticmethod
+    def room_unban(
+        access_token: str, room_id: str, user_id: str,
+    ) -> Tuple[str, str, str]:
+        """Unban a user from a room.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room id of the room that the user will be
+                unbanned from.
+            user_id (str): The user_id of the user that should be unbanned.
+        """
+
+        path = f"rooms/{room_id}/unban"
+        query_parameters = {"access_token": access_token}
+        body = {"user_id": user_id}
+
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body),
         )
 
     @staticmethod

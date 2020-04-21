@@ -17,7 +17,7 @@ from yarl import URL
 
 from helpers import faker
 from nio import (ContentRepositoryConfigResponse,
-                 DeviceList, DeviceOneTimeKeyCount, DownloadError,
+                 DeviceList, DeactivateResponse, DeviceOneTimeKeyCount, DownloadError,
                  DevicesResponse, DeleteDevicesAuthResponse,
                  DeleteDevicesResponse,
                  DownloadResponse, ErrorResponse,
@@ -26,19 +26,23 @@ from nio import (ContentRepositoryConfigResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginError,
                  LoginResponse, LogoutError, LogoutResponse,
-                 MegolmEvent, MembersSyncError, OlmTrustError, RegisterResponse, DeactivateResponse,
+                 MegolmEvent, MembersSyncError, OlmTrustError,
+                 RegisterResponse,
                  RoomContextResponse, RoomForgetResponse,
                  ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
+                 RoomBanResponse,
                  RoomTypingResponse, RoomCreateResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
                  RoomInviteResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomGetStateResponse, RoomGetStateEventResponse,
+                 RoomKickResponse,
                  RoomPutStateResponse,
                  RoomRedactResponse, RoomResolveAliasResponse,
                  RoomSendResponse, RoomSummary,
+                 RoomUnbanResponse,
                  ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
                  Timeline, TransferMonitor, TransferCancelledError,
@@ -1150,6 +1154,63 @@ class TestClass(object):
         assert isinstance(resp, RoomForgetResponse)
         assert room_id not in async_client.rooms
 
+    async def test_room_kick(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+        await async_client.receive_response(self.encryption_sync_response)
+
+        room_id = next(iter(async_client.rooms))
+
+        aioresponse.post(
+            f"https://example.org/_matrix/client/r0/rooms/{room_id}/kick"
+            f"?access_token=abc123",
+            status=200,
+            body={"user_id": ALICE_ID, "reason": "test"},
+            payload={},
+        )
+        resp = await async_client.room_kick(room_id, ALICE_ID, "test")
+        assert isinstance(resp, RoomKickResponse)
+
+    async def test_room_ban(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+        await async_client.receive_response(self.encryption_sync_response)
+
+        room_id = next(iter(async_client.rooms))
+
+        aioresponse.post(
+            f"https://example.org/_matrix/client/r0/rooms/{room_id}/ban"
+            f"?access_token=abc123",
+            status=200,
+            body={"user_id": ALICE_ID, "reason": "test"},
+            payload={},
+        )
+        resp = await async_client.room_ban(room_id, ALICE_ID, "test")
+        assert isinstance(resp, RoomBanResponse)
+
+    async def test_room_unban(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+        await async_client.receive_response(self.encryption_sync_response)
+
+        room_id = next(iter(async_client.rooms))
+
+        aioresponse.post(
+            f"https://example.org/_matrix/client/r0/rooms/{room_id}/unban"
+            f"?access_token=abc123",
+            status=200,
+            body={"user_id": ALICE_ID},
+            payload={},
+        )
+        resp = await async_client.room_unban(room_id, ALICE_ID)
+        assert isinstance(resp, RoomUnbanResponse)
+
     async def test_room_redact(self, async_client, aioresponse):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
@@ -1282,6 +1343,10 @@ class TestClass(object):
         )
         assert async_client.logged_in
 
+        path     = Path("tests/data/file_response")
+        filesize = path.stat().st_size
+        monitor  = TransferMonitor(filesize)
+
         aioresponse.post(
             "https://example.org/_matrix/media/r0/upload"
             "?access_token=abc123&filename=test.png",
@@ -1289,10 +1354,6 @@ class TestClass(object):
             payload=self.upload_response,
             repeat=True,
         )
-
-        path     = Path("tests/data/file_response")
-        filesize = path.stat().st_size
-        monitor  = TransferMonitor(filesize)
 
         resp, decryption_info = await async_client.upload(
             lambda *_: path, "image/png", "test.png", monitor=monitor,
@@ -1311,6 +1372,10 @@ class TestClass(object):
         )
         assert async_client.logged_in
 
+        path     = Path("tests/data/file_response")
+        filesize = path.stat().st_size
+        monitor  = TransferMonitor(filesize)
+
         aioresponse.post(
             "https://example.org/_matrix/media/r0/upload"
             "?access_token=abc123&filename=test.png",
@@ -1326,16 +1391,14 @@ class TestClass(object):
             repeat  = True,
         )
 
-        path    = Path("tests/data/file_response")
-        monitor = TransferMonitor(path.stat().st_size)
-
         async with aiofiles.open(path, "rb") as file:
             resp, decryption_info = await async_client.upload(
                 lambda *_: file,
                 "image/png",
                 "test.png",
-                encrypt = True,
-                monitor = monitor,
+                encrypt  = True,
+                monitor  = monitor,
+                filesize = filesize,
             )
 
         assert isinstance(resp, UploadResponse)

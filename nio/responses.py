@@ -74,13 +74,15 @@ __all__ = [
     "LogoutResponse",
     "LogoutError",
     "Response",
+    "RoomBanResponse",
+    "RoomBanError",
     "RoomCreateResponse",
     "RoomCreateError",
     "RoomInfo",
     "RoomInviteResponse",
     "RoomInviteError",
     "RoomKickResponse",
-    "RoomKickResponse",
+    "RoomKickError",
     "RoomLeaveResponse",
     "RoomLeaveError",
     "RoomForgetResponse",
@@ -101,6 +103,8 @@ __all__ = [
     "RoomSendResponse",
     "RoomSendError",
     "RoomSummary",
+    "RoomUnbanResponse",
+    "RoomUnbanError",
     "Rooms",
     "ShareGroupSessionResponse",
     "ShareGroupSessionError",
@@ -405,6 +409,14 @@ class RoomReadMarkersError(_ErrorWithRoomId):
 
 
 class RoomKickError(ErrorResponse):
+    pass
+
+
+class RoomBanError(ErrorResponse):
+    pass
+
+
+class RoomUnbanError(ErrorResponse):
     pass
 
 
@@ -915,6 +927,18 @@ class RoomKickResponse(EmptyResponse):
     @staticmethod
     def create_error(parsed_dict):
         return RoomKickError.from_dict(parsed_dict)
+
+
+class RoomBanResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict):
+        return RoomBanError.from_dict(parsed_dict)
+
+
+class RoomUnbanResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict):
+        return RoomUnbanError.from_dict(parsed_dict)
 
 
 class RoomInviteResponse(EmptyResponse):

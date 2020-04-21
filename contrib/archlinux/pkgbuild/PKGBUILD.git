@@ -21,18 +21,17 @@ checkdepends=()
 source=("$pkgbase-$pkgver.tar.gz")
 sha512sums=('SKIP')
 
-prepare() {
-  cd "$srcdir"
-  cp -a "${pkgbase%-git}-$_pkgver"{,-py2}
-}
-
 pkgver() {
-  cd $pkgbase-$_pkgver
-  git describe --long --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+    cd "$pkgbase-$_pkgver"
+    git describe | sed 's/\([^-]*-\)g/r\1/;s/-/./g'
 }
 
-package_python-nio-git() {
-  cd "$srcdir/${pkgbase%-VCS}-$_pkgver"
+build() {
+    cd "$pkgbase-$_pkgver"
+    python setup.py build
+}
 
-  make DESTDIR="$pkgdir" install
+package() {
+    cd "$pkgbase-$_pkgver"
+    python setup.py install --root="$pkgdir" --optimize=1 --skip-build
 }
