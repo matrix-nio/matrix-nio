@@ -148,7 +148,7 @@ class BadEvent:
 
     source: Dict[str, Any] = field()
     event_id: str = field()
-    sender: bool = field()
+    sender: str = field()
     server_timestamp: int = field()
     type: str = field()
 
