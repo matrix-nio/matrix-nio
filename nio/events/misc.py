@@ -17,7 +17,7 @@
 from functools import wraps
 from typing import Any, Dict, Optional, Union
 
-import attr
+from dataclasses import dataclass, field
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
@@ -77,8 +77,8 @@ def verify_or_none(schema):
     return decorator
 
 
-@attr.s
-class UnknownBadEvent(object):
+@dataclass
+class UnknownBadEvent:
     """An event that doesn't have the minimal necessary structure.
 
     This type of event will be created if we can't find the event_id, sender,
@@ -104,17 +104,17 @@ class UnknownBadEvent(object):
 
     """
 
-    source = attr.ib()
-    transaction_id = attr.ib(default=None, init=False)
+    source: Dict[str, Any] = field()
+    transaction_id: Optional[str] = None
 
-    decrypted = attr.ib(default=False, init=False)
-    verified = attr.ib(default=False, init=False)
-    sender_key = attr.ib(default=None, init=False)      # type: Optional[str]
-    session_id = attr.ib(default=None, init=False)      # type: Optional[str]
+    decrypted: bool = field(default=False, init=False)
+    verified: bool = field(default=False, init=False)
+    sender_key: Optional[str] = field(default=None, init=False)
+    session_id: Optional[str] = field(default=None, init=False)
 
 
-@attr.s
-class BadEvent(object):
+@dataclass
+class BadEvent:
     """An event that failed event schema and type validation.
 
     This type of event will be created if the event has a valid core structure
@@ -146,17 +146,17 @@ class BadEvent(object):
 
     """
 
-    source = attr.ib()
-    event_id = attr.ib()
-    sender = attr.ib()
-    server_timestamp = attr.ib()
-    type = attr.ib()
+    source: Dict[str, Any] = field()
+    event_id: str = field()
+    sender: bool = field()
+    server_timestamp: int = field()
+    type: str = field()
 
-    decrypted = attr.ib(default=False, init=False)
-    verified = attr.ib(default=False, init=False)
-    sender_key = attr.ib(default=None, init=False)      # type: Optional[str]
-    session_id = attr.ib(default=None, init=False)      # type: Optional[str]
-    transaction_id = attr.ib(default=None, init=False)  # type: Optional[str]
+    decrypted: bool = field(default=False, init=False)
+    verified: bool = field(default=False, init=False)
+    sender_key: Optional[str] = field(default=None, init=False)
+    session_id: Optional[str] = field(default=None, init=False)
+    transaction_id: Optional[str] = field(default=None, init=False)
 
     def __str__(self):
         return "Bad event of type {}, from {}.".format(self.type, self.sender)

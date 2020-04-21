@@ -19,7 +19,7 @@ from builtins import super
 from datetime import datetime, timedelta
 from typing import List, Optional, Set, Tuple
 
-import attr
+from dataclasses import dataclass, field
 import olm
 
 from ..exceptions import EncryptionError
@@ -47,7 +47,7 @@ class OlmAccount(olm.Account):
         return account
 
 
-class _SessionExpirationMixin(object):
+class _SessionExpirationMixin:
     @property
     def expired(self):
         return False

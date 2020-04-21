@@ -14,20 +14,20 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import attr
+from dataclasses import dataclass, field
 from typing import Dict
 
 from ..event_builders import ToDeviceMessage, RoomKeyRequestMessage
 from ..responses import RoomKeyRequestResponse
 
-@attr.s
-class OutgoingKeyRequest(object):
+@dataclass
+class OutgoingKeyRequest:
     """Key request that we sent out."""
 
-    request_id = attr.ib(type=str)
-    session_id = attr.ib(type=str)
-    room_id = attr.ib(type=str)
-    algorithm = attr.ib(type=str)
+    request_id: str = field()
+    session_id: str = field()
+    room_id: str = field()
+    algorithm: str = field()
 
     @classmethod
     def from_response(cls, response):

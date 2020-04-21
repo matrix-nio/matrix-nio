@@ -45,7 +45,7 @@ class TransportType(Enum):
     WEBSOCKETS = 2
 
 
-class TransportRequest(object):
+class TransportRequest:
     def __init__(self, request, data=b"", timeout=0):
         self._request = request
         self._data = data
@@ -198,7 +198,7 @@ class HeaderDict(dict):
         return super().__getitem__(key.lower())
 
 
-class TransportResponse(object):
+class TransportResponse:
     def __init__(self, uuid=None, timeout=0):
         # type: (Optional[UUID], float) -> None
         self.headers = HeaderDict()  # type: HeaderDict
@@ -291,7 +291,7 @@ class Http2Response(TransportResponse):
         return False
 
 
-class Connection(object):
+class Connection:
     def connect(self):
         # type: () -> bytes
         return b""

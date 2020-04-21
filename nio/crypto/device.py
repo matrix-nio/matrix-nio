@@ -15,7 +15,7 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-import attr
+from dataclasses import dataclass, field, asdict
 
 from enum import Enum
 from collections import defaultdict
@@ -35,8 +35,8 @@ class TrustState(Enum):
     ignored = 3
 
 
-@attr.s
-class OlmDevice(object):
+@dataclass
+class OlmDevice:
     """Class holding info about users Olm devices.
 
     OlmDevices represent user devices with which we can communicate in an
@@ -63,12 +63,12 @@ class OlmDevice(object):
 
     """
 
-    user_id = attr.ib(type=str)
-    device_id = attr.ib(type=str)
-    keys = attr.ib(type=Dict[str, str])
-    display_name = attr.ib(type=str, default="")
-    deleted = attr.ib(type=bool, default=False)
-    trust_state = attr.ib(type=TrustState, default=TrustState.unset)
+    user_id: str = field()
+    device_id: str = field()
+    keys: Dict[str, str] = field()
+    display_name: str = ""
+    deleted: bool = False
+    trust_state: TrustState = TrustState.unset
 
     @property
     def id(self) -> str:
@@ -98,7 +98,7 @@ class OlmDevice(object):
 
     def as_dict(self):
         """Convert the OlmDevice into a dictionary."""
-        device = attr.asdict(self)
+        device = asdict(self)
         device["trust_state"] = self.trust_state.name
 
         return device
@@ -119,7 +119,7 @@ class OlmDevice(object):
         return self.trust_state == TrustState.blacklisted
 
 
-class DeviceStore(object):
+class DeviceStore:
     """A store that holds olm devices in memory.
 
     The DeviceStore class implements the iter method, devices can be iterated

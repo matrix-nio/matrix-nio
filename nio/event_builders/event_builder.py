@@ -17,7 +17,7 @@
 
 
 # TODO: use abc.ABC when we drop py2
-class EventBuilder(object):
+class EventBuilder:
     """The base class for event builders, should not be instancied."""
 
     def as_dict(self):

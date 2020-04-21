@@ -18,17 +18,18 @@
 from __future__ import unicode_literals
 
 from builtins import str
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Union
 
-import attr
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
+from .event_builders import ToDeviceMessage
 from .events import (AccountDataEvent, BadEventType, Event, InviteEvent,
                      ToDeviceEvent, EphemeralEvent)
+from .http import TransportResponse
 from .log import logger_group
 from .schemas import Schemas, validate_json
 
@@ -159,51 +160,51 @@ def verify(schema, error_class, pass_arguments=True):
     return decorator
 
 
-@attr.s
-class Rooms(object):
-    invite = attr.ib(type=Dict)
-    join = attr.ib(type=Dict)
-    leave = attr.ib(type=Dict)
+@dataclass
+class Rooms:
+    invite: Dict = field()
+    join: Dict = field()
+    leave: Dict = field()
 
 
-@attr.s
-class DeviceOneTimeKeyCount(object):
-    curve25519 = attr.ib(type=int)
-    signed_curve25519 = attr.ib(type=int)
+@dataclass
+class DeviceOneTimeKeyCount:
+    curve25519: int = field()
+    signed_curve25519: int = field()
 
 
-@attr.s
-class DeviceList(object):
-    changed = attr.ib(type=List[str])
-    left = attr.ib(type=List[str])
+@dataclass
+class DeviceList:
+    changed: List[str] = field()
+    left: List[str] = field()
 
 
-@attr.s
-class Timeline(object):
-    events = attr.ib(type=List)
-    limited = attr.ib(type=bool)
-    prev_batch = attr.ib(type=str)
+@dataclass
+class Timeline:
+    events: List = field()
+    limited: bool = field()
+    prev_batch: str = field()
 
 
-@attr.s
-class InviteInfo(object):
-    invite_state = attr.ib(type=List)
+@dataclass
+class InviteInfo:
+    invite_state: List = field()
 
 
-@attr.s
-class RoomSummary(object):
-    invited_member_count = attr.ib(default=None, type=Optional[int])
-    joined_member_count = attr.ib(default=None, type=Optional[int])
-    heroes = attr.ib(default=[], type=List[str])
+@dataclass
+class RoomSummary:
+    invited_member_count: Optional[int] = None
+    joined_member_count: Optional[int] = None
+    heroes: List[str] = field(default_factory=list)
 
 
-@attr.s
-class RoomInfo(object):
-    timeline = attr.ib(type=Timeline)
-    state = attr.ib(type=List)
-    ephemeral = attr.ib(type=List)
-    account_data = attr.ib(type=List)
-    summary = attr.ib(default=None, type=Optional[RoomSummary])
+@dataclass
+class RoomInfo:
+    timeline: Timeline = field()
+    state: List = field()
+    ephemeral: List = field()
+    account_data: List = field()
+    summary: Optional[RoomSummary] = None
 
     @staticmethod
     def parse_account_data(event_dict):
@@ -216,19 +217,19 @@ class RoomInfo(object):
         return events
 
 
-@attr.s
-class RoomMember(object):
-    user_id = attr.ib(type=str)
-    display_name = attr.ib(type=str)
-    avatar_url = attr.ib(type=str)
+@dataclass
+class RoomMember:
+    user_id: str = field()
+    display_name: str = field()
+    avatar_url: str = field()
 
 
-@attr.s
-class Device(object):
-    id = attr.ib(type=str)
-    display_name = attr.ib(type=str)
-    last_seen_ip = attr.ib(type=str)
-    last_seen_date = attr.ib(type=datetime)
+@dataclass
+class Device:
+    id: str = field()
+    display_name: str = field()
+    last_seen_ip: str = field()
+    last_seen_date: datetime = field()
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -245,13 +246,15 @@ class Device(object):
         )
 
 
-@attr.s
-class Response(object):
-    uuid = ""          # type : str
-    start_time = None  # type : Optional[float]
-    end_time = None    # type : Optional[float]
-    timeout = 0        # type : int
-    transport_response = attr.ib(init=False, default=None)
+@dataclass
+class Response:
+    uuid: ClassVar[str] = ""
+    start_time: ClassVar[Optional[float]] = None
+    end_time: ClassVar[Optional[float]] = None
+    timeout: ClassVar[int] = 0
+    transport_response: Optional[TransportResponse] = field(
+        init=False, default=None,
+    )
 
     @property
     def elapsed(self):
@@ -261,7 +264,7 @@ class Response(object):
         return max(0, elapsed - (self.timeout / 1000))
 
 
-@attr.s
+@dataclass
 class FileResponse(Response):
     """A response representing a successful file content request.
 
@@ -272,9 +275,9 @@ class FileResponse(Response):
         filename (str, optional): The file's name returned by the server.
     """
 
-    body = attr.ib(type=bytes)
-    content_type = attr.ib(type=str)
-    filename = attr.ib(type=Optional[str])
+    body: bytes = field()
+    content_type: str = field()
+    filename: Optional[str] = field()
 
     def __str__(self):
         return "{} bytes, content type: {}, filename: {}".format(
@@ -295,12 +298,12 @@ class FileResponse(Response):
         raise NotImplementedError()
 
 
-@attr.s
+@dataclass
 class ErrorResponse(Response):
-    message = attr.ib(type=str)
-    status_code = attr.ib(default=None, type=Optional[int])
-    retry_after_ms = attr.ib(default=None, type=Optional[int])
-    soft_logout = attr.ib(default=False, type=bool)
+    message: str = field()
+    status_code: Optional[int] = None
+    retry_after_ms: Optional[int] = None
+    soft_logout: bool = False
 
     def __str__(self):
         # type: () -> str
@@ -334,9 +337,9 @@ class ErrorResponse(Response):
         )
 
 
-@attr.s
+@dataclass
 class _ErrorWithRoomId(ErrorResponse):
-    room_id = attr.ib(default="", type=str)
+    room_id: str = ""
 
     @classmethod
     def from_dict(cls, parsed_dict, room_id):
@@ -471,11 +474,11 @@ class ThumbnailError(ErrorResponse):
     """A response representing a unsuccessful thumbnail request."""
 
 
-@attr.s
+@dataclass
 class ShareGroupSessionError(_ErrorWithRoomId):
     """Response representing unsuccessful group sessions sharing request."""
 
-    users_shared_with = attr.ib(type=set, default=None)
+    users_shared_with: Set[Tuple[str, str]] = field(default_factory=set)
 
     @classmethod
     def from_dict(cls, parsed_dict, room_id, users_shared_with):
@@ -529,20 +532,22 @@ class ProfileSetAvatarError(ErrorResponse):
     pass
 
 
-@attr.s
+@dataclass
 class RegisterErrorResponse(ErrorResponse):
     pass
 
 
-@attr.s
+@dataclass
 class RegisterResponse(Response):
-    user_id = attr.ib(type=str)
-    device_id = attr.ib(type=str)
-    access_token = attr.ib(type=str)
+    user_id: str = field()
+    device_id: str = field()
+    access_token: str = field()
 
     def __str__(self):
         # type () -> str
-        return "Registered {}, device id {}.".format(self.user_id, self.device_id)
+        return "Registered {}, device id {}.".format(
+            self.user_id, self.device_id,
+        )
 
     @classmethod
     @verify(Schemas.register, RegisterErrorResponse)
@@ -554,14 +559,14 @@ class RegisterResponse(Response):
         )
 
 
-@attr.s
+@dataclass
 class LoginInfoError(ErrorResponse):
     pass
 
 
-@attr.s
+@dataclass
 class LoginInfoResponse(Response):
-    flows = attr.ib(type=List[str])
+    flows: List[str] = field()
 
     @classmethod
     @verify(Schemas.login_info, LoginInfoError)
@@ -571,11 +576,11 @@ class LoginInfoResponse(Response):
         return cls(flow_types)
 
 
-@attr.s
+@dataclass
 class LoginResponse(Response):
-    user_id = attr.ib(type=str)
-    device_id = attr.ib(type=str)
-    access_token = attr.ib(type=str)
+    user_id: str = field()
+    device_id: str = field()
+    access_token: str = field()
 
     def __str__(self):
         # type: () -> str
@@ -594,7 +599,7 @@ class LoginResponse(Response):
         )
 
 
-@attr.s
+@dataclass
 class LogoutResponse(Response):
     def __str__(self):
         # type: () -> str
@@ -608,10 +613,10 @@ class LogoutResponse(Response):
         return cls()
 
 
-@attr.s
+@dataclass
 class JoinedMembersResponse(Response):
-    members = attr.ib(type=List[RoomMember])
-    room_id = attr.ib(type=str)
+    members: List[RoomMember] = field()
+    room_id: str = field()
 
     @classmethod
     @verify(Schemas.joined_members, JoinedMembersError)
@@ -634,7 +639,7 @@ class JoinedMembersResponse(Response):
         return cls(members, room_id)
 
 
-@attr.s
+@dataclass
 class JoinedRoomsResponse(Response):
     """A response containing a list of joined rooms.
 
@@ -642,7 +647,7 @@ class JoinedRoomsResponse(Response):
         rooms (List[str]): The rooms joined by the account.
     """
 
-    rooms = attr.ib(type=List[str])
+    rooms: List[str] = field()
 
     @classmethod
     @verify(Schemas.joined_rooms, JoinedRoomsError)
@@ -674,11 +679,11 @@ class ContentRepositoryConfigResponse(Response):
         return cls(parsed_dict.get("m.upload.size"))
 
 
-@attr.s
+@dataclass
 class UploadResponse(Response):
     """A response representing a successful upload request."""
 
-    content_uri = attr.ib(type=str)
+    content_uri: str = field()
 
     @classmethod
     @verify(Schemas.upload, UploadError)
@@ -689,7 +694,7 @@ class UploadResponse(Response):
         )
 
 
-@attr.s
+@dataclass
 class DownloadResponse(FileResponse):
     """A response representing a successful download request."""
 
@@ -710,7 +715,7 @@ class DownloadResponse(FileResponse):
         return DownloadError("invalid data")
 
 
-@attr.s
+@dataclass
 class ThumbnailResponse(FileResponse):
     """A response representing a successful thumbnail request."""
 
@@ -734,10 +739,10 @@ class ThumbnailResponse(FileResponse):
         return ThumbnailError("invalid data")
 
 
-@attr.s
+@dataclass
 class RoomEventIdResponse(Response):
-    event_id = attr.ib(type=str)
-    room_id = attr.ib(type=str)
+    event_id: str = field()
+    room_id: str = field()
 
     @staticmethod
     def create_error(parsed_dict, _room_id):
@@ -764,7 +769,7 @@ class RoomSendResponse(RoomEventIdResponse):
         return RoomSendError.from_dict(parsed_dict, room_id)
 
 
-@attr.s
+@dataclass
 class RoomGetStateResponse(Response):
     """A response containing the state of a room.
 
@@ -773,8 +778,8 @@ class RoomGetStateResponse(Response):
         room_id (str): The ID of the room.
     """
 
-    events = attr.ib(type=List)
-    room_id = attr.ib(type=str)
+    events: List = field()
+    room_id: str = field()
 
     @staticmethod
     def create_error(parsed_dict, room_id):
@@ -795,7 +800,7 @@ class RoomGetStateResponse(Response):
         return cls(parsed_dict, room_id)
 
 
-@attr.s
+@dataclass
 class RoomGetStateEventResponse(Response):
     """A response containing the content of a specific bit of room state.
 
@@ -806,10 +811,10 @@ class RoomGetStateEventResponse(Response):
         room_id (str): The ID of the room that the state event comes from.
     """
 
-    content = attr.ib(type=Dict)
-    event_type = attr.ib(type=str)
-    state_key = attr.ib(type=str)
-    room_id = attr.ib(type=str)
+    content: Dict = field()
+    event_type: str = field()
+    state_key: str = field()
+    room_id: str = field()
 
     @staticmethod
     def create_error(parsed_dict, room_id):
@@ -818,12 +823,11 @@ class RoomGetStateEventResponse(Response):
     @classmethod
     def from_dict(
         cls,
-        parsed_dict,  # type: ignore
-        event_type,   # type: str
-        state_key,    # type: str
-        room_id       # type: str
-    ):
-        # type: (...) -> Union[RoomGetStateEventResponse, RoomGetStateEventError]
+        parsed_dict: Dict[str, Any],
+        event_type: str,
+        state_key: str,
+        room_id: str,
+    ) -> Union["RoomGetStateEventResponse", RoomGetStateEventError] :
         return cls(parsed_dict, event_type, state_key, room_id)
 
 
@@ -839,7 +843,7 @@ class RoomRedactResponse(RoomEventIdResponse):
     def create_error(parsed_dict, room_id):
         return RoomRedactError.from_dict(parsed_dict, room_id)
 
-@attr.s
+@dataclass
 class RoomResolveAliasResponse(Response):
     """A response containing the result of resolving an alias.
 
@@ -848,12 +852,16 @@ class RoomResolveAliasResponse(Response):
         room_id (str): The resolved id of the room.
         servers (List[str]): Servers participating in the room.
     """
-    room_alias = attr.ib(type=str)
-    room_id = attr.ib(type=str)
-    servers = attr.ib(type=List[str])
+    room_alias: str = field()
+    room_id: str = field()
+    servers: List[str] = field()
 
     @classmethod
-    @verify(Schemas.room_resolve_alias, RoomResolveAliasError, pass_arguments=False)
+    @verify(
+        Schemas.room_resolve_alias,
+        RoomResolveAliasError,
+        pass_arguments=False,
+    )
     def from_dict(
         cls,
         parsed_dict,  # type: Dict[Any, Any]
@@ -881,9 +889,9 @@ class EmptyResponse(Response):
         return cls()
 
 
-@attr.s
+@dataclass
 class _EmptyResponseWithRoomId(Response):
-    room_id = attr.ib(type=str)
+    room_id: str = field()
 
     @staticmethod
     def create_error(parsed_dict, room_id):
@@ -924,7 +932,7 @@ class RoomInviteResponse(EmptyResponse):
         return RoomInviteError.from_dict(parsed_dict)
 
 
-@attr.s
+@dataclass
 class ShareGroupSessionResponse(Response):
     """Response representing a successful group sessions sharing request.
 
@@ -936,8 +944,8 @@ class ShareGroupSessionResponse(Response):
 
     """
 
-    room_id = attr.ib(type=str)
-    users_shared_with = attr.ib(type=set)
+    room_id: str = field()
+    users_shared_with: set = field()
 
     @classmethod
     @verify(Schemas.empty, ShareGroupSessionError)
@@ -977,11 +985,11 @@ class RoomReadMarkersResponse(_EmptyResponseWithRoomId):
         return RoomTypingError.from_dict(parsed_dict, room_id)
 
 
-@attr.s
+@dataclass
 class DeleteDevicesAuthResponse(Response):
-    session = attr.ib(type=str)
-    flows = attr.ib(type=Dict)
-    params = attr.ib(type=Dict)
+    session: str = field()
+    flows: Dict = field()
+    params: Dict = field()
 
     @classmethod
     @verify(Schemas.delete_devices, DeleteDevicesError)
@@ -1003,13 +1011,13 @@ class DeleteDevicesResponse(EmptyResponse):
         return DeleteDevicesError.from_dict(parsed_dict)
 
 
-@attr.s
+@dataclass
 class RoomMessagesResponse(Response):
-    room_id = attr.ib(type=str)
+    room_id: str = field()
 
-    chunk = attr.ib(type=List[Union[Event, BadEventType]])
-    start = attr.ib(type=str)
-    end = attr.ib(type=str)
+    chunk: List[Union[Event, BadEventType]] = field()
+    start: str = field()
+    end: str = field()
 
     @classmethod
     @verify(Schemas.room_messages, RoomMessagesError)
@@ -1024,9 +1032,9 @@ class RoomMessagesResponse(Response):
         return cls(room_id, chunk, parsed_dict["start"], parsed_dict["end"])
 
 
-@attr.s
+@dataclass
 class RoomIdResponse(Response):
-    room_id = attr.ib(type=str)
+    room_id: str = field()
 
     @staticmethod
     def create_error(parsed_dict):
@@ -1042,14 +1050,16 @@ class RoomIdResponse(Response):
 
         return cls(parsed_dict["room_id"])
 
-@attr.s
+@dataclass
 class RoomCreateResponse(Response):
     """Response representing a successful create room request."""
-    room_id = attr.ib(type=str)
+    room_id: str = field()
 
 
     @classmethod
-    @verify(Schemas.room_create_response, RoomCreateError, pass_arguments=False)
+    @verify(
+        Schemas.room_create_response, RoomCreateError, pass_arguments=False,
+    )
     def from_dict(
         cls,
         parsed_dict  # type: Dict[Any, Any]
@@ -1078,10 +1088,10 @@ class RoomForgetResponse(_EmptyResponseWithRoomId):
         return RoomForgetError.from_dict(parsed_dict, room_id)
 
 
-@attr.s
+@dataclass
 class KeysUploadResponse(Response):
-    curve25519_count = attr.ib(type=int)
-    signed_curve25519_count = attr.ib(type=int)
+    curve25519_count: int = field()
+    signed_curve25519_count: int = field()
 
     @classmethod
     @verify(Schemas.keys_upload, KeysUploadError)
@@ -1091,14 +1101,12 @@ class KeysUploadResponse(Response):
         return cls(counts["curve25519"], counts["signed_curve25519"])
 
 
-@attr.s
+@dataclass
 class KeysQueryResponse(Response):
-    device_keys = attr.ib(type=Dict)
-    failures = attr.ib(type=Dict)
-    changed = attr.ib(
-        type=Dict[str, Dict[str, Any]],
-        init=False,
-        factory=dict
+    device_keys: Dict = field()
+    failures: Dict = field()
+    changed: Dict[str, Dict[str, Any]] = field(
+        init=False, default_factory=dict,
     )
 
     @classmethod
@@ -1111,11 +1119,11 @@ class KeysQueryResponse(Response):
         return cls(device_keys, failures)
 
 
-@attr.s
+@dataclass
 class KeysClaimResponse(Response):
-    one_time_keys = attr.ib(type=Dict[Any, Any])
-    failures = attr.ib(type=Dict[Any, Any])
-    room_id = attr.ib(type=str, default="")
+    one_time_keys: Dict[Any, Any] = field()
+    failures: Dict[Any, Any] = field()
+    room_id: str = ""
 
     @classmethod
     @verify(Schemas.keys_claim, KeysClaimError)
@@ -1131,9 +1139,9 @@ class KeysClaimResponse(Response):
         return cls(one_time_keys, failures, room_id)
 
 
-@attr.s
+@dataclass
 class DevicesResponse(Response):
-    devices = attr.ib(type=List[Device])
+    devices: List[Device] = field()
 
     @classmethod
     @verify(Schemas.devices, DevicesError)
@@ -1150,14 +1158,14 @@ class DevicesResponse(Response):
         return cls(devices)
 
 
-@attr.s
+@dataclass
 class RoomKeyRequestError(ErrorResponse):
     """Response representing a failed room key request."""
 
     pass
 
 
-@attr.s
+@dataclass
 class RoomKeyRequestResponse(Response):
     """Response representing a successful room key request.
 
@@ -1171,10 +1179,10 @@ class RoomKeyRequestResponse(Response):
 
     """
 
-    request_id = attr.ib(type=str)
-    session_id = attr.ib(type=str)
-    room_id = attr.ib(type=str)
-    algorithm = attr.ib(type=str)
+    request_id: str = field()
+    session_id: str = field()
+    room_id: str = field()
+    algorithm: str = field()
 
     @classmethod
     @verify(Schemas.empty, RoomKeyRequestError, False)
@@ -1199,7 +1207,7 @@ class UpdateDeviceResponse(EmptyResponse):
         return UpdateDeviceError.from_dict(parsed_dict)
 
 
-@attr.s
+@dataclass
 class ProfileGetResponse(Response):
     """Response representing a successful get profile request.
 
@@ -1212,9 +1220,9 @@ class ProfileGetResponse(Response):
             user's profile.
     """
 
-    displayname = attr.ib(type=Optional[str], default=None)
-    avatar_url = attr.ib(type=Optional[str], default=None)
-    other_info = attr.ib(type=Dict[Any, Any], factory=dict)
+    displayname: Optional[str] = None
+    avatar_url: Optional[str] = None
+    other_info: Dict[Any, Any] = field(default_factory=dict)
 
     def __str__(self):
         # type: () -> str
@@ -1236,7 +1244,7 @@ class ProfileGetResponse(Response):
         )
 
 
-@attr.s
+@dataclass
 class ProfileGetDisplayNameResponse(Response):
     """Response representing a successful get display name request.
 
@@ -1245,7 +1253,7 @@ class ProfileGetDisplayNameResponse(Response):
             None if the user doesn't have a display name.
     """
 
-    displayname = attr.ib(type=Optional[str], default=None)
+    displayname: Optional[str] = None
 
     def __str__(self):
         # type: () -> str
@@ -1267,7 +1275,7 @@ class ProfileSetDisplayNameResponse(EmptyResponse):
         return ProfileSetDisplayNameError.from_dict(parsed_dict)
 
 
-@attr.s
+@dataclass
 class ProfileGetAvatarResponse(Response):
     """Response representing a successful get avatar request.
 
@@ -1276,7 +1284,7 @@ class ProfileGetAvatarResponse(Response):
             avatar. None if the user doesn't have an avatar.
     """
 
-    avatar_url = attr.ib(type=Optional[str], default=None)
+    avatar_url: Optional[str] = None
 
     def __str__(self):
         # type: () -> str
@@ -1298,11 +1306,11 @@ class ProfileSetAvatarResponse(EmptyResponse):
         return ProfileSetAvatarError.from_dict(parsed_dict)
 
 
-@attr.s
+@dataclass
 class ToDeviceError(ErrorResponse):
     """Response representing a unsuccessful room key request."""
 
-    to_device_message = attr.ib(default=None)
+    to_device_message: Optional[ToDeviceMessage] = None
 
     @classmethod
     def from_dict(cls, parsed_dict, message):
@@ -1314,11 +1322,11 @@ class ToDeviceError(ErrorResponse):
         return cls(parsed_dict["error"], parsed_dict["errcode"], message)
 
 
-@attr.s
+@dataclass
 class ToDeviceResponse(Response):
     """Response representing a successful room key request."""
 
-    to_device_message = attr.ib()
+    to_device_message: ToDeviceMessage = field()
 
     @classmethod
     @verify(Schemas.empty, ToDeviceError)
@@ -1327,12 +1335,12 @@ class ToDeviceResponse(Response):
         return cls(message)
 
 
-@attr.s
+@dataclass
 class RoomContextError(_ErrorWithRoomId):
     """Response representing a unsuccessful room context request."""
 
 
-@attr.s
+@dataclass
 class RoomContextResponse(Response):
     """Room event context response.
 
@@ -1352,17 +1360,17 @@ class RoomContextResponse(Response):
 
     """
 
-    room_id = attr.ib(type=str)
+    room_id: str = field()
 
-    start = attr.ib(type=str)
-    end = attr.ib(type=str)
+    start: str = field()
+    end: str = field()
 
-    event = attr.ib()
+    event: Event = field()
 
-    events_before = attr.ib(type=List[Union[Event, BadEventType]])
-    events_after = attr.ib(type=List[Union[Event, BadEventType]])
+    events_before: List[Union[Event, BadEventType]] = field()
+    events_after: List[Union[Event, BadEventType]] = field()
 
-    state = attr.ib(type=List[Union[Event, BadEventType]])
+    state: List[Union[Event, BadEventType]] = field()
 
     @classmethod
     @verify(Schemas.room_context, RoomContextError)
@@ -1388,13 +1396,13 @@ class RoomContextResponse(Response):
                    event, events_before, events_after, state)
 
 
-@attr.s
+@dataclass
 class _SyncResponse(Response):
-    next_batch = attr.ib(type=str)
-    rooms = attr.ib(type=Rooms)
-    device_key_count = attr.ib(type=DeviceOneTimeKeyCount)
-    device_list = attr.ib(type=DeviceList)
-    to_device_events = attr.ib(type=List[ToDeviceEvent])
+    next_batch: str = field()
+    rooms: Rooms = field()
+    device_key_count: DeviceOneTimeKeyCount = field()
+    device_list: DeviceList = field()
+    to_device_events: List[ToDeviceEvent] = field()
 
     def __str__(self):
         # type: () -> str
@@ -1652,9 +1660,9 @@ class SyncResponse(_SyncResponse):
     pass
 
 
-@attr.s
+@dataclass
 class PartialSyncResponse(_SyncResponse):
-    unhandled_rooms = attr.ib(type=Dict[str, RoomInfo])
+    unhandled_rooms: Dict[str, RoomInfo] = field()
 
     def next_part(self, max_events=0):
         # type: (int) -> SyncType

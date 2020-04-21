@@ -28,7 +28,7 @@ from typing import (
     Coroutine,
 )
 
-import attr
+from dataclasses import dataclass, field
 from logbook import Logger
 from collections import defaultdict
 
@@ -113,16 +113,16 @@ def store_loaded(fn):
     return inner
 
 
-@attr.s
-class ClientCallback(object):
+@dataclass
+class ClientCallback:
     """nio internal callback class."""
 
-    func = attr.ib()
-    filter = attr.ib()
+    func: Callable[[MatrixRoom, Event], None] = field()
+    filter: Union[Tuple[Type], Type, None] = None
 
 
-@attr.s(frozen=True)
-class ClientConfig(object):
+@dataclass(frozen=True)
+class ClientConfig:
     """nio client configuration.
 
     Attributes:
@@ -143,17 +143,17 @@ class ClientConfig(object):
     """
 
     if ENCRYPTION_ENABLED:
-        store = attr.ib(type=Callable, default=DefaultStore)
-        encryption_enabled = attr.ib(type=bool, default=True)
+        store: Callable = DefaultStore
+        encryption_enabled: bool = True
     else:
-        store = attr.ib(type=Callable, default=None)
-        encryption_enabled = attr.ib(type=bool, default=False)
+        store: Callable = None
+        encryption_enabled: bool = False
 
-    store_name = attr.ib(type=str, default="")
-    pickle_key = attr.ib(type=str, default="DEFAULT_KEY")
-    store_sync_tokens = attr.ib(type=bool, default=False)
+    store_name: str = ""
+    pickle_key: str = "DEFAULT_KEY"
+    store_sync_tokens: bool = False
 
-    def __attrs_post_init__(self):
+    def __post_init__(self):
         if not ENCRYPTION_ENABLED and self.encryption_enabled:
             raise ImportWarning(
                 "Encryption is enabled in the client "
@@ -162,7 +162,7 @@ class ClientConfig(object):
             )
 
 
-class Client(object):
+class Client:
     """Matrix no-IO client.
 
     Attributes:

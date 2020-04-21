@@ -13,7 +13,7 @@ except NameError:  # pragma: no cover
     FileNotFoundError = IOError
 
 
-class Key(object):
+class Key:
     def __init__(self, user_id: str, device_id: str, key: str):
         self.user_id = user_id
         self.device_id = device_id
@@ -72,7 +72,7 @@ class Ed25519Key(Key):
         return False
 
 
-class KeyStore(object):
+class KeyStore:
     def __init__(self, filename: str):
         self._entries: List[Key] = []
         self._filename: str = filename
