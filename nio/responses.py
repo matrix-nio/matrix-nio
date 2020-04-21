@@ -21,7 +21,7 @@ from builtins import str
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
@@ -248,10 +248,10 @@ class Device:
 
 @dataclass
 class Response:
-    uuid: ClassVar[str] = ""
-    start_time: ClassVar[Optional[float]] = None
-    end_time: ClassVar[Optional[float]] = None
-    timeout: ClassVar[int] = 0
+    uuid: str = field(default="", init=False)
+    start_time: Optional[float] = field(default=None, init=False)
+    end_time: Optional[float] = field(default=None, init=False)
+    timeout: int = field(default=0, init=False)
     transport_response: Optional[TransportResponse] = field(
         init=False, default=None,
     )
