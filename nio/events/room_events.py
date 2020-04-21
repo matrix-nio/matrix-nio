@@ -17,9 +17,9 @@
 from __future__ import unicode_literals
 
 import time
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
-import attr
+from dataclasses import dataclass, field
 
 from ..schemas import Schemas
 from .misc import (BadEventType, UnknownBadEvent, validate_or_badevent, verify,
@@ -27,8 +27,8 @@ from .misc import (BadEventType, UnknownBadEvent, validate_or_badevent, verify,
 from ..event_builders import RoomKeyRequestMessage
 
 
-@attr.s
-class Event(object):
+@dataclass
+class Event:
     """Matrix Event class.
 
     This is the base event class, most events inherit from this class.
@@ -56,19 +56,19 @@ class Event(object):
 
     """
 
-    source = attr.ib()
+    source: Dict[str, Any] = field()
 
-    event_id = attr.ib(init=False)
-    sender = attr.ib(init=False)
-    server_timestamp = attr.ib(init=False)
+    event_id: str = field(init=False)
+    sender: str = field(init=False)
+    server_timestamp: int = field(init=False)
 
-    decrypted = attr.ib(default=False, init=False)
-    verified = attr.ib(default=False, init=False)
-    sender_key = attr.ib(default=None, init=False)  # type: Optional[str]
-    session_id = attr.ib(default=None, init=False)  # type: Optional[str]
-    transaction_id = attr.ib(default=None, init=False)  # type: Optional[str]
+    decrypted: bool = field(default=False, init=False)
+    verified: bool = field(default=False, init=False)
+    sender_key: Optional[str] = field(default=None, init=False)
+    session_id: Optional[str] = field(default=None, init=False)
+    transaction_id: Optional[str] = field(default=None, init=False)
 
-    def __attrs_post_init__(self):
+    def __post_init__(self):
         self.event_id = self.source["event_id"]
         self.sender = self.source["sender"]
         self.server_timestamp = self.source["origin_server_ts"]
@@ -189,7 +189,7 @@ class Event(object):
         return Event.parse_event(event_dict)
 
 
-@attr.s
+@dataclass
 class UnknownEvent(Event):
     """An Event which we do not understand.
 
@@ -202,7 +202,7 @@ class UnknownEvent(Event):
         type (str): The type of the event.
 
     """
-    type = attr.ib()
+    type: str = field()
 
     @classmethod
     def from_dict(cls, event_dict):
@@ -212,7 +212,7 @@ class UnknownEvent(Event):
         )
 
 
-@attr.s
+@dataclass
 class UnknownEncryptedEvent(Event):
     """An encrypted event which we don't know how to decrypt.
 
@@ -225,8 +225,8 @@ class UnknownEncryptedEvent(Event):
 
     """
 
-    type = attr.ib()
-    algorithm = attr.ib()
+    type: str = field()
+    algorithm: str = field()
 
     @classmethod
     def from_dict(cls, event_dict):
@@ -237,7 +237,7 @@ class UnknownEncryptedEvent(Event):
         )
 
 
-@attr.s
+@dataclass
 class MegolmEvent(Event):
     """An undecrypted Megolm event.
 
@@ -271,10 +271,10 @@ class MegolmEvent(Event):
             our own device, otherwise None.
 
     """
-    device_id = attr.ib()
-    ciphertext = attr.ib()
-    algorithm = attr.ib()
-    room_id = attr.ib(default="")
+    device_id: str = field()
+    ciphertext: str = field()
+    algorithm: str = field()
+    room_id: str = ""
 
     @classmethod
     @verify(Schemas.room_megolm_encrypted)
@@ -313,8 +313,13 @@ class MegolmEvent(Event):
 
         return event
 
-    def as_key_request(self, user_id, requesting_device_id, request_id=None, device_id=None):
-        # type: (str, str, Optional[str], Optional[str]) -> RoomKeyRequestMessage
+    def as_key_request(
+        self,
+        user_id: str,
+        requesting_device_id: str,
+        request_id: Optional[str] = None,
+        device_id: Optional[str] = None,
+    ) -> RoomKeyRequestMessage:
         """Make a to-device message for a room key request.
 
         MegolmEvents are presented to library users only if the library fails
@@ -329,7 +334,8 @@ class MegolmEvent(Event):
                 request.
             requesting_device_id (str): The device id of the user that is
                 requesting the key.
-            request_id (str, optional): A unique string identifying the request.
+            request_id (str, optional): A unique string identifying the
+                request.
                 Defaults to the session id of the missing megolm session.
             device_id (str, optional): The device id of the device that should
                 receive the request. Defaults to all the users devices.
@@ -361,7 +367,7 @@ class MegolmEvent(Event):
         )
 
 
-@attr.s
+@dataclass
 class CallEvent(Event):
     """Base Class for Matrix call signalling events.
 
@@ -372,8 +378,8 @@ class CallEvent(Event):
 
     """
 
-    call_id = attr.ib()
-    version = attr.ib()
+    call_id: str = field()
+    version: int = field()
 
     @staticmethod
     def parse_event(event_dict):
@@ -406,7 +412,7 @@ class CallEvent(Event):
         return event
 
 
-@attr.s
+@dataclass
 class CallCandidatesEvent(CallEvent):
     """Call event holding additional VoIP ICE candidates.
 
@@ -418,7 +424,7 @@ class CallCandidatesEvent(CallEvent):
         candidates (list): A list of dictionaries describing the candidates.
     """
 
-    candidates = attr.ib()
+    candidates: List[Dict[str, Any]] = field()
 
     @classmethod
     @verify(Schemas.call_candidates)
@@ -432,7 +438,7 @@ class CallCandidatesEvent(CallEvent):
         )
 
 
-@attr.s
+@dataclass
 class CallInviteEvent(CallEvent):
     """Event representing an invitation to a VoIP call.
 
@@ -447,8 +453,8 @@ class CallInviteEvent(CallEvent):
 
     """
 
-    lifetime = attr.ib()
-    offer = attr.ib()
+    lifetime: int = field()
+    offer: Dict[str, Any] = field()
 
     @property
     def expired(self):
@@ -469,7 +475,7 @@ class CallInviteEvent(CallEvent):
         )
 
 
-@attr.s
+@dataclass
 class CallAnswerEvent(CallEvent):
     """Event representing the answer to a VoIP call.
 
@@ -482,7 +488,7 @@ class CallAnswerEvent(CallEvent):
 
     """
 
-    answer = attr.ib()
+    answer: Dict[str, Any] = field()
 
     @classmethod
     @verify(Schemas.call_answer)
@@ -496,7 +502,7 @@ class CallAnswerEvent(CallEvent):
         )
 
 
-@attr.s
+@dataclass
 class CallHangupEvent(CallEvent):
     """An event representing the end of a VoIP call.
 
@@ -517,7 +523,7 @@ class CallHangupEvent(CallEvent):
         )
 
 
-@attr.s
+@dataclass
 class RedactedEvent(Event):
     """An event that has been redacted.
 
@@ -530,9 +536,9 @@ class RedactedEvent(Event):
 
     """
 
-    type = attr.ib(type=str)
-    redacter = attr.ib(type=str)
-    reason = attr.ib(type=Optional[str])
+    type: str = field()
+    redacter: str = field()
+    reason: Optional[str] = field()
 
     def __str__(self):
         reason = ", reason: {}".format(self.reason) if self.reason else ""
@@ -561,7 +567,7 @@ class RedactedEvent(Event):
         )
 
 
-@attr.s
+@dataclass
 class RoomEncryptionEvent(Event):
     """An event signaling that encryption has been enabled in a room."""
 
@@ -571,7 +577,7 @@ class RoomEncryptionEvent(Event):
         return cls(parsed_dict)
 
 
-@attr.s
+@dataclass
 class RoomCreateEvent(Event):
     """The first event in a room, signaling that the room was created.
 
@@ -584,9 +590,9 @@ class RoomCreateEvent(Event):
             this too much unless they want to perform room upgrades.
 
     """
-    creator = attr.ib(type=str)
-    federate = attr.ib(type=bool, default=True)
-    room_version = attr.ib(type=str, default="1")
+    creator: str = field()
+    federate: bool = True
+    room_version: str = "1"
 
     @classmethod
     @verify(Schemas.room_create)
@@ -599,7 +605,7 @@ class RoomCreateEvent(Event):
         return cls(parsed_dict, creator, federate, version)
 
 
-@attr.s
+@dataclass
 class RoomGuestAccessEvent(Event):
     """Event signaling whether guest users are allowed to join rooms.
 
@@ -609,7 +615,7 @@ class RoomGuestAccessEvent(Event):
 
     """
 
-    guest_access = attr.ib(type=str, default="forbidden")
+    guest_access: str = "forbidden"
 
     @classmethod
     @verify(Schemas.room_guest_access)
@@ -620,7 +626,7 @@ class RoomGuestAccessEvent(Event):
         return cls(parsed_dict, guest_access)
 
 
-@attr.s
+@dataclass
 class RoomJoinRulesEvent(Event):
     """An event telling us how users can join the room.
 
@@ -632,7 +638,7 @@ class RoomJoinRulesEvent(Event):
 
     """
 
-    join_rule = attr.ib(type=str, default="invite")
+    join_rule: str = "invite"
 
     @classmethod
     @verify(Schemas.room_join_rules)
@@ -643,7 +649,7 @@ class RoomJoinRulesEvent(Event):
         return cls(parsed_dict, join_rule)
 
 
-@attr.s
+@dataclass
 class RoomHistoryVisibilityEvent(Event):
     """An event telling whether users can read the room history.
 
@@ -672,7 +678,7 @@ class RoomHistoryVisibilityEvent(Event):
 
     """
 
-    history_visibility = attr.ib(default="shared")
+    history_visibility: str = "shared"
 
     @classmethod
     @verify(Schemas.room_history_visibility)
@@ -685,7 +691,7 @@ class RoomHistoryVisibilityEvent(Event):
         return cls(parsed_dict, history_visibility)
 
 
-@attr.s
+@dataclass
 class RoomAliasEvent(Event):
     """An event informing us about which alias should be preferred.
 
@@ -694,7 +700,7 @@ class RoomAliasEvent(Event):
 
     """
 
-    canonical_alias = attr.ib()
+    canonical_alias: str = field()
 
     @classmethod
     @verify(Schemas.room_canonical_alias)
@@ -705,7 +711,7 @@ class RoomAliasEvent(Event):
         return cls(parsed_dict, canonical_alias)
 
 
-@attr.s
+@dataclass
 class RoomNameEvent(Event):
     """Event holding the name of the room.
 
@@ -718,7 +724,7 @@ class RoomNameEvent(Event):
 
     """
 
-    name = attr.ib()
+    name: str = field()
 
     @classmethod
     @verify(Schemas.room_name)
@@ -729,7 +735,7 @@ class RoomNameEvent(Event):
         return cls(parsed_dict, room_name)
 
 
-@attr.s
+@dataclass
 class RoomTopicEvent(Event):
     """Event holding the topic of a room.
 
@@ -742,7 +748,7 @@ class RoomTopicEvent(Event):
 
     """
 
-    topic = attr.ib()
+    topic: str = field()
 
     @classmethod
     @verify(Schemas.room_topic)
@@ -753,7 +759,7 @@ class RoomTopicEvent(Event):
         return cls(parsed_dict, canonical_alias)
 
 
-@attr.s
+@dataclass
 class RoomAvatarEvent(Event):
     """Event holding a picture that is associated with the room.
 
@@ -762,7 +768,7 @@ class RoomAvatarEvent(Event):
 
     """
 
-    avatar_url = attr.ib()
+    avatar_url: str = field()
 
     @classmethod
     @verify(Schemas.room_avatar)
@@ -773,7 +779,7 @@ class RoomAvatarEvent(Event):
         return cls(parsed_dict, room_avatar_url)
 
 
-@attr.s
+@dataclass
 class RoomMessage(Event):
     """Abstract room message class.
 
@@ -836,7 +842,7 @@ class RoomMessage(Event):
         return event
 
 
-@attr.s
+@dataclass
 class RoomMessageMedia(RoomMessage):
     """Base class for room messages containing a URI.
 
@@ -846,8 +852,8 @@ class RoomMessageMedia(RoomMessage):
 
     """
 
-    url = attr.ib()
-    body = attr.ib()
+    url: str = field()
+    body: str = field()
 
     @classmethod
     @verify(Schemas.room_message_media)
@@ -859,7 +865,7 @@ class RoomMessageMedia(RoomMessage):
         )
 
 
-@attr.s
+@dataclass
 class RoomEncryptedMedia(RoomMessage):
     """Base class for encrypted room messages containing an URI.
 
@@ -874,22 +880,22 @@ class RoomEncryptedMedia(RoomMessage):
         thumbnail_url (str, optional): The URL of the thumbnail file.
         thumbnail_key (dict, optional): The key that can be used to decrypt the
             thumbnail file.
-        thumbnail_hashes (dict, optional): A mapping from an algorithm name to a hash of the
-            thumbnail ciphertext encoded as base64.
-        thumbnail_iv (str, optional): The initialisation vector that was used to
-            encrypt the thumbnail file.
+        thumbnail_hashes (dict, optional): A mapping from an algorithm name to
+            a hash of the thumbnail ciphertext encoded as base64.
+        thumbnail_iv (str, optional): The initialisation vector that was used
+            to encrypt the thumbnail file.
     """
 
-    url = attr.ib()
-    body = attr.ib()
-    key = attr.ib()
-    hashes = attr.ib()
-    iv = attr.ib()
+    url: str = field()
+    body: str = field()
+    key: Dict[str, Any] = field()
+    hashes: Dict[str, Any] = field()
+    iv: str = field()
 
-    thumbnail_url = attr.ib(type=Optional[str], default=None)
-    thumbnail_key = attr.ib(type=Optional[Dict], default=None)
-    thumbnail_hashes = attr.ib(type=Optional[Dict], default=None)
-    thumbnail_iv = attr.ib(type=Optional[str], default=None)
+    thumbnail_url: Optional[str] = None
+    thumbnail_key: Optional[Dict] = None
+    thumbnail_hashes: Optional[Dict] = None
+    thumbnail_iv: Optional[str] = None
 
     @classmethod
     @verify(Schemas.room_encrypted_media)
@@ -916,47 +922,47 @@ class RoomEncryptedMedia(RoomMessage):
         )
 
 
-@attr.s
+@dataclass
 class RoomEncryptedImage(RoomEncryptedMedia):
     """A room message containing an image where the file is encrypted."""
 
 
-@attr.s
+@dataclass
 class RoomEncryptedAudio(RoomEncryptedMedia):
     """A room message containing an audio clip where the file is encrypted."""
 
 
-@attr.s
+@dataclass
 class RoomEncryptedVideo(RoomEncryptedMedia):
     """A room message containing a video clip where the file is encrypted."""
 
 
-@attr.s
+@dataclass
 class RoomEncryptedFile(RoomEncryptedMedia):
     """A room message containing a generic encrypted file."""
 
 
-@attr.s
+@dataclass
 class RoomMessageImage(RoomMessageMedia):
     """A room message containing an image."""
 
 
-@attr.s
+@dataclass
 class RoomMessageAudio(RoomMessageMedia):
     """A room message containing an audio clip."""
 
 
-@attr.s
+@dataclass
 class RoomMessageVideo(RoomMessageMedia):
     """A room message containing a video clip."""
 
 
-@attr.s
+@dataclass
 class RoomMessageFile(RoomMessageMedia):
     """A room message containing a generic file."""
 
 
-@attr.s
+@dataclass
 class RoomMessageUnknown(RoomMessage):
     """A m.room.message which we do not understand.
 
@@ -974,8 +980,8 @@ class RoomMessageUnknown(RoomMessage):
 
     """
 
-    msgtype = attr.ib(type=str)
-    content = attr.ib()
+    msgtype: str = field()
+    content: Dict[str, Any] = field()
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -992,7 +998,7 @@ class RoomMessageUnknown(RoomMessage):
         return self.msgtype
 
 
-@attr.s
+@dataclass
 class RoomMessageFormatted(RoomMessage):
     """Base abstract class for room messages that can have formatted bodies.
 
@@ -1006,9 +1012,9 @@ class RoomMessageFormatted(RoomMessage):
 
     """
 
-    body = attr.ib(type=str)
-    formatted_body = attr.ib(type=Optional[str])
-    format = attr.ib(type=Optional[str])
+    body: str = field()
+    formatted_body: Optional[str] = field()
+    format: Optional[str] = field()
 
     def __str__(self):
         # type: () -> str
@@ -1044,7 +1050,7 @@ class RoomMessageFormatted(RoomMessage):
         )
 
 
-@attr.s
+@dataclass
 class RoomMessageText(RoomMessageFormatted):
     """A room message corresponding to the m.text msgtype.
 
@@ -1066,7 +1072,7 @@ class RoomMessageText(RoomMessageFormatted):
         return validate_or_badevent(parsed_dict, Schemas.room_message_text)
 
 
-@attr.s
+@dataclass
 class RoomMessageEmote(RoomMessageFormatted):
     """A room message coresponding to the m.emote msgtype.
 
@@ -1089,7 +1095,7 @@ class RoomMessageEmote(RoomMessageFormatted):
         return validate_or_badevent(parsed_dict, Schemas.room_message_emote)
 
 
-@attr.s
+@dataclass
 class RoomMessageNotice(RoomMessageFormatted):
     """A room message corresponding to the m.notice msgtype.
 
@@ -1111,8 +1117,8 @@ class RoomMessageNotice(RoomMessageFormatted):
         return validate_or_badevent(parsed_dict, Schemas.room_message_notice)
 
 
-@attr.s
-class DefaultLevels(object):
+@dataclass
+class DefaultLevels:
     """Class holding information about default power levels of a room.
 
     Attributes:
@@ -1129,13 +1135,13 @@ class DefaultLevels(object):
 
     """
 
-    ban = attr.ib(default=50, type=int)
-    invite = attr.ib(default=50, type=int)
-    kick = attr.ib(default=50, type=int)
-    redact = attr.ib(default=50, type=int)
-    state_default = attr.ib(default=0, type=int)
-    events_default = attr.ib(default=0, type=int)
-    users_default = attr.ib(default=0, type=int)
+    ban: int = 50
+    invite: int = 50
+    kick: int = 50
+    redact: int = 50
+    state_default: int = 0
+    events_default: int = 0
+    users_default: int = 0
     # TODO: notifications
 
     @classmethod
@@ -1161,8 +1167,8 @@ class DefaultLevels(object):
         )
 
 
-@attr.s
-class PowerLevels(object):
+@dataclass
+class PowerLevels:
     """Class holding information of room power levels.
 
     Attributes:
@@ -1174,9 +1180,9 @@ class PowerLevels(object):
 
     """
 
-    defaults = attr.ib(default=attr.Factory(DefaultLevels))
-    users = attr.ib(default=attr.Factory(dict), type=Dict[str, int])
-    events = attr.ib(default=attr.Factory(dict), type=Dict[str, int])
+    defaults: DefaultLevels = field(default_factory=DefaultLevels)
+    users: Dict[str, int] = field(default_factory=dict)
+    events: Dict[str, int] = field(default_factory=dict)
 
     def get_state_event_required_level(self, event_type):
         # type: (str) -> int
@@ -1297,7 +1303,7 @@ class PowerLevels(object):
         self.users.update(new_levels.users)
 
 
-@attr.s
+@dataclass
 class PowerLevelsEvent(Event):
     """Class representing a m.room.power_levels event.
 
@@ -1309,7 +1315,7 @@ class PowerLevelsEvent(Event):
             of the power levels of the room.
 
     """
-    power_levels = attr.ib()
+    power_levels: PowerLevels = field()
 
     @classmethod
     @verify(Schemas.room_power_levels)
@@ -1327,7 +1333,7 @@ class PowerLevelsEvent(Event):
         )
 
 
-@attr.s
+@dataclass
 class RedactionEvent(Event):
     """An event signaling that another event has been redacted.
 
@@ -1341,8 +1347,8 @@ class RedactionEvent(Event):
 
     """
 
-    redacts = attr.ib()
-    reason = attr.ib(default=None)
+    redacts: str = field()
+    reason: Optional[str] = None
 
     @classmethod
     @verify(Schemas.room_redaction)
@@ -1358,7 +1364,7 @@ class RedactionEvent(Event):
         )
 
 
-@attr.s
+@dataclass
 class RoomMemberEvent(Event):
     """Class representing to an m.room.member event.
 
@@ -1377,11 +1383,11 @@ class RoomMemberEvent(Event):
 
     """
 
-    state_key = attr.ib()
-    membership = attr.ib(type=str)
-    prev_membership = attr.ib(type=Optional[str])
-    content = attr.ib()
-    prev_content = attr.ib(default=None)
+    state_key: str = field()
+    membership: str = field()
+    prev_membership: Optional[str] = field()
+    content: Dict[str, Any] = field()
+    prev_content: Optional[Dict[str, Any]] = None
 
     @classmethod
     @verify(Schemas.room_membership)

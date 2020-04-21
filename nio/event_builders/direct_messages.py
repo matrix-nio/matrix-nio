@@ -22,12 +22,12 @@ homeserver.
 
 from typing import Dict
 
-import attr
+from dataclasses import dataclass, field
 
 from . import EventBuilder
 
 
-@attr.s
+@dataclass
 class ToDeviceMessage(EventBuilder):
     """A to-device message that can be sent to the homeserver.
 
@@ -40,10 +40,10 @@ class ToDeviceMessage(EventBuilder):
 
     """
 
-    type = attr.ib(type=str)
-    recipient = attr.ib(type=str)
-    recipient_device = attr.ib(type=str)
-    content = attr.ib(type=Dict)
+    type: str = field()
+    recipient: str = field()
+    recipient_device: str = field()
+    content: Dict = field()
 
     def as_dict(self):
         return {
@@ -55,13 +55,13 @@ class ToDeviceMessage(EventBuilder):
         }
 
 
-@attr.s
+@dataclass
 class DummyMessage(ToDeviceMessage):
     """A dummy to-device mssage that is sent to restart a Olm session."""
     pass
 
 
-@attr.s
+@dataclass
 class RoomKeyRequestMessage(ToDeviceMessage):
     """A to-device message that requests room keys from other devices.
 
@@ -73,7 +73,7 @@ class RoomKeyRequestMessage(ToDeviceMessage):
         algorithm (str): The algorithm of the room key.
 
     """
-    request_id = attr.ib(type=str)
-    session_id = attr.ib(type=str)
-    room_id = attr.ib(type=str)
-    algorithm = attr.ib(type=str)
+    request_id: str = field()
+    session_id: str = field()
+    room_id: str = field()
+    algorithm: str = field()

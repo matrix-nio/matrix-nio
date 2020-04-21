@@ -64,7 +64,7 @@ def validate_json(instance, schema):
     Validator(schema, format_checker=FormatChecker()).validate(instance)
 
 
-class Schemas(object):
+class Schemas:
     room_message = {
         "type": "object",
         "properties": {

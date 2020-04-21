@@ -98,7 +98,7 @@ class RoomPreset(Enum):
     public_chat = "public_chat"
 
 
-class Api(object):
+class Api:
     """Matrix API class.
 
     Static methods reflecting the Matrix REST API.

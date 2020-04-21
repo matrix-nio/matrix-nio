@@ -44,7 +44,7 @@ __all__ = [
 ]
 
 
-class MatrixRoom(object):
+class MatrixRoom:
     """Represents a Matrix room."""
 
     def __init__(self, room_id, own_user_id, encrypted=False):
@@ -482,7 +482,7 @@ class MatrixInvitedRoom(MatrixRoom):
             self.canonical_alias = event.canonical_alias
 
 
-class MatrixUser(object):
+class MatrixUser:
     def __init__(
         self,
         user_id:      str,

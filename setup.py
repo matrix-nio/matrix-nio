@@ -21,7 +21,6 @@ setup(
     license="ISC",
     packages=find_packages(),
     install_requires=[
-        "attrs",
         "future",
         "aiohttp;python_version>'3.5'",
         "aiofiles;python_version>'3.5'",

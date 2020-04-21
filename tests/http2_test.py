@@ -11,7 +11,7 @@ from nio.http import Http2Response
 from nio.responses import LoginResponse, SyncResponse
 
 
-class TestClass(object):
+class TestClass:
     example_response_headers = [
         (':status', '200'),
         ('server', 'fake-serv/0.1.0')

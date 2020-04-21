@@ -69,7 +69,7 @@ def bob_account(tempdir):
     )
 
 
-class TestClass(object):
+class TestClass:
     @staticmethod
     def _load_response(filename):
         with open(filename) as f:

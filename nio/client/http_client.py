@@ -24,7 +24,7 @@ from typing import (Any, Deque, Dict, List, Sequence, Tuple, Type,
                     Union, Optional)
 from uuid import UUID, uuid4
 
-import attr
+from dataclasses import dataclass, field
 import h2
 import h11
 from logbook import Logger
@@ -87,10 +87,10 @@ def connected(func):
     return wrapper
 
 
-@attr.s
-class RequestInfo(object):
-    request_class = attr.ib(type=Type[Response])
-    extra_data = attr.ib(default=None, type=Tuple)
+@dataclass
+class RequestInfo:
+    request_class: Type[Response] = field()
+    extra_data: Tuple = ()
 
 
 class HttpClient(Client):

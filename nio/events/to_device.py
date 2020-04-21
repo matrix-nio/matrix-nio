@@ -24,17 +24,17 @@ of a user.
 
 """
 
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from copy import deepcopy
 
-import attr
+from dataclasses import dataclass, field
 
 from ..schemas import Schemas
 from .misc import BadEventType, verify, logger
 
 
-@attr.s
-class ToDeviceEvent(object):
+@dataclass
+class ToDeviceEvent:
     """Base Event class for events that are sent using the to-device endpoint.
 
     Attributes:
@@ -45,8 +45,8 @@ class ToDeviceEvent(object):
 
     """
 
-    source = attr.ib()
-    sender = attr.ib()
+    source: Dict[str, Any] = field()
+    sender: str = field()
 
     @classmethod
     @verify(Schemas.to_device)
@@ -125,15 +125,15 @@ class ToDeviceEvent(object):
         raise NotImplementedError()
 
 
-@attr.s
+@dataclass
 class BaseRoomKeyRequest(ToDeviceEvent):
     """Base class for room key requests.
         requesting_device_id (str): The id of the device that is requesting the
             key.
         request_id (str): A unique identifier for the request.
     """
-    requesting_device_id = attr.ib(type=str)
-    request_id = attr.ib(type=str)
+    requesting_device_id: str = field()
+    request_id: str = field()
 
     @classmethod
     @verify(Schemas.room_key_request_cancel)
@@ -144,7 +144,7 @@ class BaseRoomKeyRequest(ToDeviceEvent):
         return RoomKeyRequestCancellation.from_dict(event_dict)
 
 
-@attr.s
+@dataclass
 class RoomKeyRequest(BaseRoomKeyRequest):
     """Event signaling that a room key was requested from us.
 
@@ -160,10 +160,10 @@ class RoomKeyRequest(BaseRoomKeyRequest):
         be set only if the action is 'request'.
     """
 
-    algorithm = attr.ib(type=str)
-    room_id = attr.ib(type=str)
-    sender_key = attr.ib(type=str)
-    session_id = attr.ib(type=str)
+    algorithm: str = field()
+    room_id: str = field()
+    sender_key: str = field()
+    session_id: str = field()
 
     @classmethod
     @verify(Schemas.room_key_request)
@@ -183,7 +183,7 @@ class RoomKeyRequest(BaseRoomKeyRequest):
         )
 
 
-@attr.s
+@dataclass
 class RoomKeyRequestCancellation(BaseRoomKeyRequest):
     """Event signaling that a previous room key request was canceled."""
 
@@ -200,7 +200,7 @@ class RoomKeyRequestCancellation(BaseRoomKeyRequest):
         )
 
 
-@attr.s
+@dataclass
 class KeyVerificationEvent(ToDeviceEvent):
     """Base class for key verification events.
 
@@ -210,10 +210,10 @@ class KeyVerificationEvent(ToDeviceEvent):
 
     """
 
-    transaction_id = attr.ib(type=str)
+    transaction_id: str = field()
 
 
-@attr.s
+@dataclass
 class KeyVerificationStart(KeyVerificationEvent):
     """Event signaling the start of a SAS key verification process.
 
@@ -232,12 +232,12 @@ class KeyVerificationStart(KeyVerificationEvent):
 
     """
 
-    from_device = attr.ib(type=str)
-    method = attr.ib(type=str)
-    key_agreement_protocols = attr.ib(type=List[str])
-    hashes = attr.ib(type=List[str])
-    message_authentication_codes = attr.ib(type=List[str])
-    short_authentication_string = attr.ib(type=List[str])
+    from_device: str = field()
+    method: str = field()
+    key_agreement_protocols: List[str] = field()
+    hashes: List[str] = field()
+    message_authentication_codes: List[str] = field()
+    short_authentication_string: List[str] = field()
 
     @classmethod
     @verify(Schemas.key_verification_start)
@@ -256,7 +256,7 @@ class KeyVerificationStart(KeyVerificationEvent):
         )
 
 
-@attr.s
+@dataclass
 class KeyVerificationAccept(KeyVerificationEvent):
     """Event signaling that the SAS verification start has been accepted.
 
@@ -273,11 +273,11 @@ class KeyVerificationAccept(KeyVerificationEvent):
 
     """
 
-    commitment = attr.ib(type=str)
-    key_agreement_protocol = attr.ib(type=str)
-    hash = attr.ib(type=str)
-    message_authentication_code = attr.ib(type=str)
-    short_authentication_string = attr.ib(type=List[str])
+    commitment: str = field()
+    key_agreement_protocol: str = field()
+    hash: str = field()
+    message_authentication_code: str = field()
+    short_authentication_string: List[str] = field()
 
     @classmethod
     @verify(Schemas.key_verification_accept)
@@ -295,7 +295,7 @@ class KeyVerificationAccept(KeyVerificationEvent):
         )
 
 
-@attr.s
+@dataclass
 class KeyVerificationKey(KeyVerificationEvent):
     """Event carrying a key verification key.
 
@@ -308,7 +308,7 @@ class KeyVerificationKey(KeyVerificationEvent):
 
     """
 
-    key = attr.ib(type=str)
+    key: str = field()
 
     @classmethod
     @verify(Schemas.key_verification_key)
@@ -322,7 +322,7 @@ class KeyVerificationKey(KeyVerificationEvent):
         )
 
 
-@attr.s
+@dataclass
 class KeyVerificationMac(KeyVerificationEvent):
     """Event holding a message authentication code of the verification process.
 
@@ -339,8 +339,8 @@ class KeyVerificationMac(KeyVerificationEvent):
 
     """
 
-    mac = attr.ib(type=Dict[str, str])
-    keys = attr.ib(type=str)
+    mac: Dict[str, str] = field()
+    keys: str = field()
 
     @classmethod
     @verify(Schemas.key_verification_mac)
@@ -355,7 +355,7 @@ class KeyVerificationMac(KeyVerificationEvent):
         )
 
 
-@attr.s
+@dataclass
 class KeyVerificationCancel(KeyVerificationEvent):
     """Event signaling that a key verification process has been canceled.
 
@@ -366,8 +366,8 @@ class KeyVerificationCancel(KeyVerificationEvent):
 
     """
 
-    code = attr.ib(type=str)
-    reason = attr.ib(type=str)
+    code: str = field()
+    reason: str = field()
 
     @classmethod
     @verify(Schemas.key_verification_cancel)
@@ -382,12 +382,12 @@ class KeyVerificationCancel(KeyVerificationEvent):
         )
 
 
-@attr.s
+@dataclass
 class EncryptedToDeviceEvent(ToDeviceEvent):
     pass
 
 
-@attr.s
+@dataclass
 class OlmEvent(EncryptedToDeviceEvent):
     """An Olm encrypted event.
 
@@ -402,18 +402,17 @@ class OlmEvent(EncryptedToDeviceEvent):
         sender (str): The fully-qualified ID of the user who sent this
             event.
         sender_key (str, optional): The public key of the sender that was used
-            to establish the encrypted session. Is only set if decrypted is
-            True, otherwise None.
-        ciphertext (str): The undecrypted ciphertext of the event.
+            to establish the encrypted session.
+        ciphertext (Dict[str, Any]): The undecrypted ciphertext of the event.
         transaction_id (str, optional): The unique identifier that was used
             when the message was sent. Is only set if the message was sent from
             our own device, otherwise None.
 
     """
 
-    sender_key = attr.ib()
-    ciphertext = attr.ib()
-    transaction_id = attr.ib(default=None)
+    sender_key: str = field()
+    ciphertext: Dict[str, Any] = field()
+    transaction_id: Optional[str] = None
 
     @classmethod
     @verify(Schemas.room_olm_encrypted)
@@ -435,7 +434,7 @@ class OlmEvent(EncryptedToDeviceEvent):
         )
 
 
-@attr.s
+@dataclass
 class DummyEvent(ToDeviceEvent):
     """Event containing a dummy message.
 
@@ -448,8 +447,8 @@ class DummyEvent(ToDeviceEvent):
 
     """
 
-    sender_key = attr.ib()
-    sender_device = attr.ib()
+    sender_key: str = field()
+    sender_device: str = field()
 
     @classmethod
     @verify(Schemas.dummy_event)
@@ -462,7 +461,7 @@ class DummyEvent(ToDeviceEvent):
         )
 
 
-@attr.s
+@dataclass
 class RoomKeyEvent(ToDeviceEvent):
     """Event containing a megolm room key that got sent to us.
 
@@ -476,10 +475,10 @@ class RoomKeyEvent(ToDeviceEvent):
 
     """
 
-    sender_key = attr.ib(type=str)
-    room_id = attr.ib(type=str)
-    session_id = attr.ib(type=str)
-    algorithm = attr.ib(type=str)
+    sender_key: str = field()
+    room_id: str = field()
+    session_id: str = field()
+    algorithm: str = field()
 
     @classmethod
     @verify(Schemas.room_key_event)
@@ -500,7 +499,7 @@ class RoomKeyEvent(ToDeviceEvent):
         )
 
 
-@attr.s
+@dataclass
 class ForwardedRoomKeyEvent(RoomKeyEvent):
     """Event containing a room key that got forwarded to us.
 

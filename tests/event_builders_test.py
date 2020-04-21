@@ -5,7 +5,7 @@ import pytest
 import nio.event_builders as builders
 
 
-class TestClass(object):
+class TestClass:
     def test_base_class(self):
         with pytest.raises(NotImplementedError):
             builders.EventBuilder().as_dict()

@@ -25,7 +25,7 @@ from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
 TEST_ROOM_ID = "!test:example.org"
 
 
-class TestClass(object):
+class TestClass:
     @staticmethod
     def _load_bytes(filename):
         with open(filename, "rb") as f:

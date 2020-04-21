@@ -11,7 +11,7 @@ BOB_CURVE = "T9tOKF+TShsn6mk1zisW2IBsBbTtzDNvw99RBFMJOgI"
 BOB_ONETIME = "6QlQw3mGUveS735k/JDaviuoaih5eEi6S1J65iHjfgU"
 TEST_ROOM = "!test:example.org"
 
-class TestClass(object):
+class TestClass:
     def test_session_store(self):
         account = OlmAccount()
         store = SessionStore()
