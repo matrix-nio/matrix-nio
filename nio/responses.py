@@ -1365,7 +1365,7 @@ class RoomContextResponse(Response):
     start: str = field()
     end: str = field()
 
-    event: Event = field()
+    event: Optional[Union[Event, BadEventType]] = field()
 
     events_before: List[Union[Event, BadEventType]] = field()
     events_after: List[Union[Event, BadEventType]] = field()
@@ -1706,11 +1706,11 @@ class PartialSyncResponse(_SyncResponse):
             )
 
         if self.uuid:
-            next_response.uuid = self.uuid
+            next_response.uuid = self.uuid  # type: ignore # XXX
 
         if self.start_time and self.end_time:
-            next_response.start_time = self.start_time
-            next_response.end_time = self.end_time
+            next_response.start_time = self.start_time  # type: ignore # XXX
+            next_response.end_time = self.end_time  # type: ignore # XXX
 
         return next_response
 

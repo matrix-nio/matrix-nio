@@ -117,7 +117,7 @@ def store_loaded(fn):
 class ClientCallback:
     """nio internal callback class."""
 
-    func: Callable[[MatrixRoom, Event], None] = field()
+    func: Callable = field()
     filter: Union[Tuple[Type], Type, None] = None
 
 
@@ -142,12 +142,10 @@ class ClientConfig:
 
     """
 
-    if ENCRYPTION_ENABLED:
-        store: Callable = DefaultStore
-        encryption_enabled: bool = True
-    else:
-        store: Callable = None
-        encryption_enabled: bool = False
+    store: Optional[Type[MatrixStore]] = \
+        DefaultStore if ENCRYPTION_ENABLED else None
+
+    encryption_enabled: bool = ENCRYPTION_ENABLED
 
     store_name: str = ""
     pickle_key: str = "DEFAULT_KEY"
@@ -1138,8 +1136,9 @@ class Client:
             callback (Callable[[MatrixRoom, Event], None]): A
                 function that will be called if the event type in the filter
                 argument is found in a room timeline.
-            filter (Union[Type, Tuple[Type]]): The event type or a tuple containing
-                multiple types for which the function will be called.
+            filter (Union[Type, Tuple[Type]]): The event type or a tuple
+                containing multiple types for which the function will be
+                called.
 
         """
         cb = ClientCallback(callback, filter)
@@ -1174,8 +1173,9 @@ class Client:
             callback (Callable[[ToDeviceEvent], None]): A function that will be
                 called if the event type in the filter argument is found in a
                 the to-device part of the sync response.
-            filter (Union[Type, Tuple[Type]]): The event type or a tuple containing
-                multiple types for which the function will be called.
+            filter (Union[Type, Tuple[Type]]): The event type or a tuple
+                containing multiple types for which the function
+                will be called.
 
         """
         cb = ClientCallback(callback, filter)

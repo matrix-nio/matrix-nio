@@ -402,17 +402,16 @@ class OlmEvent(EncryptedToDeviceEvent):
         sender (str): The fully-qualified ID of the user who sent this
             event.
         sender_key (str, optional): The public key of the sender that was used
-            to establish the encrypted session. Is only set if decrypted is
-            True, otherwise None.
-        ciphertext (str): The undecrypted ciphertext of the event.
+            to establish the encrypted session.
+        ciphertext (Dict[str, Any]): The undecrypted ciphertext of the event.
         transaction_id (str, optional): The unique identifier that was used
             when the message was sent. Is only set if the message was sent from
             our own device, otherwise None.
 
     """
 
-    sender_key: Optional[str] = field()
-    ciphertext: str = field()
+    sender_key: str = field()
+    ciphertext: Dict[str, Any] = field()
     transaction_id: Optional[str] = None
 
     @classmethod

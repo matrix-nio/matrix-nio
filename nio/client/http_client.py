@@ -90,7 +90,7 @@ def connected(func):
 @dataclass
 class RequestInfo:
     request_class: Type[Response] = field()
-    extra_data: Tuple = None
+    extra_data: Tuple = ()
 
 
 class HttpClient(Client):
