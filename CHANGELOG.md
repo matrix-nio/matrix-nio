@@ -14,10 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for ID based filters for the sync and room_messages methods.
 - Support filter uploading.
 
+### Changed
+- Convert attrs classes to dataclasses.
+
 ### Fixed
 - Don't encrypt reactions.
 - Properly put event relationships into the unencrypted content.
-- Catch too Many Requests errors more reliably.
+- Catch Too Many Requests errors more reliably.
 - Better room name calculation, now using the room summary.
 
 ### Removed
