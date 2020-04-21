@@ -640,14 +640,17 @@ class AsyncClient(Client):
                     response_class, transport_resp, response_data,
                 )
 
-                if isinstance(resp, ErrorResponse) and resp.retry_after_ms:
+                if (
+                    isinstance(resp, ErrorResponse) and
+                    resp.status_code in ("M_LIMIT_EXCEEDED", 429)
+                ):
                     got_429 += 1
 
                     if max_429 is not None and got_429 > max_429:
                         break
 
                     await self.run_response_callbacks([resp])
-                    await asyncio.sleep(resp.retry_after_ms / 1000)
+                    await asyncio.sleep((resp.retry_after_ms or 5000) / 1000)
                 else:
                     break
 
