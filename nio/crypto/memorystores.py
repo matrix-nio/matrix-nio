@@ -16,7 +16,7 @@
 
 from collections import defaultdict
 from typing import DefaultDict, Dict, Iterator, List, Optional, KeysView
-from .sessions import OlmDevice, InboundGroupSession, Session
+from .sessions import InboundGroupSession, Session
 
 
 class SessionStore(object):
@@ -79,92 +79,3 @@ class GroupSessionStore(object):
 
     def __getitem__(self, room_id: str) -> DefaultDict[str, Dict[str, InboundGroupSession]]:
         return self._entries[room_id]
-
-
-class DeviceStore(object):
-    """A store that holds olm devices in memory.
-
-    The DeviceStore class implements the iter method, devices can be iterated
-    over normaly using:
-
-    >>> for device in device_store:
-    ...    print(device.user_id, device.device_id)
-
-    To get only non-deleted devices of a user the active_user_devices method
-    can be used:
-
-    >>> for device in device_store.active_user_devices("@bob:example.org"):
-    ...    print(device.user_id, device.device_id)
-
-    """
-
-    def __init__(self):
-        self._entries: DefaultDict[str, Dict[str, OlmDevice]] = defaultdict(dict)
-
-    def __iter__(self) -> Iterator[OlmDevice]:
-        for user_devices in self._entries.values():
-            for device in user_devices.values():
-                yield device
-
-    def __getitem__(self, user_id: str) -> Dict[str, OlmDevice]:
-        return self._entries[user_id]
-
-    def items(self):
-        """List of tuples in the form (user id, dict(device_id, OlmDevice)."""
-        return self._entries.items()
-
-    def values(self):
-        """List of devices in the form of a dict(device_id, OlmDevice)."""
-        return self._entries.values()
-
-    def active_user_devices(self, user_id: str) -> Iterator[OlmDevice]:
-        """Get all the non-deleted devices of a user.
-
-        Args:
-            user_id (str): The user for which we would like to get the devices
-                for.
-
-        This returns an iterator over all the non-deleted devices of the given
-        user.
-
-        """
-        for device in self._entries[user_id].values():
-            if not device.deleted:
-                yield device
-
-    def device_from_sender_key(self, user_id: str, sender_key: str) -> Optional[OlmDevice]:
-        """Get a non-deleted device of a user with the matching sender key.
-
-        Args:
-            user_id (str): The user id of the device owner.
-            sender_key (str): The encryption key that is owned by the device,
-            usually a curve25519 public key.
-        """
-        for device in self.active_user_devices(user_id):
-            if device.curve25519 == sender_key:
-                return device
-
-        return None
-
-    @property
-    def users(self) -> KeysView[str]:
-        """Get the list of users that the device store knows about."""
-        return self._entries.keys()
-
-    def devices(self, user_id: str) -> KeysView[str]:
-        return self._entries[user_id].keys()
-
-    def add(self, device: OlmDevice) -> bool:
-        """Add the given device to the store.
-
-        Args:
-            device (OlmDevice): The device that should be added to the store.
-
-        Returns True if the device was added to the store, False if it already
-        was in the store.
-        """
-        if device in self:
-            return False
-
-        self._entries[device.user_id][device.id] = device
-        return True

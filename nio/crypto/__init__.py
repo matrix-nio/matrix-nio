@@ -27,15 +27,13 @@ if package_installed("olm"):
         InboundSession,
         OutboundGroupSession,
         InboundGroupSession,
-        OlmDevice,
-        OutgoingKeyRequest,
-        TrustState
     )
+    from .device import DeviceStore, OlmDevice, TrustState
+    from .key_request import OutgoingKeyRequest
 
     from .memorystores import (
         SessionStore,
         GroupSessionStore,
-        DeviceStore
     )
 
     from .log import logger
@@ -48,3 +46,5 @@ if package_installed("olm"):
 
 else:
     ENCRYPTION_ENABLED = False
+    from .device import DeviceStore, OlmDevice, TrustState
+    from .key_request import OutgoingKeyRequest

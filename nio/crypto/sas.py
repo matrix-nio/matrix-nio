@@ -29,7 +29,7 @@ from ..api import Api
 from ..events import KeyVerificationEvent, KeyVerificationStart
 from ..exceptions import LocalProtocolError
 from ..event_builders import ToDeviceMessage
-from .sessions import OlmDevice
+from .device import OlmDevice
 
 
 class SasState(Enum):
@@ -172,7 +172,7 @@ class Sas(olm.Sas):
         own_device: str,
         own_fp_key: str,
         other_olm_device: OlmDevice,
-        transaction_id: str= None,
+        transaction_id: str = None,
         short_auth_string: Optional[List[str]] = None,
         mac_methods: Optional[List[str]] = None,
     ):
@@ -202,8 +202,7 @@ class Sas(olm.Sas):
 
     @classmethod
     def from_key_verification_start(
-            cls, own_user, own_device, own_fp_key,
-            other_olm_device, event
+        cls, own_user, own_device, own_fp_key, other_olm_device, event
     ):
         # type: (str, str, str, OlmDevice, KeyVerificationStart) -> Sas
         """Create a SAS object from a KeyVerificationStart event.

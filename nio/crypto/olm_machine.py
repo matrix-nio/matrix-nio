@@ -31,7 +31,8 @@ from cachetools import LRUCache
 
 from . import (DeviceStore, GroupSessionStore, InboundGroupSession,
                InboundSession, OlmAccount, OlmDevice, OutboundGroupSession,
-               OutboundSession, Session, SessionStore, logger)
+               OutboundSession, Session, SessionStore, logger,
+               OutgoingKeyRequest)
 from ..api import Api
 from ..events import (BadEvent, BadEventType, Event,
                       ForwardedRoomKeyEvent, KeyVerificationAccept,
@@ -52,7 +53,6 @@ from ..store import MatrixStore
 from .key_export import decrypt_and_read, encrypt_and_save
 from .sas import Sas
 from ..event_builders import ToDeviceMessage, DummyMessage, RoomKeyRequestMessage
-from .sessions import OutgoingKeyRequest
 
 try:
     from json.decoder import JSONDecodeError
@@ -1483,6 +1483,16 @@ class Olm(object):
                         f"that has a wedged Olm session: "
                         f"{event.sender} {event.device_id}.")
             self.key_re_requests_events[(device.user_id, device.device_id)].append(event)
+
+    def _decrypt_megolm_no_error(
+        self,
+        event: MegolmEvent,
+        room_id: str = None
+    ) -> Optional[Union[Event, BadEvent]]:
+        try:
+            return self.decrypt_megolm_event(event, room_id)
+        except EncryptionError:
+            return None
 
     def decrypt_megolm_event(self, event, room_id=None):
         # type (MegolmEvent, Optional[str]) -> Union[Event, BadEvent]

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import random
 from uuid import uuid4
 
 import pytest
@@ -18,7 +19,8 @@ from nio import (Client, DeviceList, DeviceOneTimeKeyCount, DownloadResponse,
                  RoomSummary, RoomTypingResponse, RoomRedactResponse,
                  ShareGroupSessionResponse, SyncResponse,
                  Timeline, ThumbnailResponse, TransportType, TypingNoticeEvent,
-                 InviteMemberEvent, InviteInfo, ClientConfig)
+                 InviteMemberEvent, InviteInfo, ClientConfig, ReceiptEvent,
+                 Receipt)
 from nio.event_builders import ToDeviceMessage
 
 HOST = "example.org"
@@ -288,7 +290,19 @@ class TestClass(object):
         test_room_info = RoomInfo(
             timeline,
             [],
-            [TypingNoticeEvent([ALICE_ID])],
+            [
+                TypingNoticeEvent([ALICE_ID]),
+                ReceiptEvent(
+                    [
+                        Receipt(
+                            event_id="event_id_3",
+                            receipt_type="m.read",
+                            user_id=ALICE_ID,
+                            timestamp=1516809890615
+                        )
+                    ]
+                )
+            ],
             [],
             RoomSummary(invited_member_count=1, joined_member_count=2),
         )
@@ -1078,6 +1092,41 @@ class TestClass(object):
         client.add_ephemeral_callback(cb, TypingNoticeEvent)
 
         with pytest.raises(CallbackException):
+            client.receive_response(self.sync_response)
+
+    def test_many_ephemeral_cb(self, client):
+        """Test that callbacks for multiple ephemeral events are properly handled.
+
+        Generates a random selection of ephemeral events and produces unique
+        callbacks and exceptions for each. Verifies that all of the callbacks
+        are called, including for duplicate events.
+        """
+        client.receive_response(self.login_response)
+        ephemeral_events = [TypingNoticeEvent, ReceiptEvent]
+
+        event_selection = random.choices(
+            population=ephemeral_events,
+            # By the pigeonhole princple, we'll have at least one duplicate Event
+            k=len(ephemeral_events) + 1
+        ) 
+        # This will only print during a failure, at which point we want to know
+        # what event selection caused an error.
+        print(f"Random selection of EphemeralEvents: {event_selection}")
+
+        exceptions = []
+        for index, event in enumerate(event_selection):
+            exception_class = type(
+                f"CbException{event.__name__}_{index}",
+                (Exception,), {}
+            )
+            exceptions.append(exception_class)
+
+            def callback(_, event):
+                raise exception_class()
+
+            client.add_ephemeral_callback(callback, event)
+        
+        with pytest.raises(tuple(exceptions)):
             client.receive_response(self.sync_response)
 
     def test_no_encryption(self, client_no_e2e):

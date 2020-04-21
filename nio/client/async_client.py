@@ -18,31 +18,71 @@
 import asyncio
 import io
 import warnings
-from asyncio import Event
+from asyncio import Event as AsyncioEvent
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
 from pathlib import Path
-from typing import (Any, AsyncIterable, BinaryIO, Callable, Coroutine, Dict,
-                    Iterable, List, Optional, Sequence, Tuple, Type, Union)
+from typing import (
+    Any,
+    AsyncIterable,
+    BinaryIO,
+    Callable,
+    Set,
+    Coroutine,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+)
 from uuid import UUID, uuid4
 
 import attr
 from aiofiles.threadpool.binary import AsyncBufferedReader
-from aiohttp import (ClientResponse, ClientSession, ClientTimeout,
-                     ContentTypeError, TraceConfig)
+from aiohttp import (
+    ClientResponse,
+    ClientSession,
+    ClientTimeout,
+    ContentTypeError,
+    TraceConfig,
+)
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.connector import Connection
 
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
-from ..api import (_FilterT, Api, MessageDirection, ResizingMethod,
-                   RoomVisibility, RoomPreset)
-from ..crypto import (AsyncDataT, async_encrypt_attachment,
-                      async_generator_from_data)
-from ..exceptions import (GroupEncryptionError, LocalProtocolError,
-                          MembersSyncError, SendRetryError,
-                          TransferCancelledError)
-from ..events import RoomKeyRequest, RoomKeyRequestCancellation
+from ..api import (
+    _FilterT,
+    Api,
+    MessageDirection,
+    ResizingMethod,
+    RoomVisibility,
+    RoomPreset,
+)
+from ..crypto import (
+    OlmDevice,
+    AsyncDataT,
+    async_encrypt_attachment,
+    async_generator_from_data,
+)
+from ..exceptions import (
+    GroupEncryptionError,
+    LocalProtocolError,
+    MembersSyncError,
+    SendRetryError,
+    TransferCancelledError,
+)
+from ..events import (
+    Event,
+    BadEventType,
+    RoomKeyRequest,
+    RoomKeyRequestCancellation,
+    ToDeviceEvent,
+    MegolmEvent,
+)
 from ..event_builders import ToDeviceMessage
 from ..monitors import TransferMonitor
 from ..responses import (ContentRepositoryConfigError,
@@ -89,16 +129,93 @@ from ..responses import (ContentRepositoryConfigError,
 if False:
     from ..events import MegolmEvent
     from .crypto import OlmDevice
-
+from ..responses import (
+    ContentRepositoryConfigError,
+    SyncType,
+    KeysUploadError,
+    KeysQueryError,
+    ContentRepositoryConfigResponse,
+    DeleteDevicesError,
+    DeleteDevicesResponse,
+    DeleteDevicesAuthResponse,
+    DevicesError,
+    DevicesResponse,
+    DownloadError,
+    DownloadResponse,
+    ErrorResponse,
+    FileResponse,
+    JoinResponse,
+    JoinError,
+    JoinedMembersError,
+    JoinedMembersResponse,
+    JoinedRoomsError,
+    JoinedRoomsResponse,
+    KeysClaimError,
+    KeysClaimResponse,
+    KeysQueryResponse,
+    KeysUploadResponse,
+    RegisterResponse,
+    LoginError,
+    LoginResponse,
+    LogoutError,
+    LogoutResponse,
+    ProfileGetAvatarResponse,
+    ProfileGetAvatarError,
+    ProfileGetDisplayNameResponse,
+    ProfileGetDisplayNameError,
+    ProfileGetResponse,
+    ProfileGetError,
+    ProfileSetAvatarResponse,
+    ProfileSetAvatarError,
+    ProfileSetDisplayNameResponse,
+    ProfileSetDisplayNameError,
+    Response,
+    RoomContextError,
+    RoomContextResponse,
+    RoomCreateResponse,
+    RoomCreateError,
+    RoomForgetResponse,
+    RoomForgetError,
+    RoomInviteResponse,
+    RoomInviteError,
+    RoomKeyRequestError,
+    RoomKeyRequestResponse,
+    RoomLeaveResponse,
+    RoomLeaveError,
+    RoomMessagesError,
+    RoomMessagesResponse,
+    RoomGetStateError,
+    RoomGetStateResponse,
+    RoomGetStateEventError,
+    RoomGetStateEventResponse,
+    RoomPutStateError,
+    RoomPutStateResponse,
+    RoomRedactError,
+    RoomRedactResponse,
+    RoomResolveAliasError,
+    RoomResolveAliasResponse,
+    RoomSendResponse,
+    RoomTypingResponse,
+    RoomTypingError,
+    ShareGroupSessionError,
+    ShareGroupSessionResponse,
+    SyncError,
+    SyncResponse,
+    PartialSyncResponse,
+    ThumbnailError,
+    ThumbnailResponse,
+    ToDeviceError,
+    ToDeviceResponse,
+    UploadError,
+    UploadResponse,
+)
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
 
 _ProfileGetDisplayNameT = Union[
-    ProfileGetDisplayNameResponse,
-    ProfileGetDisplayNameError
+    ProfileGetDisplayNameResponse, ProfileGetDisplayNameError
 ]
 _ProfileSetDisplayNameT = Union[
-    ProfileSetDisplayNameResponse,
-    ProfileSetDisplayNameError
+    ProfileSetDisplayNameResponse, ProfileSetDisplayNameError
 ]
 
 DataProvider = Callable[[int, int], AsyncDataT]
@@ -137,8 +254,8 @@ def client_session(func):
             trace.on_request_chunk_sent.append(on_request_chunk_sent)
 
             self.client_session = ClientSession(
-                timeout = ClientTimeout(total=self.config.request_timeout),
-                trace_configs = [trace],
+                timeout=ClientTimeout(total=self.config.request_timeout),
+                trace_configs=[trace],
             )
 
             self.client_session.connector.connect = partial(
@@ -252,47 +369,44 @@ class AsyncClient(Client):
     """
 
     def __init__(
-            self,
-            homeserver,     # type: str
-            user="",        # type: str
-            device_id="",   # type: Optional[str]
-            store_path="",  # type: Optional[str]
-            config=None,    # type: Optional[AsyncClientConfig]
-            ssl=None,       # type: Optional[bool]
-            proxy=None,     # type: Optional[str]
+        self,
+        homeserver: str,
+        user: str = "",
+        device_id: Optional[str] = "",
+        store_path: Optional[str] = "",
+        config: Optional[AsyncClientConfig] = None,
+        ssl: Optional[bool] = None,
+        proxy: Optional[str] = None,
     ):
-        # type: (...) -> None
         self.homeserver = homeserver
-        self.client_session = None  # type: Optional[ClientSession]
+        self.client_session: Optional[ClientSession] = None
 
         self.ssl = ssl
         self.proxy = proxy
 
-        self.synced = Event()
-        self.response_callbacks = []  # type: List[ResponseCb]
+        self.synced = AsyncioEvent()
+        self.response_callbacks: List[ResponseCb] = []
 
-        self.sharing_session = dict()  # type: Dict[str, Event]
+        self.sharing_session: Dict[str, AsyncioEvent] = dict()
 
-        is_config       = isinstance(config, ClientConfig)
+        is_config = isinstance(config, ClientConfig)
         is_async_config = isinstance(config, AsyncClientConfig)
 
         if is_config and not is_async_config:
             warnings.warn(
-                "Pass an AsyncClientConfig instead of ClientConfig.",
-                DeprecationWarning
+                "Pass an AsyncClientConfig instead of ClientConfig.", DeprecationWarning
             )
             config = AsyncClientConfig(**config.__dict__)
 
-        self.config = config or AsyncClientConfig()  # type: AsyncClientConfig
+        self.config: AsyncClientConfig = config or AsyncClientConfig()
 
         super().__init__(user, device_id, store_path, self.config)
 
     def add_response_callback(
-            self,
-            func,           # type: Coroutine[Any, Any, Response]
-            cb_filter=None  # type: Union[Tuple[Type], Type, None]
+        self,
+        func: Coroutine[Any, Any, Response],
+        cb_filter: Union[Tuple[Type], Type, None] = None,
     ):
-        # type: (...) -> None
         """Add a coroutine that will be called if a response is received.
 
         Args:
@@ -315,8 +429,7 @@ class AsyncClient(Client):
         cb = ResponseCb(func, cb_filter)
         self.response_callbacks.append(cb)
 
-    async def parse_body(self, transport_response):
-        # type: (ClientResponse) -> Dict[Any, Any]
+    async def parse_body(self, transport_response: ClientResponse) -> Dict[Any, Any]:
         """Parse the body of the response.
 
         Args:
@@ -331,12 +444,11 @@ class AsyncClient(Client):
             return {}
 
     async def create_matrix_response(
-            self,
-            response_class,
-            transport_response,
-            data=None
-    ):
-        # type: (Type, ClientResponse, Tuple) -> Response
+        self,
+        response_class: Type,
+        transport_response: ClientResponse,
+        data: Tuple[Any, ...] = None,
+    ) -> Response:
         """Transform a transport response into a nio matrix response.
 
         Args:
@@ -366,8 +478,9 @@ class AsyncClient(Client):
             body = await transport_response.read()
             resp = response_class.from_data(body, content_type, name)
 
-        elif (transport_response.status == 401
-                and response_class == DeleteDevicesResponse):
+        elif (
+            transport_response.status == 401 and response_class == DeleteDevicesResponse
+        ):
             parsed_dict = await self.parse_body(transport_response)
             resp = DeleteDevicesAuthResponse.from_dict(parsed_dict)
 
@@ -378,14 +491,13 @@ class AsyncClient(Client):
         resp.transport_response = transport_response
         return resp
 
-    async def _run_to_device_callbacks(self, event):
+    async def _run_to_device_callbacks(self, event: Union[ToDeviceEvent]):
         for cb in self.to_device_callbacks:
-            if (cb.filter is None
-                    or isinstance(event, cb.filter)):
+            if cb.filter is None or isinstance(event, cb.filter):
                 await asyncio.coroutine(cb.func)(event)
 
-    async def _handle_to_device(self, response):
-        decrypted_to_device = []  # type: ignore
+    async def _handle_to_device(self, response: SyncType):
+        decrypted_to_device = []
 
         for index, to_device_event in enumerate(response.to_device_events):
             decrypted_event = self._handle_decrypt_to_device(to_device_event)
@@ -398,8 +510,7 @@ class AsyncClient(Client):
             # want to notify them about requests that get automatically handled
             # or canceled right away.
             if isinstance(
-                to_device_event,
-                (RoomKeyRequest, RoomKeyRequestCancellation)
+                to_device_event, (RoomKeyRequest, RoomKeyRequestCancellation)
             ):
                 continue
 
@@ -407,7 +518,7 @@ class AsyncClient(Client):
 
         self._replace_decrypted_to_device(decrypted_to_device, response)
 
-    async def _handle_invited_rooms(self, response):
+    async def _handle_invited_rooms(self, response: SyncType):
         for room_id, info in response.rooms.invite.items():
             room = self._get_invited_room(room_id)
 
@@ -415,24 +526,21 @@ class AsyncClient(Client):
                 room.handle_event(event)
 
                 for cb in self.event_callbacks:
-                    if (cb.filter is None or isinstance(event, cb.filter)):
+                    if cb.filter is None or isinstance(event, cb.filter):
                         await asyncio.coroutine(cb.func)(room, event)
 
-    async def _handle_joined_rooms(self, response):
-        encrypted_rooms = set()
+    async def _handle_joined_rooms(self, response: SyncType) -> None:
+        encrypted_rooms: Set[str] = set()
 
         for room_id, join_info in response.rooms.join.items():
             self._handle_joined_state(room_id, join_info, encrypted_rooms)
 
             room = self.rooms[room_id]
-            decrypted_events = []
+            decrypted_events: List[Tuple[int, Union[Event, BadEventType]]] = []
 
             for index, event in enumerate(join_info.timeline.events):
                 decrypted_event = self._handle_timeline_event(
-                    event,
-                    room_id,
-                    room,
-                    encrypted_rooms
+                    event, room_id, room, encrypted_rooms
                 )
 
                 if decrypted_event:
@@ -440,19 +548,18 @@ class AsyncClient(Client):
                     decrypted_events.append((index, decrypted_event))
 
                 for cb in self.event_callbacks:
-                    if (cb.filter is None or isinstance(event, cb.filter)):
+                    if cb.filter is None or isinstance(event, cb.filter):
                         await asyncio.coroutine(cb.func)(room, event)
 
             # Replace the Megolm events with decrypted ones
-            for decrypted_event in decrypted_events:
-                index, event = decrypted_event
+            for index, event in decrypted_events:
                 join_info.timeline.events[index] = event
 
             for event in join_info.ephemeral:
                 room.handle_ephemeral_event(event)
 
                 for cb in self.ephemeral_callbacks:
-                    if (cb.filter is None or isinstance(event, cb.filter)):
+                    if cb.filter is None or isinstance(event, cb.filter):
                         await asyncio.coroutine(cb.func)(room, event)
 
             if room.encrypted and self.olm is not None:
@@ -468,11 +575,10 @@ class AsyncClient(Client):
 
         for event in expired_verifications:
             for cb in self.to_device_callbacks:
-                if (cb.filter is None
-                        or isinstance(event, cb.filter)):
+                if cb.filter is None or isinstance(event, cb.filter):
                     await asyncio.coroutine(cb.func)(event)
 
-    async def _handle_sync(self, response):
+    async def _handle_sync(self, response: SyncType) -> None:
         # We already recieved such a sync response, do nothing in that case.
         if self.next_batch == response.next_batch:
             return
@@ -499,7 +605,7 @@ class AsyncClient(Client):
         for event in events:
             await self._run_to_device_callbacks(event)
 
-    async def receive_response(self, response):
+    async def receive_response(self, response: Response) -> None:
         """Receive a Matrix Response and change the client state accordingly.
 
         Some responses will get edited for the callers convenience e.g. sync
@@ -517,33 +623,32 @@ class AsyncClient(Client):
         else:
             super().receive_response(response)
 
-    async def get_timeout_retry_wait_time(self, got_timeouts):
-        # type: (int) -> float
+    async def get_timeout_retry_wait_time(self, got_timeouts: int) -> float:
         if got_timeouts < 2:
             return 0.0
 
         return min(
             self.config.backoff_factor * (2 ** (got_timeouts - 1)),
-            self.config.max_timeout_retry_wait_time
+            self.config.max_timeout_retry_wait_time,
         )
 
     async def _send(
         self,
-        response_class,
-        method,
-        path,
-        data                                  = None,
-        response_data                         = None,
-        content_type                          = None,
-        trace_context                         = None,
+        response_class: Type,
+        method: str,
+        path: str,
+        data: Union[None, str, AsyncDataT] = None,
+        response_data: Optional[Tuple[Any, ...]] = None,
+        content_type: Optional[str] = None,
+        trace_context: Optional[Any] = None,
         data_provider: Optional[DataProvider] = None,
-        timeout:       Optional[float]        = None,
+        timeout: Optional[float] = None,
     ):
-        headers = {
-            "Content-Type": content_type
-        } if content_type else {
-            "Content-Type": "application/json"
-        }
+        headers = (
+            {"Content-Type": content_type}
+            if content_type
+            else {"Content-Type": "application/json"}
+        )
 
         got_429 = 0
         max_429 = self.config.max_limit_exceeded
@@ -561,9 +666,7 @@ class AsyncClient(Client):
                 )
 
                 resp = await self.create_matrix_response(
-                    response_class,
-                    transport_resp,
-                    response_data,
+                    response_class, transport_resp, response_data,
                 )
 
                 if isinstance(resp, ErrorResponse) and resp.retry_after_ms:
@@ -592,14 +695,13 @@ class AsyncClient(Client):
     @client_session
     async def send(
         self,
-        method:        str,
-        path:          str,
-        data:          Union[None, str, AsyncDataT] = None,
-        headers:       Optional[Dict[str, str]]     = None,
-        trace_context: Any                          = None,
-        timeout:       Optional[float]              = None,
-    ):
-        # type: (...) -> ClientResponse
+        method: str,
+        path: str,
+        data: Union[None, str, AsyncDataT] = None,
+        headers: Optional[Dict[str, str]] = None,
+        trace_context: Any = None,
+        timeout: Optional[float] = None,
+    ) -> ClientResponse:
         """Send a request to the homeserver.
 
         Args:
@@ -620,23 +722,23 @@ class AsyncClient(Client):
         return await self.client_session.request(
             method,
             self.homeserver + path,
-            data              = data,
-            ssl               = self.ssl,
-            proxy             = self.proxy,
-            headers           = headers,
-            trace_request_ctx = trace_context,
-            timeout           =
-                self.config.request_timeout if timeout is None else timeout,
+            data=data,
+            ssl=self.ssl,
+            proxy=self.proxy,
+            headers=headers,
+            trace_request_ctx=trace_context,
+            timeout=self.config.request_timeout if timeout is None else timeout,
         )
 
     async def mxc_to_http(
         self, mxc: str, homeserver: Optional[str] = None,
-   ) -> Optional[str]:
+    ) -> Optional[str]:
         """Convert a matrix content URI to a HTTP URI."""
         return Api.mxc_to_http(mxc, homeserver or self.homeserver)
 
-    async def login_raw(self, auth_dict):
-        # type: (Dict[str, Any]) -> Union[LoginResponse, LoginError]
+    async def login_raw(
+        self, auth_dict: Dict[str, Any]
+    ) -> Union[LoginResponse, LoginError]:
         """Login to the homeserver using a raw dictionary.
 
         Args:
@@ -683,7 +785,7 @@ class AsyncClient(Client):
             user=username,
             password=password,
             device_name=device_name,
-            device_id=self.device_id
+            device_id=self.device_id,
         )
 
         return await self._send(RegisterResponse, method, path, data)
@@ -701,51 +803,62 @@ class AsyncClient(Client):
 
         return await self._send(DeactivateResponse, method, path, data)
 
-    async def login(self, password, device_name=""):
-        # type: (str, str) -> Union[LoginResponse, LoginError]
+    async def login(
+        self,
+        password: Optional[str] = None,
+        device_name: Optional[str] = "",
+        token: Optional[str] = None,
+    ) -> Union[LoginResponse, LoginError]:
         """Login to the homeserver.
 
         Args:
-            password (str): The user's password.
+            password (str, optional): The user's password.
             device_name (str): A display name to assign to a newly-created
                 device. Ignored if the logged in device corresponds to a
                 known device.
+            token (str, optional): A login token, for example provided by a
+                single sign-on service.
+
+        Either a password or a token needs to be provided.
 
         Returns either a `LoginResponse` if the request was successful or
         a `LoginError` if there was an error with the request.
         """
+
+        if password is None and token is None:
+            raise ValueError("Either a password or a token needs to be provided")
+
         method, path, data = Api.login(
             self.user,
             password=password,
             device_name=device_name,
-            device_id=self.device_id
+            device_id=self.device_id,
+            token=token,
         )
 
         return await self._send(LoginResponse, method, path, data)
 
     @logged_in
-    async def logout(self, all_devices=False):
+    async def logout(
+        self, all_devices: bool = False
+    ) -> Union[LogoutResponse, LogoutError]:
         """Logout from the homeserver.
 
         Returns either 'LogoutResponse' if the request was successful or
         a `Logouterror` if there was an error with the request.
         """
-        method, path, data = Api.logout(
-            self.access_token,
-            all_devices
-        )
+        method, path, data = Api.logout(self.access_token, all_devices)
 
         return await self._send(LogoutResponse, method, path, data)
 
     @logged_in
     async def sync(
         self,
-        timeout:     Optional[int]  = None,
-        sync_filter: _FilterT       = None,
-        since:       Optional[str]  = None,
-        full_state:  Optional[bool] = None,
-    ):
-        # type: (...) -> Union[SyncResponse, SyncError]
+        timeout: Optional[int] = None,
+        sync_filter: _FilterT = None,
+        since: Optional[str] = None,
+        full_state: Optional[bool] = None,
+    ) -> Union[SyncResponse, SyncError]:
         """Synchronise the client's state with the latest state on the server.
 
         Args:
@@ -775,7 +888,7 @@ class AsyncClient(Client):
             since=sync_token or self.loaded_sync_token,
             timeout=timeout,
             filter=sync_filter,
-            full_state=full_state
+            full_state=full_state,
         )
 
         response = await self._send(
@@ -783,7 +896,7 @@ class AsyncClient(Client):
             method,
             path,
             # + 15: give server a chance to naturally return before we timeout
-            timeout = None if timeout is None else timeout / 1000 + 15,
+            timeout=None if timeout is None else timeout / 1000 + 15,
         )
 
         self.synced.set()
@@ -792,8 +905,9 @@ class AsyncClient(Client):
         return response
 
     @logged_in
-    async def send_to_device_messages(self):
-        # type: () -> List[ToDeviceResponse]
+    async def send_to_device_messages(
+        self,
+    ) -> List[Union[ToDeviceResponse, ToDeviceError]]:
         """Send out outgoing to-device messages."""
         if not self.outgoing_to_device_messages:
             return []
@@ -806,25 +920,25 @@ class AsyncClient(Client):
 
         return await asyncio.gather(*tasks)
 
-    async def run_response_callbacks(self, responses):
+    async def run_response_callbacks(
+        self, responses: List[Union[Response, ErrorResponse]]
+    ):
         """Run the configured response callbacks for the given responses."""
         for response in responses:
             for cb in self.response_callbacks:
-                if (cb.filter is None
-                        or isinstance(response, cb.filter)):
+                if cb.filter is None or isinstance(response, cb.filter):
                     await asyncio.coroutine(cb.func)(response)
 
     @logged_in
     async def sync_forever(
         self,
-        timeout:           Optional[int]  = None,
-        sync_filter:       _FilterT       = None,
-        since:             Optional[str]  = None,
-        full_state:        Optional[bool] = None,
-        loop_sleep_time:   Optional[int]  = None,
-        first_sync_filter: _FilterT       = None,
+        timeout: Optional[int] = None,
+        sync_filter: _FilterT = None,
+        since: Optional[str] = None,
+        full_state: Optional[bool] = None,
+        loop_sleep_time: Optional[int] = None,
+        first_sync_filter: _FilterT = None,
     ):
-        # type: (...) -> None
         """Continuously sync with the configured homeserver.
 
         This method calls the sync method in a loop. To react to events event
@@ -874,7 +988,8 @@ class AsyncClient(Client):
                 used_filter = first_sync_filter if first_sync else sync_filter
 
                 tasks = [
-                    asyncio.ensure_future(coro) for coro in (
+                    asyncio.ensure_future(coro)
+                    for coro in (
                         self.sync(timeout, used_filter, since, full_state),
                         self.send_to_device_messages(),
                     )
@@ -887,16 +1002,18 @@ class AsyncClient(Client):
                     tasks.append(asyncio.ensure_future(self.keys_query()))
 
                 if self.should_claim_keys:
-                    tasks.append(asyncio.ensure_future(
-                        self.keys_claim(self.get_users_for_key_claiming()),
-                    ))
+                    tasks.append(
+                        asyncio.ensure_future(
+                            self.keys_claim(self.get_users_for_key_claiming()),
+                        )
+                    )
 
                 for response in asyncio.as_completed(tasks):
-                    await self.run_response_callbacks((await response,))
+                    await self.run_response_callbacks([await response])
 
                 first_sync = False
                 full_state = None
-                since      = None
+                since = None
 
                 if loop_sleep_time:
                     await asyncio.sleep(loop_sleep_time / 1000)
@@ -910,11 +1027,8 @@ class AsyncClient(Client):
     @logged_in
     @store_loaded
     async def start_key_verification(
-            self,
-            device,     # type: OlmDevice
-            tx_id=None  # type: Optional[str]
-    ):
-        # type: (...) -> Union[ToDeviceResponse, ToDeviceError]
+        self, device: OlmDevice, tx_id: Optional[str] = None
+    ) -> Union[ToDeviceResponse, ToDeviceError]:
         """Start a interactive key verification with the given device.
 
         Returns either a `ToDeviceResponse` if the request was successful or
@@ -930,12 +1044,8 @@ class AsyncClient(Client):
     @logged_in
     @store_loaded
     async def cancel_key_verification(
-            self,
-            transaction_id,     # type: OlmDevice
-            reject=False,       # type: bool
-            tx_id=None          # type: Optional[str]
-    ):
-        # type: (...) -> Union[ToDeviceResponse, ToDeviceError]
+        self, transaction_id: str, reject: bool = False, tx_id: Optional[str] = None,
+    ) -> Union[ToDeviceResponse, ToDeviceError]:
         """Cancel a interactive key verification with the given device.
 
         Returns either a `ToDeviceResponse` if the request was successful or
@@ -953,10 +1063,10 @@ class AsyncClient(Client):
         couldn't be shown yet because plublic keys weren't yet exchanged.
         """
         if transaction_id not in self.key_verifications:
-            raise LocalProtocolError("Key verification with the transaction "
-                                     "id {} does not exist.".format(
-                                         transaction_id
-                                     ))
+            raise LocalProtocolError(
+                "Key verification with the transaction "
+                "id {} does not exist.".format(transaction_id)
+            )
 
         sas = self.key_verifications[transaction_id]
 
@@ -971,8 +1081,9 @@ class AsyncClient(Client):
 
     @logged_in
     @store_loaded
-    async def accept_key_verification(self, transaction_id, tx_id=None):
-        # type: (str, Optional[str]) -> Union[ToDeviceResponse, ToDeviceError]
+    async def accept_key_verification(
+        self, transaction_id: str, tx_id: Optional[str] = None
+    ) -> Union[ToDeviceResponse, ToDeviceError]:
         """Accept a key verification start event.
 
         Returns either a `ToDeviceResponse` if the request was successful or
@@ -983,10 +1094,10 @@ class AsyncClient(Client):
                 process.
         """
         if transaction_id not in self.key_verifications:
-            raise LocalProtocolError("Key verification with the transaction "
-                                     "id {} does not exist.".format(
-                                         transaction_id
-                                     ))
+            raise LocalProtocolError(
+                "Key verification with the transaction "
+                "id {} does not exist.".format(transaction_id)
+            )
 
         sas = self.key_verifications[transaction_id]
 
@@ -996,8 +1107,9 @@ class AsyncClient(Client):
 
     @logged_in
     @store_loaded
-    async def confirm_short_auth_string(self, transaction_id, tx_id=None):
-        # type: (str, Optional[str]) -> Union[ToDeviceResponse, ToDeviceError]
+    async def confirm_short_auth_string(
+        self, transaction_id: str, tx_id: Optional[str] = None
+    ) -> Union[ToDeviceResponse, ToDeviceError]:
         """Confirm a short auth string and mark it as matching.
 
         Returns either a `ToDeviceResponse` if the request was successful or
@@ -1012,11 +1124,8 @@ class AsyncClient(Client):
 
     @logged_in
     async def to_device(
-            self,
-            message,    # type: ToDeviceMessage
-            tx_id=None  # type: Optional[str]
-    ):
-        # type: (...) -> Union[ToDeviceResponse, ToDeviceError]
+        self, message: ToDeviceMessage, tx_id: Optional[str] = None,
+    ) -> Union[ToDeviceResponse, ToDeviceError]:
         """Send a to-device message.
 
         Returns either a `ToDeviceResponse` if the request was successful or
@@ -1030,23 +1139,16 @@ class AsyncClient(Client):
         uuid = tx_id or uuid4()
 
         method, path, data = Api.to_device(
-            self.access_token,
-            message.type,
-            message.as_dict(),
-            uuid
+            self.access_token, message.type, message.as_dict(), uuid
         )
 
         return await self._send(
-            ToDeviceResponse,
-            method,
-            path,
-            data,
-            response_data=(message, )
+            ToDeviceResponse, method, path, data, response_data=(message,)
         )
 
     @logged_in
     @store_loaded
-    async def keys_upload(self):
+    async def keys_upload(self) -> Union[KeysUploadResponse, KeysUploadError]:
         """Upload the E2E encryption keys.
 
         This uploads the long lived session keys as well as the required amount
@@ -1058,19 +1160,16 @@ class AsyncClient(Client):
         if not self.should_upload_keys:
             raise LocalProtocolError("No key upload needed.")
 
+        assert self.olm
         keys_dict = self.olm.share_keys()
 
-        method, path, data = Api.keys_upload(
-            self.access_token,
-            keys_dict
-        )
+        method, path, data = Api.keys_upload(self.access_token, keys_dict)
 
         return await self._send(KeysUploadResponse, method, path, data)
 
     @logged_in
     @store_loaded
-    async def keys_query(self):
-        # type: () -> Union[KeysQueryResponse]
+    async def keys_query(self) -> Union[KeysQueryResponse, KeysQueryError]:
         """Query the server for user keys.
 
         This queries the server for device keys of users with which we share an
@@ -1086,10 +1185,7 @@ class AsyncClient(Client):
 
         # TODO pass the sync token here if it's a device update that triggered
         # our need for a key query.
-        method, path, data = Api.keys_query(
-            self.access_token,
-            user_list
-        )
+        method, path, data = Api.keys_query(self.access_token, user_list)
 
         return await self._send(KeysQueryResponse, method, path, data)
 
@@ -1106,9 +1202,7 @@ class AsyncClient(Client):
 
     @logged_in
     async def delete_devices(
-            self,
-            devices: List[str],
-            auth:    Optional[Dict[str, str]] = None
+        self, devices: List[str], auth: Optional[Dict[str, str]] = None
     ) -> Union[DeleteDevicesResponse, DeleteDevicesError]:
         """Delete a list of devices.
 
@@ -1138,21 +1232,15 @@ class AsyncClient(Client):
 
         """
         method, path, data = Api.delete_devices(
-            self.access_token,
-            devices,
-            auth_dict=auth
+            self.access_token, devices, auth_dict=auth
         )
 
-        return await self._send(
-            DeleteDevicesResponse,
-            method,
-            path,
-            data
-        )
+        return await self._send(DeleteDevicesResponse, method, path, data)
 
     @logged_in
-    async def joined_members(self, room_id):
-        # type: (str) -> Union[JoinedMembersResponse, JoinedMembersError]
+    async def joined_members(
+        self, room_id: str
+    ) -> Union[JoinedMembersResponse, JoinedMembersError]:
         """Get the list of joined members for a room.
 
         Returns either a `JoinedMembersResponse` if the request was successful
@@ -1162,44 +1250,31 @@ class AsyncClient(Client):
             room_id(str): The room id of the room for which we wan't to request
                 the joined member list.
         """
-        method, path = Api.joined_members(
-            self.access_token,
-            room_id
-        )
+        method, path = Api.joined_members(self.access_token, room_id)
 
         return await self._send(
-            JoinedMembersResponse,
-            method,
-            path,
-            response_data=(room_id, )
+            JoinedMembersResponse, method, path, response_data=(room_id,)
         )
 
     @logged_in
-    async def joined_rooms(self):
-        # type: () -> Union[JoinedRoomsResponse, JoinedRoomsError]
+    async def joined_rooms(self) -> Union[JoinedRoomsResponse, JoinedRoomsError]:
         """Get the list of joined rooms.
 
         Returns either a `JoinedRoomsResponse` if the request was successful
         or a `JoinedRoomsError` if there was an error with the request.
         """
-        method, path = Api.joined_rooms(
-            self.access_token
-        )
+        method, path = Api.joined_rooms(self.access_token)
 
-        return await self._send(
-            JoinedRoomsResponse,
-            method,
-            path
-        )
+        return await self._send(JoinedRoomsResponse, method, path)
 
     @logged_in
     async def room_send(
-            self,
-            room_id,
-            message_type,
-            content,
-            tx_id=None,
-            ignore_unverified_devices=False
+        self,
+        room_id: str,
+        message_type: str,
+        content: Dict[Any, Any],
+        tx_id: Optional[str] = None,
+        ignore_unverified_devices: bool = False,
     ):
         """Send a message to a room.
 
@@ -1227,6 +1302,7 @@ class AsyncClient(Client):
 
         Raises `LocalProtocolError` if the client isn't logged in.
         """
+
         async def send(room_id, message_type, content, tx_id):
             if self.olm:
                 try:
@@ -1237,14 +1313,13 @@ class AsyncClient(Client):
                     )
 
                 if room.encrypted:
-                    message_type, content = self.encrypt(room_id, message_type,
-                                                         content)
+                    message_type, content = self.encrypt(room_id, message_type, content)
 
-            method, path, data = Api.room_send(self.access_token, room_id,
-                                               message_type, content, tx_id)
+            method, path, data = Api.room_send(
+                self.access_token, room_id, message_type, content, tx_id
+            )
 
-            return await self._send(RoomSendResponse, method, path, data,
-                                    (room_id, ))
+            return await self._send(RoomSendResponse, method, path, data, (room_id,))
 
         retries = 10
 
@@ -1260,8 +1335,7 @@ class AsyncClient(Client):
                     await sharing_event.wait()
                 else:
                     share = await self.share_group_session(
-                        room_id,
-                        ignore_unverified_devices=ignore_unverified_devices
+                        room_id, ignore_unverified_devices=ignore_unverified_devices
                     )
                     await self.run_response_callbacks([share])
 
@@ -1274,16 +1348,15 @@ class AsyncClient(Client):
 
                 await self.run_response_callbacks(responses)
 
-        raise SendRetryError("Max retries exceeded while trying to send "
-                             "the message")
+        raise SendRetryError("Max retries exceeded while trying to send " "the message")
 
     @logged_in
     async def room_put_state(
-            self,
-            room_id:    str,
-            event_type: str,
-            content:    Dict[Any, Any],
-            state_key:  str            = ""
+        self,
+        room_id: str,
+        event_type: str,
+        content: Dict[Any, Any],
+        state_key: str = "",
     ) -> Union[RoomPutStateResponse, RoomPutStateError]:
         """Send a state event to a room.
 
@@ -1298,25 +1371,16 @@ class AsyncClient(Client):
         """
 
         method, path, data = Api.room_put_state(
-            self.access_token,
-            room_id,
-            event_type,
-            content,
-            state_key = state_key
+            self.access_token, room_id, event_type, content, state_key=state_key
         )
 
         return await self._send(
-            RoomPutStateResponse,
-            method,
-            path,
-            data,
-            response_data = (room_id,),
+            RoomPutStateResponse, method, path, data, response_data=(room_id,),
         )
 
     @logged_in
     async def room_get_state(
-            self,
-            room_id: str,
+        self, room_id: str,
     ) -> Union[RoomGetStateResponse, RoomGetStateError]:
         """Fetch state for a room.
 
@@ -1327,24 +1391,15 @@ class AsyncClient(Client):
             room_id (str): The room id of the room to fetch state from.
         """
 
-        method, path = Api.room_get_state(
-            self.access_token,
-            room_id,
-        )
+        method, path = Api.room_get_state(self.access_token, room_id,)
 
         return await self._send(
-            RoomGetStateResponse,
-            method,
-            path,
-            response_data = (room_id,),
+            RoomGetStateResponse, method, path, response_data=(room_id,),
         )
 
     @logged_in
     async def room_get_state_event(
-            self,
-            room_id:    str,
-            event_type: str,
-            state_key:  str  = ""
+        self, room_id: str, event_type: str, state_key: str = ""
     ) -> Union[RoomGetStateEventResponse, RoomGetStateEventError]:
         """Fetch a state event from a room.
 
@@ -1359,26 +1414,23 @@ class AsyncClient(Client):
         """
 
         method, path = Api.room_get_state_event(
-            self.access_token,
-            room_id,
-            event_type,
-            state_key = state_key
+            self.access_token, room_id, event_type, state_key=state_key
         )
 
         return await self._send(
             RoomGetStateEventResponse,
             method,
             path,
-            response_data = (event_type, state_key, room_id,),
+            response_data=(event_type, state_key, room_id,),
         )
 
     @logged_in
     async def room_redact(
-            self,
-            room_id:  str,
-            event_id: str,
-            reason:   Optional[str]          = None,
-            tx_id:    Union[None, str, UUID] = None,
+        self,
+        room_id: str,
+        event_id: str,
+        reason: Optional[str] = None,
+        tx_id: Union[None, str, UUID] = None,
     ) -> Union[RoomRedactResponse, RoomRedactError]:
         """Strip information out of an event.
 
@@ -1394,24 +1446,15 @@ class AsyncClient(Client):
                 event was redacted.
         """
         method, path, data = Api.room_redact(
-            self.access_token,
-            room_id,
-            event_id,
-            tx_id  = tx_id or uuid4(),
-            reason = reason,
+            self.access_token, room_id, event_id, tx_id=tx_id or uuid4(), reason=reason,
         )
 
         return await self._send(
-            RoomRedactResponse,
-            method,
-            path,
-            data,
-            response_data = (room_id,),
+            RoomRedactResponse, method, path, data, response_data=(room_id,),
         )
 
     async def room_resolve_alias(
-            self,
-            room_alias: str,
+        self, room_alias: str,
     ) -> Union[RoomResolveAliasResponse, RoomResolveAliasError]:
         """Resolve a room alias to a room ID.
 
@@ -1425,19 +1468,14 @@ class AsyncClient(Client):
         method, path = Api.room_resolve_alias(room_alias)
 
         return await self._send(
-            RoomResolveAliasResponse,
-            method,
-            path,
-            response_data = (room_alias,),
+            RoomResolveAliasResponse, method, path, response_data=(room_alias,),
         )
 
     @logged_in
     @store_loaded
     async def keys_claim(
-            self,
-            user_set  # type: Dict[str, Iterable[str]]
-    ):
-        # type: (...) -> Union[KeysClaimResponse, KeysClaimError]
+        self, user_set: Dict[str, Iterable[str]]
+    ) -> Union[KeysClaimResponse, KeysClaimError]:
         """Claim one-time keys for a set of user and device pairs.
 
         Args:
@@ -1450,22 +1488,18 @@ class AsyncClient(Client):
         store isn't loaded, no room with the given room id exists or the room
         isn't an encrypted room.
         """
-        method, path, data = Api.keys_claim(
-            self.access_token,
-            user_set
-        )
+        method, path, data = Api.keys_claim(self.access_token, user_set)
 
         return await self._send(KeysClaimResponse, method, path, data)
 
     @logged_in
     @store_loaded
     async def share_group_session(
-            self,
-            room_id,                         # type: str
-            tx_id=None,                      # type: Optional[str]
-            ignore_unverified_devices=False  # type: bool
-    ):
-        # type: (...) -> _ShareGroupSessionT
+        self,
+        room_id: str,
+        tx_id: Optional[str] = None,
+        ignore_unverified_devices: bool = False,
+    ) -> Union[ShareGroupSessionResponse, ShareGroupSessionError]:
         """Share a group session with a room.
 
         This method sends a group session to members of a room.
@@ -1493,15 +1527,14 @@ class AsyncClient(Client):
             raise LocalProtocolError("No such room with id {}".format(room_id))
 
         if not room.encrypted:
-            raise LocalProtocolError("Room with id {} is not encrypted".format(
-                room_id))
+            raise LocalProtocolError("Room with id {} is not encrypted".format(room_id))
 
         if room_id in self.sharing_session:
             raise LocalProtocolError(
                 "Already sharing a group session for {}".format(room_id)
             )
 
-        self.sharing_session[room_id] = Event()
+        self.sharing_session[room_id] = AsyncioEvent()
 
         shared_with = set()
 
@@ -1516,24 +1549,17 @@ class AsyncClient(Client):
                     room_id,
                     list(room.users.keys()),
                     ignore_missing_sessions=True,
-                    ignore_unverified_devices=ignore_unverified_devices
+                    ignore_unverified_devices=ignore_unverified_devices,
                 )
 
                 uuid = tx_id or uuid4()
 
                 method, path, data = Api.to_device(
-                    self.access_token,
-                    "m.room.encrypted",
-                    to_device_dict,
-                    uuid
+                    self.access_token, "m.room.encrypted", to_device_dict, uuid
                 )
 
                 response = await self._send(
-                    ShareGroupSessionResponse,
-                    method,
-                    path,
-                    data,
-                    (room_id, user_set)
+                    ShareGroupSessionResponse, method, path, data, (room_id, user_set)
                 )
 
                 if isinstance(response, ShareGroupSessionResponse):
@@ -1550,11 +1576,8 @@ class AsyncClient(Client):
     @logged_in
     @store_loaded
     async def request_room_key(
-            self,
-            event,       # type: MegolmEvent
-            tx_id=None   # type: Optional[str]
-    ):
-        # type: (...) -> Union[RoomKeyRequestResponse, RoomKeyRequestError]
+        self, event: MegolmEvent, tx_id: Optional[str] = None,
+    ) -> Union[RoomKeyRequestResponse, RoomKeyRequestError]:
         """Request a missing room key.
 
         This sends out a message to other devices requesting a room key from
@@ -1572,8 +1595,9 @@ class AsyncClient(Client):
         uuid = tx_id or uuid4()
 
         if event.session_id in self.outgoing_key_requests:
-            raise LocalProtocolError("A key sharing request is already sent"
-                                     " out for this session id.")
+            raise LocalProtocolError(
+                "A key sharing request is already sent" " out for this session id."
+            )
 
         assert self.user_id
         assert self.device_id
@@ -1581,10 +1605,7 @@ class AsyncClient(Client):
         message = event.as_key_request(self.user_id, self.device_id)
 
         method, path, data = Api.to_device(
-            self.access_token,
-            message.type,
-            message.as_dict(),
-            uuid
+            self.access_token, message.type, message.as_dict(), uuid
         )
 
         return await self._send(
@@ -1592,12 +1613,7 @@ class AsyncClient(Client):
             method,
             path,
             data,
-            (
-                event.session_id,
-                event.session_id,
-                event.room_id,
-                event.algorithm
-            )
+            (event.session_id, event.session_id, event.room_id, event.algorithm),
         )
 
     async def close(self):
@@ -1607,7 +1623,7 @@ class AsyncClient(Client):
             self.client_session = None
 
     @store_loaded
-    async def export_keys(self, outfile, passphrase, count=10000):
+    async def export_keys(self, outfile: str, passphrase: str, count: int = 10000):
         """Export all the Megolm decryption keys of this device.
 
         The keys will be encrypted using the passphrase.
@@ -1628,13 +1644,14 @@ class AsyncClient(Client):
         loop = asyncio.get_event_loop()
 
         inbound_group_store = self.store.load_inbound_group_sessions()
-        export_keys = partial(self.olm.export_keys_static, inbound_group_store,
-                              outfile, passphrase, count)
+        export_keys = partial(
+            self.olm.export_keys_static, inbound_group_store, outfile, passphrase, count
+        )
 
         await loop.run_in_executor(None, export_keys)
 
     @store_loaded
-    async def import_keys(self, infile, passphrase):
+    async def import_keys(self, infile: str, passphrase: str):
         """Import Megolm decryption keys.
 
         The keys will be added to the current instance as well as written to
@@ -1666,16 +1683,16 @@ class AsyncClient(Client):
     @logged_in
     async def room_create(
         self,
-        visibility:           RoomVisibility           = RoomVisibility.private,
-        alias:                Optional[str]            = None,
-        name:                 Optional[str]            = None,
-        topic:                Optional[str]            = None,
-        room_version:         Optional[str]            = None,
-        federate:             bool                     = True,
-        is_direct:            bool                     = False,
-        preset:               Optional[RoomPreset]     = None,
-        invite:               Sequence[str]            = (),
-        initial_state:        Sequence[Dict[str, Any]] = (),
+        visibility: RoomVisibility = RoomVisibility.private,
+        alias: Optional[str] = None,
+        name: Optional[str] = None,
+        topic: Optional[str] = None,
+        room_version: Optional[str] = None,
+        federate: bool = True,
+        is_direct: bool = False,
+        preset: Optional[RoomPreset] = None,
+        invite: Sequence[str] = (),
+        initial_state: Sequence[Dict[str, Any]] = (),
         power_level_override: Optional[Dict[str, Any]] = None,
     ) -> Union[RoomCreateResponse, RoomCreateError]:
         """Create a new room.
@@ -1735,24 +1752,23 @@ class AsyncClient(Client):
 
         method, path, data = Api.room_create(
             self.access_token,
-            visibility           = visibility,
-            alias                = alias,
-            name                 = name,
-            topic                = topic,
-            room_version         = room_version,
-            federate             = federate,
-            is_direct            = is_direct,
-            preset               = preset,
-            invite               = invite,
-            initial_state        = initial_state,
-            power_level_override = power_level_override,
+            visibility=visibility,
+            alias=alias,
+            name=name,
+            topic=topic,
+            room_version=room_version,
+            federate=federate,
+            is_direct=is_direct,
+            preset=preset,
+            invite=invite,
+            initial_state=initial_state,
+            power_level_override=power_level_override,
         )
 
         return await self._send(RoomCreateResponse, method, path, data)
 
     @logged_in
-    async def join(self, room_id):
-        # type: (str) -> Union[JoinResponse, JoinError]
+    async def join(self, room_id: str) -> Union[JoinResponse, JoinError]:
         """Join a room.
 
         This tells the server to join the given room.
@@ -1781,14 +1797,13 @@ class AsyncClient(Client):
                 invited to.
             user_id (str): The user id of the user that should be invited.
         """
-        method, path, data = Api.room_invite(
-            self.access_token, room_id, user_id,
-        )
+        method, path, data = Api.room_invite(self.access_token, room_id, user_id,)
         return await self._send(RoomInviteResponse, method, path, data)
 
     @logged_in
-    async def room_leave(self, room_id):
-        # type: (str) -> Union[RoomLeaveResponse, RoomLeaveError]
+    async def room_leave(
+        self, room_id: str
+    ) -> Union[RoomLeaveResponse, RoomLeaveError]:
         """Leave a room or reject an invite.
 
         This tells the server to leave the given room.
@@ -1804,8 +1819,9 @@ class AsyncClient(Client):
         return await self._send(RoomLeaveResponse, method, path, data)
 
     @logged_in
-    async def room_forget(self, room_id):
-        # type: (str) -> Union[RoomForgetResponse, RoomForgetError]
+    async def room_forget(
+        self, room_id: str
+    ) -> Union[RoomForgetResponse, RoomForgetError]:
         """Forget a room.
 
         This tells the server to forget the given room's history for our user.
@@ -1820,21 +1836,13 @@ class AsyncClient(Client):
         """
         method, path, data = Api.room_forget(self.access_token, room_id)
         return await self._send(
-            RoomForgetResponse,
-            method,
-            path,
-            data,
-            response_data=(room_id,)
+            RoomForgetResponse, method, path, data, response_data=(room_id,)
         )
 
     @logged_in
     async def room_context(
-            self,
-            room_id,     # type: str
-            event_id,    # type: str
-            limit=None,  # type: Optional[int]
-    ):
-        # type: (...) -> Union[RoomContextResponse, RoomContextError]
+        self, room_id: str, event_id: str, limit: Optional[int] = None,
+    ) -> Union[RoomContextResponse, RoomContextError]:
         """Fetch a number of events that happened before and after an event.
 
         This allows clients to get the context surrounding an event.
@@ -1850,23 +1858,22 @@ class AsyncClient(Client):
             limit(int, optional): The maximum number of events to request.
         """
 
-        method, path = Api.room_context(self.access_token, room_id, event_id,
-                                        limit)
+        method, path = Api.room_context(self.access_token, room_id, event_id, limit)
 
-        return await self._send(RoomContextResponse, method, path,
-                                response_data=(room_id, ))
+        return await self._send(
+            RoomContextResponse, method, path, response_data=(room_id,)
+        )
 
     @logged_in
     async def room_messages(
         self,
-        room_id:        str,
-        start:          str,
-        end:            Optional[str]    = None,
-        direction:      MessageDirection = MessageDirection.back,
-        limit:          int              = 10,
-        message_filter: _FilterT         = None,
-    ):
-        # type: (...) -> Union[RoomMessagesResponse, RoomMessagesError]
+        room_id: str,
+        start: str,
+        end: Optional[str] = None,
+        direction: MessageDirection = MessageDirection.back,
+        limit: int = 10,
+        message_filter: _FilterT = None,
+    ) -> Union[RoomMessagesResponse, RoomMessagesError]:
         """Fetch a list of message and state events for a room.
 
         It uses pagination query parameters to paginate history in the room.
@@ -1911,20 +1918,13 @@ class AsyncClient(Client):
         )
 
         return await self._send(
-            RoomMessagesResponse,
-            method,
-            path,
-            response_data=(room_id, )
+            RoomMessagesResponse, method, path, response_data=(room_id,)
         )
 
     @logged_in
     async def room_typing(
-        self,
-        room_id,            # type: str
-        typing_state=True,  # type: bool
-        timeout=30000       # type: int
-    ):
-        # type: (...) -> Union[RoomTypingResponse, RoomTypingError]
+        self, room_id: str, typing_state: bool = True, timeout: int = 30000,
+    ) -> Union[RoomTypingResponse, RoomTypingError]:
         """Send a typing notice to the server.
 
         This tells the server that the user is typing for the next N
@@ -1941,19 +1941,11 @@ class AsyncClient(Client):
                 valid for in milliseconds.
         """
         method, path, data = Api.room_typing(
-            self.access_token,
-            room_id,
-            self.user_id,
-            typing_state,
-            timeout
+            self.access_token, room_id, self.user_id, typing_state, timeout
         )
 
         return await self._send(
-            RoomTypingResponse,
-            method,
-            path,
-            data,
-            response_data=(room_id, )
+            RoomTypingResponse, method, path, data, response_data=(room_id,)
         )
 
     @logged_in
@@ -2015,10 +2007,10 @@ class AsyncClient(Client):
     async def upload(
         self,
         data_provider: DataProvider,
-        content_type:  str                       = "application/octet-stream",
-        filename:      Optional[str]             = None,
-        encrypt:       bool                      = False,
-        monitor:       Optional[TransferMonitor] = None,
+        content_type: str = "application/octet-stream",
+        filename: Optional[str] = None,
+        encrypt: bool = False,
+        monitor: Optional[TransferMonitor] = None,
     ) -> Tuple[Union[UploadResponse, UploadError], Optional[Dict[str, Any]]]:
         # TODO: test retries
         """Upload a file to the content repository.
@@ -2087,9 +2079,7 @@ class AsyncClient(Client):
             data = data_provider(got_429, got_timeouts)
 
             if encrypt:
-                return self._encrypted_data_generator(
-                    data, decryption_dict, monitor,
-                )
+                return self._encrypted_data_generator(data, decryption_dict, monitor,)
 
             return self._plain_data_generator(data, monitor)
 
@@ -2097,11 +2087,10 @@ class AsyncClient(Client):
             UploadResponse,
             http_method,
             path,
-            data_provider = provider,
-            content_type  =
-                "application/octet-stream" if encrypt else content_type,
-            trace_context = monitor,
-            timeout       = 0,
+            data_provider=provider,
+            content_type="application/octet-stream" if encrypt else content_type,
+            trace_context=monitor,
+            timeout=0,
         )
 
         # After the upload finished and we get the response above, if encrypt
@@ -2112,12 +2101,11 @@ class AsyncClient(Client):
     @client_session
     async def download(
         self,
-        server_name:  str,
-        media_id:     str,
-        filename:     Optional[str]             = None,
-        allow_remote: bool                      = True,
-    ):
-        # type: (...) -> Union[DownloadResponse, DownloadError]
+        server_name: str,
+        media_id: str,
+        filename: Optional[str] = None,
+        allow_remote: bool = True,
+    ) -> Union[DownloadResponse, DownloadError]:
         """Get the content of a file from the content repository.
 
         This method ignores `AsyncClient.config.request_timeout` and uses `0`.
@@ -2138,29 +2126,20 @@ class AsyncClient(Client):
         """
         # TODO: support TransferMonitor
 
-        http_method, path = Api.download(
-            server_name,
-            media_id,
-            filename,
-            allow_remote
-        )
+        http_method, path = Api.download(server_name, media_id, filename, allow_remote)
 
-        return await self._send(
-            DownloadResponse, http_method, path, timeout=0,
-        )
-
+        return await self._send(DownloadResponse, http_method, path, timeout=0,)
 
     @client_session
     async def thumbnail(
         self,
-        server_name,                  # type: str
-        media_id,                     # type: str
-        width,                        # type: int
-        height,                       # type: int
-        method=ResizingMethod.scale,  # ŧype: ResizingMethod
-        allow_remote=True,            # type: bool
-    ):
-        # type: (...) -> Union[ThumbnailResponse, ThumbnailError]
+        server_name: str,
+        media_id: str,
+        width: int,
+        height: int,
+        method: ResizingMethod = ResizingMethod.scale,
+        allow_remote: bool = True,
+    ) -> Union[ThumbnailResponse, ThumbnailError]:
         """Get the thumbnail of a file from the content repository.
 
         The actual thumbnail may be larger than the size specified.
@@ -2181,21 +2160,15 @@ class AsyncClient(Client):
                 itself.
         """
         http_method, path = Api.thumbnail(
-            server_name,
-            media_id,
-            width,
-            height,
-            method,
-            allow_remote
+            server_name, media_id, width, height, method, allow_remote
         )
 
-        return await self._send(
-            ThumbnailResponse, http_method, path, timeout=0,
-        )
+        return await self._send(ThumbnailResponse, http_method, path, timeout=0,)
 
     @client_session
-    async def get_profile(self, user_id=None):
-        # type: (Optional[str]) -> Union[ProfileGetResponse, ProfileGetError]
+    async def get_profile(
+        self, user_id: Optional[str] = None
+    ) -> Union[ProfileGetResponse, ProfileGetError]:
         """Get a user's combined profile information.
 
         This queries the display name and avatar matrix content URI of a user
@@ -2211,18 +2184,12 @@ class AsyncClient(Client):
         """
         method, path = Api.profile_get(user_id or self.user_id)
 
-        return await self._send(
-            ProfileGetResponse,
-            method,
-            path,
-        )
+        return await self._send(ProfileGetResponse, method, path,)
 
     @client_session
     async def get_displayname(
-            self,
-            user_id=None  # type: Optional[str]
-    ):
-        # type: (...) -> _ProfileGetDisplayNameT
+        self, user_id: Optional[str] = None
+    ) -> _ProfileGetDisplayNameT:
         """Get a user's display name.
 
         This queries the display name of a user from the server.
@@ -2237,15 +2204,10 @@ class AsyncClient(Client):
         """
         method, path = Api.profile_get_displayname(user_id or self.user_id)
 
-        return await self._send(
-            ProfileGetDisplayNameResponse,
-            method,
-            path,
-        )
+        return await self._send(ProfileGetDisplayNameResponse, method, path,)
 
     @logged_in
-    async def set_displayname(self, displayname):
-        # type: (str) -> _ProfileSetDisplayNameT
+    async def set_displayname(self, displayname: str) -> _ProfileSetDisplayNameT:
         """Set user's display name.
 
         This tells the server to set display name of the currently logged
@@ -2259,24 +2221,15 @@ class AsyncClient(Client):
             displayname (str): Display name to set.
         """
         method, path, data = Api.profile_set_displayname(
-            self.access_token,
-            self.user_id,
-            displayname
+            self.access_token, self.user_id, displayname
         )
 
-        return await self._send(
-            ProfileSetDisplayNameResponse,
-            method,
-            path,
-            data,
-        )
+        return await self._send(ProfileSetDisplayNameResponse, method, path, data,)
 
     @client_session
     async def get_avatar(
-            self,
-            user_id=None  # type: Optional[str]
-    ):
-        # type: (...) -> Union[ProfileGetAvatarResponse, ProfileGetAvatarError]
+        self, user_id: Optional[str] = None
+    ) -> Union[ProfileGetAvatarResponse, ProfileGetAvatarError]:
         """Get a user's avatar URL.
 
         This queries the avatar matrix content URI of a user from the server.
@@ -2291,15 +2244,12 @@ class AsyncClient(Client):
         """
         method, path = Api.profile_get_avatar(user_id or self.user_id)
 
-        return await self._send(
-            ProfileGetAvatarResponse,
-            method,
-            path,
-        )
+        return await self._send(ProfileGetAvatarResponse, method, path,)
 
     @logged_in
-    async def set_avatar(self, avatar_url):
-        # type: (str) -> Union[ProfileSetAvatarResponse, ProfileSetAvatarError]
+    async def set_avatar(
+        self, avatar_url: str
+    ) -> Union[ProfileSetAvatarResponse, ProfileSetAvatarError]:
         """Set the user's avatar URL.
 
         This tells the server to set the avatar of the currently logged
@@ -2313,14 +2263,7 @@ class AsyncClient(Client):
             avatar_url (str): matrix content URI of the avatar to set.
         """
         method, path, data = Api.profile_set_avatar(
-            self.access_token,
-            self.user_id,
-            avatar_url
+            self.access_token, self.user_id, avatar_url
         )
 
-        return await self._send(
-            ProfileSetAvatarResponse,
-            method,
-            path,
-            data,
-        )
+        return await self._send(ProfileSetAvatarResponse, method, path, data,)

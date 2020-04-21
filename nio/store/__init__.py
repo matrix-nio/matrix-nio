@@ -18,13 +18,6 @@ if package_installed("olm"):
     from .log import logger
     from .file_trustdb import Key, KeyStore, Ed25519Key
     from .models import (
-        LegacyAccounts,
-        LegacyOlmSessions,
-        LegacyDeviceKeys,
-        LegacyMegolmInboundSessions,
-        LegacyForwardedChains,
-        LegacyEncryptedRooms,
-        LegacyOutgoingKeyRequests,
         DeviceKeys_v1,
         Accounts,
         OlmSessions,
@@ -42,7 +35,6 @@ if package_installed("olm"):
     from .database import (
         DefaultStore,
         MatrixStore,
-        LegacyMatrixStore,
         SqliteStore,
         SqliteMemoryStore,
         use_database,

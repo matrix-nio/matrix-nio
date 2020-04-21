@@ -15,18 +15,36 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    Coroutine,
+)
 
 import attr
 from logbook import Logger
 from collections import defaultdict
-import warnings
 
 from ..crypto import ENCRYPTION_ENABLED
-from ..events import (BadEventType, Event, MegolmEvent,
-                      RoomEncryptionEvent, RoomMemberEvent,
-                      ToDeviceEvent, RoomKeyRequest,
-                      RoomKeyRequestCancellation)
+from ..events import (
+    BadEventType,
+    BadEvent,
+    UnknownBadEvent,
+    Event,
+    MegolmEvent,
+    RoomEncryptionEvent,
+    RoomMemberEvent,
+    ToDeviceEvent,
+    RoomKeyRequest,
+    RoomKeyRequestCancellation,
+)
 from ..exceptions import LocalProtocolError, MembersSyncError
 from ..log import logger_group
 from ..responses import (ErrorResponse, JoinedMembersResponse,
@@ -36,16 +54,39 @@ from ..responses import (ErrorResponse, JoinedMembersResponse,
                          RoomForgetResponse, RoomKeyRequestResponse,
                          RoomMessagesResponse, ShareGroupSessionResponse,
                          SyncResponse, SyncType, ToDeviceResponse)
+from ..responses import (
+    ErrorResponse,
+    JoinedMembersResponse,
+    RoomInfo,
+    KeysClaimResponse,
+    KeysQueryResponse,
+    KeysUploadResponse,
+    LoginResponse,
+    LogoutResponse,
+    PartialSyncResponse,
+    RegisterResponse,
+    Response,
+    RoomContextResponse,
+    RoomForgetResponse,
+    RoomKeyRequestResponse,
+    RoomMessagesResponse,
+    ShareGroupSessionResponse,
+    SyncResponse,
+    SyncType,
+    ToDeviceResponse,
+)
 from ..rooms import MatrixInvitedRoom, MatrixRoom
 
+from ..crypto import DeviceStore, OlmDevice, OutgoingKeyRequest
+
 if ENCRYPTION_ENABLED:
-    from ..crypto import Olm, DeviceStore
+    from ..crypto import Olm
     from ..store import DefaultStore, MatrixStore
 
+from ..event_builders import ToDeviceMessage
 
 if False:
-    from ..crypto import OlmDevice, OutgoingKeyRequest, Sas
-    from ..event_builders import ToDeviceMessage
+    from ..crypto import Sas
 
 try:
     from json.decoder import JSONDecodeError
@@ -63,6 +104,7 @@ def logged_in(func):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
         return func(self, *args, **kwargs)
+
     return wrapper
 
 
@@ -70,9 +112,9 @@ def store_loaded(fn):
     @wraps(fn)
     def inner(self, *args, **kwargs):
         if not self.store or not self.olm:
-            raise LocalProtocolError("Matrix store and olm account is not "
-                                     "loaded.")
+            raise LocalProtocolError("Matrix store and olm account is not loaded.")
         return fn(self, *args, **kwargs)
+
     return inner
 
 
@@ -118,9 +160,11 @@ class ClientConfig(object):
 
     def __attrs_post_init__(self):
         if not ENCRYPTION_ENABLED and self.encryption_enabled:
-            raise ImportWarning("Encryption is enabled in the client "
-                                "configuration but dependencies for E2E "
-                                "encrytpion aren't installed.")
+            raise ImportWarning(
+                "Encryption is enabled in the client "
+                "configuration but dependencies for E2E "
+                "encrytpion aren't installed."
+            )
 
 
 class Client(object):
@@ -152,17 +196,16 @@ class Client(object):
 
     def __init__(
         self,
-        user,            # type: str
-        device_id=None,  # type: Optional[str]
-        store_path="",  # type: Optional[str]
-        config=None,     # type: Optional[ClientConfig]
+        user: str,
+        device_id: Optional[str] = None,
+        store_path: Optional[str] = "",
+        config: Optional[ClientConfig] = None,
     ):
-        # type: (...) -> None
         self.user = user
         self.device_id = device_id
         self.store_path = store_path
-        self.olm = None    # type: Optional[Olm]
-        self.store = None  # type: Optional[MatrixStore]
+        self.olm: Optional[Olm] = None
+        self.store: Optional[MatrixStore] = None
         self.config = config or ClientConfig()
 
         self.user_id = ""
@@ -171,17 +214,16 @@ class Client(object):
         self.next_batch = ""
         self.loaded_sync_token = ""
 
-        self.rooms = dict()  # type: Dict[str, MatrixRoom]
-        self.invited_rooms = dict()  # type: Dict[str, MatrixRoom]
-        self.encrypted_rooms = set()  # type: Set[str]
+        self.rooms: Dict[str, MatrixRoom] = dict()
+        self.invited_rooms: Dict[str, MatrixInvitedRoom] = dict()
+        self.encrypted_rooms: Set[str] = set()
 
-        self.event_callbacks = []      # type: List[ClientCallback]
-        self.ephemeral_callbacks = []  # type: List[ClientCallback]
-        self.to_device_callbacks = []  # type: List[ClientCallback]
+        self.event_callbacks: List[ClientCallback] = []
+        self.ephemeral_callbacks: List[ClientCallback] = []
+        self.to_device_callbacks: List[ClientCallback] = []
 
     @property
-    def logged_in(self):
-        # type: () -> bool
+    def logged_in(self) -> bool:
         """Check if we are logged in.
 
         Returns True if the client is logged in to the server, False otherwise.
@@ -190,8 +232,7 @@ class Client(object):
 
     @property  # type: ignore
     @store_loaded
-    def device_store(self):
-        # type: () -> DeviceStore
+    def device_store(self) -> DeviceStore:
         """Store containing known devices.
 
         Returns a ``DeviceStore`` holding all known olm devices.
@@ -201,16 +242,16 @@ class Client(object):
 
     @property  # type: ignore
     @store_loaded
-    def olm_account_shared(self):
+    def olm_account_shared(self) -> bool:
         """Check if the clients Olm account is shared with the server.
 
         Returns True if the Olm account is shared, False otherwise.
         """
+        assert self.olm
         return self.olm.account.shared
 
     @property
-    def users_for_key_query(self):
-        # type: () -> Set[str]
+    def users_for_key_query(self) -> Set[str]:
         """Users for whom we should make a key query."""
         if not self.olm:
             return set()
@@ -218,7 +259,7 @@ class Client(object):
         return self.olm.users_for_key_query
 
     @property
-    def should_upload_keys(self):
+    def should_upload_keys(self) -> bool:
         """Check if the client should upload encryption keys.
 
         Returns True if encryption keys need to be uploaded, false otherwise.
@@ -229,7 +270,7 @@ class Client(object):
         return self.olm.should_upload_keys
 
     @property
-    def should_query_keys(self):
+    def should_query_keys(self) -> bool:
         """Check if the client should make a key query call to the server.
 
         Returns True if a key query is necessary, false otherwise.
@@ -240,7 +281,7 @@ class Client(object):
         return self.olm.should_query_keys
 
     @property
-    def should_claim_keys(self):
+    def should_claim_keys(self) -> bool:
         """Check if the client should claim one-time keys for some users.
 
         This should be periodically checked and if true a keys claim request
@@ -257,29 +298,26 @@ class Client(object):
         if not self.olm:
             return False
 
-        return bool(self.olm.wedged_devices
-                    or self.olm.key_request_devices_no_session)
+        return bool(self.olm.wedged_devices or self.olm.key_request_devices_no_session)
 
     @property
-    def outgoing_key_requests(self):
-        # type: () -> Dict[str, OutgoingKeyRequest]
+    def outgoing_key_requests(self) -> Dict[str, OutgoingKeyRequest]:
         """Our active key requests that we made."""
         return self.olm.outgoing_key_requests if self.olm else dict()
 
     @property
     def key_verifications(self):
-        # type: () -> Dict[str, Sas]
+        # type () -> Dict[str, Sas]
         """Key verifications that the client is participating in."""
         return self.olm.key_verifications if self.olm else dict()
 
     @property
-    def outgoing_to_device_messages(self):
-        # type: () -> List[ToDeviceMessage]
+    def outgoing_to_device_messages(self) -> List[ToDeviceMessage]:
         """To-device messages that we need to send out."""
         return self.olm.outgoing_to_device_messages if self.olm else []
 
     def get_active_sas(self, user_id, device_id):
-        # type: (str, str) -> Optional[Sas]
+        # type (str, str) -> Optional[Sas]
         """Find a non-canceled SAS verification object for the provided user.
 
         Args:
@@ -296,7 +334,6 @@ class Client(object):
         return self.olm.get_active_sas(user_id, device_id)
 
     def load_store(self):
-        # type: () -> None
         """Load the session store and olm account.
 
         Raises LocalProtocolError if the session_path, user_id and device_id
@@ -315,8 +352,7 @@ class Client(object):
             raise LocalProtocolError("Device id is not set")
 
         if not self.config.store:
-            raise LocalProtocolError("No store class was provided in the "
-                                     "config.")
+            raise LocalProtocolError("No store class was provided in the config.")
 
         if self.config.encryption_enabled:
             self.store = self.config.store(
@@ -324,7 +360,7 @@ class Client(object):
                 self.device_id,
                 self.store_path,
                 self.config.pickle_key,
-                self.config.store_name
+                self.config.store_name,
             )
             assert self.store
 
@@ -334,8 +370,7 @@ class Client(object):
             if self.config.store_sync_tokens:
                 self.loaded_sync_token = self.store.load_sync_token()
 
-    def room_contains_unverified(self, room_id):
-        # type: (str) -> bool
+    def room_contains_unverified(self, room_id: str) -> bool:
         """Check if a room contains unverified devices.
 
         Args:
@@ -348,9 +383,7 @@ class Client(object):
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError(
-                "No room found with room id {}".format(room_id)
-            )
+            raise LocalProtocolError("No room found with room id {}".format(room_id))
 
         if not room.encrypted:
             return False
@@ -364,23 +397,21 @@ class Client(object):
 
         return False
 
-    def _invalidate_session_for_member_event(self, room_id):
+    def _invalidate_session_for_member_event(self, room_id: str):
         if not self.olm:
             return
         self.invalidate_outbound_session(room_id)
 
     @store_loaded
-    def invalidate_outbound_session(self, room_id):
+    def invalidate_outbound_session(self, room_id: str):
         """Explicitely remove encryption keys for a room.
 
         Args:
             room_id (str): Room id for the room the encryption keys should be
                 removed.
         """
-        session = self.olm.outbound_group_sessions.pop(
-            room_id,
-            None
-        )
+        assert self.olm
+        session = self.olm.outbound_group_sessions.pop(room_id, None)
 
         # There is no need to invalidate the session if it was never
         # shared, put it back where it was.
@@ -398,8 +429,7 @@ class Client(object):
                 self.invalidate_outbound_session(room.room_id)
 
     @store_loaded
-    def verify_device(self, device):
-        # type: (OlmDevice) -> bool
+    def verify_device(self, device: OlmDevice) -> bool:
         """Mark a device as verified.
 
         A device needs to be either trusted or blacklisted to either share room
@@ -423,8 +453,7 @@ class Client(object):
         return changed
 
     @store_loaded
-    def unverify_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unverify_device(self, device: OlmDevice) -> bool:
         """Unmark a device as verified.
 
         This method removes the device from the trusted devices and disables
@@ -447,8 +476,7 @@ class Client(object):
         return changed
 
     @store_loaded
-    def blacklist_device(self, device):
-        # type: (OlmDevice) -> bool
+    def blacklist_device(self, device: OlmDevice) -> bool:
         """Mark a device as blacklisted.
 
         Devices on the blacklist will not receive room encryption keys and
@@ -470,8 +498,7 @@ class Client(object):
         return changed
 
     @store_loaded
-    def unblacklist_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unblacklist_device(self, device: OlmDevice) -> bool:
         """Unmark a device as blacklisted.
 
         Args:
@@ -490,8 +517,7 @@ class Client(object):
         return changed
 
     @store_loaded
-    def ignore_device(self, device):
-        # type: (OlmDevice) -> bool
+    def ignore_device(self, device: OlmDevice) -> bool:
         """Mark a device as ignored.
 
         Ignored devices will still receive room encryption keys, despire not
@@ -512,8 +538,7 @@ class Client(object):
         return changed
 
     @store_loaded
-    def unignore_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unignore_device(self, device: OlmDevice) -> bool:
         """Unmark a device as ignored.
 
         Args:
@@ -553,8 +578,7 @@ class Client(object):
         if self.store_path and not (self.store and self.olm):
             self.load_store()
 
-    def _handle_login(self, response):
-        # type: (Union[LoginResponse, ErrorResponse]) -> None
+    def _handle_login(self, response: Union[LoginResponse, ErrorResponse]):
         if isinstance(response, ErrorResponse):
             return
 
@@ -565,17 +589,12 @@ class Client(object):
         if self.store_path and not (self.store and self.olm):
             self.load_store()
 
-    def _handle_logout(self, response):
-        # type: (Union[LogoutResponse, ErrorResponse]) -> None
+    def _handle_logout(self, response: Union[LogoutResponse, ErrorResponse]):
         if not isinstance(response, ErrorResponse):
             self.access_token = ""
 
     @store_loaded
-    def decrypt_event(
-        self,
-        event  # type: MegolmEvent
-    ):
-        # type: (...) -> Union[Event, BadEventType]
+    def decrypt_event(self, event: MegolmEvent) -> Union[Event, BadEventType]:
         """Try to decrypt an undecrypted megolm event.
 
         Args:
@@ -585,32 +604,36 @@ class Client(object):
         error while decrypting.
         """
         if not isinstance(event, MegolmEvent):
-            raise ValueError("Invalid event, this function can only decrypt "
-                             "MegolmEvents")
+            raise ValueError(
+                "Invalid event, this function can only decrypt " "MegolmEvents"
+            )
 
         assert self.olm
         return self.olm.decrypt_megolm_event(event)
 
-    def _handle_decrypt_to_device(self, to_device_event):
+    def _handle_decrypt_to_device(
+        self, to_device_event: ToDeviceEvent
+    ) -> Optional[ToDeviceEvent]:
         if self.olm:
             return self.olm.handle_to_device_event(to_device_event)
 
         return None
 
-    def _replace_decrypted_to_device(self, decrypted_events, response):
+    def _replace_decrypted_to_device(
+        self, decrypted_events: List[Tuple[int, ToDeviceEvent]], response: SyncType
+    ):
         # Replace the encrypted to_device events with decrypted ones
         for decrypted_event in decrypted_events:
             index, event = decrypted_event
             response.to_device_events[index] = event
 
-    def _run_to_device_callbacks(self, event):
+    def _run_to_device_callbacks(self, event: ToDeviceEvent):
         for cb in self.to_device_callbacks:
-            if (cb.filter is None
-                    or isinstance(event, cb.filter)):
+            if cb.filter is None or isinstance(event, cb.filter):
                 cb.func(event)
 
-    def _handle_to_device(self, response):
-        decrypted_to_device = []  # type: ignore
+    def _handle_to_device(self, response: SyncType):
+        decrypted_to_device = []
 
         for index, to_device_event in enumerate(response.to_device_events):
             decrypted_event = self._handle_decrypt_to_device(to_device_event)
@@ -623,8 +646,7 @@ class Client(object):
             # want to notify them about requests that get automatically handled
             # or canceled right away.
             if isinstance(
-                to_device_event,
-                (RoomKeyRequest, RoomKeyRequestCancellation)
+                to_device_event, (RoomKeyRequest, RoomKeyRequestCancellation)
             ):
                 continue
 
@@ -632,16 +654,14 @@ class Client(object):
 
         self._replace_decrypted_to_device(decrypted_to_device, response)
 
-    def _get_invited_room(self, room_id):
+    def _get_invited_room(self, room_id: str) -> MatrixInvitedRoom:
         if room_id not in self.invited_rooms:
             logger.info("New invited room {}".format(room_id))
-            self.invited_rooms[room_id] = MatrixInvitedRoom(
-                room_id, self.user_id
-            )
+            self.invited_rooms[room_id] = MatrixInvitedRoom(room_id, self.user_id)
 
         return self.invited_rooms[room_id]
 
-    def _handle_invited_rooms(self, response):
+    def _handle_invited_rooms(self, response: SyncType):
         for room_id, info in response.rooms.invite.items():
             room = self._get_invited_room(room_id)
 
@@ -649,19 +669,19 @@ class Client(object):
                 room.handle_event(event)
 
                 for cb in self.event_callbacks:
-                    if (cb.filter is None or isinstance(event, cb.filter)):
+                    if cb.filter is None or isinstance(event, cb.filter):
                         cb.func(room, event)
 
-    def _handle_joined_state(self, room_id, join_info, encrypted_rooms):
+    def _handle_joined_state(
+        self, room_id: str, join_info: RoomInfo, encrypted_rooms: Set[str]
+    ):
         if room_id in self.invited_rooms:
             del self.invited_rooms[room_id]
 
         if room_id not in self.rooms:
             logger.info("New joined room {}".format(room_id))
             self.rooms[room_id] = MatrixRoom(
-                room_id,
-                self.user_id,
-                room_id in self.encrypted_rooms
+                room_id, self.user_id, room_id in self.encrypted_rooms
             )
 
         room = self.rooms[room_id]
@@ -679,12 +699,18 @@ class Client(object):
         if join_info.summary:
             room.update_summary(join_info.summary)
 
-    def _handle_timeline_event(self, event, room_id, room, encrypted_rooms):
+    def _handle_timeline_event(
+        self,
+        event: Union[Event, BadEventType],
+        room_id: str,
+        room: MatrixRoom,
+        encrypted_rooms: Set[str],
+    ) -> Optional[Union[Event, BadEventType]]:
         decrypted_event = None
 
         if isinstance(event, MegolmEvent) and self.olm:
             event.room_id = room_id
-            decrypted_event = self.olm.decrypt_event(event)
+            decrypted_event = self.olm._decrypt_megolm_no_error(event)
 
             if decrypted_event:
                 event = decrypted_event
@@ -695,26 +721,27 @@ class Client(object):
         if isinstance(event, RoomMemberEvent):
             if room.handle_membership(event):
                 self._invalidate_session_for_member_event(room_id)
+
+        elif isinstance(event, (UnknownBadEvent, BadEvent)):
+            pass
+
         else:
             room.handle_event(event)
 
         return decrypted_event
 
-    def _handle_joined_rooms(self, response):
-        encrypted_rooms = set()
+    def _handle_joined_rooms(self, response: SyncType):
+        encrypted_rooms: Set[str] = set()
 
         for room_id, join_info in response.rooms.join.items():
             self._handle_joined_state(room_id, join_info, encrypted_rooms)
 
             room = self.rooms[room_id]
-            decrypted_events = []
+            decrypted_events: List[Tuple[int, Union[Event, BadEventType]]] = []
 
             for index, event in enumerate(join_info.timeline.events):
                 decrypted_event = self._handle_timeline_event(
-                    event,
-                    room_id,
-                    room,
-                    encrypted_rooms
+                    event, room_id, room, encrypted_rooms
                 )
 
                 if decrypted_event:
@@ -722,19 +749,18 @@ class Client(object):
                     decrypted_events.append((index, decrypted_event))
 
                 for cb in self.event_callbacks:
-                    if (cb.filter is None or isinstance(event, cb.filter)):
+                    if cb.filter is None or isinstance(event, cb.filter):
                         cb.func(room, event)
 
             # Replace the Megolm events with decrypted ones
-            for decrypted_event in decrypted_events:
-                index, event = decrypted_event
+            for index, event in decrypted_events:
                 join_info.timeline.events[index] = event
 
             for event in join_info.ephemeral:
                 room.handle_ephemeral_event(event)
 
                 for cb in self.ephemeral_callbacks:
-                    if (cb.filter is None or isinstance(event, cb.filter)):
+                    if cb.filter is None or isinstance(event, cb.filter):
                         cb.func(room, event)
 
             if room.encrypted and self.olm is not None:
@@ -750,14 +776,14 @@ class Client(object):
 
         for event in expired_verifications:
             for cb in self.to_device_callbacks:
-                if (cb.filter is None
-                        or isinstance(event, cb.filter)):
+                if cb.filter is None or isinstance(event, cb.filter):
                     cb.func(event)
 
-    def _handle_olm_events(self, response):
+    def _handle_olm_events(self, response: SyncType):
+        assert self.olm
+
         changed_users = set()
-        self.olm.uploaded_key_count = (
-            response.device_key_count.signed_curve25519)
+        self.olm.uploaded_key_count = response.device_key_count.signed_curve25519
 
         for user in response.device_list.changed:
             for room in self.rooms.values():
@@ -777,11 +803,12 @@ class Client(object):
 
         self.olm.add_changed_users(changed_users)
 
-    def _handle_sync(self, response):
-        # type: (SyncType) -> None
+    def _handle_sync(
+        self, response: SyncType
+    ) -> Union[None, Coroutine[Any, Any, None]]:
         # We already recieved such a sync response, do nothing in that case.
         if self.next_batch == response.next_batch:
-            return
+            return None
 
         if isinstance(response, SyncResponse):
             self.next_batch = response.next_batch
@@ -800,12 +827,14 @@ class Client(object):
             self._handle_olm_events(response)
             self._collect_key_requests()
 
+        return None
+
     def _collect_key_requests(self):
         events = self.olm.collect_key_requests()
         for event in events:
             self._run_to_device_callbacks(event)
 
-    def _decrypt_event_array(self, array):
+    def _decrypt_event_array(self, array: List[Union[Event, BadEventType]]):
         if not self.olm:
             return
 
@@ -813,7 +842,7 @@ class Client(object):
 
         for index, event in enumerate(array):
             if isinstance(event, MegolmEvent):
-                new_event = self.olm.decrypt_event(event)
+                new_event = self.olm._decrypt_megolm_no_error(event)
                 if new_event:
                     decrypted_events.append((index, new_event))
 
@@ -821,31 +850,38 @@ class Client(object):
             index, event = decrypted_event
             array[index] = event
 
-    def _handle_context_response(self, response):
-        assert isinstance(response, RoomContextResponse)
-
+    def _handle_context_response(self, response: RoomContextResponse):
         if isinstance(response.event, MegolmEvent):
             if self.olm:
-                decrypted_event = self.olm.decrypt_event(response.event)
+                decrypted_event = self.olm._decrypt_megolm_no_error(response.event)
                 response.event = decrypted_event
 
         self._decrypt_event_array(response.events_after)
         self._decrypt_event_array(response.events_before)
 
-    def _handle_messages_response(self, response):
+    def _handle_messages_response(self, response: RoomMessagesResponse):
         decrypted_events = []
 
         for index, event in enumerate(response.chunk):
             if isinstance(event, MegolmEvent) and self.olm:
-                new_event = self.olm.decrypt_event(event)
+                new_event = self.olm._decrypt_megolm_no_error(event)
                 if new_event:
                     decrypted_events.append((index, new_event))
 
-        for decrypted_event in decrypted_events:
-            index, event = decrypted_event
+        for index, event in decrypted_events:
             response.chunk[index] = event
 
-    def _handle_olm_response(self, response):
+    def _handle_olm_response(
+        self,
+        response: Union[
+            ShareGroupSessionResponse,
+            KeysClaimResponse,
+            KeysQueryResponse,
+            KeysUploadResponse,
+            RoomKeyRequestResponse,
+            ToDeviceResponse,
+        ],
+    ):
         if not self.olm:
             return
 
@@ -856,22 +892,25 @@ class Client(object):
             session = self.olm.outbound_group_sessions.get(room_id, None)
             room = self.rooms.get(room_id, None)
 
-            session.users_shared_with.update(response.users_shared_with)
-
-            if not session and not room:
+            if not session or not room:
                 return
 
+            session.users_shared_with.update(response.users_shared_with)
             users = room.users
 
             for user_id in users:
                 for device in self.device_store.active_user_devices(user_id):
                     user = (user_id, device.id)
-                    if (user not in session.users_shared_with
-                            and user not in session.users_ignored):
+                    if (
+                        user not in session.users_shared_with
+                        and user not in session.users_ignored
+                    ):
                         return
 
-            logger.info("Marking outbound group session for room {} "
-                        "as shared".format(room_id))
+            logger.info(
+                "Marking outbound group session for room {} "
+                "as shared".format(room_id)
+            )
             session.shared = True
 
         elif isinstance(response, KeysQueryResponse):
@@ -880,21 +919,19 @@ class Client(object):
                     if room.encrypted and user_id in room.users:
                         self.invalidate_outbound_session(room.room_id)
 
-    def _handle_joined_members(self, response):
+    def _handle_joined_members(self, response: JoinedMembersResponse):
         if response.room_id not in self.rooms:
             return
 
         room = self.rooms[response.room_id]
 
         for member in response.members:
-            room.add_member(
-                member.user_id, member.display_name, member.avatar_url
-            )
+            room.add_member(member.user_id, member.display_name, member.avatar_url)
 
         if room.encrypted and self.olm is not None:
             self.olm.update_tracked_users(room)
 
-    def _handle_room_forget_response(self, response):
+    def _handle_room_forget_response(self, response: RoomForgetResponse):
         self.encrypted_rooms.discard(response.room_id)
 
         if response.room_id in self.rooms:
@@ -906,8 +943,9 @@ class Client(object):
         elif response.room_id in self.invited_rooms:
             del self.invited_rooms[response.room_id]
 
-    def receive_response(self, response):
-        # type: (Response) -> None
+    def receive_response(
+        self, response: Response
+    ) -> Union[None, Coroutine[Any, Any, None]]:
         """Receive a Matrix Response and change the client state accordingly.
 
         Some responses will get edited for the callers convenience e.g. sync
@@ -952,9 +990,10 @@ class Client(object):
             if response.soft_logout:
                 self.access_token = ""
 
+        return None
+
     @store_loaded
-    def export_keys(self, outfile, passphrase, count=10000):
-        # type: (str, str, int) -> None
+    def export_keys(self, outfile: str, passphrase: str, count: int = 10000):
         """Export all the Megolm decryption keys of this device.
 
         The keys will be encrypted using the passphrase.
@@ -973,8 +1012,7 @@ class Client(object):
         self.olm.export_keys(outfile, passphrase, count=count)
 
     @store_loaded
-    def import_keys(self, infile, passphrase):
-        # type: (str, str) -> None
+    def import_keys(self, infile: str, passphrase: str):
         """Import Megolm decryption keys.
 
         The keys will be added to the current instance as well as written to
@@ -993,8 +1031,7 @@ class Client(object):
         self.olm.import_keys(infile, passphrase)
 
     @store_loaded
-    def get_missing_sessions(self, room_id):
-        # type: (str) -> Dict[str, List[str]]
+    def get_missing_sessions(self, room_id: str) -> Dict[str, List[str]]:
         """Get users and devices for wich we don't have active Olm sessions.
 
         Args:
@@ -1007,20 +1044,16 @@ class Client(object):
         assert self.olm
 
         if room_id not in self.rooms:
-            raise LocalProtocolError("No room found with room id {}".format(
-                room_id
-            ))
+            raise LocalProtocolError("No room found with room id {}".format(room_id))
         room = self.rooms[room_id]
 
         if not room.encrypted:
-            raise LocalProtocolError("Room with id {} is not encrypted".format(
-                                     room_id))
+            raise LocalProtocolError("Room with id {} is not encrypted".format(room_id))
 
         return self.olm.get_missing_sessions(list(room.users))
 
     @store_loaded
-    def get_users_for_key_claiming(self):
-        # type: () -> Dict[str, List[str]]
+    def get_users_for_key_claiming(self) -> Dict[str, List[str]]:
         """Get the content for a key claim request that needs to be made.
 
         Returns a dictionary containing users as the keys and a list of devices
@@ -1032,8 +1065,9 @@ class Client(object):
         return self.olm.get_users_for_key_claiming()
 
     @store_loaded
-    def encrypt(self, room_id, message_type, content):
-        # type: (str, str, Dict[Any, Any]) -> Tuple[str, Dict[str, str]]
+    def encrypt(
+        self, room_id: str, message_type: str, content: Dict[Any, Any]
+    ) -> Tuple[str, Dict[str, str]]:
         """Encrypt a message to be sent to the provided room.
 
         Args:
@@ -1057,32 +1091,28 @@ class Client(object):
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError(
-                "No such room with id {} found.".format(room_id)
-            )
+            raise LocalProtocolError("No such room with id {} found.".format(room_id))
 
         if not room.encrypted:
-            raise LocalProtocolError(
-                "Room {} is not encrypted".format(room_id)
-            )
+            raise LocalProtocolError("Room {} is not encrypted".format(room_id))
 
         if not room.members_synced:
-            raise MembersSyncError("The room is encrypted and the members "
-                                   "aren't fully synced.")
+            raise MembersSyncError(
+                "The room is encrypted and the members " "aren't fully synced."
+            )
 
         content = self.olm.group_encrypt(
-            room_id,
-            {
-                "content": content,
-                "type": message_type
-            },
+            room_id, {"content": content, "type": message_type},
         )
         message_type = "m.room.encrypted"
 
         return message_type, content
 
-    def add_event_callback(self, callback, filter):
-        # type: (Callable[[MatrixRoom, Event], None], Tuple[Type]) -> None
+    def add_event_callback(
+        self,
+        callback: Callable[[MatrixRoom, Event], None],
+        filter: Union[Type, Tuple[Type]],
+    ):
         """Add a callback that will be executed on room events.
 
         The callback can be used on joined rooms as well as on invited rooms.
@@ -1090,26 +1120,21 @@ class Client(object):
         depending on if the room is joined or invited.
 
         Args:
-            callback (Callable[Union[MatrixRoom, MatrixInvitedRoom, Event]): A
+            callback (Callable[[MatrixRoom, Event], None]): A
                 function that will be called if the event type in the filter
                 argument is found in a room timeline.
-            filter (Type, Tuple[Type]): The event type or a tuple containing
+            filter (Union[Type, Tuple[Type]]): The event type or a tuple containing
                 multiple types for which the function will be called.
 
         """
         cb = ClientCallback(callback, filter)
         self.event_callbacks.append(cb)
 
-    def add_ephermeral_callback(self, callback, filter):
-        """Deprecated: typo in function name."""
-        warnings.warn(
-            "deprecated. Use add_ephemeral_callback.",
-            DeprecationWarning
-        )
-        self.add_ephemeral_callback(callback, filter)
-
-    def add_ephemeral_callback(self, callback, filter):
-        # type: (Callable[[MatrixRoom, Event], None], Tuple[Type]) -> None
+    def add_ephemeral_callback(
+        self,
+        callback: Callable[[MatrixRoom, Event], None],
+        filter: Union[Type, Tuple[Type]],
+    ):
         """Add a callback that will be executed on ephemeral room events.
 
         Args:
@@ -1123,15 +1148,18 @@ class Client(object):
         cb = ClientCallback(callback, filter)
         self.ephemeral_callbacks.append(cb)
 
-    def add_to_device_callback(self, callback, filter):
-        # type: (Callable[[ToDeviceEvent], None], Tuple[Type]) -> None
+    def add_to_device_callback(
+        self,
+        callback: Callable[[ToDeviceEvent], None],
+        filter: Union[Type, Tuple[Type]],
+    ):
         """Add a callback that will be executed on to-device events.
 
         Args:
-            callback (Callable[Event]): A function that will be
+            callback (Callable[[ToDeviceEvent], None]): A function that will be
                 called if the event type in the filter argument is found in a
                 the to-device part of the sync response.
-            filter (Type, Tuple[Type]): The event type or a tuple containing
+            filter (Union[Type, Tuple[Type]]): The event type or a tuple containing
                 multiple types for which the function will be called.
 
         """
@@ -1139,8 +1167,7 @@ class Client(object):
         self.to_device_callbacks.append(cb)
 
     @store_loaded
-    def create_key_verification(self, device):
-        # type: (OlmDevice) -> ToDeviceMessage
+    def create_key_verification(self, device: OlmDevice) -> ToDeviceMessage:
         """Start a new key verification process with the given device.
 
         Args:
@@ -1152,8 +1179,7 @@ class Client(object):
         return self.olm.create_sas(device)
 
     @store_loaded
-    def confirm_key_verification(self, transaction_id):
-        # type: (str) -> ToDeviceMessage
+    def confirm_key_verification(self, transaction_id: str) -> ToDeviceMessage:
         """Confirm that the short auth string of a key verification matches.
 
         Args:
@@ -1167,10 +1193,10 @@ class Client(object):
         verification process.
         """
         if transaction_id not in self.key_verifications:
-            raise LocalProtocolError("Key verification with the transaction "
-                                     "id {} does not exist.".format(
-                                         transaction_id
-                                     ))
+            raise LocalProtocolError(
+                "Key verification with the transaction "
+                "id {} does not exist.".format(transaction_id)
+            )
 
         sas = self.key_verifications[transaction_id]
 
@@ -1182,8 +1208,7 @@ class Client(object):
 
         return message
 
-    def room_devices(self, room_id):
-        # type (str) -> Dict[str, Dict[str, OlmDevice]]
+    def room_devices(self, room_id: str) -> Dict[str, Dict[str, OlmDevice]]:
         """Get all Olm devices participating in a room.
 
         Args:
@@ -1195,7 +1220,7 @@ class Client(object):
 
         Raises LocalProtocolError if no room is found with the given room_id.
         """
-        devices = defaultdict(dict)
+        devices: Dict[str, Dict[str, OlmDevice]] = defaultdict(dict)
 
         if not self.olm:
             return devices
@@ -1203,9 +1228,7 @@ class Client(object):
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError(
-                "No room found with room id {}".format(room_id)
-            )
+            raise LocalProtocolError("No room found with room id {}".format(room_id))
 
         if not room.encrypted:
             return devices
@@ -1219,8 +1242,9 @@ class Client(object):
         return devices
 
     @store_loaded
-    def get_active_key_requests(self, user_id, device_id):
-        # type: (str, str) -> List[RoomKeyRequest]
+    def get_active_key_requests(
+        self, user_id: str, device_id: str
+    ) -> List[RoomKeyRequest]:
         """Get key requests from a device that are waiting for verification.
 
         Args:
@@ -1252,8 +1276,7 @@ class Client(object):
         return self.olm.get_active_key_requests(user_id, device_id)
 
     @store_loaded
-    def continue_key_share(self, event):
-        # type: (RoomKeyRequest) -> bool
+    def continue_key_share(self, event: RoomKeyRequest) -> bool:
         """Continue a previously interrupted key share event.
 
         To handle room key requests properly client users need to add a
@@ -1285,8 +1308,7 @@ class Client(object):
         return self.olm.continue_key_share(event)
 
     @store_loaded
-    def cancel_key_share(self, event):
-        # type: (RoomKeyRequest) -> bool
+    def cancel_key_share(self, event: RoomKeyRequest) -> bool:
         """Cancel a previously interrupted key share event.
 
         This method is the counterpart to the `continue_key_share()` method. If

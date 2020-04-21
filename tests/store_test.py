@@ -13,8 +13,8 @@ from nio.crypto import (InboundGroupSession, OlmAccount, OlmDevice,
                         OutboundGroupSession, OutboundSession,
                         OutgoingKeyRequest, TrustState)
 from nio.exceptions import OlmTrustError
-from nio.store import (Ed25519Key, Key, KeyStore, LegacyMatrixStore,
-                       MatrixStore, DefaultStore, SqliteMemoryStore, SqliteStore)
+from nio.store import (Ed25519Key, Key, KeyStore, MatrixStore, DefaultStore,
+                       SqliteMemoryStore, SqliteStore)
 
 BOB_ID = "@bob:example.org"
 BOB_DEVICE = "AGMTSWVYML"
@@ -58,7 +58,7 @@ def sqlmemorystore():
 class TestClass(object):
     @property
     def ephemeral_store(self):
-        return LegacyMatrixStore(
+        return MatrixStore(
             "@ephemeral:example.org",
             "DEVICEID",
             ephemeral_dir
@@ -284,7 +284,7 @@ class TestClass(object):
             loaded_account = store.load_account()
             assert account.identity_keys == loaded_account.identity_keys
 
-            store2 = LegacyMatrixStore("ephemeral2", "DEVICEID2", ephemeral_dir)
+            store2 = MatrixStore("ephemeral2", "DEVICEID2", ephemeral_dir)
             assert not store2.load_account()
 
             loaded_account = store.load_account()
@@ -492,7 +492,7 @@ class TestClass(object):
         user2 = "alice"
         device_id2 = "ALICE_ID"
 
-        store = LegacyMatrixStore(user, device_id, tempdir,
+        store = MatrixStore(user, device_id, tempdir,
                                   database_name="test.db")
         account = OlmAccount()
         session = OutboundSession(account, BOB_CURVE, BOB_ONETIME)
@@ -512,7 +512,7 @@ class TestClass(object):
         store.save_inbound_group_session(in_group)
         store.save_device_keys(devices)
 
-        store2 = LegacyMatrixStore(user2, device_id2, tempdir,
+        store2 = MatrixStore(user2, device_id2, tempdir,
                                    database_name="test.db")
         account2 = OlmAccount()
         store2.save_account(account2)
@@ -550,28 +550,6 @@ class TestClass(object):
         assert bob_device.curve25519 == BOB_CURVE
         assert not bob_device.deleted
         assert len(device_store.users) == 11
-
-    def test_real_db_upgrade(self, tempdir):
-        path = os.path.abspath("tests/data/weechat_test.db")
-        copyfile(path, os.path.join(tempdir, "weechat_test.db"))
-        print(path)
-        store = MatrixStore(
-            "@pjtest:termina.org.uk",
-            "LHNALLSCNA",
-            tempdir,
-            "DEFAULT_KEY",
-            database_name="weechat_test.db"
-        )
-        store.save_encrypted_rooms([TEST_ROOM])
-
-        account = store.load_account()
-        encrypted_rooms = store.load_encrypted_rooms()
-
-        assert TEST_ROOM in encrypted_rooms
-        assert account.identity_keys == {
-            "curve25519": "si7g1tFp4uhI+vzesW/zxss6Au/7Ufp+AKi7EGO+PHU",
-            "ed25519": "JO4Q52p01yLoC9GuIYrded+heHBtI0ZxhZssvZ0xOt8"
-        }
 
     def test_store_versioning(self, store):
         version = store._get_store_version()
