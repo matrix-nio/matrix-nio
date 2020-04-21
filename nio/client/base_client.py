@@ -28,7 +28,7 @@ from typing import (
     Coroutine,
 )
 
-import attr
+from dataclasses import dataclass, field
 from logbook import Logger
 from collections import defaultdict
 
@@ -120,16 +120,16 @@ def store_loaded(fn):
     return inner
 
 
-@attr.s
-class ClientCallback(object):
+@dataclass
+class ClientCallback:
     """nio internal callback class."""
 
-    func = attr.ib()
-    filter = attr.ib()
+    func: Callable = field()
+    filter: Union[Tuple[Type], Type, None] = None
 
 
-@attr.s(frozen=True)
-class ClientConfig(object):
+@dataclass(frozen=True)
+class ClientConfig:
     """nio client configuration.
 
     Attributes:
@@ -149,18 +149,16 @@ class ClientConfig(object):
 
     """
 
-    if ENCRYPTION_ENABLED:
-        store = attr.ib(type=Callable, default=DefaultStore)
-        encryption_enabled = attr.ib(type=bool, default=True)
-    else:
-        store = attr.ib(type=Callable, default=None)
-        encryption_enabled = attr.ib(type=bool, default=False)
+    store: Optional[Type[MatrixStore]] = \
+        DefaultStore if ENCRYPTION_ENABLED else None
 
-    store_name = attr.ib(type=str, default="")
-    pickle_key = attr.ib(type=str, default="DEFAULT_KEY")
-    store_sync_tokens = attr.ib(type=bool, default=False)
+    encryption_enabled: bool = ENCRYPTION_ENABLED
 
-    def __attrs_post_init__(self):
+    store_name: str = ""
+    pickle_key: str = "DEFAULT_KEY"
+    store_sync_tokens: bool = False
+
+    def __post_init__(self):
         if not ENCRYPTION_ENABLED and self.encryption_enabled:
             raise ImportWarning(
                 "Encryption is enabled in the client "
@@ -169,7 +167,7 @@ class ClientConfig(object):
             )
 
 
-class Client(object):
+class Client:
     """Matrix no-IO client.
 
     Attributes:
@@ -1155,8 +1153,9 @@ class Client(object):
             callback (Callable[[MatrixRoom, Event], None]): A
                 function that will be called if the event type in the filter
                 argument is found in a room timeline.
-            filter (Union[Type, Tuple[Type]]): The event type or a tuple containing
-                multiple types for which the function will be called.
+            filter (Union[Type, Tuple[Type]]): The event type or a tuple
+                containing multiple types for which the function will be
+                called.
 
         """
         cb = ClientCallback(callback, filter)
@@ -1191,8 +1190,9 @@ class Client(object):
             callback (Callable[[ToDeviceEvent], None]): A function that will be
                 called if the event type in the filter argument is found in a
                 the to-device part of the sync response.
-            filter (Union[Type, Tuple[Type]]): The event type or a tuple containing
-                multiple types for which the function will be called.
+            filter (Union[Type, Tuple[Type]]): The event type or a tuple
+                containing multiple types for which the function
+                will be called.
 
         """
         cb = ClientCallback(callback, filter)

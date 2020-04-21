@@ -67,7 +67,7 @@ if sys.version_info >= (3, 5):
 
 
 @pytest.mark.skipif(sys.version_info < (3, 5), reason="Python 3 specific asyncio tests")
-class TestClass(object):
+class TestClass:
     @staticmethod
     def _load_bytes(filename):
         with open(filename, "rb") as f:

@@ -57,7 +57,7 @@ def synced_client(tempdir):
     return http_client
 
 
-class TestClass(object):
+class TestClass:
     example_response_headers = [
         (':status', '200'),
         ('server', 'fake-serv/0.1.0')

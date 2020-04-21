@@ -10,7 +10,7 @@ from nio import EncryptionError
 from nio.crypto import decrypt_attachment, encrypt_attachment
 
 
-class TestClass(object):
+class TestClass:
     def test_encrypt(self):
         data = b"Test bytes"
 

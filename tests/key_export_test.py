@@ -13,7 +13,7 @@ from nio.store import DefaultStore
 
 TEST_ROOM = "!test:example.org"
 
-class TestClass(object):
+class TestClass:
     @given(binary())
     def test_encrypt(self, data):
         passphrase = "A secret"

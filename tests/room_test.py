@@ -14,7 +14,7 @@ TEST_ROOM = "!test:example.org"
 BOB_ID = "@bob:example.org"
 ALICE_ID = "@alice:example.org"
 
-class TestClass(object):
+class TestClass:
     def _create_test_data(self):
         pass
 

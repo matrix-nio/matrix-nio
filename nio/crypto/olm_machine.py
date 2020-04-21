@@ -67,7 +67,7 @@ class KeyShareError(Exception):
     pass
 
 
-class Olm(object):
+class Olm:
     _olm_algorithm = 'm.olm.v1.curve25519-aes-sha2'
     _megolm_algorithm = 'm.megolm.v1.aes-sha2'
     _algorithms = [_olm_algorithm, _megolm_algorithm]

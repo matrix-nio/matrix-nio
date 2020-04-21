@@ -30,7 +30,7 @@ bob_device = OlmDevice(
 )
 
 
-class TestClass(object):
+class TestClass:
     def test_sas_creation(self):
         alice = Sas(
             alice_id,

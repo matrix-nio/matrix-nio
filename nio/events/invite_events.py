@@ -31,14 +31,14 @@ be displayed to users if they are invited to a room.
 
 from typing import Any, Dict, Optional, Union
 
-import attr
+from dataclasses import dataclass, field
 
 from ..schemas import Schemas
 from .misc import BadEventType, verify, verify_or_none
 
 
-@attr.s
-class InviteEvent(object):
+@dataclass
+class InviteEvent:
     """Matrix Event class for events in invited rooms.
 
     Events for invited rooms will have a stripped down version of their
@@ -56,8 +56,8 @@ class InviteEvent(object):
 
     """
 
-    source = attr.ib(type=Dict)
-    sender = attr.ib(type=str)
+    source: Dict = field()
+    sender: str = field()
 
     @classmethod
     @verify_or_none(Schemas.invite_event)
@@ -100,7 +100,7 @@ class InviteEvent(object):
         raise NotImplementedError()
 
 
-@attr.s
+@dataclass
 class InviteMemberEvent(InviteEvent):
     """Class representing to an m.room.member event in an invited room.
 
@@ -119,11 +119,11 @@ class InviteMemberEvent(InviteEvent):
 
     """
 
-    state_key = attr.ib(type=str)
-    membership = attr.ib(type=str)
-    prev_membership = attr.ib(type=str)
-    content = attr.ib(type=dict)
-    prev_content = attr.ib(type=dict, default=None)
+    state_key: str = field()
+    membership: str = field()
+    prev_membership: str = field()
+    content: dict = field()
+    prev_content: dict = field(default_factory=dict)
 
     @classmethod
     @verify(Schemas.room_membership)
@@ -149,7 +149,7 @@ class InviteMemberEvent(InviteEvent):
         )
 
 
-@attr.s
+@dataclass
 class InviteAliasEvent(InviteEvent):
     """An event informing us about which alias should be preferred.
 
@@ -160,7 +160,7 @@ class InviteAliasEvent(InviteEvent):
 
     """
 
-    canonical_alias = attr.ib()
+    canonical_alias: str = field()
 
     @classmethod
     @verify(Schemas.room_canonical_alias)
@@ -172,7 +172,7 @@ class InviteAliasEvent(InviteEvent):
         return cls(parsed_dict, sender, canonical_alias)
 
 
-@attr.s
+@dataclass
 class InviteNameEvent(InviteEvent):
     """Event holding the name of the invited room.
 
@@ -187,7 +187,7 @@ class InviteNameEvent(InviteEvent):
 
     """
 
-    name = attr.ib()
+    name: str = field()
 
     @classmethod
     @verify(Schemas.room_name)

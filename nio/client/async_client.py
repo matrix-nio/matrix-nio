@@ -40,7 +40,7 @@ from typing import (
 )
 from uuid import UUID, uuid4
 
-import attr
+from dataclasses import dataclass, field
 from aiofiles.threadpool.binary import AsyncBufferedReader
 from aiohttp import (
     ClientResponse,
@@ -227,12 +227,12 @@ _ProfileSetDisplayNameT = Union[
 DataProvider = Callable[[int, int], AsyncDataT]
 
 
-@attr.s
-class ResponseCb(object):
+@dataclass
+class ResponseCb:
     """Response callback."""
 
-    func = attr.ib()
-    filter = attr.ib(default=None)
+    func: Callable = field()
+    filter: Union[Tuple[Type], Type, None] = None
 
 
 async def on_request_chunk_sent(session, context, params):
@@ -273,7 +273,7 @@ def client_session(func):
     return wrapper
 
 
-@attr.s(frozen=True)
+@dataclass(frozen=True)
 class AsyncClientConfig(ClientConfig):
     """Async nio client configuration.
 
@@ -308,11 +308,11 @@ class AsyncClientConfig(ClientConfig):
             this option and use `0`.
     """
 
-    max_limit_exceeded = attr.ib(type=Optional[int], default=None)
-    max_timeouts = attr.ib(type=Optional[int], default=None)
-    backoff_factor = attr.ib(type=float, default=0.1)
-    max_timeout_retry_wait_time = attr.ib(type=float, default=60)
-    request_timeout = attr.ib(type=float, default=60)
+    max_limit_exceeded: Optional[int] = None
+    max_timeouts: Optional[int] = None
+    backoff_factor: float = 0.1
+    max_timeout_retry_wait_time: float = 60
+    request_timeout: float = 60
 
 
 class AsyncClient(Client):
@@ -433,7 +433,7 @@ class AsyncClient(Client):
             >>> await client.sync_forever(30000)
 
         """
-        cb = ResponseCb(func, cb_filter)
+        cb = ResponseCb(func, cb_filter)  # type: ignore
         self.response_callbacks.append(cb)
 
     async def parse_body(

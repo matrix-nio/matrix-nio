@@ -25,16 +25,16 @@ across installations on a particular device.
 
 from __future__ import unicode_literals
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-import attr
+from dataclasses import dataclass, field
 
 from ..schemas import Schemas
 from .misc import verify
 
 
-@attr.s
-class AccountDataEvent(object):
+@dataclass
+class AccountDataEvent:
     """Abstract class for account data events."""
 
     @classmethod
@@ -52,7 +52,7 @@ class AccountDataEvent(object):
         return UnknownAccountDataEvent.from_dict(event_dict)
 
 
-@attr.s
+@dataclass
 class FullyReadEvent(AccountDataEvent):
     """Read marker location event.
 
@@ -66,7 +66,7 @@ class FullyReadEvent(AccountDataEvent):
 
     """
 
-    event_id = attr.ib()
+    event_id: str = field()
 
     @classmethod
     @verify(Schemas.fully_read)
@@ -78,7 +78,7 @@ class FullyReadEvent(AccountDataEvent):
         )
 
 
-@attr.s
+@dataclass
 class TagEvent(AccountDataEvent):
     """Event representing the tags of a room.
 
@@ -91,11 +91,11 @@ class TagEvent(AccountDataEvent):
        room's possition towards other rooms with the same tag.
 
     Attributes:
-        tags (Dict[string, Optional[Dict[str, float]]): The tags of the room
+        tags (Dict[str, Optional[Dict[str, float]]]): The tags of the room
         and their contents.
     """
 
-    tags = attr.ib()
+    tags: Dict[str, Optional[Dict[str, float]]] = field()
 
     @classmethod
     @verify(Schemas.tags)
@@ -107,7 +107,7 @@ class TagEvent(AccountDataEvent):
         )
 
 
-@attr.s
+@dataclass
 class UnknownAccountDataEvent(AccountDataEvent):
     """Account data event of an unknown type.
 
@@ -117,8 +117,8 @@ class UnknownAccountDataEvent(AccountDataEvent):
 
     """
 
-    type = attr.ib()
-    content = attr.ib()
+    type: str = field()
+    content: Dict[str, Any] = field()
 
     @classmethod
     def from_dict(cls, event_dict):

@@ -55,7 +55,7 @@ def sqlmemorystore():
     return store
 
 
-class TestClass(object):
+class TestClass:
     @property
     def ephemeral_store(self):
         return MatrixStore(

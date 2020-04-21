@@ -17,7 +17,7 @@ from builtins import super
 from functools import wraps
 from typing import Optional, List, Dict
 
-import attr
+from dataclasses import dataclass, field
 from peewee import DoesNotExist, SqliteDatabase
 from playhouse.sqliteq import SqliteQueueDatabase
 
@@ -59,8 +59,8 @@ def use_database_atomic(fn):
     return inner
 
 
-@attr.s
-class MatrixStore(object):
+@dataclass
+class MatrixStore:
     """Storage class for matrix state."""
 
     models = [
@@ -77,13 +77,13 @@ class MatrixStore(object):
     ]
     store_version = 2
 
-    user_id = attr.ib(type=str)
-    device_id = attr.ib(type=str)
-    store_path = attr.ib(type=str)
-    pickle_key = attr.ib(type=str, default="")
-    database_name = attr.ib(type=str, default="")
-    database_path = attr.ib(type=str, init=False)
-    database = attr.ib(type=SqliteDatabase, init=False)
+    user_id: str = field()
+    device_id: str = field()
+    store_path: str = field()
+    pickle_key: str = ""
+    database_name: str = ""
+    database_path: str = field(init=False)
+    database: SqliteDatabase = field(init=False)
 
     def _create_database(self):
         return SqliteDatabase(
@@ -105,7 +105,7 @@ class MatrixStore(object):
             self.database.create_tables([DeviceKeys, DeviceTrustState])
         self._update_version(2)
 
-    def __attrs_post_init__(self):
+    def __post_init__(self):
         self.database_name = self.database_name or "{}_{}.db".format(
             self.user_id,
             self.device_id
@@ -610,7 +610,7 @@ class MatrixStore(object):
         raise NotImplementedError
 
 
-@attr.s
+@dataclass
 class DefaultStore(MatrixStore):
     """The default nio Matrix Store.
 
@@ -633,11 +633,11 @@ class DefaultStore(MatrixStore):
             should be used.
     """
 
-    trust_db = attr.ib(type=KeyStore, init=False)
-    blacklist_db = attr.ib(type=KeyStore, init=False)
+    trust_db: KeyStore = field(init=False)
+    blacklist_db: KeyStore = field(init=False)
 
-    def __attrs_post_init__(self):
-        super().__attrs_post_init__()
+    def __post_init__(self):
+        super().__post_init__()
 
         trust_file_path = "{}_{}.trusted_devices".format(
             self.user_id,
@@ -780,7 +780,7 @@ class DefaultStore(MatrixStore):
         return store
 
 
-@attr.s
+@dataclass
 class SqliteStore(MatrixStore):
     """The Sqlite only nio Matrix Store.
 

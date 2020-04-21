@@ -19,7 +19,7 @@ from typing import DefaultDict, Dict, Iterator, List, Optional, KeysView
 from .sessions import InboundGroupSession, Session
 
 
-class SessionStore(object):
+class SessionStore:
     def __init__(self):
         self._entries: DefaultDict[str, List[Session]] = defaultdict(list)
 
@@ -52,7 +52,7 @@ class SessionStore(object):
         return self._entries[sender_key]
 
 
-class GroupSessionStore(object):
+class GroupSessionStore:
     def __init__(self):
         self._entries = defaultdict(lambda: defaultdict(dict))
 

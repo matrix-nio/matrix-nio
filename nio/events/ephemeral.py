@@ -25,14 +25,14 @@ Ephemeral events are used for typing notifications and read receipts.
 
 from typing import List, Dict
 
-import attr
+from dataclasses import dataclass, field
 
 from ..schemas import Schemas
 from .misc import verify_or_none
 
 
-@attr.s
-class EphemeralEvent(object):
+@dataclass
+class EphemeralEvent:
     """Base class for ephemeral events."""
 
     @classmethod
@@ -71,7 +71,7 @@ class EphemeralEvent(object):
         raise NotImplementedError()
 
 
-@attr.s
+@dataclass
 class TypingNoticeEvent(EphemeralEvent):
     """Informs the client of the list of users currently typing in a room.
 
@@ -80,7 +80,7 @@ class TypingNoticeEvent(EphemeralEvent):
 
     """
 
-    users = attr.ib(type=List)
+    users: List = field()
 
     @classmethod
     @verify_or_none(Schemas.m_typing)
@@ -88,8 +88,8 @@ class TypingNoticeEvent(EphemeralEvent):
         return cls(parsed_dict["content"]["user_ids"])
 
 
-@attr.s
-class Receipt(object):
+@dataclass
+class Receipt:
     """Receipt of a user acknowledging an event.
     
     If `receipt_type` is "m.read", then it is a read receipt and shows the last
@@ -102,12 +102,12 @@ class Receipt(object):
         user_id (str): the ID of the user who is acknowledging the event.
         timestamp (int): The timestamp the receipt was sent at.
     """
-    event_id = attr.ib(type=str)
-    receipt_type = attr.ib(type=str)
-    user_id = attr.ib(type=str)
-    timestamp = attr.ib(type=int)
+    event_id: str = field()
+    receipt_type: str = field()
+    user_id: str = field()
+    timestamp: int = field()
 
-@attr.s
+@dataclass
 class ReceiptEvent(EphemeralEvent):
     """Informs the client of changes in the newest events seen by users.
 
@@ -118,7 +118,7 @@ class ReceiptEvent(EphemeralEvent):
     Attributes:
         receipts (List[Receipt]): The list of `Receipt`s in this event.
     """
-    receipts = attr.ib(type=List[Receipt])
+    receipts: List[Receipt] = field()
 
     @classmethod
     @verify_or_none(Schemas.m_receipt)

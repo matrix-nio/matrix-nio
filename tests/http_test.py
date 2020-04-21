@@ -6,7 +6,7 @@ from nio.client import HttpClient
 from nio.http import TransportResponse
 
 
-class TestClass(object):
+class TestClass:
     @staticmethod
     def _load_response(filename):
         # type: (str) -> Dict[Any, Any]

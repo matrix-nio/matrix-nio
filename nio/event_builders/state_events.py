@@ -31,12 +31,12 @@ For example, to turn on encryption in a room with the ``HttpClient`` or
     ... )
 """
 
-import attr
+from dataclasses import dataclass, field
 
 from . import EventBuilder
 
 
-@attr.s
+@dataclass
 class EnableEncryptionBuilder(EventBuilder):
     """A state event sent to enable encryption in a room.
 
@@ -54,9 +54,9 @@ class EnableEncryptionBuilder(EventBuilder):
 
     """
 
-    algorithm     = attr.ib(type=str, default="m.megolm.v1.aes-sha2")
-    rotation_ms   = attr.ib(type=int, default=604800000)
-    rotation_msgs = attr.ib(type=int, default=100)
+    algorithm: str = "m.megolm.v1.aes-sha2"
+    rotation_ms: int = 604800000
+    rotation_msgs: int = 100
 
     def as_dict(self):
         return {
@@ -70,7 +70,7 @@ class EnableEncryptionBuilder(EventBuilder):
         }
 
 
-@attr.s
+@dataclass
 class ChangeNameBuilder(EventBuilder):
     """A state event sent to change a room's name.
 
@@ -79,9 +79,9 @@ class ChangeNameBuilder(EventBuilder):
             Can be empty to remove the room's name.
     """
 
-    name = attr.ib(type=str)
+    name: str = field()
 
-    def __attrs_post_init__(self):
+    def __post_init__(self):
         if len(self.name) > 255:
             raise ValueError(
                 "Room names exceeds 255 characters: {}".format(self.name),
@@ -95,7 +95,7 @@ class ChangeNameBuilder(EventBuilder):
         }
 
 
-@attr.s
+@dataclass
 class ChangeTopicBuilder(EventBuilder):
     """A state event sent to change a room's topic.
 
@@ -103,7 +103,7 @@ class ChangeTopicBuilder(EventBuilder):
         topic (str): The topic to set. Can be empty to remove the room's topic.
     """
 
-    topic = attr.ib(type=str)
+    topic: str = field()
 
     def as_dict(self):
         return {
@@ -113,7 +113,7 @@ class ChangeTopicBuilder(EventBuilder):
         }
 
 
-@attr.s
+@dataclass
 class ChangeJoinRulesBuilder(EventBuilder):
     """A state event sent to change who can join a room.
 
@@ -124,7 +124,7 @@ class ChangeJoinRulesBuilder(EventBuilder):
             rules, which are currently not implemented.
     """
 
-    rule = attr.ib(type=str)
+    rule: str = field()
 
     def as_dict(self):
         return {
@@ -134,7 +134,7 @@ class ChangeJoinRulesBuilder(EventBuilder):
         }
 
 
-@attr.s
+@dataclass
 class ChangeGuestAccessBuilder(EventBuilder):
     """A state event sent to allow or forbid guest accounts in a room.
 
@@ -143,7 +143,7 @@ class ChangeGuestAccessBuilder(EventBuilder):
             Can be ``can_join`` or ``forbidden``.
     """
 
-    access = attr.ib(type=str)
+    access: str = field()
 
     def as_dict(self):
         return {
@@ -153,7 +153,7 @@ class ChangeGuestAccessBuilder(EventBuilder):
         }
 
 
-@attr.s
+@dataclass
 class ChangeHistoryVisibilityBuilder(EventBuilder):
     """A state event sent to set what can users see from the room history.
 
@@ -172,7 +172,7 @@ class ChangeHistoryVisibilityBuilder(EventBuilder):
                 including users that aren't part of the room.
     """
 
-    visibility = attr.ib(type=str)
+    visibility: str = field()
 
     def as_dict(self):
         return {
