@@ -1282,7 +1282,9 @@ class AsyncClient(Client):
                         "No such room with id {} found.".format(room_id)
                     )
 
-                if room.encrypted:
+                # Reactions as of yet don't support encryption.
+                # Relevant spec proposal https://github.com/matrix-org/matrix-doc/pull/1849
+                if room.encrypted and message_type != "m.reaction":
                     message_type, content = self.encrypt(
                         room_id, message_type, content
                     )
