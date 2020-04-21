@@ -1110,12 +1110,18 @@ class Client(object):
                 "The room is encrypted and the members " "aren't fully synced."
             )
 
-        content = self.olm.group_encrypt(
+        encrypted_content = self.olm.group_encrypt(
             room_id, {"content": content, "type": message_type},
         )
+
+        # The relationship needs to be sent unencrypted, so put it in the
+        # unencrypted content.
+        if "m.relates_to" in content:
+            encrypted_content["m.relates_to"] = content["m.relates_to"]
+
         message_type = "m.room.encrypted"
 
-        return message_type, content
+        return message_type, encrypted_content
 
     def add_event_callback(
         self,
