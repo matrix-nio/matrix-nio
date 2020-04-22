@@ -819,7 +819,7 @@ class AsyncClient(Client):
     @logged_in
     async def sync(
         self,
-        timeout: Optional[int] = None,
+        timeout: Optional[int] = 0,
         sync_filter: _FilterT = None,
         since: Optional[str] = None,
         full_state: Optional[bool] = None,
@@ -830,8 +830,11 @@ class AsyncClient(Client):
             timeout(int, optional): The maximum time that the server should
                 wait for new events before it should return the request
                 anyways, in milliseconds.
-                If the server fails to return after 15 seconds of expected
-                timeout, the client will timeout by itself.
+                If ``0``, no timeout is applied.
+                If ``None``, use ``AsyncClient.config.request_timeout``.
+                If a timeout is applied and the server fails to return after
+                15 seconds of expected timeout,
+                the client will timeout by itself.
             sync_filter (Union[None, str, Dict[Any, Any]):
                 A filter ID or dict that should be used for this sync request.
             full_state (bool, optional): Controls whether to include the full
@@ -851,7 +854,7 @@ class AsyncClient(Client):
         method, path = Api.sync(
             self.access_token,
             since=sync_token or self.loaded_sync_token,
-            timeout=timeout,
+            timeout=timeout or None,
             filter=sync_filter,
             full_state=full_state,
         )
@@ -860,8 +863,12 @@ class AsyncClient(Client):
             SyncResponse,
             method,
             path,
+            # 0 if full_state: server doesn't respect timeout if full_state
             # + 15: give server a chance to naturally return before we timeout
-            timeout=None if timeout is None else timeout / 1000 + 15,
+            timeout =
+                0 if full_state else
+                timeout / 1000 + 15 if timeout else
+                timeout,
         )
 
         self.synced.set()
@@ -916,8 +923,12 @@ class AsyncClient(Client):
             timeout (int, optional): The maximum time that the server should
                 wait for new events before it should return the request
                 anyways, in milliseconds.
-                If the server fails to return after 5 seconds of expected
-                timeout, the client will timeout by itself.
+                If ``0``, no timeout is applied.
+                If ``None``, ``AsyncClient.config.request_timeout`` is used.
+                In any case, ``0`` is always used for the first sync.
+                If a timeout is applied and the server fails to return after
+                15 seconds of expected timeout,
+                the client will timeout by itself.
 
             sync_filter (Union[None, str, Dict[Any, Any]):
                 A filter ID or dict that should be used for sync requests.
@@ -950,12 +961,13 @@ class AsyncClient(Client):
 
         while True:
             try:
-                used_filter = first_sync_filter if first_sync else sync_filter
+                use_filter = first_sync_filter if first_sync else sync_filter
+                use_timeout = 0 if first_sync else timeout
 
                 tasks = [
                     asyncio.ensure_future(coro)
                     for coro in (
-                        self.sync(timeout, used_filter, since, full_state),
+                        self.sync(use_timeout, use_filter, since, full_state),
                         self.send_to_device_messages(),
                     )
                 ]
