@@ -1135,7 +1135,8 @@ class Schemas:
                                     }
                                 }
                             }
-                        }
+                        },
+                        "required": ["m.read"]
                     }
                 }
             },
