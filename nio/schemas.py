@@ -1127,7 +1127,7 @@ class Schemas:
                                 "type": "object",
                                 "patternProperties": {
                                     UserIdRegex: {
-                                        "type": "object",
+                                        "type": ["object", "string"],
                                         "properties": {
                                             "ts": {"type" : "integer"}
                                         },

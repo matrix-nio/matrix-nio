@@ -1,0 +1,14 @@
+{
+    "content": {
+        "$152037280074GZeOm:localhost": {
+            "m.read": {
+                "@bob:example.com": {
+                    "ts": 1520372804619
+                },
+                "@alice:example.com": "\"ts\": 1520372804619"
+            }
+        }
+    },
+    "type":"m.receipt"
+}
+    

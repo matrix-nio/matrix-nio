@@ -128,8 +128,11 @@ class ReceiptEvent(EphemeralEvent):
         for event_id, event in parsed_dict["content"].items():
             for receipt_type, receipt in event.items():
                 for user_id, user in receipt.items():
-                    event_receipts.append(
-                        Receipt(event_id, receipt_type, user_id, user["ts"])
-                    )
+                    # Synapse pre-0.99.3 has a bug where it sends invalid
+                    # ts values. https://github.com/matrix-org/synapse/issues/4898
+                    if isinstance(user, dict) and "ts" in user:
+                        event_receipts.append(
+                            Receipt(event_id, receipt_type, user_id, user["ts"])
+                        )
 
         return cls(event_receipts)
