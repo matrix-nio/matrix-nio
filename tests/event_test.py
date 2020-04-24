@@ -346,6 +346,29 @@ class TestClass:
         assert isinstance(event, ReceiptEvent)
         assert receipt in event.receipts
 
+    def test_read_receipt_event_bad_ts(self):
+        """Test reading an m_receipt event that has malformed data for one user.
+
+        @alice:example.com is a user using Synapse pre 0.99.3 with a
+        timestamp bug. We want to ignore her malformed value without losing
+        the receipt data from @bob:example.com
+        """
+        parsed_dict = TestClass._load_response("tests/data/events/receipt_invalid.json")
+        event = EphemeralEvent.parse_event(parsed_dict)
+
+        # Warning: this is directly tied to the above file; any changes below
+        # need to be reflected there too.
+        receipt = Receipt(
+            "$152037280074GZeOm:localhost",
+            "m.read",
+            "@bob:example.com",
+            1520372804619
+        )
+
+        assert isinstance(event, ReceiptEvent)
+        assert receipt in event.receipts
+
+
     def test_account_data_event(self):
         event = AccountDataEvent.parse_event({})
 
