@@ -15,3 +15,4 @@ aioresponses; python_version >= '3.5'
 aiofiles; python_version >= '3.5'
 dataclasses; python_version < '3.7'
 m2r
+sphinx_rtd_theme
