@@ -39,7 +39,7 @@ from nio import (ContentRepositoryConfigResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomGetStateResponse, RoomGetStateEventResponse,
                  RoomKickResponse,
-                 RoomPutStateResponse,
+                 RoomPutStateResponse, RoomReadMarkersResponse,
                  RoomRedactResponse, RoomResolveAliasResponse,
                  RoomSendResponse, RoomSummary,
                  RoomUnbanResponse,
@@ -52,7 +52,7 @@ from nio.api import ResizingMethod, RoomPreset, RoomVisibility
 from nio.crypto import OlmDevice, Session, decrypt_attachment
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
 
-from aioresponses import CallbackResult
+from aioresponses import CallbackResult, aioresponses
 
 TEST_ROOM_ID = "!testroom:example.org"
 
@@ -1305,6 +1305,36 @@ class TestClass:
         )
         resp = await async_client.room_typing(room_id, typing_state=True)
         assert isinstance(resp, RoomTypingResponse)
+    
+    async def test_room_read_marker(
+        self,
+        async_client: AsyncClient,
+        aioresponse: aioresponses
+    ):
+        """Test that we can set the room read receipt marker.
+        """
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        await async_client.receive_response(self.encryption_sync_response)
+
+        room_id = list(async_client.rooms.keys())[0]
+        fully_read_event_id = "$15163622445EBvZJ:localhost"
+        receipt_event_id = "$15163700000EBvZJ:localhost"
+
+        aioresponse.post(
+            f"https://example.org/_matrix/client/r0/rooms/{room_id}" + \
+                "/read_markers?access_token=abc123",
+            status=200,
+            payload={}
+        )
+
+        resp = await async_client.room_read_markers(
+            room_id,
+            fully_read_event_id,
+            receipt_event_id
+        )
+        assert isinstance(resp, RoomReadMarkersResponse)
 
     async def test_content_repository_config(self, async_client, aioresponse):
         await async_client.receive_response(

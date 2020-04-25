@@ -157,6 +157,8 @@ from ..responses import (
     RoomSendResponse,
     RoomTypingResponse,
     RoomTypingError,
+    RoomReadMarkersResponse,
+    RoomReadMarkersError,
     RoomUnbanError,
     RoomUnbanResponse,
     ShareGroupSessionError,
@@ -2043,6 +2045,44 @@ class AsyncClient(Client):
         return await self._send(
             RoomTypingResponse, method, path, data, response_data=(room_id,)
         )
+    
+    @logged_in
+    async def room_read_markers(
+        self,
+        room_id: str,
+        fully_read_event: str,
+        read_event: Optional[str] = None
+    ):
+        """Update read markers for a room.
+
+        Returns either a `RoomReadResponse` if the request was successful or
+        a `RoomReadError` if there was an error with the request.
+
+        This sets the position of the read markers. `fully_read_event` is the
+        latest event in the set of events that the user has either fully read
+        or indicated they aren't intersted in, while `read_event` is the most
+        recent message in the set of messages that the user may or may not have
+        read, as in when a user comes back to a room after hundreds of messages
+        has been sent and _only_ reads the most recent message.
+
+        If you want to set the read receipt, you _must_ set `read_event`.
+
+        Args:
+            room_id (str): The room ID of the room where the read markers should
+                be updated.
+            fully_read_event (str): The event ID that the user has fully read up
+                to.
+            read_event (Optional[str]): The event ID to set the read receipt
+                location at.
+        """
+        method, path, data = Api.room_read_markers(
+            self.access_token, room_id, fully_read_event, read_event
+        )
+
+        return await self._send(
+            RoomReadMarkersResponse, method, path, data, response_data=(room_id,)
+        )
+
 
     @logged_in
     async def content_repository_config(

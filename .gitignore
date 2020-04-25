@@ -12,3 +12,4 @@ matrix_nio.egg-info/
 dist
 doc/html
 *.swp
+build
