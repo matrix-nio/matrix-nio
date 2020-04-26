@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Kick, ban, unban support to the AsyncClient.
+- Read receipt sending support in the AsyncClient.
 - Read receipt parsing and emitting.
 - Support token login in the AsyncClient login method.
 - Support for user registration in the BaseClient and AsyncClient.
