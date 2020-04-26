@@ -1976,8 +1976,8 @@ class AsyncClient(Client):
 
         It uses pagination query parameters to paginate history in the room.
 
-        Returns either a `RoomContextResponse` if the request was successful or
-        a `RoomContextError` if there was an error with the request.
+        Returns either a `RoomMessagesResponse` if the request was successful or
+        a `RoomMessagesResponse` if there was an error with the request.
 
         Args:
             room_id (str): The room id of the room for which we would like to
