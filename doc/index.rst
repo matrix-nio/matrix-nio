@@ -5,6 +5,7 @@
 
 .. mdinclude:: ../README.md
 
+
 Api Documentation
 =================
 
@@ -12,6 +13,7 @@ Api Documentation
    :maxdepth: 2
 
    nio
+   examples
    contributing
 
 

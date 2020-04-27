@@ -65,62 +65,9 @@ $ pip install "matrix-nio[e2e]"
 
 ```
 
-Usage
-=====
+Examples
+========
 
-Unless special requirements disallow the usage of asyncio, by far the easiest
-way to use nio is using the asyncio layer.
-
-Please do note that these examples require python 3.5+ for the `async`/`await`
-syntax. nio on the other hand works with older python versions as well.
-
-
-Sending a message
------------------
-
-```python
-import asyncio
-from nio import AsyncClient
-
-async def main():
-    client = AsyncClient("https://example.org", "@alice:example.org")
-
-    await client.login("hunter1")
-    await client.room_send(
-        room_id="!test:example.org",
-        message_type="m.room.message",
-        content={
-            "msgtype": "m.text",
-            "body": "Hello World"
-        }
-    )
-    await client.close()
-
-asyncio.get_event_loop().run_until_complete(main())
-```
-
-Receiving messages
-------------------
-
-```python
-import asyncio
-from nio import (AsyncClient, RoomMessageText)
-
-async def message_cb(room, event):
-    print(
-        "Message received for room {} | {}: {}".format(
-            room.display_name, room.user_name(event.sender), event.body
-        )
-    )
-
-async def main():
-    client = AsyncClient("https://example.org", "@alice:example.org")
-    client.add_event_callback(message_cb, RoomMessageText)
-
-    await client.login("hunter1")
-    await client.sync_forever(timeout=30000)
-
-asyncio.get_event_loop().run_until_complete(main())
-```
-
+For examples of how to use nio, and how others are using it,
+[read the docs](https://matrix-nio.readthedocs.io/en/latest/examples.html)
 
