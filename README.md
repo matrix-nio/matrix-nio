@@ -9,16 +9,41 @@ nio
 
 
 
-nio is a multilayered matrix client library. The underlying base layer doesn't
-do any IO on its own. On top of the base layer, a no-IO HTTP client
-implementation exists, as well as a full fledged batteries included asyncio
-layer using [aiohttp](https://github.com/aio-libs/aiohttp/).
+nio is a multilayered [Matrix](https://matrix.org/) client library. The
+underlying base layer doesn't do any IO on its own. On top of the base layer, a
+no-IO HTTP client implementation exists, as well as a full fledged batteries
+included asyncio layer using [aiohttp](https://github.com/aio-libs/aiohttp/).
 
 Documentation
 =============
 
 The full API documentation for nio can be found at
 [https://matrix-nio.readthedocs.io](https://matrix-nio.readthedocs.io/en/latest/#api-documentation)
+
+Features
+========
+
+nio has most of the features you'd expect in a Matrix library, but it's still a work in progress.
+
+- ✅ transparent end-to-end encryption (EE2E)
+- ✅ encrypted file uploads & downloads
+- ✅ manual and emoji verification
+- ✅ custom [authentication types](https://matrix.org/docs/spec/client_server/r0.6.0#id183)
+- ✅ well-integrated type system
+- ✅ kick, ban and unban
+- ✅ typing notifications
+- ✅ message redaction
+- ✅ token based login
+- ✅ user registration
+- ✅ read receipts
+- ✅ live syncing
+- ✅ `m.tag`s
+- ❌ python 2.7 support
+- ❌ cross-signing support
+- ❌ user deactivation ([#112](https://github.com/poljar/matrix-nio/issues/112))
+- ❌ in-room emoji verification
+- ❌ room upgrades and `m.room.tombstone` events ([#47](https://github.com/poljar/matrix-nio/issues/47))
+
 
 Installation
 ============
