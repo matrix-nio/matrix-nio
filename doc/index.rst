@@ -9,8 +9,10 @@ Api Documentation
 =================
 
 .. toctree::
-   nio
    :maxdepth: 2
+
+   nio
+   contributing
 
 
 Indices and tables
