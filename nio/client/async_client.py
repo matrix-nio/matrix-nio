@@ -1286,62 +1286,48 @@ class AsyncClient(Client):
 
         Raises `LocalProtocolError` if the client isn't logged in.
         """
+        uuid = tx_id or uuid4()
+        assert tx_id
 
-        async def send(room_id, message_type, content, tx_id):
-            if self.olm:
-                try:
-                    room = self.rooms[room_id]
-                except KeyError:
-                    raise LocalProtocolError(
-                        "No such room with id {} found.".format(room_id)
+        if self.olm:
+            try:
+                room = self.rooms[room_id]
+            except KeyError:
+                raise LocalProtocolError(
+                    f"No such room with id {room_id} found."
+                )
+
+            if room.encrypted:
+                # Check if the members are synced, otherwise users might not get
+                # the megolm seession.
+                if not room.members_synced:
+                    responses = []
+                    responses.append(await self.joined_members(room_id))
+
+                    if self.should_query_keys:
+                        responses.append(await self.keys_query())
+
+                # Check if we need to share a group session, it might have been
+                # invalidated or expired.
+                if self.olm.should_share_group_session(room_id):
+                    await self.share_group_session(
+                        room_id,
+                        ignore_unverified_devices=ignore_unverified_devices,
                     )
 
                 # Reactions as of yet don't support encryption.
                 # Relevant spec proposal https://github.com/matrix-org/matrix-doc/pull/1849
-                if room.encrypted and message_type != "m.reaction":
+                if message_type != "m.reaction":
+                    # Encrypt our content and change the message type.
                     message_type, content = self.encrypt(
                         room_id, message_type, content
                     )
 
-            method, path, data = Api.room_send(
-                self.access_token, room_id, message_type, content, tx_id
-            )
-
-            return await self._send(
-                RoomSendResponse, method, path, data, (room_id,)
-            )
-
-        retries = 10
-
-        uuid = tx_id or uuid4()
-
-        for i in range(retries):
-            try:
-                return await send(room_id, message_type, content, uuid)
-            except GroupEncryptionError:
-                sharing_event = self.sharing_session.get(room_id, None)
-
-                if sharing_event:
-                    await sharing_event.wait()
-                else:
-                    share = await self.share_group_session(
-                        room_id,
-                        ignore_unverified_devices=ignore_unverified_devices,
-                    )
-                    await self.run_response_callbacks([share])
-
-            except MembersSyncError:
-                responses = []
-                responses.append(await self.joined_members(room_id))
-
-                if self.should_query_keys:
-                    responses.append(await self.keys_query())
-
-                await self.run_response_callbacks(responses)
-
-        raise SendRetryError(
-            "Max retries exceeded while trying to send " "the message"
+        method, path, data = Api.room_send(
+            self.access_token, room_id, message_type, content, tx_id
         )
+
+        return await self._send(RoomSendResponse, method, path, data, (room_id,))
 
     @logged_in
     async def room_put_state(
@@ -1501,7 +1487,6 @@ class AsyncClient(Client):
     async def share_group_session(
         self,
         room_id: str,
-        tx_id: Optional[str] = None,
         ignore_unverified_devices: bool = False,
     ) -> Union[ShareGroupSessionResponse, ShareGroupSessionError]:
         """Share a group session with a room.
@@ -1511,8 +1496,6 @@ class AsyncClient(Client):
         Args:
             room_id(str): The room id of the room where the message should be
                 sent to.
-            tx_id(str, optional): The transaction ID of this event used to
-                uniquely identify this message.
             ignore_unverified_devices(bool): Mark unverified devices as
                 ignored. Ignored devices will still receive encryption
                 keys for messages but they won't be marked as verified.
@@ -1542,46 +1525,47 @@ class AsyncClient(Client):
 
         self.sharing_session[room_id] = AsyncioEvent()
 
-        shared_with = set()
-
         missing_sessions = self.get_missing_sessions(room_id)
 
         if missing_sessions:
             await self.keys_claim(missing_sessions)
 
+        shared_with = set()
+
         try:
-            while True:
-                user_set, to_device_dict = self.olm.share_group_session(
-                    room_id,
-                    list(room.users.keys()),
-                    ignore_missing_sessions=True,
-                    ignore_unverified_devices=ignore_unverified_devices,
-                )
+            requests = []
 
-                uuid = tx_id or uuid4()
-
+            for sharing_with, to_device_dict in self.olm.share_group_session_parallel(
+                room_id,
+                list(room.users.keys()),
+                ignore_unverified_devices=ignore_unverified_devices
+            ):
                 method, path, data = Api.to_device(
-                    self.access_token, "m.room.encrypted", to_device_dict, uuid
+                    self.access_token, "m.room.encrypted", to_device_dict,
+                    uuid4()
                 )
 
-                response = await self._send(
-                    ShareGroupSessionResponse,
-                    method,
-                    path,
-                    data,
-                    (room_id, user_set),
-                )
+                requests.append(self._send(
+                    ShareGroupSessionResponse, method, path, data,
+                    response_data=(room_id, sharing_with)
+                ))
 
+            for response in await asyncio.gather(*requests, return_exceptions=True):
                 if isinstance(response, ShareGroupSessionResponse):
                     shared_with.update(response.users_shared_with)
 
-        except LocalProtocolError:
-            return ShareGroupSessionResponse(room_id, shared_with)
+            # Mark the session as shared, usually the olm machine will do this
+            # for us, but if there was no-one to share the session with it we
+            # need to do it ourselves.
+            self.olm.outbound_group_sessions[room_id].shared = True
+
         except ClientConnectionError:
             raise
         finally:
             event = self.sharing_session.pop(room_id)
             event.set()
+
+        return ShareGroupSessionResponse(room_id, shared_with)
 
     @logged_in
     @store_loaded

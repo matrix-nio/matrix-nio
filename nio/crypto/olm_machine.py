@@ -21,7 +21,7 @@ import json
 from builtins import str
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Any, DefaultDict, Dict, List, Optional, Set, Tuple, Union
+from typing import (Any, DefaultDict, Dict, List, Optional, Set, Tuple, Union, Iterator)
 
 import olm
 from jsonschema import SchemaError, ValidationError
@@ -61,6 +61,12 @@ except ImportError:  # pragma: no cover
 
 
 DecryptedOlmT = Union[RoomKeyEvent, BadEvent, UnknownBadEvent, None]
+
+
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
 
 
 class KeyShareError(Exception):
@@ -1734,6 +1740,19 @@ class Olm:
             room_id))
         self.create_outbound_group_session(room_id)
 
+    def should_share_group_session(self, room_id: str) -> bool:
+        """Should the client share a group session.
+
+        Returns True if no session was shared or the session expired, False
+        otherwise.
+        """
+        try:
+            session = self.outbound_group_sessions[room_id]
+        except KeyError:
+            return True
+
+        return session.expired or not session.shared
+
     def group_encrypt(
         self,
         room_id,  # type: str
@@ -1765,6 +1784,94 @@ class Olm:
         }
 
         return payload_dict
+
+    def share_group_session_parallel(
+        self,
+        room_id: str,
+        users: List[str],
+        ignore_unverified_devices: bool = False
+    ) -> Iterator[Tuple[Set[Tuple[str, str]], Dict[str, Any]]]:
+        logger.info("Sharing group session for room {}".format(room_id))
+
+        if room_id not in self.outbound_group_sessions:
+            self.create_outbound_group_session(room_id)
+
+        group_session = self.outbound_group_sessions[room_id]
+
+        if group_session.shared:
+            self.create_outbound_group_session(room_id)
+            group_session = self.outbound_group_sessions[room_id]
+
+        key_content = {
+            "algorithm": self._megolm_algorithm,
+            "room_id": room_id,
+            "session_id": group_session.id,
+            "session_key": group_session.session_key,
+            "chain_index": group_session.message_index,
+        }
+
+        already_shared_set = group_session.users_shared_with
+        ignored_set = group_session.users_ignored
+
+        user_map = []
+        mark_as_ignored = []
+
+        for user_id in users:
+            for device in self.device_store.active_user_devices(user_id):
+                # No need to share the session with our own device
+                if device.id == self.device_id:
+                    ignored_set.add((user_id, device.id))
+                    continue
+
+                if self.is_device_blacklisted(device):
+                    ignored_set.add((user_id, device.id))
+                    continue
+
+                if ((user_id, device.id) in already_shared_set
+                        or (user_id, device.id) in ignored_set):
+                    continue
+
+                session = self.session_store.get(device.curve25519)
+
+                if not session:
+                    raise logger.warn(
+                        f"Missing Olm session for user {user_id} and device "
+                        f"{device.id}, skipping")
+                    continue
+
+                if not self.is_device_verified(device):
+                    if self.is_device_ignored(device):
+                        pass
+                    elif ignore_unverified_devices:
+                        mark_as_ignored.append(device)
+                    else:
+                        raise OlmUnverifiedDeviceError(
+                            device,
+                            f"Device {device.id} for user {device.user_id} is not "
+                            f"verified or blacklisted."
+                        )
+
+                user_map.append((user_id, device, session))
+
+        if mark_as_ignored:
+            self.store.ignore_devices(mark_as_ignored)
+
+        for user_map_chunk in chunks(user_map, self._maxToDeviceMessagesPerRequest):
+            to_device_dict = {"messages": {}}  # type: Dict[str, Any]
+            sharing_with = set()
+
+            for user_id, device, session in user_map_chunk:
+
+                olm_dict = self._olm_encrypt(session, device, "m.room_key",
+                                             key_content)
+                sharing_with.add((user_id, device.id))
+
+                if user_id not in to_device_dict["messages"]:
+                    to_device_dict["messages"][user_id] = {}
+
+                to_device_dict["messages"][user_id][device.id] = olm_dict
+
+            yield (sharing_with, to_device_dict)
 
     def share_group_session(
         self,

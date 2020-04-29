@@ -929,7 +929,7 @@ class TestClass:
         with pytest.raises(KeyError):
             session = async_client.olm.outbound_group_sessions[TEST_ROOM_ID]
 
-        response = await async_client.share_group_session(TEST_ROOM_ID, "1")
+        response = await async_client.share_group_session(TEST_ROOM_ID)
 
         session = async_client.olm.outbound_group_sessions[TEST_ROOM_ID]
         assert session.shared
@@ -2069,7 +2069,7 @@ class TestClass:
         )
 
         alice_to_device_url = re.compile(
-            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.room.encrypted/[0-9]\?access_token=alice_1234",
+            r"https://example\.org/_matrix/client/r0/sendToDevice/m\.room.encrypted/[0-9a-f-A-f-]*\?access_token=alice_1234",
         )
 
         def alice_to_device_cb(url, data, **kwargs):
@@ -2099,7 +2099,7 @@ class TestClass:
         # Share a group session for the room we're sharing with Alice.
         # This implicitly claims one-time keys since we don't have an Olm
         # session with Alice
-        response = await bob.share_group_session(TEST_ROOM_ID, "1", True)
+        response = await bob.share_group_session(TEST_ROOM_ID, True)
         assert isinstance(response, ShareGroupSessionResponse)
 
         # Check that the group session is indeed marked as shared.
@@ -2136,7 +2136,7 @@ class TestClass:
         assert alice_group_session.id == group_session.id
 
         # Now let's share a session from alice to bob
-        response = await alice.share_group_session(TEST_ROOM_ID, "1", True)
+        response = await alice.share_group_session(TEST_ROOM_ID, True)
         assert isinstance(response, ShareGroupSessionResponse)
 
         aioresponse.get(
@@ -2172,7 +2172,7 @@ class TestClass:
         assert TEST_ROOM_ID not in alice.olm.outbound_group_sessions
 
         # Let us try to share a session again.
-        response = await alice.share_group_session(TEST_ROOM_ID, "2", True)
+        response = await alice.share_group_session(TEST_ROOM_ID, True)
         assert isinstance(response, ShareGroupSessionResponse)
 
         group_session = alice.olm.outbound_group_sessions[TEST_ROOM_ID]
@@ -2345,7 +2345,7 @@ class TestClass:
         # Share a group session for the room we're sharing with Alice.
         # This implicitly claims one-time keys since we don't have an Olm
         # session with Alice
-        response = await bob.share_group_session(TEST_ROOM_ID, "1", True)
+        response = await bob.share_group_session(TEST_ROOM_ID, True)
         assert isinstance(response, ShareGroupSessionResponse)
 
         # Check that the group session is indeed marked as shared.
@@ -2522,7 +2522,7 @@ class TestClass:
         # This implicitly claims one-time keys since we don't have an Olm
         # session with Alice
         with pytest.raises(OlmTrustError):
-            response = await bob.share_group_session(TEST_ROOM_ID, "1")
+            response = await bob.share_group_session(TEST_ROOM_ID)
 
         to_device_for_alice = None
 
@@ -2628,7 +2628,7 @@ class TestClass:
         assert alice_device.verified
         assert bob_device.verified
 
-        await bob.share_group_session(TEST_ROOM_ID, "1")
+        await bob.share_group_session(TEST_ROOM_ID)
 
         # Check that the group session is indeed marked as shared.
         group_session = bob.olm.outbound_group_sessions[TEST_ROOM_ID]
@@ -2820,7 +2820,7 @@ class TestClass:
         # Share a group session for the room we're sharing with Alice.
         # This implicitly claims one-time keys since we don't have an Olm
         # session with Alice
-        response = await bob.share_group_session(TEST_ROOM_ID, "1", True)
+        response = await bob.share_group_session(TEST_ROOM_ID, True)
         assert isinstance(response, ShareGroupSessionResponse)
 
         # Check that the group session is indeed marked as shared.
@@ -2963,25 +2963,25 @@ class TestClass:
 
         aioresponse.put(bob_to_device_url, payload={}, repeat=True)
 
-        await bob.share_group_session(TEST_ROOM_ID, "1", True)
+        await bob.share_group_session(TEST_ROOM_ID, True)
         assert TEST_ROOM_ID in bob.olm.outbound_group_sessions
         bob.unignore_device(alice_device)
         assert TEST_ROOM_ID not in bob.olm.outbound_group_sessions
 
         bob.verify_device(alice_device)
-        await bob.share_group_session(TEST_ROOM_ID, "2")
+        await bob.share_group_session(TEST_ROOM_ID)
         assert TEST_ROOM_ID in bob.olm.outbound_group_sessions
         bob.unverify_device(alice_device)
         assert TEST_ROOM_ID not in bob.olm.outbound_group_sessions
 
         bob.blacklist_device(alice_device)
-        await bob.share_group_session(TEST_ROOM_ID, "3")
+        await bob.share_group_session(TEST_ROOM_ID)
         assert TEST_ROOM_ID in bob.olm.outbound_group_sessions
         bob.unblacklist_device(alice_device)
         assert TEST_ROOM_ID not in bob.olm.outbound_group_sessions
 
         bob.ignore_device(alice_device)
-        await bob.share_group_session(TEST_ROOM_ID, "3")
+        await bob.share_group_session(TEST_ROOM_ID)
         assert TEST_ROOM_ID in bob.olm.outbound_group_sessions
         bob.verify_device(alice_device)
         assert TEST_ROOM_ID not in bob.olm.outbound_group_sessions
@@ -3066,7 +3066,7 @@ class TestClass:
         # Share a group session for the room we're sharing with Alice.
         # This implicitly claims one-time keys since we don't have an Olm
         # session with Alice
-        response = await bob.share_group_session(TEST_ROOM_ID, "1", True)
+        response = await bob.share_group_session(TEST_ROOM_ID, True)
         assert isinstance(response, ShareGroupSessionResponse)
 
         # Check that the group session is indeed marked as shared.
@@ -3230,7 +3230,7 @@ class TestClass:
         # This implicitly claims one-time keys since we don't have an Olm
         # session with Alice
         with pytest.raises(OlmTrustError):
-            response = await bob.share_group_session(TEST_ROOM_ID, "1")
+            response = await bob.share_group_session(TEST_ROOM_ID)
 
         to_device_for_alice = None
 
