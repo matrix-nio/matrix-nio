@@ -360,9 +360,9 @@ class KeyVerificationCancel(KeyVerificationEvent):
     """Event signaling that a key verification process has been canceled.
 
     Attributes:
-        code (str): The error code for why the process/request was cancelled by
+        code (str): The error code for why the process/request was canceled by
             the user.
-        reason (str): A human readable description of the cancelation code.
+        reason (str): A human readable description of the cancellation code.
 
     """
 
