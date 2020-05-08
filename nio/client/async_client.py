@@ -296,7 +296,8 @@ class AsyncClient(Client):
 
     Attributes:
         synced (Event): An asyncio event that is fired every time the client
-            successfully syncs with the server.
+            successfully syncs with the server. Note, this event will only be
+            fired if the `sync_forever()` method is used.
 
     A simple example can be found bellow.
 
@@ -873,9 +874,6 @@ class AsyncClient(Client):
                 timeout,
         )
 
-        self.synced.set()
-        self.synced.clear()
-
         return response
 
     @logged_in
@@ -993,6 +991,9 @@ class AsyncClient(Client):
                 first_sync = False
                 full_state = None
                 since = None
+
+                self.synced.set()
+                self.synced.clear()
 
                 if loop_sleep_time:
                     await asyncio.sleep(loop_sleep_time / 1000)
