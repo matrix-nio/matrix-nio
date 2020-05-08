@@ -106,6 +106,15 @@ class TestClass:
         return self._load_response("tests/data/keys_upload.json")
 
     @property
+    def final_keys_upload_response(self):
+        return {
+            "one_time_key_counts": {
+                "curve25519": 10,
+                "signed_curve25519": 50
+            }
+        }
+
+    @property
     def sync_response(self):
         return self._load_response("tests/data/sync.json")
 
@@ -1305,7 +1314,7 @@ class TestClass:
         )
         resp = await async_client.room_typing(room_id, typing_state=True)
         assert isinstance(resp, RoomTypingResponse)
-    
+
     async def test_room_read_marker(
         self,
         async_client: AsyncClient,
@@ -1995,8 +2004,7 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/upload?access_token=abc123",
             status=200,
-            payload=self.keys_upload_response,
-            repeat=True
+            payload=self.final_keys_upload_response,
         )
 
         aioresponse.post(
@@ -2013,8 +2021,6 @@ class TestClass:
         assert async_client.should_upload_keys
 
         task = loop.create_task(async_client.sync_forever(loop_sleep_time=100))
-
-        await async_client.synced.wait()
         await async_client.synced.wait()
 
         assert not async_client.should_upload_keys
