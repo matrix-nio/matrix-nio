@@ -18,6 +18,9 @@
 """nio api module.
 
 This module contains primitives to build Matrix API http requests.
+
+In general these functions are not directly called. One should use an existing
+client like AsyncClient or HttpClient.
 """
 
 
