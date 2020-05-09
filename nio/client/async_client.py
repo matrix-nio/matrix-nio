@@ -578,6 +578,9 @@ class AsyncClient(Client):
     async def receive_response(self, response: Response) -> None:
         """Receive a Matrix Response and change the client state accordingly.
 
+        Automatically called for all "high-level" methods of this API (each
+        function documents calling it).
+
         Some responses will get edited for the callers convenience e.g. sync
         responses that contain encrypted messages. The encrypted messages will
         be replaced by decrypted ones if decryption is possible.
@@ -681,6 +684,8 @@ class AsyncClient(Client):
     ) -> ClientResponse:
         """Send a request to the homeserver.
 
+        This function does not call receive_response().
+
         Args:
             method (str): The request method that should be used. One of get,
                 post, put, delete.
@@ -720,6 +725,8 @@ class AsyncClient(Client):
     ) -> Union[LoginResponse, LoginError]:
         """Login to the homeserver using a raw dictionary.
 
+        Calls receive_response() to update the client state if necessary.
+
         Args:
             auth_dict (Dict[str, Any]): The auth dictionary.
                 See the example below and here
@@ -751,6 +758,8 @@ class AsyncClient(Client):
     async def register(self, username, password, device_name=""):
         """Register with homeserver.
 
+        Calls receive_response() to update the client state if necessary.
+
         Args:
             username (str): Username to register the new user as.
             password (str): New password for the user.
@@ -776,6 +785,8 @@ class AsyncClient(Client):
         token: Optional[str] = None,
     ) -> Union[LoginResponse, LoginError]:
         """Login to the homeserver.
+
+        Calls receive_response() to update the client state if necessary.
 
         Args:
             password (str, optional): The user's password.
@@ -812,6 +823,8 @@ class AsyncClient(Client):
     ) -> Union[LogoutResponse, LogoutError]:
         """Logout from the homeserver.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either 'LogoutResponse' if the request was successful or
         a `Logouterror` if there was an error with the request.
         """
@@ -828,6 +841,8 @@ class AsyncClient(Client):
         full_state: Optional[bool] = None,
     ) -> Union[SyncResponse, SyncError]:
         """Synchronise the client's state with the latest state on the server.
+
+        Calls receive_response() to update the client state if necessary.
 
         Args:
             timeout(int, optional): The maximum time that the server should
@@ -1111,6 +1126,8 @@ class AsyncClient(Client):
     ) -> Union[ToDeviceResponse, ToDeviceError]:
         """Send a to-device message.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `ToDeviceResponse` if the request was successful or
         a `ToDeviceError` if there was an error with the request.
 
@@ -1137,6 +1154,8 @@ class AsyncClient(Client):
         This uploads the long lived session keys as well as the required amount
         of one-time keys.
 
+        Calls receive_response() to update the client state if necessary.
+
         Raises LocalProtocolError if the client isn't logged in, if the session
         store isn't loaded or if no encryption keys need to be uploaded.
         """
@@ -1158,6 +1177,8 @@ class AsyncClient(Client):
         This queries the server for device keys of users with which we share an
         encrypted room.
 
+        Calls receive_response() to update the client state if necessary.
+
         Raises LocalProtocolError if the client isn't logged in, if the session
         store isn't loaded or if no key query needs to be performed.
         """
@@ -1176,6 +1197,8 @@ class AsyncClient(Client):
     async def devices(self) -> Union[DevicesResponse, DevicesError]:
         """Get the list of devices for the current user.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `DevicesResponse` if the request was successful
         or a `DevicesError` if there was an error with the request.
         """
@@ -1191,6 +1214,8 @@ class AsyncClient(Client):
 
         This tells the server to delete the given devices and invalidate their
         associated access tokens.
+
+        Calls receive_response() to update the client state if necessary.
 
         Returns either a `DeleteDevicesResponse` if the request was successful
         or a `DeleteDevicesError` if there was an error with the request.
@@ -1226,6 +1251,8 @@ class AsyncClient(Client):
     ) -> Union[JoinedMembersResponse, JoinedMembersError]:
         """Get the list of joined members for a room.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `JoinedMembersResponse` if the request was successful
         or a `JoinedMembersError` if there was an error with the request.
 
@@ -1245,6 +1272,8 @@ class AsyncClient(Client):
     ) -> Union[JoinedRoomsResponse, JoinedRoomsError]:
         """Get the list of joined rooms.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `JoinedRoomsResponse` if the request was successful
         or a `JoinedRoomsError` if there was an error with the request.
         """
@@ -1262,6 +1291,8 @@ class AsyncClient(Client):
         ignore_unverified_devices: bool = False,
     ):
         """Send a message to a room.
+
+        Calls receive_response() to update the client state if necessary.
 
         Args:
             room_id(str): The room id of the room where the message should be
@@ -1340,6 +1371,8 @@ class AsyncClient(Client):
     ) -> Union[RoomPutStateResponse, RoomPutStateError]:
         """Send a state event to a room.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `RoomPutStateResponse` if the request was successful
         or a `RoomPutStateError` if there was an error with the request.
 
@@ -1368,6 +1401,8 @@ class AsyncClient(Client):
     ) -> Union[RoomGetStateResponse, RoomGetStateError]:
         """Fetch state for a room.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `RoomGetStateResponse` if the request was successful
         or a `RoomGetStateError` if there was an error with the request.
 
@@ -1386,6 +1421,8 @@ class AsyncClient(Client):
         self, room_id: str, event_type: str, state_key: str = ""
     ) -> Union[RoomGetStateEventResponse, RoomGetStateEventError]:
         """Fetch a state event from a room.
+
+        Calls receive_response() to update the client state if necessary.
 
         Returns either a `RoomGetStateEventResponse` if the request was
         successful or a `RoomGetStateEventError` if there was an error with
@@ -1418,6 +1455,8 @@ class AsyncClient(Client):
     ) -> Union[RoomRedactResponse, RoomRedactError]:
         """Strip information out of an event.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `RoomRedactResponse` if the request was successful or
         a `RoomRedactError` if there was an error with the request.
 
@@ -1446,6 +1485,8 @@ class AsyncClient(Client):
     ) -> Union[RoomResolveAliasResponse, RoomResolveAliasError]:
         """Resolve a room alias to a room ID.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `RoomResolveAliasResponse` if the request was
         successful or a `RoomResolveAliasError if there was an error
         with the request.
@@ -1468,6 +1509,8 @@ class AsyncClient(Client):
         self, user_set: Dict[str, Iterable[str]]
     ) -> Union[KeysClaimResponse, KeysClaimError]:
         """Claim one-time keys for a set of user and device pairs.
+
+        Calls receive_response() to update the client state if necessary.
 
         Args:
             user_set(Dict[str, Iterator[str]]): A dictionary maping from a user
@@ -1493,6 +1536,8 @@ class AsyncClient(Client):
         """Share a group session with a room.
 
         This method sends a group session to members of a room.
+
+        Calls receive_response() to update the client state if necessary.
 
         Args:
             room_id(str): The room id of the room where the message should be
@@ -1577,6 +1622,8 @@ class AsyncClient(Client):
 
         This sends out a message to other devices requesting a room key from
         them.
+
+        Calls receive_response() to update the client state if necessary.
 
         Returns either a `RoomKeyRequestResponse` if the request was successful
         or a `RoomKeyRequestError` if there was an error with the request.
@@ -1704,6 +1751,8 @@ class AsyncClient(Client):
     ) -> Union[RoomCreateResponse, RoomCreateError]:
         """Create a new room.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `RoomCreateResponse` if the request was successful or
         a `RoomCreateError` if there was an error with the request.
 
@@ -1781,6 +1830,8 @@ class AsyncClient(Client):
         This tells the server to join the given room.
         If the room is not public, the user must be invited.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `JoinResponse` if the request was successful or
         a `JoinError` if there was an error with the request.
 
@@ -1795,6 +1846,8 @@ class AsyncClient(Client):
         self, room_id: str, user_id: str,
     ) -> Union[RoomInviteResponse, RoomInviteError]:
         """Invite a user to a room.
+
+        Calls receive_response() to update the client state if necessary.
 
         Returns either a `RoomInviteResponse` if the request was successful or
         a `RoomInviteError` if there was an error with the request.
@@ -1818,6 +1871,8 @@ class AsyncClient(Client):
         This tells the server to leave the given room.
         If the user was only invited, the invite is rejected.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `RoomLeaveResponse` if the request was successful or
         a `RoomLeaveError` if there was an error with the request.
 
@@ -1836,6 +1891,8 @@ class AsyncClient(Client):
         This tells the server to forget the given room's history for our user.
         If all users on a homeserver forget the room, the room will be
         eligible for deletion from that homeserver.
+
+        Calls receive_response() to update the client state if necessary.
 
         Returns either a `RoomForgetResponse` if the request was successful or
         a `RoomForgetError` if there was an error with the request.
@@ -1856,6 +1913,8 @@ class AsyncClient(Client):
 
         Kicking a user adjusts their membership to "leave" with an optional
         reason.
+
+        Calls receive_response() to update the client state if necessary.
 
         Returns either a `RoomKickResponse` if the request was successful or
         a `RoomKickError` if there was an error with the request.
@@ -1883,6 +1942,8 @@ class AsyncClient(Client):
         If they are currently in the room, they will be kicked or have their
         invitation withdrawn first.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `RoomBanResponse` if the request was successful or
         a `RoomBanError` if there was an error with the request.
 
@@ -1906,6 +1967,8 @@ class AsyncClient(Client):
 
         This allows them to be invited and join the room again.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `RoomUnbanResponse` if the request was successful or
         a `RoomUnbanError` if there was an error with the request.
 
@@ -1927,6 +1990,8 @@ class AsyncClient(Client):
         """Fetch a number of events that happened before and after an event.
 
         This allows clients to get the context surrounding an event.
+
+        Calls receive_response() to update the client state if necessary.
 
         Returns either a `RoomContextResponse` if the request was successful or
         a `RoomContextError` if there was an error with the request.
@@ -1960,6 +2025,8 @@ class AsyncClient(Client):
         """Fetch a list of message and state events for a room.
 
         It uses pagination query parameters to paginate history in the room.
+
+        Calls receive_response() to update the client state if necessary.
 
         Returns either a `RoomMessagesResponse` if the request was successful or
         a `RoomMessagesResponse` if there was an error with the request.
@@ -2013,6 +2080,8 @@ class AsyncClient(Client):
         This tells the server that the user is typing for the next N
         milliseconds or that the user has stopped typing.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `RoomTypingResponse` if the request was successful or
         a `RoomTypingError` if there was an error with the request.
 
@@ -2039,6 +2108,8 @@ class AsyncClient(Client):
         read_event: Optional[str] = None
     ):
         """Update read markers for a room.
+
+        Calls receive_response() to update the client state if necessary.
 
         Returns either a `RoomReadResponse` if the request was successful or
         a `RoomReadError` if there was an error with the request.
@@ -2074,6 +2145,8 @@ class AsyncClient(Client):
         self,
     ) -> Union[ContentRepositoryConfigResponse, ContentRepositoryConfigError]:
         """Get the content repository configuration, such as upload limits.
+
+        Calls receive_response() to update the client state if necessary.
 
         Returns either a `ContentRepositoryConfigResponse` if the request
         was successful or a `ContentRepositoryConfigError` if there was an
@@ -2137,6 +2210,8 @@ class AsyncClient(Client):
         """Upload a file to the content repository.
 
         This method ignores `AsyncClient.config.request_timeout` and uses `0`.
+
+        Calls receive_response() to update the client state if necessary.
 
         Returns a tuple containing:
 
@@ -2239,6 +2314,8 @@ class AsyncClient(Client):
 
         This method ignores `AsyncClient.config.request_timeout` and uses `0`.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `DownloadResponse` if the request was successful or
         a `DownloadError` if there was an error with the request.
 
@@ -2278,6 +2355,8 @@ class AsyncClient(Client):
         The actual thumbnail may be larger than the size specified.
         This method ignores `AsyncClient.config.request_timeout` and uses `0`.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `ThumbnailResponse` if the request was successful or
         a `ThumbnailError` if there was an error with the request.
 
@@ -2310,6 +2389,8 @@ class AsyncClient(Client):
         from the server. Additional profile information may be present.
         The currently logged in user is queried if no user is specified.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `ProfileGetResponse` if the request was
         successful or a `ProfileGetError` if there was an error
         with the request.
@@ -2330,6 +2411,8 @@ class AsyncClient(Client):
         This queries the display name of a user from the server.
         The currently logged in user is queried if no user is specified.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `ProfileGetDisplayNameResponse` if the request was
         successful or a `ProfileGetDisplayNameError` if there was an error
         with the request.
@@ -2349,6 +2432,8 @@ class AsyncClient(Client):
 
         This tells the server to set display name of the currently logged
         in user to the supplied string.
+
+        Calls receive_response() to update the client state if necessary.
 
         Returns either a `ProfileSetDisplayNameResponse` if the request was
         successful or a `ProfileSetDisplayNameError` if there was an error
@@ -2374,6 +2459,8 @@ class AsyncClient(Client):
         This queries the avatar matrix content URI of a user from the server.
         The currently logged in user is queried if no user is specified.
 
+        Calls receive_response() to update the client state if necessary.
+
         Returns either a `ProfileGetAvatarResponse` if the request was
         successful or a `ProfileGetAvatarError` if there was an error
         with the request.
@@ -2393,6 +2480,8 @@ class AsyncClient(Client):
 
         This tells the server to set the avatar of the currently logged
         in user to supplied matrix content URI.
+
+        Calls receive_response() to update the client state if necessary.
 
         Returns either a `ProfileSetAvatarResponse` if the request was
         successful or a `ProfileSetAvatarError` if there was an error
