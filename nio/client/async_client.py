@@ -949,7 +949,9 @@ class AsyncClient(Client):
         callbacks should be configured.
 
         The loop also makes sure to handle other required requests between
-        syncs. To react to the responses a response callback should be added.
+        syncs, including to_device messages and sending encryption keys if
+        required. To react to the responses a response callback should be
+        added.
 
         Args:
             timeout (int, optional): The maximum time that the server should
