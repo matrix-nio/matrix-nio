@@ -401,6 +401,9 @@ class AsyncClient(Client):
     ) -> Dict[Any, Any]:
         """Parse the body of the response.
 
+        Low-level function which is normally only used by other methods of
+        this class.
+
         Args:
             transport_response(ClientResponse): The transport response that
                 contains the body of the response.
@@ -419,6 +422,9 @@ class AsyncClient(Client):
         data: Tuple[Any, ...] = None,
     ) -> Response:
         """Transform a transport response into a nio matrix response.
+
+        Low-level function which is normally only used by other methods of
+        this class.
 
         Args:
             response_class (Type): The class that the requests belongs to.
@@ -842,6 +848,9 @@ class AsyncClient(Client):
     ) -> Union[SyncResponse, SyncError]:
         """Synchronise the client's state with the latest state on the server.
 
+        In general you should use sync_forever() which handles additional
+        tasks automatically (like sending encryption keys among others).
+
         Calls receive_response() to update the client state if necessary.
 
         Args:
@@ -895,7 +904,10 @@ class AsyncClient(Client):
     async def send_to_device_messages(
         self,
     ) -> List[Union[ToDeviceResponse, ToDeviceError]]:
-        """Send out outgoing to-device messages."""
+        """Send out outgoing to-device messages.
+
+        Automatically called by sync_forever().
+        """
         if not self.outgoing_to_device_messages:
             return []
 
@@ -910,7 +922,12 @@ class AsyncClient(Client):
     async def run_response_callbacks(
         self, responses: List[Union[Response, ErrorResponse]]
     ):
-        """Run the configured response callbacks for the given responses."""
+        """Run the configured response callbacks for the given responses.
+
+        Low-level function which is normally only used by other methods of
+        this class. Automatically called by sync_forever() and all functions
+        calling receive_response().
+        """
         for response in responses:
             for cb in self.response_callbacks:
                 if cb.filter is None or isinstance(response, cb.filter):
@@ -1154,6 +1171,8 @@ class AsyncClient(Client):
         This uploads the long lived session keys as well as the required amount
         of one-time keys.
 
+        Automatically called by sync_forever().
+
         Calls receive_response() to update the client state if necessary.
 
         Raises LocalProtocolError if the client isn't logged in, if the session
@@ -1176,6 +1195,8 @@ class AsyncClient(Client):
 
         This queries the server for device keys of users with which we share an
         encrypted room.
+
+        Automatically called by sync_forever() and room_send().
 
         Calls receive_response() to update the client state if necessary.
 
@@ -1510,6 +1531,8 @@ class AsyncClient(Client):
     ) -> Union[KeysClaimResponse, KeysClaimError]:
         """Claim one-time keys for a set of user and device pairs.
 
+        Automatically called by sync_forever() and room_send().
+
         Calls receive_response() to update the client state if necessary.
 
         Args:
@@ -1536,6 +1559,8 @@ class AsyncClient(Client):
         """Share a group session with a room.
 
         This method sends a group session to members of a room.
+
+        Automatically called by room_send().
 
         Calls receive_response() to update the client state if necessary.
 
