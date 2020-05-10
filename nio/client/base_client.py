@@ -431,8 +431,8 @@ class Client:
     def verify_device(self, device: OlmDevice) -> bool:
         """Mark a device as verified.
 
-        A device needs to be either trusted or blacklisted to either share room
-        encryption keys with it or not.
+        A device needs to be either trusted/ignored or blacklisted to either
+        share room encryption keys with it or not.
         This method adds the device to the trusted devices and enables sharing
         room encryption keys with it.
 
