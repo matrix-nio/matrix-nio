@@ -1341,8 +1341,7 @@ class AsyncClient(Client):
 
         Raises `LocalProtocolError` if the client isn't logged in.
         """
-        uuid = tx_id or uuid4()
-        assert tx_id
+        uuid: Union[str, UUID] = tx_id or uuid4()
 
         if self.olm:
             try:
@@ -1379,7 +1378,7 @@ class AsyncClient(Client):
                     )
 
         method, path, data = Api.room_send(
-            self.access_token, room_id, message_type, content, tx_id
+            self.access_token, room_id, message_type, content, uuid
         )
 
         return await self._send(RoomSendResponse, method, path, data, (room_id,))
