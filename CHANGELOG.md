@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Convert attrs classes to dataclasses.
+- Fire the `synced` asyncio event only in the sync forever loop.
 
 ### Fixed
 - Don't encrypt reactions.
