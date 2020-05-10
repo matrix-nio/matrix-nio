@@ -294,14 +294,11 @@ class HttpClient(Client):
                 )
 
             if room.encrypted:
-                content = self.olm.group_encrypt(
+                message_type, content = self.encrypt(
                     room_id,
-                    {
-                        "content": content,
-                        "type": message_type
-                    },
+                    message_type,
+                    content,
                 )
-                message_type = "m.room.encrypted"
 
         uuid = tx_id or uuid4()
 
