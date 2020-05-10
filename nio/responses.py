@@ -1406,7 +1406,7 @@ class _SyncResponse(Response):
 
     def __str__(self):
         # type: () -> str
-        room_messages = []
+        result = []
         for room_id, room_info in self.rooms.join.items():
             room_header = "  Messages for room {}:\n    ".format(room_id)
             messages = []
@@ -1414,9 +1414,14 @@ class _SyncResponse(Response):
                 messages.append(str(event))
 
             room_message = room_header + "\n    ".join(messages)
-            room_messages.append(room_message)
+            result.append(room_message)
 
-        body = "\n".join(room_messages)
+        if len(self.to_device_events) > 0:
+            result.append("  Device messages:")
+            for event in self.to_device_events:
+                result.append("    {}".format(event))
+
+        body = "\n".join(result)
         string = ("Sync response until batch: {}:\n{}").format(
             self.next_batch, body
         )
