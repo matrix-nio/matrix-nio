@@ -2030,7 +2030,7 @@ class AsyncClient(Client):
         return await self._send(
             RoomTypingResponse, method, path, data, response_data=(room_id,)
         )
-    
+
     @logged_in
     async def room_read_markers(
         self,
