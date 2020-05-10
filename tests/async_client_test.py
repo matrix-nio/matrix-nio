@@ -1663,6 +1663,8 @@ class TestClass:
         assert resp.body == self.file_response
         assert resp.filename == filename
 
+        async_client.config = AsyncClientConfig(max_limit_exceeded=0)
+
         aioresponse.get(
             "https://example.org/_matrix/media/r0/download/{}/{}"
             "?allow_remote=true".format(
@@ -1671,7 +1673,8 @@ class TestClass:
             ),
             status=429,
             content_type="application/json",
-            body = b'{"errcode": "M_LIMIT_EXCEEDED"}',
+            body = b'{"errcode": "M_LIMIT_EXCEEDED", "retry_after_ms": 1}',
+            repeat=True,
         )
         resp = await async_client.download(server_name, media_id)
         assert isinstance(resp, DownloadError)
@@ -1702,6 +1705,8 @@ class TestClass:
         assert isinstance(resp, ThumbnailResponse)
         assert resp.body == self.file_response
 
+        async_client.config = AsyncClientConfig(max_limit_exceeded=0)
+
         aioresponse.get(
             "https://example.org/_matrix/media/r0/thumbnail/{}/{}"
             "?width={}&height={}&method={}&allow_remote=true".format(
@@ -1713,7 +1718,8 @@ class TestClass:
             ),
             status=429,
             content_type="application/json",
-            body = b'{"errcode": "M_LIMIT_EXCEEDED"}',
+            body = b'{"errcode": "M_LIMIT_EXCEEDED", "retry_after_ms": 1}',
+            repeat = True,
         )
         resp = await async_client.thumbnail(
             server_name, media_id, width, height, method
@@ -1888,6 +1894,10 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=429,
+        )
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/login",
+            status=200,
             payload=self.limit_exceeded_error_response
         )
         aioresponse.post(
@@ -1900,7 +1910,11 @@ class TestClass:
 
         async def on_error(resp):
             assert isinstance(resp, ErrorResponse)
-            expected = self.limit_exceeded_error_response["retry_after_ms"]
+            expected = None
+
+            if len(got_error) == 1:
+                expected = self.limit_exceeded_error_response["retry_after_ms"]
+
             assert resp.retry_after_ms == expected
 
             got_error.append(True)
@@ -1908,7 +1922,7 @@ class TestClass:
         async_client.add_response_callback(on_error, ErrorResponse)
 
         resp = await async_client.login("wordpass")
-        assert got_error == [True]
+        assert got_error == [True, True]
         assert isinstance(resp, LoginResponse)
         assert async_client.logged_in
 
