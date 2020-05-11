@@ -1834,7 +1834,7 @@ class Olm:
                 session = self.session_store.get(device.curve25519)
 
                 if not session:
-                    raise logger.warn(
+                    logger.warn(
                         f"Missing Olm session for user {user_id} and device "
                         f"{device.id}, skipping")
                     continue
