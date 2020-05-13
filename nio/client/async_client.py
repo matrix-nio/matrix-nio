@@ -16,6 +16,8 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import asyncio
+from aiofiles.threadpool.binary import AsyncBufferedReader
+from aiofiles.threadpool.text import AsyncTextIOWrapper
 import io
 import warnings
 from asyncio import Event as AsyncioEvent
@@ -184,7 +186,13 @@ _ProfileSetDisplayNameT = Union[
 ]
 
 DataProvider = Callable[[int, int], AsyncDataT]
-
+SynchronousFile = (
+    io.TextIOBase,
+    io.BufferedReader,
+    io.BufferedRandom,
+    io.FileIO
+)
+AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
 
 @dataclass
 class ResponseCb:
@@ -2252,19 +2260,20 @@ class AsyncClient(Client):
         ``cancelled`` property becomes set to ``True``.
 
         Args:
-            data_provider (Callable): A function returning the data to upload.
-                Returning a path string, Path, async iterable or aiofiles open
-                binary file object allows the file data to be read in an
-                asynchronous and lazy (without reading the entire file into
-                memory) way.
-                Returning a non-async iterable or standard open binary file
-                object will still allow the data to be read lazily, but
-                not asynchronously.
+            data_provider (Callable, SynchronousFile, AsyncFile): A function
+                returning the data to upload or a file object. File objects
+                must be opened in binary mode (``mode="r+b"``). Callables
+                returning a path string, Path, async iterable or aiofiles
+                open binary file object allow the file data to be read in an
+                asynchronous and lazy way (without reading the entire file
+                into memory). Returning a synchronous iterable or standard
+                open binary file object will still allow the data to be read
+                lazily, but not asynchronously.
 
                 The function will be called again if the upload fails
                 due to a server timeout, in which case it must restart
                 from the beginning.
-                The function receives two arguments: the total number of
+                Callables receive two arguments: the total number of
                 429 "Too many request" errors that occured, and the total
                 number of server timeout exceptions that occured, thus
                 cleanup operations can be performed for retries if necessary.
@@ -2291,6 +2300,26 @@ class AsyncClient(Client):
 
             filesize (int, optional): Size in bytes for the file to transfer.
                 If left as ``None``, some servers might refuse the upload.
+
+        It's common to use this alongside :py:meth:`room_send`. An example of
+        uploading a plain text file follows, but the principle is the same for
+        media, you just need to add an additional "info" key to the content.
+        See `the Matrix client-server spec <https://matrix.org/docs/spec/client_server/r0.6.0#m-room-message-msgtypes>`_
+        for more details.
+
+        Example:
+            async with aiofiles.open("sample.py", "r+b") as f:
+                resp, err = await client.upload(f, content_type="text/plain", filename="hello.py")
+
+                await client.room_send(
+                    room_id="!myfaveroom:example.org",
+                    message_type="m.room.message",
+                    content = {
+                        "msgtype": "m.file",
+                        "url": resp.content_uri,
+                        "body": "descriptive title (like the filename)"
+                    }
+                )
         """
 
         http_method, path, _ = Api.upload(self.access_token, filename)
@@ -2302,7 +2331,19 @@ class AsyncClient(Client):
                 # We have to restart from scratch
                 monitor.transferred = 0
 
-            data = data_provider(got_429, got_timeouts)
+            if isinstance(data_provider, Callable):
+                data = data_provider(got_429, got_timeouts)
+
+            elif isinstance(data_provider, SynchronousFile) or \
+                isinstance(data_provider, AsyncFile):
+                data = data_provider
+
+            else:
+                raise TypeError(
+                    f"data_provider type {type(data_provider)} "
+                    "is not of a usable type "
+                    f"(Callable, {SynchronousFile}, {AsyncFile})"
+            )
 
             if encrypt:
                 return self._encrypted_data_generator(
