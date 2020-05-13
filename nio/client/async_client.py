@@ -172,6 +172,8 @@ from ..responses import (
     ToDeviceResponse,
     UploadError,
     UploadResponse,
+    UpdateDeviceResponse,
+    UpdateDeviceError,
 )
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
@@ -1232,6 +1234,34 @@ class AsyncClient(Client):
         method, path = Api.devices(self.access_token)
 
         return await self._send(DevicesResponse, method, path)
+
+    @logged_in
+    async def update_device(
+            self,
+            device_id: str,
+            content: Dict[str, str]
+    ) -> Union[UpdateDeviceResponse, UpdateDeviceError]:
+        """Update the metadata of the given device.
+
+        Returns either a `UpdateDeviceResponse` if the request was successful or
+        a `UpdateDeviceError` if there was an error with the request.
+
+        Args:
+            device_id (str): The device for which the metadata will be updated.
+            content (Dict): A dictionary of metadata values that will be
+                updated for the device.
+
+        Example:
+            >>> device_id = "QBUAZIFURK"
+            >>> content = {"display_name": "My new device"}
+            >>> await client.update_device(device_id, content)
+
+        """
+        method, path, data = Api.update_device(
+            self.access_token, device_id, content
+        )
+
+        return await self._send(UpdateDeviceResponse, method, path, data)
 
     @logged_in
     async def delete_devices(

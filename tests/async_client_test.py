@@ -46,7 +46,7 @@ from nio import (ContentRepositoryConfigResponse,
                  ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
                  Timeline, TransferMonitor, TransferCancelledError,
-                 UploadResponse,
+                 UploadResponse, UpdateDeviceResponse,
                  RoomMessageText, RoomKeyRequest)
 from nio.api import ResizingMethod, RoomPreset, RoomVisibility
 from nio.crypto import OlmDevice, Session, decrypt_attachment
@@ -1804,6 +1804,28 @@ class TestClass:
         assert isinstance(resp, DeleteDevicesAuthResponse)
         resp = await async_client.delete_devices(devices)
         assert isinstance(resp, DeleteDevicesResponse)
+
+    async def test_update_device(self, async_client: AsyncClient, aioresponse: aioresponses):
+        """Test that we can update a device
+        """
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        device_id = "QBUAZIFURK"
+        content = {"display_name": "My new device"}
+
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/devices/{}".format(device_id),
+            status=200,
+            payload={}
+        )
+
+        resp = await async_client.update_device(device_id, content)
+
+        assert isinstance(resp, UpdateDeviceResponse)
+
 
     async def test_get_set_displayname(self, async_client, aioresponse):
         await async_client.receive_response(
