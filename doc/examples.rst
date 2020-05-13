@@ -74,9 +74,32 @@ Manual encryption key verification
 ----------------------------------
 
 Below is a program that works through manual encryption of other users when you
-already know all of their device IDs. It's written in a manner that expects you
-to read through the code and comments from top to bottom before trying to run
-it.
+already know all of their device IDs. It's a bit dense but provides a good
+example in terms of being pythonic and using nio's design features purposefully.
+It is not designed to be a template that you can immediately extend to run your
+bot, it's designed to be an example of how to use nio.
+
+The overall structure is this: we subclass nio's ``AsyncClient`` class and add
+in our own handlers for a few things, namely:
+
+- automatically restoring login details from disk instead of creating new
+sessions each time we restart the process
+- callback for printing out any message we receive to stdout
+- callback for automatically joining any room @alice is invited to
+- a method for trusting devices using a user ID and (optionall) their list of
+trusted device IDs
+- a sample "hello world" encrypted message method
+
+In main, we make an instance of that subclass, attempt to login, then create an
+`asyncio coroutine <https://docs.python.org/3/library/asyncio-task.html#coroutines>`_
+to run later that will trust the devices and send the hello world message. We
+then create
+`asyncio Tasks <>`_
+to run that coroutine as well as the ``sync_forever()`` coroutine that nio
+provides, which does most of the handling of required work for communicating
+with Matrix: it uploads keys, checks for new messages, executes callbacks when
+events occur that trigger those callbacks, etc. Main executes the result of
+those Tasks.
 
 You'll need two accounts, which we'll call @alice:example.org and
 @bob:example.org. @alice will be your nio application and @bob will be your
@@ -88,17 +111,18 @@ They may be called "session IDs". These are the device IDs that your program
 will trust, and getting them into nio is the manual part here. In another
 example we'll document automatic emoji verification.
 
-By design, this is a **minimal possible demo** of working encryption and
-verification. It is not a working chatbot and you will have to adjust the design
-so that you accept messages as they come in, sync forever, receive room invites,
-or anything else you'd like your bot to do. It may look long at first but much
-of the program is actually documentation explaining how it works. If you have
-questions about the example, please don't hesitate to ask them on
+It may look long at first but much of the program is actually documentation
+explaining how it works. If you have questions about the example, please
+don't hesitate to ask them on
 `#nio:matrix.org <https://matrix.to/#/!JiiOHXrIUCtcOJsZCa:matrix.org?via=matrix.org&via=maunium.net&via=t2l.io>`_.
 
 If you are stuck, it may be useful to read this primer from Matrix.org on
 implementing end-to-end encryption:
 https://matrix.org/docs/guides/end-to-end-encryption-implementation-guide
+
+To delete the store, or clear the trusted devices, simply remove "nio_store" in
+the working directory as well as "manual_encrypted_verify.json". Then the
+example script will log in (with a new session ID) and generate new keys.
 
 .. literalinclude:: ../examples/manual_encrypted_verify.py
     :language: python

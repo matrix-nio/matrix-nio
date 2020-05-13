@@ -4,9 +4,11 @@ import sys
 import sys
 import json
 
-from nio import (AsyncClient, ClientConfig, DevicesError, Event, LoginResponse,
+from typing import Optional
+
+from nio import (AsyncClient, ClientConfig, DevicesError, Event,InviteEvent, LoginResponse,
                  LocalProtocolError, MatrixRoom, MatrixUser, RoomMessageText,
-                 crypto, exceptions)
+                 crypto, exceptions, RoomSendResponse)
 
 # This is a fully-documented example of how to do manual verification with nio,
 # for when you already know the device IDs of the users you want to trust. If
@@ -23,9 +25,10 @@ from nio import (AsyncClient, ClientConfig, DevicesError, Event, LoginResponse,
 # devices and blacklisted devices. Here we place it in the working directory,
 # but if you deploy your program you might consider /var or /opt for storage
 STORE_FOLDER = "nio_store/"
+
 # This file is for restoring login details after closing the program, so you
 # can preserve your device ID. If @alice logged in every time instead, @bob
-# would have to re-verify. See the retoring login example for more into.
+# would have to re-verify. See the restoring login example for more into.
 SESSION_DETAILS_FILE = "manual_encrypted_verify.json"
 
 # Only needed for this example, this is who @alice will securely
@@ -41,159 +44,263 @@ BOB_DEVICE_IDS = [
     "URDEVICEID",
     ]
 
+BOB_ID = "@phil:denhoff.ca"
+BOB_DEVICE_IDS = [
+    # You can find these in Riot under Settings > Security & Privacy.
+    # They may also be called "session IDs". You'll want to add ALL of them here
+    # for the one other user in your encrypted room
+    "FWIYREXSGP",
+    "ITPUNWYKJE",
+    "KENYSBIIPY",
+    "YELSRWSWHX",
+    ]
+
 # the ID of the room you want your bot to join and send commands in.
 # This can be a direct message or room; Matrix treats them the same
 ROOM_ID = "!myfavouriteroom:example.org"
+ROOM_ID = "!kifpxjVYatUcoVRMkB:denhoff.ca"
 
 ALICE_USER_ID = "@alice:example.org"
 ALICE_HOMESERVER = "https://matrix.example.org"
 ALICE_PASSWORD = "hunter2"
 
-def write_details_to_disk(resp: LoginResponse) -> None:
-    """Writes login details to disk so that we can restore our session later
-    without logging in again and creating a new device ID.
+ALICE_USER_ID = "@olive:denhoff.ca"
+ALICE_HOMESERVER = "https://matrix.denhoff.ca"
+ALICE_PASSWORD = "I0$aO5viUP9e0LfS"
 
-    Arguments:
-        resp {LoginResponse} -- the successful client login response.
-    """
-    with open(SESSION_DETAILS_FILE, "w") as f:
-        json.dump({
-            "access_token": resp.access_token,
-            "device_id": resp.device_id,
-            "user_id": resp.user_id
-        }, f)
+class CustomEncryptedClient(AsyncClient):
+    def __init__(self, homeserver, user='', device_id='', store_path='', config=None, ssl=None, proxy=None):
+        # Calling super.__init__ means we're running the __init__ method
+        # defined in AsyncClient, which this class derives from. That does a
+        # bunch of setup for us automatically
+        super().__init__(homeserver, user=user, device_id=device_id, store_path=store_path, config=config, ssl=ssl, proxy=proxy)
+
+        # if the store location doesn't exist, we'll make it
+        if store_path and not os.path.isdir(store_path):
+            os.mkdir(store_path)
+
+        # auto-join room invites
+        self.add_event_callback(self.cb_autojoin_room, InviteEvent)
+
+        # print all the messages we receive
+        self.add_event_callback(self.cb_print_messages, RoomMessageText)
+
+    async def login(self) -> None:
+        """Log in either using the global variables or (if possible) using the
+        session details file.
+
+        NOTE: This method kinda sucks. Don't use these kinds of global
+        variables in your program; it would be much better to pass them
+        around instead. They are only used here to minimise the size of the
+        example.
+        """
+        # Restore the previous session if we can
+        # See the "restore_login.py" example if you're not sure how this works
+        if os.path.exists(SESSION_DETAILS_FILE) and os.path.isfile(SESSION_DETAILS_FILE):
+            try:
+                with open(SESSION_DETAILS_FILE, "r") as f:
+                    config = json.load(f)
+                    self.access_token = config['access_token']
+                    self.user_id = config['user_id']
+                    self.device_id = config['device_id']
+
+                    # This loads our verified/blacklisted devices and our keys
+                    self.load_store()
+                    print(f"Logged in using stored credentials: {self.user_id} on {self.device_id}")
+
+            except IOError as err:
+                print(f"Couldn't load session from file. Logging in. Error: {err}")
+            except json.JSONDecodeError as err:
+                print(f"Couldn't read JSON file; overwriting")
+
+        # We didn't restore a previous session, so we'll log in with a password
+        if not self.user_id or not self.access_token or not self.device_id:
+            # this calls the login method defined in AsyncClient from nio
+            resp = await super().login(ALICE_PASSWORD)
+
+            if isinstance(resp, LoginResponse):
+                print("Logged in using a password; saving details to disk")
+                self.__write_details_to_disk(resp)
+            else:
+                print(f"Failed to log in: {resp}")
+                sys.exit(1)
+
+    def trust_devices(self, user_id: str, device_list: Optional[str] = None) -> None:
+        """Trusts the devices of a user.
+
+        If no device_list is provided, all of the users devices are trusted. If
+        one is provided, only the devices with IDs in that list are trusted.
+
+        Arguments:
+            user_id {str} -- the user ID whose devices should be trusted.
+
+        Keyword Arguments:
+            device_list {Optional[str]} -- The full list of device IDs to trust
+                from that user (default: {None})
+        """
+
+        print(f"{user_id}'s device store: {self.device_store[user_id]}")
+
+        # The device store contains a dictionary of device IDs and known
+        # OlmDevices for all users that share a room with us, including us.
+
+        # We can only run this after a first sync. We have to populate our
+        # device store and that requires syncing with the server.
+        for device_id, olm_device in self.device_store[user_id].items():
+            if device_list and device_id not in device_list:
+                # a list of trusted devices was provided, but this ID is not in
+                # that list. That's an issue.
+                print(f"Not trusting {device_id} as it's not in {user_id}'s pre-approved list.")
+                continue
+
+            if user_id == self.user_id and device_id == self.device_id:
+                # We cannot explictly trust the device @alice is using
+                continue
+
+            self.verify_device(olm_device)
+            print(f"Trusting {device_id} from user {user_id}")
+
+    def cb_autojoin_room(self, room: MatrixRoom, event: InviteEvent):
+        """Callback to automatically joins a Matrix room on invite.
+
+        Arguments:
+            room {MatrixRoom} -- Provided by nio
+            event {InviteEvent} -- Provided by nio
+        """
+        self.join(room.room_id)
+        room = self.rooms[ROOM_ID]
+        print(f"Room {room.name} is encrypted: {room.encrypted}" )
+
+    async def cb_print_messages(self, room: MatrixRoom, event: RoomMessageText):
+        """Callback to print all received messages to stdout.
+
+        Arguments:
+            room {MatrixRoom} -- Provided by nio
+            event {RoomMessageText} -- Provided by nio
+        """
+        if event.decrypted:
+            encrypted_symbol = "🛡 "
+        else:
+            encrypted_symbol = "⚠️ "
+        print(f"{room.display_name} |{encrypted_symbol}| {room.user_name(event.sender)}: {event.body}")
+
+    async def send_hello_world(self):
+        # Now we send an encrypted message that @bob can read, although it will
+        # appear to be "unverified" when they see it, because @bob has not verified
+        # the device @alice is sending from.
+        # We'll leave that as an excercise for the reader.
+        try:
+            await self.room_send(
+                room_id=ROOM_ID,
+                message_type="m.room.message",
+                content = {
+                    "msgtype": "m.text",
+                    "body": "Hello, this message is encrypted"
+                }
+            )
+        except exceptions.OlmUnverifiedDeviceError as err:
+            print("These are all known devices:")
+            device_store: crypto.DeviceStore = device_store
+            [print(f"\t{device.user_id}\t {device.device_id}\t {device.trust_state}\t  {device.display_name}") for device in device_store]
+            sys.exit(1)
+
+    @staticmethod
+    def __write_details_to_disk(resp: LoginResponse) -> None:
+        """Writes login details to disk so that we can restore our session later
+        without logging in again and creating a new device ID.
+
+        Arguments:
+            resp {LoginResponse} -- the successful client login response.
+        """
+        with open(SESSION_DETAILS_FILE, "w") as f:
+            json.dump({
+                "access_token": resp.access_token,
+                "device_id": resp.device_id,
+                "user_id": resp.user_id
+            }, f)
 
 
 async def main() -> None:
-    """A very simple encrypted nio application.
+    """A basic encrypted chat application using nio.
     """
-    # If the store location doesn't exist, we'll make it
-    if not os.path.isdir(STORE_FOLDER):
-        os.mkdir(STORE_FOLDER)
-
     # By setting `store_sync_tokens` to true, we'll save sync tokens to our
     # store every time we sync, thereby preventing reading old, previously read
     # events on each new sync.
     # For more info, check out https://matrix-nio.readthedocs.io/en/latest/nio.html#asyncclient
     config = ClientConfig(store_sync_tokens=True)
-    client = AsyncClient(
+    client = CustomEncryptedClient(
         ALICE_HOMESERVER,
         ALICE_USER_ID,
         store_path=STORE_FOLDER,
         config=config
     )
 
-    # restore the previous session if we can, otherwise login
-    if os.path.exists(SESSION_DETAILS_FILE) and os.path.isfile(SESSION_DETAILS_FILE):
-        try:
-            with open(SESSION_DETAILS_FILE, "r") as f:
-                config = json.load(f)
-                client.access_token = config['access_token']
-                client.user_id = config['user_id']
-                client.device_id = config['device_id']
+    # This is our own custom login function that looks for a pre-existing config
+    # file and, if it exists, logs in using those details. Otherwise it will log
+    # in using a password.
+    await client.login()
 
-                # This loads our verified/blacklisted devices and our keys
-                client.load_store()
-                print(f"Logged in using stored credentials: {client.user_id} on {client.device_id}")
+    # Here we create a coroutine that we can call in asyncio.gather later,
+    # along with sync_forever and any other API-related coroutines you'd like
+    # to do.
+    async def after_first_sync():
+        # We'll wait for the first firing of 'synced' before trusting devices.
+        # client.synced is an asyncio event that fires any time nio syncs. This
+        # code doesn't run in a loop, so it only fires once
+        print("Awaiting sync")
+        await client.synced.wait()
 
-        except IOError as err:
-            print(f"Couldn't load session from file. Logging in. Error: {err}")
-        except json.JSONDecodeError as err:
-            print(f"Couldn't read JSON file; overwriting")
+        # Usually key management is done by sync_forever, but in this example
+        # that would require waiting for three syncs to complete before all the
+        # keys and handled properly. We manually manage the keys ourself to
+        # avoid waiting so long.
+        if client.should_upload_keys:
+            await client.keys_upload()
 
-    if not client.user_id or not client.access_token or not client.device_id:
-        resp = await client.login(ALICE_PASSWORD)
-        if isinstance(resp, LoginResponse):
-            print("Logged in using a password; saving details to disk")
-            write_details_to_disk(resp)
-        else:
-            print(f"Failed to log in: {resp}")
-            sys.exit(1)
+        if client.should_query_keys:
+            await client.keys_query()
 
-    # If your room isn't public, you'll need to invite this user before
-    # it joins the room
-    await client.join(ROOM_ID)
-    await client.sync(full_state=True)
+        if client.should_claim_keys:
+            await client.keys_claim(client.get_users_for_key_claiming())
 
-    room = client.rooms[ROOM_ID]
-    print(f"Room {room.name} is encrypted: {room.encrypted}" )
+        # In practice, you want to have a list of previously-known device IDs
+        # for each user you want ot trust. Here, we require that list as a
+        # global variable
+        client.trust_devices(BOB_ID, BOB_DEVICE_IDS)
 
-    # nio will transparently encrypt the message for us but other users cannot
-    # read it as we have not shared our keys and haven't received the keys of
-    # anyone else.
-    await client.room_send(
-        room_id=ROOM_ID,
-        message_type="m.room.message",
-        content = {
-            "msgtype": "m.text",
-            "body": "An encrypted message you cannot read"
-        }
+        # In this case, we'll trust _all_ of @alice's devices. NOTE that this
+        # is a SUPER BAD IDEA in practice, but for the purpose of this example
+        # it'll be easier, since you may end up creating lots of sessions for
+        # @alice as you play with the script
+        client.trust_devices(ALICE_USER_ID)
+
+        await client.send_hello_world()
+
+    # We're creating Tasks here so that you could potentially write other
+    # Python coroutines to do other work, like checking an API or using another
+    # library. All of these Tasks will be run concurrently.
+    # For more details, check out https://docs.python.org/3/library/asyncio-task.html
+
+    # ensure_future() is for Python 3.5 and 3.6 compatability. For 3.7+, use
+    # asyncio.create_task()
+    after_first_sync_task = asyncio.ensure_future(after_first_sync())
+
+    # We use full_state=True here to pull any room invites that occured or
+    # messages sent in rooms _before_ this program connected to the
+    # Matrix server
+    sync_forever_task = asyncio.ensure_future(client.sync_forever(30000, full_state=True))
+
+    await asyncio.gather(
+        # The order here IS significant! You have to register the task to trust
+        # devices FIRST since it awaits the first sync
+        after_first_sync_task,
+        sync_forever_task
     )
 
-    if (client.should_upload_keys):
-        # We'll upload our public keys for others to use in encrypting messages
-        await client.keys_upload()
-    
-    if (client.should_query_keys):
-        # Since encryption is a two way street, we'll get the public keys
-        # of the other members of our encrypted rooms
-        await client.keys_query()
 
-    # In practice, you want to have a list of previously-known device IDs for
-    # each user you want to trust. Here we require that list as a global var
-    for device_id in BOB_DEVICE_IDS:
-        # When we join an encrypted room and then run sync, we populate our
-        # client.device_store; if we _only_ joined the room or _only_ synced,
-        # client.device_store would be empty.
+# Run the main coroutine, which instantiates our custom subclass, trusts all the
+# devices, and syncs forever (or until your press Ctrl+C)
 
-        # This is the set of known OlmDevices for @bob, a member of an encrypted
-        # room we're in. OlmDevices are devices they've signed in with that we
-        # know about
-        olm_device = client.device_store[BOB_ID][device_id]
-        client.verify_device(olm_device)
-        print(f"Trusting {device_id} for user {BOB_ID}")
-
-    # In this case, we'll trust _all_ of our own devices. NOTE that this is
-    # a SUPER BAD IDEA in practice, but for the purpose of this example
-    # I think it'll be easier since you may end up creating lots of sessions for
-    # @alice as you play with the script
-
-    # Note that client.devices() returns either a DeviceResponse or DeviceError.
-    # In this example, we're implicitly assuming that we get a DeviceResponse
-    # back, but you probably want to catch errors.
-    device_resp = await client.devices()
-    for device in device_resp.devices:
-        # we can't explictly trust the device @alice is currently using
-        if device.id == client.device_id:
-            continue
-
-        olm_device = client.device_store[client.user_id][device.id]
-        client.verify_device(olm_device)
-        print(f"Trusting {device.id} for user {client.user_id}")
-
-    # Now we send an encrypted message that @bob can read, although it will
-    # appear to be "unverified" when they see it, because @bob has not verified
-    # the device @alice is sending from.
-    # We'll leave that as an excercise for the reader.
-    try:
-        await client.room_send(
-            room_id=ROOM_ID,
-            message_type="m.room.message",
-            content = {
-                "msgtype": "m.text",
-                "body": "Hello, this message is encrypted"
-            }
-        )
-    except exceptions.OlmUnverifiedDeviceError as err:
-        print(f"WHOOPS: {err} Looks like you didn't add all the devices!")
-        print("These are all known devices:")
-        device_store: crypto.DeviceStore = client.device_store
-        [print(f"\t{device.user_id}\t {device.device_id}\t {device.trust_state}\t  {device.display_name}") for device in device_store]
-        sys.exit(1)
-
-    # That's it! This program just verified another users device and sent an
-    # encrypted message that only the two could read. Now go forth and prosper!
-
-    await client.close()
-
-asyncio.get_event_loop().run_until_complete(main())
+asyncio.run(
+    main()
+)
