@@ -1248,7 +1248,7 @@ class AsyncClient(Client):
 
         Args:
             device_id (str): The device for which the metadata will be updated.
-            content (Dict): A dictionary of metadata values that will be
+            content (Dict[str, str]): A dictionary of metadata values that will be
                 updated for the device.
 
         Example:
