@@ -1066,7 +1066,7 @@ class Api:
 
     @staticmethod
     def update_device(access_token, device_id, content):
-        # type: (str, Dict[str, str]) -> Tuple[str, str, str]
+        # type: (str, str, Dict[str, str]) -> Tuple[str, str, str]
         """Update the metadata of the given device.
 
         Returns the HTTP method, HTTP path and data for the request.
