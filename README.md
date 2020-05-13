@@ -7,21 +7,20 @@ nio
 [![Documentation Status](https://readthedocs.org/projects/matrix-nio/badge/?version=latest&style=flat-square)](https://matrix-nio.readthedocs.io/en/latest/?badge=latest)
 [![#nio](https://img.shields.io/badge/matrix-%23nio:matrix.org-blue.svg?style=flat-square)](https://matrix.to/#/!JiiOHXrIUCtcOJsZCa:matrix.org?via=matrix.org&via=maunium.net&via=t2l.io)
 
-
-
 nio is a multilayered [Matrix](https://matrix.org/) client library. The
-underlying base layer doesn't do any IO on its own. On top of the base layer, a
-no-IO HTTP client implementation exists, as well as a full fledged batteries
-included asyncio layer using [aiohttp](https://github.com/aio-libs/aiohttp/).
+underlying base layer doesn't do any network IO on its own, but on top of that
+is a full fledged batteries-included asyncio layer using
+[aiohttp](https://github.com/aio-libs/aiohttp/). File IO is only done if you
+enable end-to-end encryption (E2EE).
 
 Documentation
-=============
+-------------
 
 The full API documentation for nio can be found at
 [https://matrix-nio.readthedocs.io](https://matrix-nio.readthedocs.io/en/latest/#api-documentation)
 
 Features
-========
+--------
 
 nio has most of the features you'd expect in a Matrix library, but it's still a work in progress.
 
@@ -44,10 +43,11 @@ nio has most of the features you'd expect in a Matrix library, but it's still a 
 - ❌ in-room emoji verification
 - ❌ room upgrades and `m.room.tombstone` events ([#47](https://github.com/poljar/matrix-nio/issues/47))
 
-
 Installation
-============
+------------
+
 To install nio, simply use pip:
+
 ```bash
 $ pip install matrix-nio
 
@@ -66,8 +66,7 @@ $ pip install "matrix-nio[e2e]"
 ```
 
 Examples
-========
+--------
 
 For examples of how to use nio, and how others are using it,
 [read the docs](https://matrix-nio.readthedocs.io/en/latest/examples.html)
-
