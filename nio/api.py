@@ -1065,8 +1065,7 @@ class Api:
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def update_device(access_token, device_id, content):
-        # type: (str, Dict[str, str]) -> Tuple[str, str, str]
+    def update_device(access_token: str, device_id: str, content: Dict[str, str]) -> Tuple[str, str, str]:
         """Update the metadata of the given device.
 
         Returns the HTTP method, HTTP path and data for the request.
