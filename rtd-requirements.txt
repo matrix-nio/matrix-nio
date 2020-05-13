@@ -8,7 +8,7 @@ jsonschema
 atomicwrites
 cachetools
 unpaddedbase64
-pycrypto
+pycryptodome
 sphinx >= 1.8
 aiohttp; python_version >= '3.5'
 aioresponses; python_version >= '3.5'
