@@ -29,17 +29,6 @@ def write_details_to_disk(resp: LoginResponse) -> None:
         )
 
 
-async def send_example(client: AsyncClient, room_id: str) -> None:
-    await client.room_send(
-        room_id=room_id,
-        message_type="m.room.message",
-        content = {
-            "msgtype": "m.text",
-            "body": "Hello world!"
-        }
-    )
-
-
 async def main() -> None:
     client = AsyncClient("https://matrix.example.org", "@alice:example.org")
 
@@ -68,7 +57,14 @@ async def main() -> None:
             client.device_id = config['device_id']
 
         # Now we can send messages as the user
-        await send_example(client, "!myfavouriteroomid:example.org")
+        await client.room_send(
+            room_id = "!myfavouriteroomid:example.org",
+            message_type="m.room.message",
+            content = {
+                "msgtype": "m.text",
+                "body": "Hello world!"
+            }
+        )
         print("Logged in using stored credentials")
 
     # Either way we're logged in here, too
