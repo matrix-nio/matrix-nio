@@ -47,6 +47,13 @@ from ..events import (
 )
 from ..exceptions import LocalProtocolError, MembersSyncError
 from ..log import logger_group
+from ..responses import (ErrorResponse, JoinedMembersResponse,
+                         KeysClaimResponse, KeysQueryResponse,
+                         KeysUploadResponse, LoginResponse, LogoutResponse,
+                         PartialSyncResponse, DeactivateResponse, RegisterResponse, Response, RoomContextResponse,
+                         RoomForgetResponse, RoomKeyRequestResponse,
+                         RoomMessagesResponse, ShareGroupSessionResponse,
+                         SyncResponse, SyncType, ToDeviceResponse)
 from ..responses import (
     ErrorResponse,
     JoinedMembersResponse,
@@ -563,6 +570,16 @@ class Client:
         self.access_token = response.access_token
         self.user_id = response.user_id
         self.device_id = response.device_id
+
+        if self.store_path and not (self.store and self.olm):
+            self.load_store()
+
+    def _handle_deactivate(self, response):
+        # type: (Union[DeactivateResponse, ErrorResponse]) -> None
+        if isinstance(response, ErrorResponse):
+            return
+
+        self.id_server_unbind_result = response.id_server_unbind_result
 
         if self.store_path and not (self.store and self.olm):
             self.load_store()

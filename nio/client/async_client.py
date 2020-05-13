@@ -85,6 +85,50 @@ from ..events import (
 )
 from ..event_builders import ToDeviceMessage
 from ..monitors import TransferMonitor
+from ..responses import (ContentRepositoryConfigError,
+                         ContentRepositoryConfigResponse,
+                         DeleteDevicesError, DeleteDevicesResponse,
+                         DeleteDevicesAuthResponse,
+                         DevicesError, DevicesResponse,
+                         DownloadError, DownloadResponse,
+                         ErrorResponse, FileResponse,
+                         JoinResponse, JoinError,
+                         JoinedMembersError, JoinedMembersResponse,
+                         JoinedRoomsError, JoinedRoomsResponse,
+                         KeysClaimError, KeysClaimResponse, KeysQueryResponse,
+                         KeysUploadResponse,
+                         RegisterResponse, DeactivateResponse, RegisterErrorResponse, DeactivateErrorResponse,
+                         LoginError, LoginResponse,
+                         LogoutError, LogoutResponse,
+                         ProfileGetAvatarResponse, ProfileGetAvatarError,
+                         ProfileGetDisplayNameResponse,
+                         ProfileGetDisplayNameError, ProfileGetResponse,
+                         ProfileGetError, ProfileSetAvatarResponse,
+                         ProfileSetAvatarError, ProfileSetDisplayNameResponse,
+                         ProfileSetDisplayNameError, Response,
+                         RoomContextError, RoomContextResponse,
+                         RoomCreateResponse, RoomCreateError,
+                         RoomForgetResponse, RoomForgetError,
+                         RoomInviteResponse, RoomInviteError,
+                         RoomKeyRequestError, RoomKeyRequestResponse,
+                         RoomLeaveResponse, RoomLeaveError,
+                         RoomMessagesError, RoomMessagesResponse,
+                         RoomGetStateError, RoomGetStateResponse,
+                         RoomGetStateEventError, RoomGetStateEventResponse,
+                         RoomPutStateError, RoomPutStateResponse,
+                         RoomRedactError, RoomRedactResponse,
+                         RoomResolveAliasError, RoomResolveAliasResponse,
+                         RoomSendResponse, RoomTypingResponse, RoomTypingError,
+                         ShareGroupSessionError,
+                         ShareGroupSessionResponse, SyncError, SyncResponse,
+                         PartialSyncResponse,
+                         ThumbnailError, ThumbnailResponse,
+                         ToDeviceError, ToDeviceResponse,
+                         UploadError, UploadResponse)
+
+if False:
+    from ..events import MegolmEvent
+    from .crypto import OlmDevice
 from ..responses import (
     ContentRepositoryConfigError,
     SyncType,
@@ -173,7 +217,6 @@ from ..responses import (
     UploadError,
     UploadResponse,
 )
-
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
 
 _ProfileGetDisplayNameT = Union[
@@ -787,6 +830,19 @@ class AsyncClient(Client):
         )
 
         return await self._send(RegisterResponse, method, path, data)
+
+    async def deactivate(self, username, admin_token):
+        """Deactivate a user.
+
+        Args:
+            username (str): The fully qualified user ID to deactivate
+            admin_token (str): The user token (received during login) of a user with admin powers.
+
+        Returns a 'DeactivateResponse' if successful.
+        """
+        method, path, data = Api.deactivate(user=username, admin_token=admin_token)
+
+        return await self._send(DeactivateResponse, method, path, data)
 
     async def login(
         self,

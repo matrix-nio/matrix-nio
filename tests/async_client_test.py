@@ -17,7 +17,7 @@ from yarl import URL
 
 from helpers import faker
 from nio import (ContentRepositoryConfigResponse,
-                 DeviceList, DeviceOneTimeKeyCount, DownloadError,
+                 DeviceList, DeactivateResponse, DeviceOneTimeKeyCount, DownloadError,
                  DevicesResponse, DeleteDevicesAuthResponse,
                  DeleteDevicesResponse,
                  DownloadResponse, ErrorResponse,
@@ -378,6 +378,21 @@ class TestClass:
 
         assert isinstance(resp, RegisterResponse)
         assert async_client.access_token
+
+    async def test_deactivate(self, async_client, aioresponse):
+        loop = asyncio.get_event_loop()
+
+        assert not async_client.access_token
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/admin/deactivate",
+            status=200,
+            payload=self.DeactivateResponse
+        )
+        resp = async_client.deactivate("user", "admin_token")
+
+        assert isinstance(resp, DeactivateResponse)
+        assert async_client.id_server_unbind_result
 
     def test_login(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()

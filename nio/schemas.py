@@ -244,6 +244,14 @@ class Schemas:
         "required": ["user_id", "device_id", "access_token"],
     }
 
+    deactivate = {
+        "type": "object",
+        "properties":  {
+            "id_server_unbind_result": {"type": "string"}
+        },
+        "required": ["id_server_unbind_result"]
+    }
+
     login = {
         "type": "object",
         "properties": {
