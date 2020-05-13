@@ -1816,8 +1816,11 @@ class TestClass:
         device_id = "QBUAZIFURK"
         content = {"display_name": "My new device"}
 
-        aioresponse.post(
-            "https://example.org/_matrix/client/r0/devices/{}?access_token=abc123".format(device_id),
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/devices/{}?access_token={}".format(
+                device_id,
+                async_client.access_token
+            ),
             status=200,
             payload={}
         )
