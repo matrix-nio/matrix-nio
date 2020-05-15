@@ -795,8 +795,8 @@ class AsyncClient(Client):
     async def login_info(self) -> Union[LoginInfoResponse, LoginInfoError]:
         """Get the available login methods from the server
 
-        Returns either a `UpdateDeviceResponse` if the request was successful or
-        a `UpdateDeviceError` if there was an error with the request.
+        Returns either a `LoginInfoResponse` if the request was successful or
+        a `LoginInfoError` if there was an error with the request.
 
         """
         method, path = Api.login_info()
