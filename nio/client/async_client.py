@@ -113,6 +113,8 @@ from ..responses import (
     RegisterResponse,
     LoginError,
     LoginResponse,
+    LoginInfoResponse,
+    LoginInfoError,
     LogoutError,
     LogoutResponse,
     ProfileGetAvatarResponse,
@@ -789,6 +791,17 @@ class AsyncClient(Client):
         )
 
         return await self._send(RegisterResponse, method, path, data)
+
+    async def login_info(self) -> Union[LoginInfoResponse, LoginInfoError]:
+        """Get the available login methods from the server
+
+        Returns either a `LoginInfoResponse` if the request was successful or
+        a `LoginInfoError` if there was an error with the request.
+
+        """
+        method, path = Api.login_info()
+
+        return await self._send(LoginInfoResponse, method, path)
 
     async def login(
         self,
