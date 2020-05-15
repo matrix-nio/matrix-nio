@@ -379,7 +379,7 @@ class TestClass:
         assert isinstance(resp, RegisterResponse)
         assert async_client.access_token
 
-    def test_login_info(self, async_client, aioresponse):
+    async def test_login_info(self, async_client, aioresponse):
         """Test that we can get login info"""
 
         aioresponse.get(
