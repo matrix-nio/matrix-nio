@@ -1202,6 +1202,9 @@ class TestClass:
 
         bob_sas.receive_accept_event(accept_event)
 
+        assert bob_sas.chosen_key_agreement == Sas._key_agreement_v1
+        assert alice_sas.chosen_key_agreement == Sas._key_agreement_v1
+
         bob_key = {
             "sender": bob_id,
             "content": bob_sas.share_key().content
@@ -1219,6 +1222,8 @@ class TestClass:
 
         assert alice_sas.other_key_set
         assert bob_sas.other_key_set
+
+        assert alice_sas.get_emoji() == alice_sas.get_emoji()
 
         bob_sas.accept_sas()
 
