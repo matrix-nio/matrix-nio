@@ -2379,9 +2379,9 @@ class AsyncClient(Client):
     @client_session
     async def download(
         self,
-        server_name: Optional[str],
-        media_id: Optional[str],
-        mxc: Optional[str],
+        server_name: Optional[str] = None,
+        media_id: Optional[str] = None,
+        mxc: Optional[str] = None,
         filename: Optional[str] = None,
         allow_remote: bool = True,
     ) -> Union[DownloadResponse, DownloadError]:
