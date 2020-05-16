@@ -2413,7 +2413,7 @@ class AsyncClient(Client):
         if mxc:
             url = urlparse(mxc)
             server_name = url.netloc
-            media_id = url.path
+            media_id = url.path.replace('/', '')
 
         http_method, path = Api.download(
             server_name, media_id, filename, allow_remote
