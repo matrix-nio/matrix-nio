@@ -470,6 +470,32 @@ class Api:
         )
 
     @staticmethod
+    def room_get_event(
+        access_token: str,
+        room_id: str,
+        event_id: str
+    ) -> Tuple[str, str]:
+        """Get a single event based on roomId/eventId.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room id of the room where the event is in.
+            event_id (str): The event id to get.
+        """
+        query_parameters = {"access_token": access_token}
+
+        path = "rooms/{room}/event/{event_id}".format(
+            room=room_id, event_id=event_id
+        )
+
+        return (
+            "GET",
+            Api._build_path(path, query_parameters)
+        )
+
+    @staticmethod
     def room_put_state(
         access_token, # type str
         room_id,      # type str
