@@ -838,14 +838,14 @@ class RoomGetStateEventResponse(Response):
         return cls(parsed_dict, event_type, state_key, room_id)
 
 
-class RoomGetEventResponse(ErrorResponse):
+class RoomGetEventResponse(Response):
     """A response indicating successful room get event request.
 
     Attributes:
         event (Dict): The requested event.
     """
 
-    event: Dict = field()
+    event: Event = field()
 
     @staticmethod
     def create_error(parsed_dict):
