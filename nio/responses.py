@@ -195,7 +195,7 @@ class InviteInfo:
 class RoomSummary:
     invited_member_count: Optional[int] = None
     joined_member_count: Optional[int] = None
-    heroes: List[str] = field(default_factory=list)
+    heroes: Optional[List[str]] = None
 
 
 @dataclass
@@ -1563,7 +1563,7 @@ class _SyncResponse(Response):
         summary = RoomSummary(
             summary_events.get("m.invited_member_count", None),
             summary_events.get("m.joined_member_count", None),
-            summary_events.get("m.heroes", [])
+            summary_events.get("m.heroes", None),
         )
 
         account_data = RoomInfo.parse_account_data(account_data_events)

@@ -388,19 +388,20 @@ class MatrixRoom:
             self.summary = summary
             return
 
-        if summary.joined_member_count:
+        if summary.joined_member_count is not None:
             self.summary.joined_member_count = summary.joined_member_count
 
-        if summary.invited_member_count:
+        if summary.invited_member_count is not None:
             self.summary.invited_member_count = summary.invited_member_count
 
-        if summary.heroes:
+        if summary.heroes is not None:
             self.summary.heroes = summary.heroes
 
     def _summary_details(self) -> Tuple[List[str], int, int]:
         """Return the summary attributes if it can be used for calculations."""
         valid = bool(
             self.summary is not None and
+            self.summary.heroes is not None and
             self.summary.joined_member_count is not None and
             self.summary.invited_member_count is not None,
         )
