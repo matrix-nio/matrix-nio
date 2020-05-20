@@ -150,6 +150,8 @@ from ..responses import (
     RoomGetStateResponse,
     RoomGetStateEventError,
     RoomGetStateEventResponse,
+    RoomGetEventError,
+    RoomGetEventResponse,
     RoomPutStateError,
     RoomPutStateResponse,
     RoomRedactError,
@@ -463,6 +465,19 @@ class AsyncClient(Client):
         ):
             parsed_dict = await self.parse_body(transport_response)
             resp = DeleteDevicesAuthResponse.from_dict(parsed_dict)
+
+        elif issubclass(response_class, RoomGetEventResponse):
+            parsed_dict = await self.parse_body(transport_response)
+            if transport_response.status == 404:
+                resp = RoomGetEventResponse.create_error(parsed_dict)
+
+            else:
+                parsed_dict = await self.parse_body(transport_response)
+                event = Event.parse_event(parsed_dict)
+                if isinstance(event, MegolmEvent):
+                    event = self.decrypt_event(event)
+
+                resp = RoomGetEventResponse(event)
 
         else:
             parsed_dict = await self.parse_body(transport_response)
@@ -1429,6 +1444,30 @@ class AsyncClient(Client):
         )
 
         return await self._send(RoomSendResponse, method, path, data, (room_id,))
+
+    @logged_in
+    async def room_get_event(
+        self,
+        room_id: str,
+        event_id: str
+    ) -> Union[RoomGetEventResponse, RoomGetEventError]:
+        """Get a single event based on roomId/eventId.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            room_id (str): The room id of the room where the event is in.
+            event_id (str): The event id to get.
+        """
+        method, path = Api.room_get_event(
+            self.access_token,
+            room_id,
+            event_id
+        )
+
+        return await self._send(
+            RoomGetEventResponse, method, path
+        )
 
     @logged_in
     async def room_put_state(
