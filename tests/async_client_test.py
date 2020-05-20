@@ -805,7 +805,7 @@ class TestClass:
             }
 
         aioresponse.get(
-            "{base}/rooms/{room}/event/{event_id}/?{query}".format(
+            "{base}/rooms/{room}/event/{event_id}?{query}".format(
                 base=base_url,
                 room=TEST_ROOM_ID,
                 event_id="$15163622445EBvZJ:localhost",
