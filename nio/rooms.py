@@ -401,7 +401,6 @@ class MatrixRoom:
         """Return the summary attributes if it can be used for calculations."""
         valid = bool(
             self.summary is not None and
-            self.summary.heroes is not None and
             self.summary.joined_member_count is not None and
             self.summary.invited_member_count is not None,
         )
@@ -409,7 +408,7 @@ class MatrixRoom:
             raise ValueError("Unusable summary")
 
         return (  # type: ignore
-            self.summary.heroes,                # type: ignore
+            self.summary.heroes or [],          # type: ignore
             self.summary.joined_member_count,   # type: ignore
             self.summary.invited_member_count,  # type: ignore
         )
