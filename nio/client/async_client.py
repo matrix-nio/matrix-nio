@@ -477,7 +477,8 @@ class AsyncClient(Client):
                 if isinstance(event, MegolmEvent):
                     event = self.decrypt_event(event)
 
-                resp = RoomGetEventResponse(event)
+                resp = RoomGetEventResponse()
+                resp.event = event
 
         else:
             parsed_dict = await self.parse_body(transport_response)
