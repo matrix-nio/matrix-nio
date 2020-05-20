@@ -39,6 +39,7 @@ from nio import (ContentRepositoryConfigResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomGetStateResponse, RoomGetStateEventResponse,
                  RoomKickResponse,
+                 RoomGetEventResponse,
                  RoomPutStateResponse, RoomReadMarkersResponse,
                  RoomRedactResponse, RoomResolveAliasResponse,
                  RoomSendResponse, RoomSummary,
@@ -777,6 +778,49 @@ class TestClass:
         )
 
         assert isinstance(response, RoomSendResponse)
+
+    async def test_room_get_event(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        base_url = "https://example.org/_matrix/client/r0"
+
+        response = {
+                "content": {
+                    "body": "This is an example text message",
+                    "msgtype": "m.text",
+                    "format": "org.matrix.custom.html",
+                    "formatted_body": "<b>This is an example text message</b>"
+                },
+                "type": "m.room.message",
+                "event_id": "$15163622445EBvZJ:localhost",
+                "room_id": TEST_ROOM_ID,
+                "sender": "@example:example.org",
+                "origin_server_ts": 1432735824653,
+                "unsigned": {
+                    "age": 1234
+                }
+            }
+
+        aioresponse.get(
+            "{base}/rooms/{room}/event/{event_id}/?{query}".format(
+                base=base_url,
+                room=TEST_ROOM_ID,
+                event_id="$15163622445EBvZJ:localhost",
+                query="access_token=abc123"
+            ),
+            status=200,
+            payload=response
+        )
+
+        resp = await async_client.room_get_event(
+            TEST_ROOM_ID,
+            "$15163622445EBvZJ:localhost"
+        )
+
+        assert isinstance(resp, RoomGetEventResponse)
 
     async def test_room_put_state(self, async_client, aioresponse):
         await async_client.receive_response(
