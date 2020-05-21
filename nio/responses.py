@@ -847,18 +847,16 @@ class RoomGetEventResponse(Response):
 
     event: Event = field()
 
-    @staticmethod
-    def create_error(parsed_dict):
-        return RoomGetEventError.from_dict(parsed_dict)
-
     @classmethod
+    @verify(
+        Schemas.room_event,
+        RoomGetEventError,
+        pass_arguments=False,
+    )
     def from_dict(
         cls,
         parsed_dict: Dict[str, Any]
     ) -> Union["RoomGetEventResponse", RoomGetEventError]:
-        if "errcode" in parsed_dict:
-            return cls.create_error(parsed_dict)
-
         event = Event.parse_event(parsed_dict)
         resp = cls()
         resp.event = event
