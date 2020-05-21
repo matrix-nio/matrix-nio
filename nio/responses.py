@@ -857,7 +857,7 @@ class RoomGetEventResponse(Response):
         parsed_dict: Dict[str, Any]
     ) -> Union["RoomGetEventResponse", RoomGetEventError]:
         if "errcode" in parsed_dict:
-            return RoomGetEventError.from_dict(parsed_dict)
+            return cls.create_error(parsed_dict)
 
         event = Event.parse_event(parsed_dict)
         resp = cls()
