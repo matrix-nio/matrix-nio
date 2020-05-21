@@ -1440,7 +1440,10 @@ class AsyncClient(Client):
     ) -> Union[RoomGetEventResponse, RoomGetEventError]:
         """Get a single event based on roomId/eventId.
 
-        Returns the HTTP method and HTTP path for the request.
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `RoomGetEventResponse` if the request was successful
+        or a `RoomGetEventError` if there was an error with the request.
 
         Args:
             room_id (str): The room id of the room where the event is in.
