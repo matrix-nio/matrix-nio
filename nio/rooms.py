@@ -388,13 +388,13 @@ class MatrixRoom:
             self.summary = summary
             return
 
-        if summary.joined_member_count:
+        if summary.joined_member_count is not None:
             self.summary.joined_member_count = summary.joined_member_count
 
-        if summary.invited_member_count:
+        if summary.invited_member_count is not None:
             self.summary.invited_member_count = summary.invited_member_count
 
-        if summary.heroes:
+        if summary.heroes is not None:
             self.summary.heroes = summary.heroes
 
     def _summary_details(self) -> Tuple[List[str], int, int]:
@@ -408,7 +408,7 @@ class MatrixRoom:
             raise ValueError("Unusable summary")
 
         return (  # type: ignore
-            self.summary.heroes,                # type: ignore
+            self.summary.heroes or [],          # type: ignore
             self.summary.joined_member_count,   # type: ignore
             self.summary.invited_member_count,  # type: ignore
         )
