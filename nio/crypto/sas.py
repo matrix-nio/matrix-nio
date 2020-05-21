@@ -79,6 +79,8 @@ class Sas(olm.Sas):
 
     _sas_method_v1 = "m.sas.v1"
     _key_agreement_v1 = "curve25519"
+    _key_agreement_v2 = "curve25519-hkdf-sha256"
+    _key_agreeemnt_protocols = [_key_agreement_v1, _key_agreement_v2]
     _hash_v1 = "sha256"
     _mac_normal = "hkdf-hmac-sha256"
     _mac_old = "hmac-sha256"
@@ -191,14 +193,18 @@ class Sas(olm.Sas):
         self.transaction_id = transaction_id or str(uuid4())
 
         self.short_auth_string = short_auth_string or ["emoji", "decimal"]
-        self.mac_methods = mac_methods or self._mac_v1
+        self.mac_methods = mac_methods or Sas._mac_v1
         self.chosen_mac_method = ""
+        self.key_agreement_protocols = Sas._key_agreeemnt_protocols
+        self.chosen_key_agreement: Optional[str] = None
         self.state = SasState.created
         self.we_started_it = True
         self.sas_accepted = False
         self.commitment = None
         self.cancel_reason = ""
         self.cancel_code = ""
+
+        self.their_sas_key: Optional[str] = None
 
         self.verified_devices: List[str] = []
 
@@ -238,10 +244,14 @@ class Sas(olm.Sas):
 
         string_content = Api.to_canonical_json(event.source["content"])
         obj.commitment = olm.sha256(obj.pubkey + string_content)
+        obj.key_agreement_protocols = event.key_agreement_protocols
 
         if (
             Sas._sas_method_v1 != event.method
-            or Sas._key_agreement_v1 not in event.key_agreement_protocols
+            or (
+                Sas._key_agreement_v1 not in event.key_agreement_protocols and
+                Sas._key_agreement_v2 not in event.key_agreement_protocols
+            )
             or Sas._hash_v1 not in event.hashes
             or (
                 Sas._mac_normal not in event.message_authentication_codes
@@ -282,6 +292,10 @@ class Sas(olm.Sas):
     def verified(self) -> bool:
         """Is the device verified and the request done."""
         return self.state == SasState.mac_received and self.sas_accepted
+
+    def set_their_pubkey(self, pubkey: str):
+        self.their_sas_key = pubkey
+        super().set_their_pubkey(pubkey)
 
     def accept_sas(self):
         """Accept the short authentication string."""
@@ -331,31 +345,41 @@ class Sas(olm.Sas):
         return zip_longest(*args, fillvalue=fillvalue)
 
     @property
-    def _extra_info(self) -> str:
+    def _extra_info_v1(self) -> str:
+        device = self.other_olm_device
+        tx_id = self.transaction_id
+
+        our_info = f"{self.own_user}{self.own_device}"
+        their_info = f"{device.user_id}{device.device_id}"
+
         if self.we_started_it:
-            return (
-                "MATRIX_KEY_VERIFICATION_SAS"
-                "{first_user}{first_device}"
-                "{second_user}{second_device}{transaction_id}".format(
-                    first_user=self.own_user,
-                    first_device=self.own_device,
-                    second_user=self.other_olm_device.user_id,
-                    second_device=self.other_olm_device.id,
-                    transaction_id=self.transaction_id,
-                )
-            )
+            return f"MATRIX_KEY_VERIFICATION_SAS{our_info}{their_info}{tx_id}"
         else:
-            return (
-                "MATRIX_KEY_VERIFICATION_SAS"
-                "{first_user}{first_device}"
-                "{second_user}{second_device}{transaction_id}".format(
-                    first_user=self.other_olm_device.user_id,
-                    first_device=self.other_olm_device.id,
-                    second_user=self.own_user,
-                    second_device=self.own_device,
-                    transaction_id=self.transaction_id,
-                )
-            )
+            return f"MATRIX_KEY_VERIFICATION_SAS{their_info}{our_info}{tx_id}"
+
+    @property
+    def _extra_info_v2(self) -> str:
+        device = self.other_olm_device
+        tx_id = self.transaction_id
+
+        assert self.their_sas_key
+
+        our_info = f"{self.own_user}|{self.own_device}|{self.pubkey}"
+        their_info = f"{device.user_id}|{device.device_id}|{self.their_sas_key}"
+
+        if self.we_started_it:
+            return f"MATRIX_KEY_VERIFICATION_SAS|{our_info}|{their_info}|{tx_id}"
+        else:
+            return f"MATRIX_KEY_VERIFICATION_SAS|{their_info}|{our_info}|{tx_id}"
+
+    @property
+    def _extra_info(self) -> str:
+        if self.chosen_key_agreement == Sas._key_agreement_v1:
+            return self._extra_info_v1
+        elif self.chosen_key_agreement == Sas._key_agreement_v2:
+            return self._extra_info_v2
+
+        raise ValueError(f"Unknown key agreement protocol {self.chosen_key_agreement}")
 
     def get_emoji(self) -> List[Tuple[str, str]]:
         """Get the emoji short authentication string.
@@ -409,7 +433,7 @@ class Sas(olm.Sas):
             "from_device": self.own_device,
             "method": self._sas_method_v1,
             "transaction_id": self.transaction_id,
-            "key_agreement_protocols": [self._key_agreement_v1],
+            "key_agreement_protocols": Sas._key_agreeemnt_protocols,
             "hashes": [self._hash_v1],
             "message_authentication_codes": self._mac_v1,
             "short_authentication_string": self._strings_v1,
@@ -449,9 +473,14 @@ class Sas(olm.Sas):
         else:
             self.chosen_mac_method = self._mac_old
 
+        if Sas._key_agreement_v2 in self.key_agreement_protocols:
+            self.chosen_key_agreement = Sas._key_agreement_v2
+        else:
+            self.chosen_key_agreement = Sas._key_agreement_v1
+
         content = {
             "transaction_id": self.transaction_id,
-            "key_agreement_protocol": self._key_agreement_v1,
+            "key_agreement_protocol": self.chosen_key_agreement,
             "hash": self._hash_v1,
             "message_authentication_code": self.chosen_mac_method,
             "short_authentication_string": sas_methods,
@@ -585,7 +614,7 @@ class Sas(olm.Sas):
             return
 
         if (
-            event.key_agreement_protocol != Sas._key_agreement_v1
+            event.key_agreement_protocol not in Sas._key_agreeemnt_protocols
             or event.hash != Sas._hash_v1
             or event.message_authentication_code not in Sas._mac_v1
             or (
@@ -599,6 +628,7 @@ class Sas(olm.Sas):
 
         self.commitment = event.commitment
         self.chosen_mac_method = event.message_authentication_code
+        self.chosen_key_agreement = event.key_agreement_protocol
         self.short_auth_string = event.short_authentication_string
         self.state = SasState.accepted
 
