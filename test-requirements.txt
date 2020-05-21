@@ -16,3 +16,10 @@ python-olm >= '3.1.0'
 peewee >= '3.9.5'
 atomicwrites
 cachetools
+logbook
+unpaddedbase64
+pycryptodome
+aiofiles
+jsonschema
+h2
+h11
