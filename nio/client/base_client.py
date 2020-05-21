@@ -63,6 +63,7 @@ from ..responses import (
     RoomForgetResponse,
     RoomKeyRequestResponse,
     RoomMessagesResponse,
+    RoomGetEventResponse,
     ShareGroupSessionResponse,
     SyncResponse,
     SyncType,
@@ -985,6 +986,9 @@ class Client:
             self._handle_room_forget_response(response)
         elif isinstance(response, ToDeviceResponse):
             self._handle_olm_response(response)
+        elif isinstance(response, RoomGetEventResponse):
+            if isinstance(response.event, MegolmEvent):
+                response.event = self.decrypt_event(response.event)
         elif isinstance(response, ErrorResponse):
             if response.soft_logout:
                 self.access_token = ""

@@ -466,20 +466,6 @@ class AsyncClient(Client):
             parsed_dict = await self.parse_body(transport_response)
             resp = DeleteDevicesAuthResponse.from_dict(parsed_dict)
 
-        elif issubclass(response_class, RoomGetEventResponse):
-            parsed_dict = await self.parse_body(transport_response)
-            if transport_response.status == 404:
-                resp = RoomGetEventResponse.create_error(parsed_dict)
-
-            else:
-                parsed_dict = await self.parse_body(transport_response)
-                event = Event.parse_event(parsed_dict)
-                if isinstance(event, MegolmEvent):
-                    event = self.decrypt_event(event)
-
-                resp = RoomGetEventResponse()
-                resp.event = event
-
         else:
             parsed_dict = await self.parse_body(transport_response)
             resp = response_class.from_dict(parsed_dict, *data)
