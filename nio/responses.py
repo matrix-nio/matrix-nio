@@ -842,7 +842,7 @@ class RoomGetEventResponse(Response):
     """A response indicating successful room get event request.
 
     Attributes:
-        event (Dict): The requested event.
+        event (Event): The requested event.
     """
 
     event: Event = field()
@@ -850,6 +850,19 @@ class RoomGetEventResponse(Response):
     @staticmethod
     def create_error(parsed_dict):
         return RoomGetEventError.from_dict(parsed_dict)
+
+    @classmethod
+    def from_dict(
+        cls,
+        parsed_dict: Dict[str, Any]
+    ) -> Union["RoomGetEventResponse", RoomGetEventError]:
+        if "errcode" in parsed_dict:
+            return RoomGetEventError.from_dict(parsed_dict)
+
+        event = Event.parse_event(parsed_dict)
+        resp = cls()
+        resp.event = event
+        return resp
 
 
 class RoomPutStateResponse(RoomEventIdResponse):

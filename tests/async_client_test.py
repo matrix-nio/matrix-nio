@@ -39,7 +39,7 @@ from nio import (ContentRepositoryConfigResponse,
                  RoomMemberEvent, RoomMessagesResponse, Rooms,
                  RoomGetStateResponse, RoomGetStateEventResponse,
                  RoomKickResponse,
-                 RoomGetEventResponse,
+                 RoomGetEventResponse, RoomGetEventError,
                  RoomPutStateResponse, RoomReadMarkersResponse,
                  RoomRedactResponse, RoomResolveAliasResponse,
                  RoomSendResponse, RoomSummary,
@@ -821,6 +821,28 @@ class TestClass:
         )
 
         assert isinstance(resp, RoomGetEventResponse)
+        assert isinstance(resp.event, RoomMessageText)
+
+        aioresponse.get(
+            "{base}/rooms/{room}/event/{event_id}?{query}".format(
+                base=base_url,
+                room=TEST_ROOM_ID,
+                event_id="$not-found:localhost",
+                query="access_token=abc123"
+            ),
+            status=200,
+            payload={
+                "errcode": "M_NOT_FOUND",
+                "error": "Event not found."
+            }
+        )
+
+        resp = await async_client.room_get_event(
+            TEST_ROOM_ID,
+            "$not-found:localhost"
+        )
+
+        assert isinstance(resp, RoomGetEventError)
 
     async def test_room_put_state(self, async_client, aioresponse):
         await async_client.receive_response(
