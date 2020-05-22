@@ -150,6 +150,8 @@ from ..responses import (
     RoomGetStateResponse,
     RoomGetStateEventError,
     RoomGetStateEventResponse,
+    RoomGetEventError,
+    RoomGetEventResponse,
     RoomPutStateError,
     RoomPutStateResponse,
     RoomRedactError,
@@ -1429,6 +1431,33 @@ class AsyncClient(Client):
         )
 
         return await self._send(RoomSendResponse, method, path, data, (room_id,))
+
+    @logged_in
+    async def room_get_event(
+        self,
+        room_id: str,
+        event_id: str
+    ) -> Union[RoomGetEventResponse, RoomGetEventError]:
+        """Get a single event based on roomId/eventId.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `RoomGetEventResponse` if the request was successful
+        or a `RoomGetEventError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room where the event is in.
+            event_id (str): The event id to get.
+        """
+        method, path = Api.room_get_event(
+            self.access_token,
+            room_id,
+            event_id
+        )
+
+        return await self._send(
+            RoomGetEventResponse, method, path
+        )
 
     @logged_in
     async def room_put_state(

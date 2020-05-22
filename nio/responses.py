@@ -93,6 +93,8 @@ __all__ = [
     "RoomGetStateError",
     "RoomGetStateEventResponse",
     "RoomGetStateEventError",
+    "RoomGetEventResponse",
+    "RoomGetEventError",
     "RoomPutStateResponse",
     "RoomPutStateError",
     "RoomRedactResponse",
@@ -380,6 +382,11 @@ class RoomGetStateError(_ErrorWithRoomId):
 
 class RoomGetStateEventError(_ErrorWithRoomId):
     """A response representing an unsuccessful room state query."""
+    pass
+
+
+class RoomGetEventError(ErrorResponse):
+    """A response representing an unsuccessful room get event request."""
     pass
 
 
@@ -829,6 +836,31 @@ class RoomGetStateEventResponse(Response):
         room_id: str,
     ) -> Union["RoomGetStateEventResponse", RoomGetStateEventError] :
         return cls(parsed_dict, event_type, state_key, room_id)
+
+
+class RoomGetEventResponse(Response):
+    """A response indicating successful room get event request.
+
+    Attributes:
+        event (Event): The requested event.
+    """
+
+    event: Event = field()
+
+    @classmethod
+    @verify(
+        Schemas.room_event,
+        RoomGetEventError,
+        pass_arguments=False,
+    )
+    def from_dict(
+        cls,
+        parsed_dict: Dict[str, Any]
+    ) -> Union["RoomGetEventResponse", RoomGetEventError]:
+        event = Event.parse_event(parsed_dict)
+        resp = cls()
+        resp.event = event
+        return resp
 
 
 class RoomPutStateResponse(RoomEventIdResponse):

@@ -45,7 +45,7 @@ from ..events import (
     RoomKeyRequest,
     RoomKeyRequestCancellation,
 )
-from ..exceptions import LocalProtocolError, MembersSyncError
+from ..exceptions import LocalProtocolError, MembersSyncError, EncryptionError
 from ..log import logger_group
 from ..responses import (
     ErrorResponse,
@@ -63,6 +63,7 @@ from ..responses import (
     RoomForgetResponse,
     RoomKeyRequestResponse,
     RoomMessagesResponse,
+    RoomGetEventResponse,
     ShareGroupSessionResponse,
     SyncResponse,
     SyncType,
@@ -985,6 +986,12 @@ class Client:
             self._handle_room_forget_response(response)
         elif isinstance(response, ToDeviceResponse):
             self._handle_olm_response(response)
+        elif isinstance(response, RoomGetEventResponse):
+            if isinstance(response.event, MegolmEvent) and self.olm is not None:
+                try:
+                    response.event = self.decrypt_event(response.event)
+                except EncryptionError:
+                    pass
         elif isinstance(response, ErrorResponse):
             if response.soft_logout:
                 self.access_token = ""
