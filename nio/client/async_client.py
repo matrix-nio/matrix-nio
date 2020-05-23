@@ -998,13 +998,22 @@ class AsyncClient(Client):
                 use_filter = first_sync_filter if first_sync else sync_filter
                 use_timeout = 0 if first_sync else timeout
 
-                tasks = [
-                    asyncio.ensure_future(coro)
-                    for coro in (
-                        self.sync(use_timeout, use_filter, since, full_state),
-                        self.send_to_device_messages(),
-                    )
-                ]
+                tasks = []
+
+                # Make sure that if this is our first sync that the sync happens
+                # before the other requests, this helps to ensure that after one
+                # fired synced event the state is indeed fully synced.
+                if first_sync:
+                    sync_response = await self.sync(use_timeout, use_filter, since, full_state)
+                    await self.run_response_callbacks([sync_response])
+                else:
+                    tasks = [
+                        asyncio.ensure_future(coro)
+                        for coro in (
+                            self.sync(use_timeout, use_filter, since, full_state),
+                            self.send_to_device_messages(),
+                        )
+                    ]
 
                 if self.should_upload_keys:
                     tasks.append(asyncio.ensure_future(self.keys_upload()))
