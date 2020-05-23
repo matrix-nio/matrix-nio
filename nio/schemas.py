@@ -17,6 +17,7 @@
 
 from __future__ import unicode_literals
 
+import re
 from jsonschema import Draft4Validator, FormatChecker, validators
 
 RoomRegex = "^!.+:.+$"
@@ -47,8 +48,7 @@ Validator = extend_with_default(Draft4Validator)
 
 
 @FormatChecker.cls_checks("user_id", ValueError)
-def check_user_id(value):
-    # type: (str) -> bool
+def check_user_id(value: str) -> bool:
     if not value.startswith("@"):
         raise ValueError("UserIDs start with @")
 
@@ -56,6 +56,14 @@ def check_user_id(value):
         raise ValueError(
             "UserIDs must have a domain component, seperated by a :"
         )
+
+    return True
+
+
+@FormatChecker.cls_checks("http_url", ValueError)
+def check_http_url(value: str) -> bool:
+    if not re.match(r"^https?://.+", value):
+        raise ValueError("Must be http://... or https://... URL")
 
     return True
 
@@ -252,6 +260,27 @@ class Schemas:
             "access_token": {"type": "string"},
         },
         "required": ["user_id", "device_id", "access_token"],
+    }
+
+    discovery_info = {
+        "type": "object",
+        "properties": {
+            "m.homeserver": {
+                "type": "object",
+                "properties": {
+                    "base_url": {"type": "string", "format": "http_url"},
+                },
+                "required": ["base_url"],
+            },
+            "m.identity_server": {
+                "type": "object",
+                "properties": {
+                    "base_url": {"type": "string", "format": "http_url"},
+                },
+                "required": ["base_url"],
+            },
+        },
+        "required": ["m.homeserver"],
     }
 
     login_info = {

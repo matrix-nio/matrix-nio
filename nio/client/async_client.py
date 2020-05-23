@@ -19,6 +19,7 @@ import asyncio
 from aiofiles.threadpool.binary import AsyncBufferedReader
 from aiofiles.threadpool.text import AsyncTextIOWrapper
 import io
+import json
 import warnings
 from asyncio import Event as AsyncioEvent
 from functools import partial, wraps
@@ -96,6 +97,7 @@ from ..responses import (
     DeleteDevicesAuthResponse,
     DevicesError,
     DevicesResponse,
+    DiscoveryInfoResponse,
     DownloadError,
     DownloadResponse,
     ErrorResponse,
@@ -431,6 +433,13 @@ class AsyncClient(Client):
         try:
             return await transport_response.json()
         except (JSONDecodeError, ContentTypeError):
+            try:
+                # matrix.org return an incorrect content-type for .well-known
+                # API requests, which leads to .text() working but not .json()
+                return json.loads(await transport_response.text())
+            except (JSONDecodeError, ContentTypeError):
+                pass
+
             return {}
 
     async def create_matrix_response(
@@ -825,6 +834,15 @@ class AsyncClient(Client):
         )
 
         return await self._send(RegisterResponse, method, path, data)
+
+    async def discovery_info(self) -> Union[LoginInfoResponse, LoginInfoError]:
+        """Get discovery information about current `AsyncClient.homeserver`.
+
+        Returns either a `DiscoveryInfoResponse` if the request was successful
+        or a `DiscoveryInfoError` if there was an error with the request.
+        """
+        method, path = Api.discovery_info()
+        return await self._send(DiscoveryInfoResponse, method, path)
 
     async def login_info(self) -> Union[LoginInfoResponse, LoginInfoError]:
         """Get the available login methods from the server
