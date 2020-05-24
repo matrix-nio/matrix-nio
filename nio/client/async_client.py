@@ -649,7 +649,11 @@ class AsyncClient(Client):
 
         while True:
             if data_provider:
-                data = data_provider(got_429, got_timeouts)
+                # mypy expects an "Awaitable[Any]" but data_provider is a
+                # method generated during runtime that may or may not be
+                # Awaitable. The actual type is a union of the types that we
+                # can receive from reading files.
+                data = await data_provider(got_429, got_timeouts) # type: ignore
 
             try:
                 transport_resp = await self.send(
@@ -2308,8 +2312,14 @@ class AsyncClient(Client):
         for more details.
 
         Example:
+            file_stat = await aiofiles.stat("sample.py")
             async with aiofiles.open("sample.py", "r+b") as f:
-                resp, err = await client.upload(f, content_type="text/plain", filename="hello.py")
+                resp, maybe_keys = await client.upload(
+                    f,
+                    content_type="text/plain",
+                    filename="hello.py",
+                    filesize=file_stat.st_size()
+                )
 
                 await client.room_send(
                     room_id="!myfaveroom:example.org",
@@ -2326,7 +2336,10 @@ class AsyncClient(Client):
 
         decryption_dict: Dict[str, Any] = {}
 
-        def provider(got_429, got_timeouts):
+        initial_file_pos = 0
+
+        async def provider(got_429, got_timeouts):
+            nonlocal initial_file_pos
             if monitor and (got_429 or got_timeouts):
                 # We have to restart from scratch
                 monitor.transferred = 0
@@ -2334,8 +2347,20 @@ class AsyncClient(Client):
             if isinstance(data_provider, Callable):
                 data = data_provider(got_429, got_timeouts)
 
-            elif isinstance(data_provider, SynchronousFile) or \
-                isinstance(data_provider, AsyncFile):
+            elif isinstance(data_provider, SynchronousFile):
+                if got_429 or got_timeouts:
+                    data_provider.seek(initial_file_pos)
+                else:
+                    initial_file_pos = data_provider.tell()
+
+                data = data_provider
+
+            elif isinstance(data_provider, AsyncFile):
+                if got_429 or got_timeouts:
+                    await data_provider.seek(initial_file_pos)
+                else:
+                    initial_file_pos = await data_provider.tell()
+
                 data = data_provider
 
             else:
