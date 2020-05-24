@@ -5,12 +5,16 @@
 
 .. mdinclude:: ../README.md
 
+
 Api Documentation
 =================
 
 .. toctree::
-   nio
    :maxdepth: 2
+
+   nio
+   examples
+   contributing
 
 
 Indices and tables

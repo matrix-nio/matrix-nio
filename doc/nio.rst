@@ -1,5 +1,5 @@
-nio API
-=======
+API
+===
 
 This document details the API of nio.
 
@@ -11,7 +11,7 @@ Api
     :undoc-members:
 
 nio Clients
------------------
+-----------
 
 .. automodule:: nio.client
 
@@ -19,12 +19,12 @@ nio Clients
     :members:
 
 Client
-^^^^^^^^^^^^^^^^^
+^^^^^^
 .. autoclass:: nio.Client
     :members:
 
 AsyncClient
-^^^^^^^^^^^^^^^^
+^^^^^^^^^^^
 
 .. autoclass:: nio.AsyncClient
     :members:
@@ -37,7 +37,7 @@ AsyncClient
     :show-inheritance:
 
 HttpClient
-^^^^^^^^^^^^^^^^
+^^^^^^^^^^
 
 .. autoclass:: nio.HttpClient
     :members:
@@ -45,7 +45,7 @@ HttpClient
     :show-inheritance:
 
 Rooms
-----------------
+-----
 
 .. automodule:: nio.rooms
     :members:
@@ -53,7 +53,7 @@ Rooms
     :show-inheritance:
 
 Events
------------------
+------
 
 .. automodule:: nio.events
     :members:
@@ -65,7 +65,7 @@ Events
     :show-inheritance:
 
 Room Events
-^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^
 
 .. automodule:: nio.events.room_events
     :members:
@@ -73,7 +73,7 @@ Room Events
     :show-inheritance:
 
 Invite Room Events
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^
 
 .. automodule:: nio.events.invite_events
     :members:
@@ -81,7 +81,7 @@ Invite Room Events
     :show-inheritance:
 
 To-device Events
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
 
 .. automodule:: nio.events.to_device
     :members:
@@ -89,7 +89,7 @@ To-device Events
     :show-inheritance:
 
 Ephemeral Events
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
 
 .. automodule:: nio.events.ephemeral
     :members:
@@ -97,7 +97,7 @@ Ephemeral Events
     :show-inheritance:
 
 Account Data
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^
 
 .. automodule:: nio.events.account_data
     :members:
@@ -106,7 +106,7 @@ Account Data
 
 
 Building events
----------------------
+---------------
 .. automodule:: nio.event_builders
     :members:
     :show-inheritance:
@@ -116,14 +116,14 @@ Building events
     :show-inheritance:
 
 Direct messages
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
 
 .. automodule:: nio.event_builders.direct_messages
     :members:
     :show-inheritance:
 
 State events
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^
 
 .. automodule:: nio.event_builders.state_events
     :members:
@@ -131,7 +131,7 @@ State events
 
 
 Exceptions
----------------------
+----------
 
 .. automodule:: nio.exceptions
     :members:
@@ -139,7 +139,7 @@ Exceptions
     :show-inheritance:
 
 Responses
---------------------
+---------
 
 .. automodule:: nio.responses
     :members:
@@ -147,7 +147,7 @@ Responses
 
 
 Storage
------------------------
+-------
 .. automodule:: nio.store
     :members:
     :undoc-members:
@@ -165,7 +165,7 @@ Storage
     :show-inheritance:
 
 Encryption
---------------------------
+----------
 .. automodule:: nio.crypto
 
 .. autoclass:: nio.crypto.DeviceStore
@@ -179,3 +179,4 @@ Encryption
 
 .. autoclass:: nio.crypto.Sas
     :members:
+
