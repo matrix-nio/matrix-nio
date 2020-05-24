@@ -1,7 +1,6 @@
 import asyncio
 import os
 import sys
-import sys
 import json
 
 from typing import Optional
@@ -17,7 +16,7 @@ from nio import (AsyncClient, ClientConfig, DevicesError, Event,InviteEvent, Log
 
 # We're building on the restore_login example here to preserve device IDs and
 # therefore preserve trust; if @bob trusts @alice's device ID ABC and @alice
-# restarts this program, loading the same keys, @bob will preserve trust. If 
+# restarts this program, loading the same keys, @bob will preserve trust. If
 # @alice logged in again @alice would have new keys and a device ID XYZ, and
 # @bob wouldn't trust it.
 
@@ -29,7 +28,7 @@ STORE_FOLDER = "nio_store/"
 # This file is for restoring login details after closing the program, so you
 # can preserve your device ID. If @alice logged in every time instead, @bob
 # would have to re-verify. See the restoring login example for more into.
-SESSION_DETAILS_FILE = "manual_encrypted_verify.json"
+SESSION_DETAILS_FILE = STORE_FOLDER + "/manual_encrypted_verify.json"
 
 # Only needed for this example, this is who @alice will securely
 # communicate with. We need all the device IDs of this user so we can consider
@@ -110,8 +109,8 @@ class CustomEncryptedClient(AsyncClient):
 
             except IOError as err:
                 print(f"Couldn't load session from file. Logging in. Error: {err}")
-            except json.JSONDecodeError as err:
-                print(f"Couldn't read JSON file; overwriting")
+            except json.JSONDecodeError:
+                print("Couldn't read JSON file; overwriting")
 
         # We didn't restore a previous session, so we'll log in with a password
         if not self.user_id or not self.access_token or not self.device_id:
@@ -220,20 +219,9 @@ class CustomEncryptedClient(AsyncClient):
             }, f)
 
 
-async def main() -> None:
+async def run_client(client: CustomEncryptedClient) -> None:
     """A basic encrypted chat application using nio.
     """
-    # By setting `store_sync_tokens` to true, we'll save sync tokens to our
-    # store every time we sync, thereby preventing reading old, previously read
-    # events on each new sync.
-    # For more info, check out https://matrix-nio.readthedocs.io/en/latest/nio.html#asyncclient
-    config = ClientConfig(store_sync_tokens=True)
-    client = CustomEncryptedClient(
-        ALICE_HOMESERVER,
-        ALICE_USER_ID,
-        store_path=STORE_FOLDER,
-        config=config
-    )
 
     # This is our own custom login function that looks for a pre-existing config
     # file and, if it exists, logs in using those details. Otherwise it will log
@@ -250,18 +238,6 @@ async def main() -> None:
         print("Awaiting sync")
         await client.synced.wait()
 
-        # Usually key management is done by sync_forever, but in this example
-        # that would require waiting for three syncs to complete before all the
-        # keys and handled properly. We manually manage the keys ourself to
-        # avoid waiting so long.
-        if client.should_upload_keys:
-            await client.keys_upload()
-
-        if client.should_query_keys:
-            await client.keys_query()
-
-        if client.should_claim_keys:
-            await client.keys_claim(client.get_users_for_key_claiming())
 
         # In practice, you want to have a list of previously-known device IDs
         # for each user you want ot trust. Here, we require that list as a
@@ -297,10 +273,33 @@ async def main() -> None:
         sync_forever_task
     )
 
+async def main():
+    # By setting `store_sync_tokens` to true, we'll save sync tokens to our
+    # store every time we sync, thereby preventing reading old, previously read
+    # events on each new sync.
+    # For more info, check out https://matrix-nio.readthedocs.io/en/latest/nio.html#asyncclient
+    config = ClientConfig(store_sync_tokens=True)
+    client = CustomEncryptedClient(
+        ALICE_HOMESERVER,
+        ALICE_USER_ID,
+        store_path=STORE_FOLDER,
+        config=config,
+        ssl=False,
+        proxy="http://localhost:8080",
+    )
+
+    try:
+        await run_client(client)
+    except (asyncio.CancelledError, KeyboardInterrupt):
+        await client.close()
 
 # Run the main coroutine, which instantiates our custom subclass, trusts all the
 # devices, and syncs forever (or until your press Ctrl+C)
 
-asyncio.run(
-    main()
-)
+if __name__ == "__main__":
+    try:
+        asyncio.run(
+            main()
+        )
+    except KeyboardInterrupt:
+        pass
