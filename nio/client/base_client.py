@@ -157,7 +157,7 @@ class ClientConfig:
             raise ImportWarning(
                 "Encryption is enabled in the client "
                 "configuration but dependencies for E2E "
-                "encrytpion aren't installed."
+                "encryption aren't installed."
             )
 
 
