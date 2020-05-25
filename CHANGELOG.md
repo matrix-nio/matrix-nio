@@ -10,7 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [[#145]] Added the `room_get_event()` method.
 
+### Changed
+- [[#141]] Improved the upload method to accept file objects directly.
+
 [#145]: https://github.com/poljar/matrix-nio/pull/145
+[#141]: https://github.com/poljar/matrix-nio/pull/141
 
 ## 0.12.0 - 2020-05-21
 
