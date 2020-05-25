@@ -1475,6 +1475,137 @@ class TestClass:
         monitor.cancel = True
         self._wait_monitor_thread_exited(monitor)
 
+
+    async def test_upload_binary_file_object(self, async_client: AsyncClient, aioresponse):
+        """Test uploading binary files using file objects.
+        """
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        path     = Path("tests/data/file_response")
+        filesize = path.stat().st_size
+        monitor  = TransferMonitor(filesize)
+
+        aioresponse.post(
+            "https://example.org/_matrix/media/r0/upload"
+            "?access_token=abc123&filename=test.png",
+            status=200,
+            payload=self.upload_response,
+            repeat=True,
+        )
+
+        # Upload binary file using a standard file object
+        with open("tests/data/file_response", "r+b") as f:
+            resp, decryption_info = await async_client.upload(
+                f, "image/png", "test.png", monitor=monitor,
+            )
+
+        assert isinstance(resp, UploadResponse)
+        assert decryption_info is None
+
+        # Upload binary file using an async file object
+        async with aiofiles.open("tests/data/file_response", "r+b") as f:
+            resp, decryption_info = await async_client.upload(
+                f, "image/png", "test.png", monitor=monitor,
+            )
+
+        assert isinstance(resp, UploadResponse)
+        assert decryption_info is None
+
+        monitor.cancel = True
+        self._wait_monitor_thread_exited(monitor)
+
+
+    async def test_upload_text_file_object(self, async_client: AsyncClient, aioresponse):
+        """Test uploading text files using file objects.
+        """
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        path     = Path("tests/data/sample_text_file.py")
+        filesize = path.stat().st_size
+        monitor  = TransferMonitor(filesize)
+
+        aioresponse.post(
+            "https://example.org/_matrix/media/r0/upload"
+            "?access_token=abc123&filename=test.py",
+            status=200,
+            payload=self.upload_response,
+            repeat=True,
+        ) 
+
+        # Upload text file using a async file object
+        async with aiofiles.open("tests/data/sample_text_file.py") as f:
+            resp, decryption_info = await async_client.upload(
+                f, "text/plain", "test.py", monitor=monitor,
+            )
+
+        assert isinstance(resp, UploadResponse)
+        assert decryption_info is None
+
+        monitor.cancel = True
+        self._wait_monitor_thread_exited(monitor)
+
+
+    async def test_upload_retry(self, async_client: AsyncClient, aioresponse):
+        """Test that files upload correctly after receiving a 429 or timeout.
+
+        Uses an internal helper function check_content to verify that the file
+        will be seeked back to the start after receiving a 429 message from the
+        server.
+        """
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        path     = Path("tests/data/sample_text_file.py")
+        filesize = path.stat().st_size
+        monitor  = TransferMonitor(filesize)
+
+        async def check_content(url, **kwargs):
+            """Verify the data that the server receives is the full file.
+            """
+            data: Iterable = kwargs['data']
+            received = ''
+            async for piece in data:
+                received += piece
+
+            assert received == open(path).read()
+
+        # We make sure to read the data in the first post response to verify
+        # that we can read the full file in a subsequent post.
+        aioresponse.post(
+            "https://example.org/_matrix/media/r0/upload"
+            "?access_token=abc123&filename=test.py",
+            status=429,
+            payload=self.limit_exceeded_error_response,
+            callback=check_content
+        )
+        aioresponse.post(
+            "https://example.org/_matrix/media/r0/upload"
+            "?access_token=abc123&filename=test.py",
+            status=200,
+            payload=self.upload_response,
+            callback=check_content
+        )
+
+        async with aiofiles.open("tests/data/sample_text_file.py") as f:
+            resp, decryption_info = await async_client.upload(
+                f, "text/plain", "test.py", monitor=monitor,
+            )
+
+        assert isinstance(resp, UploadResponse)
+        assert decryption_info is None
+
+        monitor.cancel = True
+        self._wait_monitor_thread_exited(monitor)
+
+
     async def test_encrypted_upload(self, async_client, aioresponse):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response),
