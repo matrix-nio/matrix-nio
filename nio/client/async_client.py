@@ -43,7 +43,6 @@ from typing import (
 from uuid import UUID, uuid4
 
 from dataclasses import dataclass, field
-from aiofiles.threadpool.binary import AsyncBufferedReader
 from aiohttp import (
     ClientResponse,
     ClientSession,
@@ -2396,24 +2395,24 @@ class AsyncClient(Client):
         for more details.
 
         Example:
-            file_stat = await aiofiles.stat("sample.py")
-            async with aiofiles.open("sample.py", "r+b") as f:
-                resp, maybe_keys = await client.upload(
-                    f,
-                    content_type="text/plain",
-                    filename="hello.py",
-                    filesize=file_stat.st_size()
-                )
+            >>> file_stat = await aiofiles.stat("sample.py")
+            >>> async with aiofiles.open("sample.py", "r+b") as f:
+            >>>    resp, maybe_keys = await client.upload(
+            ...        f,
+            ...        content_type="text/plain",
+            ...        filename="hello.py",
+            ...        filesize=file_stat.st_size()
+            ...    )
 
-                await client.room_send(
-                    room_id="!myfaveroom:example.org",
-                    message_type="m.room.message",
-                    content = {
-                        "msgtype": "m.file",
-                        "url": resp.content_uri,
-                        "body": "descriptive title (like the filename)"
-                    }
-                )
+            >>>    await client.room_send(
+            ...        room_id="!myfaveroom:example.org",
+            ...        message_type="m.room.message",
+            ...        content = {
+            ...            "msgtype": "m.file",
+            ...            "url": resp.content_uri,
+            ...            "body": "descriptive title (like the filename)"
+            ...        }
+            ...    )
         """
 
         http_method, path, _ = Api.upload(self.access_token, filename)
