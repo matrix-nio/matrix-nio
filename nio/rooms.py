@@ -41,6 +41,7 @@ logger_group.add_logger(logger)
 __all__ = [
     "MatrixRoom",
     "MatrixInvitedRoom",
+    "MatrixUserPresence",
     "MatrixUser",
 ]
 
@@ -483,7 +484,7 @@ class MatrixInvitedRoom(MatrixRoom):
             self.canonical_alias = event.canonical_alias
 
 
-class UserPresence(Enum):
+class MatrixUserPresence(Enum):
     """The user presence state.
 
     An Enum holding differing values that a user presence can be in.
@@ -502,7 +503,7 @@ class MatrixUser:
         avatar_url:   str  = None,
         power_level:  int  = 0,
         invited:      bool = False,
-        presence:     UserPresence = UserPresence.offline,
+        presence:     MatrixUserPresence = MatrixUserPresence.offline,
         status_msg:   str = None
     ):
         # yapf: disable
