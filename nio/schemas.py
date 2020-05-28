@@ -1739,4 +1739,29 @@ class Schemas:
         ],
     }
 
+    presence = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string"},
+            "type": {"type": "string", "const": "m.presence"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "presence": {"type": "string"},
+                    "currently_active": {"type": "boolean"},
+                    "last_active_ago": {"type": "integer"},
+                    "status_msg": {"type": "string"},
+                },
+                "required": [
+                    "presence",
+                ]
+            }
+        },
+        "required": [
+            "sender",
+            "type",
+            "content"
+        ],
+    }
+
     empty = {"type": "object", "properties": {}, "additionalProperties": False}
