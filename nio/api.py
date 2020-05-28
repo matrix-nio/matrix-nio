@@ -32,7 +32,7 @@ from enum import Enum, unique
 from typing import (Any, DefaultDict, Dict, Iterable, List,
                     Optional, Set, Sequence, Tuple, Union)
 
-from . import MatrixUserPresence
+from .rooms import MatrixUserPresence
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest
 
