@@ -489,7 +489,6 @@ class MatrixUserPresence(Enum):
 
     An Enum holding differing values that a user presence can be in.
     """
-
     online = "online"
     offline = "offline"
     unavailable = "unavailable"
@@ -504,7 +503,9 @@ class MatrixUser:
         power_level:  int  = 0,
         invited:      bool = False,
         presence:     MatrixUserPresence = MatrixUserPresence.offline,
-        status_msg:   str = None
+        last_active_ago: int = None,
+        currently_active: bool = False,
+        status_msg: str = None
     ):
         # yapf: disable
         self.user_id = user_id
@@ -513,6 +514,8 @@ class MatrixUser:
         self.power_level = power_level
         self.invited = invited
         self.presence = presence
+        self.last_active_ago = last_active_ago
+        self.currently_active = currently_active
         self.status_msg = status_msg
         # yapf: enable
 
