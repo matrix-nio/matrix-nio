@@ -55,6 +55,7 @@ from aiohttp.connector import Connection
 
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
+from ..rooms import MatrixUserPresence
 from ..api import (
     _FilterT,
     Api,
@@ -559,6 +560,17 @@ class AsyncClient(Client):
         if self.store:
             self.store.save_encrypted_rooms(encrypted_rooms)
 
+    async def _handle_presence_events(self, response: SyncType):
+        for event in response.presence_events:
+            for room_id in self.rooms.keys():
+                if event.user_id not in self.rooms[room_id].users:
+                    continue
+
+                self.rooms[room_id].users[event.user_id].presence = MatrixUserPresence(event.presence)
+                self.rooms[room_id].users[event.user_id].last_active_ago = MatrixUserPresence(event.last_active_ago)
+                self.rooms[room_id].users[event.user_id].currently_active = MatrixUserPresence(event.currently_active)
+                self.rooms[room_id].users[event.user_id].status_msg = MatrixUserPresence(event.status_msg)
+
     async def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()
 
@@ -583,6 +595,8 @@ class AsyncClient(Client):
         await self._handle_invited_rooms(response)
 
         await self._handle_joined_rooms(response)
+
+        await self._handle_presence_events(response)
 
         if self.olm:
             await self._handle_expired_verifications()
