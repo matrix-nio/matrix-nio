@@ -18,6 +18,7 @@ from __future__ import unicode_literals
 
 from builtins import super
 from collections import defaultdict
+from enum import Enum
 from typing import (Any, DefaultDict, Dict, List, NamedTuple, Optional, Tuple,
                     Union)
 
@@ -482,6 +483,17 @@ class MatrixInvitedRoom(MatrixRoom):
             self.canonical_alias = event.canonical_alias
 
 
+class UserPresence(Enum):
+    """The user presence state.
+
+    An Enum holding differing values that a user presence can be in.
+    """
+
+    online = "online"
+    offline = "offline"
+    unavailable = "unavailable"
+
+
 class MatrixUser:
     def __init__(
         self,
@@ -490,6 +502,8 @@ class MatrixUser:
         avatar_url:   str  = None,
         power_level:  int  = 0,
         invited:      bool = False,
+        presence:     UserPresence = UserPresence.offline,
+        status_msg:   str = None
     ):
         # yapf: disable
         self.user_id = user_id
@@ -497,6 +511,8 @@ class MatrixUser:
         self.avatar_url = avatar_url
         self.power_level = power_level
         self.invited = invited
+        self.presence = presence
+        self.status_msg = status_msg
         # yapf: enable
 
     @property
