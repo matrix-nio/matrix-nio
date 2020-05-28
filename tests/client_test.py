@@ -326,7 +326,8 @@ class TestClass:
                         "origin_server_ts": 1516809890615
                     }
                 )
-            ]
+            ],
+            []
         )
 
     @property
@@ -358,6 +359,7 @@ class TestClass:
             rooms,
             DeviceOneTimeKeyCount(49, 50),
             DeviceList([ALICE_ID], []),
+            [],
             []
         )
 
@@ -391,6 +393,7 @@ class TestClass:
             rooms,
             DeviceOneTimeKeyCount(49, 50),
             DeviceList([ALICE_ID], []),
+            [],
             []
         )
 
@@ -432,6 +435,7 @@ class TestClass:
             rooms,
             DeviceOneTimeKeyCount(49, 50),
             DeviceList([], []),
+            [],
             []
         )
 

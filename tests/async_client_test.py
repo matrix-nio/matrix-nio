@@ -207,6 +207,7 @@ class TestClass:
             rooms,
             DeviceOneTimeKeyCount(49, 50),
             DeviceList([ALICE_ID], []),
+            [],
             []
         )
 
@@ -255,6 +256,7 @@ class TestClass:
             rooms,
             DeviceOneTimeKeyCount(50, 50),
             DeviceList([other_user], []),
+            [],
             []
         )
 
