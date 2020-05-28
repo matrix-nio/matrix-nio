@@ -32,6 +32,7 @@ from enum import Enum, unique
 from typing import (Any, DefaultDict, Dict, Iterable, List,
                     Optional, Set, Sequence, Tuple, Union)
 
+from . import MatrixUserPresence
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest
 
@@ -1476,6 +1477,48 @@ class Api:
         query_parameters = {"access_token": access_token}
         content = {"avatar_url": avatar_url}
         path = "profile/{user}/avatar_url".format(user=user_id)
+
+        return (
+            "PUT",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content)
+        )
+
+    @staticmethod
+    def get_presence(access_token: str, user_id: str) -> Tuple[str, str]:
+        """Get the given user's presence state.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            user_id (str): User id whose presence state to get.
+        """
+        query_parameters = {"access_token": access_token}
+        path = "presence/{user_id}/status".format(user_id=user_id)
+
+        return (
+            "GET",
+            Api._build_path(path, query_parameters),
+        )
+
+    @staticmethod
+    def set_presence(access_token: str, user_id: str, presence: MatrixUserPresence, status_msg: str = None):
+        """This API sets the given user's presence state.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            user_id (str): User id whose presence state to get.
+            presence (MatrixUserPresence): The new presence state.
+            status_msg (str, optional): The status message to attach to this state.
+        """
+        query_parameters = {"access_token": access_token}
+        content = {"presence": presence.name}
+        if status_msg:
+            content["status_msg"] = status_msg
+        path = "presence/{user_id}/status".format(user_id=user_id)
 
         return (
             "PUT",
