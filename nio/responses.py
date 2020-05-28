@@ -29,6 +29,7 @@ from logbook import Logger
 from .event_builders import ToDeviceMessage
 from .events import (AccountDataEvent, BadEventType, Event, InviteEvent,
                      ToDeviceEvent, EphemeralEvent)
+from .events.presence import PresenceEvent
 from .http import TransportResponse
 from .log import logger_group
 from .schemas import Schemas, validate_json
@@ -1435,6 +1436,7 @@ class _SyncResponse(Response):
     device_key_count: DeviceOneTimeKeyCount = field()
     device_list: DeviceList = field()
     to_device_events: List[ToDeviceEvent] = field()
+    presence_events: List[PresenceEvent] = field()
 
     def __str__(self):
         # type: () -> str
@@ -1650,6 +1652,14 @@ class _SyncResponse(Response):
 
         return Rooms(invited_rooms, joined_rooms, left_rooms), unhandled_rooms
 
+    @staticmethod
+    def _get_presence(parsed_dict) -> List[PresenceEvent]:
+        presence_events = []
+        for presence_dict in parsed_dict["presence"]["events"]:
+            presence_events.append(PresenceEvent.from_dict(presence_dict))
+
+        return presence_events
+
     @classmethod
     @verify(Schemas.sync, SyncError, False)
     def from_dict(
@@ -1671,6 +1681,8 @@ class _SyncResponse(Response):
             parsed_dict["device_lists"]["left"],
         )
 
+        presence_events = _SyncResponse._get_presence(parsed_dict)
+
         rooms, unhandled_rooms = _SyncResponse._get_room_info(
             parsed_dict["rooms"], max_events)
 
@@ -1681,6 +1693,7 @@ class _SyncResponse(Response):
                 key_count,
                 devices,
                 to_device,
+                presence_events,
                 unhandled_rooms,
             )
 
@@ -1690,6 +1703,7 @@ class _SyncResponse(Response):
             key_count,
             devices,
             to_device,
+            presence_events
         )
 
 
@@ -1731,6 +1745,7 @@ class PartialSyncResponse(_SyncResponse):
                 self.device_key_count,
                 DeviceList([], []),
                 [],
+                [],
                 unhandled_rooms,
             )  # type: SyncType
         else:
@@ -1740,6 +1755,7 @@ class PartialSyncResponse(_SyncResponse):
                 self.device_key_count,
                 DeviceList([], []),
                 [],
+                []
             )
 
         if self.uuid:
