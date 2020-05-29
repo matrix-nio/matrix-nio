@@ -20,7 +20,7 @@ from nio import (Client, DeviceList, DeviceOneTimeKeyCount, DownloadResponse,
                  ShareGroupSessionResponse, SyncResponse,
                  Timeline, ThumbnailResponse, TransportType, TypingNoticeEvent,
                  InviteMemberEvent, InviteInfo, ClientConfig, ReceiptEvent,
-                 Receipt)
+                 Receipt, PresenceEvent)
 from nio.event_builders import ToDeviceMessage
 
 HOST = "example.org"
@@ -327,7 +327,9 @@ class TestClass:
                     }
                 )
             ],
-            []
+            [
+                PresenceEvent(ALICE_ID, "online", 1337, True, "I am here.")
+            ]
         )
 
     @property
@@ -1250,3 +1252,23 @@ class TestClass:
         client = Client(user, device_id, path, config=config)
         client.receive_response(self.login_response)
         assert client.loaded_sync_token
+
+    def test_presence_callback(self, client):
+        client.receive_response(self.login_response)
+
+        class CallbackException(Exception):
+            pass
+
+        def cb(event):
+            if isinstance(event, PresenceEvent):
+                raise CallbackException()
+
+        client.add_presence_callback(
+            cb,
+            PresenceEvent
+        )
+
+        client.add_presence_callback(cb, PresenceEvent)
+
+        with pytest.raises(CallbackException):
+            client.receive_response(self.sync_response)
