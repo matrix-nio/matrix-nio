@@ -360,12 +360,15 @@ class AsyncClient(Client):
         config: Optional[AsyncClientConfig] = None,
         ssl: Optional[bool] = None,
         proxy: Optional[str] = None,
+        presence: Optional[str] = None,
     ):
         self.homeserver = homeserver
         self.client_session: Optional[ClientSession] = None
 
         self.ssl = ssl
         self.proxy = proxy
+
+        self.presence = presence
 
         self.synced = AsyncioEvent()
         self.response_callbacks: List[ResponseCb] = []
@@ -894,6 +897,7 @@ class AsyncClient(Client):
         sync_filter: _FilterT = None,
         since: Optional[str] = None,
         full_state: Optional[bool] = None,
+        set_presence: Optional[str] = None,
     ) -> Union[SyncResponse, SyncError]:
         """Synchronise the client's state with the latest state on the server.
 
@@ -921,18 +925,22 @@ class AsyncClient(Client):
             since (str, optional): A token specifying a point in time where to
                 continue the sync from. Defaults to the last sync token we
                 received from the server using this API call.
+            set_presence (str, optional): The presence state.
+                One of: ["online", "offline", "unavailable"]
 
         Returns either a `SyncResponse` if the request was successful or
         a `SyncError` if there was an error with the request.
         """
 
         sync_token = since or self.next_batch
+        presence = set_presence or self.presence
         method, path = Api.sync(
             self.access_token,
             since=sync_token or self.loaded_sync_token,
             timeout=timeout or None,
             filter=sync_filter,
             full_state=full_state,
+            set_presence=presence,
         )
 
         response = await self._send(
@@ -2649,9 +2657,13 @@ class AsyncClient(Client):
             status_msg
         )
 
-        return await self._send(
+        resp = await self._send(
             PresenceSetResponse, method, path, data
         )
+        if isinstance(resp, PresenceSetResponse):
+            self.presence = presence
+
+        return resp
 
     @client_session
     async def get_displayname(
