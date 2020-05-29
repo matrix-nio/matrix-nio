@@ -32,6 +32,7 @@ from nio import (ContentRepositoryConfigResponse,
                  ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
+                 PresenceGetResponse, PresenceSetResponse,
                  RoomBanResponse,
                  RoomTypingResponse, RoomCreateResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
@@ -1979,6 +1980,55 @@ class TestClass:
         assert isinstance(resp, ProfileGetResponse)
         assert resp.displayname == name
         assert resp.avatar_url.replace("#auto", "") == avatar
+
+    async def test_get_presence(self, async_client, aioresponse):
+        """Test if we can get the presence state of a user
+        """
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        user_id = "@alice:example.com"
+
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/presence/{}/status?access_token={}".format(
+                user_id,
+                async_client.access_token
+            ),
+            status=200,
+            payload={
+                "presence": "unavailable",
+                "last_active_ago": 420845
+            }
+        )
+
+        resp = await async_client.get_presence(user_id)
+
+        assert isinstance(resp, PresenceGetResponse)
+        assert resp.presence == "unavailable"
+        assert resp.last_active_ago == 420845
+
+    async def test_set_presence(self, async_client, aioresponse):
+        """Test if we can set the presence state of user
+        """
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/presence/{}/status?access_token={}".format(
+                async_client.user_id,
+                async_client.access_token
+            ),
+            status=200,
+            payload={}
+        )
+
+        resp = await async_client.set_presence("online")
+
+        assert isinstance(resp, PresenceSetResponse)
 
     async def test_devices(self, async_client, aioresponse):
         await async_client.receive_response(

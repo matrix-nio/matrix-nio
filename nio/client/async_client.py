@@ -55,7 +55,6 @@ from aiohttp.connector import Connection
 
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
-from ..rooms import MatrixUserPresence
 from ..api import (
     _FilterT,
     Api,
@@ -129,6 +128,10 @@ from ..responses import (
     ProfileSetAvatarError,
     ProfileSetDisplayNameResponse,
     ProfileSetDisplayNameError,
+    PresenceGetResponse,
+    PresenceGetError,
+    PresenceSetResponse,
+    PresenceSetError,
     Response,
     RoomBanError,
     RoomBanResponse,
@@ -566,10 +569,10 @@ class AsyncClient(Client):
                 if event.user_id not in self.rooms[room_id].users:
                     continue
 
-                self.rooms[room_id].users[event.user_id].presence = MatrixUserPresence(event.presence)
-                self.rooms[room_id].users[event.user_id].last_active_ago = MatrixUserPresence(event.last_active_ago)
-                self.rooms[room_id].users[event.user_id].currently_active = MatrixUserPresence(event.currently_active)
-                self.rooms[room_id].users[event.user_id].status_msg = MatrixUserPresence(event.status_msg)
+                self.rooms[room_id].users[event.user_id].presence = event.presence
+                self.rooms[room_id].users[event.user_id].last_active_ago = event.last_active_ago
+                self.rooms[room_id].users[event.user_id].currently_active = event.currently_active
+                self.rooms[room_id].users[event.user_id].status_msg = event.status_msg
 
     async def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()
@@ -2591,6 +2594,64 @@ class AsyncClient(Client):
         method, path = Api.profile_get(user_id or self.user_id)
 
         return await self._send(ProfileGetResponse, method, path,)
+
+    @client_session
+    async def get_presence(self, user_id: str) -> Union[PresenceGetResponse, PresenceGetError]:
+        """Get a user's presence state.
+
+        This queries the presence state of a user from the server.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `PresenceGetResponse` if the request was
+        successful or a `PresenceGetError` if there was an error
+        with the request.
+
+        Args:
+            user_id (str): User id of the user to get the presence state for.
+        """
+
+        method, path = Api.get_presence(
+            self.access_token,
+            user_id
+        )
+
+        return await self._send(
+            PresenceGetResponse, method, path
+        )
+
+    @client_session
+    async def set_presence(
+            self,
+            presence: str,
+            status_msg: str = None
+    ) -> Union[PresenceSetResponse, PresenceSetError]:
+        """Set a user's presence state.
+
+        This tells the server to set presence state of the currently logged
+        in user to the supplied string.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `PresenceSetResponse` if the request was
+        successful or a `PresenceSetError` if there was an error
+        with the request.
+
+        Args:
+            presence (str): The new presence state. One of: ["online", "offline", "unavailable"]
+            status_msg (str, optional): The status message to attach to this state.
+        """
+
+        method, path, data = Api.set_presence(
+            self.access_token,
+            self.user_id,
+            presence,
+            status_msg
+        )
+
+        return await self._send(
+            PresenceSetResponse, method, path, data
+        )
 
     @client_session
     async def get_displayname(
