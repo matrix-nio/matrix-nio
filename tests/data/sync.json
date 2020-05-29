@@ -230,6 +230,16 @@
                     "currently_active": true,
                     "status_msg": "I am here."
                 }
+            },
+            {
+                "type": "m.presence",
+                "sender": "@example2:localhost",
+                "content": {
+                    "presence": "offline",
+                    "last_active_ago": 1337,
+                    "currently_active": false,
+                    "status_msg": "I am gone."
+                }
             }
         ]
     }

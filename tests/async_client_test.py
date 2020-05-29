@@ -2074,7 +2074,7 @@ class TestClass:
             payload={}
         )
 
-        resp = await async_client.set_presence("online")
+        resp = await async_client.set_presence("online", "I am here.")
 
         assert isinstance(resp, PresenceSetResponse)
 
