@@ -18,7 +18,8 @@ from typing import Dict
 
 from dataclasses import dataclass, field
 from logbook import Logger
-from .misc import verify_or_none
+
+from .misc import verify
 
 from ..log import logger_group
 from ..schemas import Schemas
@@ -38,7 +39,7 @@ class PresenceEvent:
     status_msg: str = field()
 
     @classmethod
-    @verify_or_none(Schemas.presence)
+    @verify(Schemas.presence)
     def from_dict(cls, parsed_dict):
         """Create an Presence event from a dictionary.
 
@@ -46,9 +47,7 @@ class PresenceEvent:
             parsed_dict (dict): The dictionary representation of the event.
 
         """
-        args = Dict[str, any]
-        args["user_id"] = parsed_dict["sender"]
-        args["presence"] = parsed_dict["content"]["presence"]
+        args = {"user_id": parsed_dict["sender"], "presence": parsed_dict["content"]["presence"]}
 
         if "last_active_ago" in parsed_dict["content"]:
             args["last_active_ago"] = parsed_dict["content"]["last_active_ago"]
