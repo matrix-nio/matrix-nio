@@ -2622,11 +2622,11 @@ class AsyncClient(Client):
 
     @client_session
     async def set_presence(
-            self,
-            presence: str,
-            status_msg: str = None
+        self,
+        presence: str,
+        status_msg: str = None
     ) -> Union[PresenceSetResponse, PresenceSetError]:
-        """Set a user's presence state.
+        """Set our user's presence state.
 
         This tells the server to set presence state of the currently logged
         in user to the supplied string.
