@@ -409,7 +409,7 @@ class Api:
                 to.
             timeout (int): The maximum time to wait, in milliseconds, before
                 returning this request.
-            sync_filter (Union[None, str, Dict[Any, Any]):
+            filter (Union[None, str, Dict[Any, Any]):
                 A filter ID or dict that should be used for this sync request.
             full_state (bool, optional): Controls whether to include the full
                 state for all rooms the user is a member of. If this is set to
