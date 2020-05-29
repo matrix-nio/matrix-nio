@@ -33,9 +33,9 @@ class PresenceEvent:
 
     user_id: str = field()
     presence: str = field()
-    last_active_ago: int = field(default=None)
-    currently_active: bool = field(default=None)
-    status_msg: str = field(default=None)
+    last_active_ago: int = field()
+    currently_active: bool = field()
+    status_msg: str = field()
 
     @classmethod
     @verify_or_none(Schemas.presence)

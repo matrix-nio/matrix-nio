@@ -2008,6 +2008,30 @@ class TestClass:
         assert isinstance(resp, PresenceGetResponse)
         assert resp.presence == "unavailable"
         assert resp.last_active_ago == 420845
+        assert not resp.currently_active
+        assert not resp.status_msg
+
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/presence/{}/status?access_token={}".format(
+                user_id,
+                async_client.access_token
+            ),
+            status=200,
+            payload={
+                "presence": "online",
+                "last_active_ago": 0,
+                "currently_active": True,
+                "status_msg": "I am here."
+            }
+        )
+
+        resp = await async_client.get_presence(user_id)
+
+        assert isinstance(resp, PresenceGetResponse)
+        assert resp.presence == "online"
+        assert resp.last_active_ago == 0
+        assert resp.currently_active
+        assert resp.status_msg == "I am here."
 
     async def test_set_presence(self, async_client, aioresponse):
         """Test if we can set the presence state of user

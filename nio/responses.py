@@ -1366,15 +1366,15 @@ class PresenceGetResponse(Response):
     """
 
     presence: str
-    last_active_ago: int = None
-    currently_active: bool = None
-    status_msg: str = None
+    last_active_ago: Optional[int]
+    currently_active: Optional[bool]
+    status_msg: Optional[str]
 
     @classmethod
     @verify(Schemas.get_presence, PresenceGetError)
-    def from_dict(cls, parsed_dict: Dict[any, any]) -> Union["PresenceGetResponse", PresenceGetError]:
-        return cls(parsed_dict.get("presence"), parsed_dict.get("last_active_ago", None),
-                   parsed_dict.get("currently_active", None), parsed_dict.get("status_msg", None))
+    def from_dict(cls, parsed_dict: Dict[Any, Any]) -> Union["PresenceGetResponse", PresenceGetError]:
+        return cls(parsed_dict.get("presence", "offline"), parsed_dict.get("last_active_ago"),
+                   parsed_dict.get("currently_active"), parsed_dict.get("status_msg"))
 
 
 class PresenceSetResponse(EmptyResponse):
