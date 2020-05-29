@@ -33,6 +33,7 @@ from nio import (ContentRepositoryConfigResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
                  PresenceGetResponse, PresenceSetResponse,
+                 PresenceEvent,
                  RoomBanResponse,
                  RoomTypingResponse, RoomCreateResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
@@ -2045,7 +2046,8 @@ class TestClass:
                 "presence": "online",
                 "last_active_ago": 0,
                 "currently_active": True,
-                "status_msg": "I am here."
+                "status_msg": "I am here.",
+                "user_id": user_id
             }
         )
 
@@ -2056,6 +2058,7 @@ class TestClass:
         assert resp.last_active_ago == 0
         assert resp.currently_active
         assert resp.status_msg == "I am here."
+        assert resp.user_id == user_id
 
     async def test_set_presence(self, async_client, aioresponse):
         """Test if we can set the presence state of user
@@ -2077,6 +2080,39 @@ class TestClass:
         resp = await async_client.set_presence("online", "I am here.")
 
         assert isinstance(resp, PresenceSetResponse)
+
+    async def test_presence_callback(self, async_client, aioresponse):
+        """Test if we can add a presence callback and if it get´s called
+        """
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+
+        class CallbackException(Exception):
+            pass
+
+        async def cb(event):
+            if isinstance(event, PresenceEvent):
+                raise CallbackException()
+
+        async_client.add_presence_callback(
+            cb,
+            PresenceEvent
+        )
+
+        url = (
+            r"^https://example\.org/_matrix/client/r0/"
+            r"sync\?access_token=abc123"
+        )
+
+        aioresponse.get(
+            re.compile(fr"{url}$"),
+            status=200,
+            payload=self.sync_response
+        )
+
+        with pytest.raises(CallbackException):
+            await async_client.sync()
 
     async def test_devices(self, async_client, aioresponse):
         await async_client.receive_response(
