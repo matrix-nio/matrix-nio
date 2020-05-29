@@ -691,6 +691,30 @@ class TestClass:
         resp4 = await async_client.sync(sync_filter={})
         assert isinstance(resp4, SyncResponse)
 
+    async def test_sync_presence(self, async_client, aioresponse):
+        """Test if prsences info in sync events are parsed correctly
+        """
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/sync?access_token={}".format(async_client.access_token),
+            status=200,
+            payload=self.sync_response
+        )
+
+        resp = await async_client.sync()
+        assert isinstance(resp, SyncResponse)
+
+        user = async_client.rooms["!SVkFJHzfwvuaIEawgC:localhost"].users["@example:localhost"]
+
+        assert user.currently_active
+        assert user.last_active_ago == 1337
+        assert user.presence == "online"
+        assert user.status_msg == "I am here."
+
     def test_keys_upload(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
 
