@@ -420,6 +420,13 @@ class Schemas:
                 },
                 "required": ["events"]
             },
+            "presence": {
+                "type": "object",
+                "properties": {
+                    "events": {"type": "array"}
+                },
+                "required": ["events"]
+            }
         },
         "required": [
             "next_batch",
