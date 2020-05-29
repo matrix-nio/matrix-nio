@@ -132,6 +132,10 @@ __all__ = [
     "ProfileGetAvatarError",
     "ProfileSetAvatarResponse",
     "ProfileSetAvatarError",
+    "PresenceGetResponse",
+    "PresenceGetError",
+    "PresenceSetResponse",
+    "PresenceSetError",
     "RoomKeyRequestResponse",
     "RoomKeyRequestError",
     "ThumbnailResponse",
@@ -533,6 +537,16 @@ class ProfileSetDisplayNameError(ErrorResponse):
 
 
 class ProfileGetAvatarError(ErrorResponse):
+    pass
+
+
+class PresenceGetError(ErrorResponse):
+    """Response representing a unsuccessful get presence request."""
+    pass
+
+
+class PresenceSetError(ErrorResponse):
+    """Response representing a unsuccessful set presence request."""
     pass
 
 
@@ -1337,6 +1351,38 @@ class ProfileSetAvatarResponse(EmptyResponse):
     @staticmethod
     def create_error(parsed_dict):
         return ProfileSetAvatarError.from_dict(parsed_dict)
+
+
+@dataclass
+class PresenceGetResponse(Response):
+    """Response representing a successful get presence request.
+
+    Attributes:
+        presence (str): The user's presence state. One of: ["online", "offline", "unavailable"]
+        last_active_ago (int, optional): The length of time in milliseconds since an action was performed by this user.
+            None if not set.
+        currently_active (bool, optional): Whether the user is currently active. None if not set.
+        status_msg (str, optional): The state message for this user. None if not set.
+    """
+
+    presence: str
+    last_active_ago: int = None
+    currently_active: bool = None
+    status_msg: str = None
+
+    @classmethod
+    @verify(Schemas.get_presence, PresenceGetError)
+    def from_dict(cls, parsed_dict: Dict[any, any]) -> Union["PresenceGetResponse", PresenceGetError]:
+        return cls(parsed_dict.get("presence"), parsed_dict.get("last_active_ago", None),
+                   parsed_dict.get("currently_active", None), parsed_dict.get("status_msg", None))
+
+
+class PresenceSetResponse(EmptyResponse):
+    """Response representing a successful set presence request."""
+
+    @staticmethod
+    def create_error(parsed_dict):
+        return PresenceSetError.from_dict(parsed_dict)
 
 
 @dataclass
