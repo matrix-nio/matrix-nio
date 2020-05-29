@@ -396,6 +396,7 @@ class Api:
         timeout:      Optional[int]  = None,
         filter:       _FilterT       = None,
         full_state:   Optional[bool] = None,
+        set_presence: Optional[str]  = None,
     ):
         # type: (...) -> Tuple[str, str]
         """Synchronise the client's state with the latest state on the server.
@@ -415,6 +416,13 @@ class Api:
                 true, then all state events will be returned, even if since is
                 non-empty. The timeline will still be limited by the since
                 parameter.
+            set_presence (str, optinal): Controls whether the client is automatically
+                marked as online by polling this API. If this parameter is omitted
+                then the client is automatically marked as online when it uses this API.
+                Otherwise if the parameter is set to "offline" then the client is not
+                marked as being online when it uses this API. When set to "unavailable",
+                the client is marked as being idle.
+                One of: ["offline", "online", "unavailable"]
         """
         query_parameters = {"access_token": access_token}
 
@@ -426,6 +434,9 @@ class Api:
 
         if timeout is not None:
             query_parameters["timeout"] = str(timeout)
+
+        if set_presence:
+            query_parameters["set_presence"] = set_presence
 
         if isinstance(filter, dict):
             filter_json = json.dumps(filter, separators=(",", ":"))
