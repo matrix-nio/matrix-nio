@@ -368,7 +368,7 @@ class AsyncClient(Client):
         self.ssl = ssl
         self.proxy = proxy
 
-        self.presence = presence
+        self._presence = presence
 
         self.synced = AsyncioEvent()
         self.response_callbacks: List[ResponseCb] = []
@@ -937,7 +937,7 @@ class AsyncClient(Client):
         """
 
         sync_token = since or self.next_batch
-        presence = set_presence or self.presence
+        presence = set_presence or self._presence
         method, path = Api.sync(
             self.access_token,
             since=sync_token or self.loaded_sync_token,
@@ -2665,7 +2665,7 @@ class AsyncClient(Client):
             PresenceSetResponse, method, path, data
         )
         if isinstance(resp, PresenceSetResponse):
-            self.presence = presence
+            self._presence = presence
 
         return resp
 
