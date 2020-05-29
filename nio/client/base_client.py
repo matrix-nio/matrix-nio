@@ -44,6 +44,7 @@ from ..events import (
     ToDeviceEvent,
     RoomKeyRequest,
     RoomKeyRequestCancellation,
+    PresenceEvent,
 )
 from ..exceptions import LocalProtocolError, MembersSyncError, EncryptionError
 from ..log import logger_group
@@ -215,6 +216,7 @@ class Client:
         self.event_callbacks: List[ClientCallback] = []
         self.ephemeral_callbacks: List[ClientCallback] = []
         self.to_device_callbacks: List[ClientCallback] = []
+        self.presence_callbacks: List[ClientCallback] = []
 
     @property
     def logged_in(self) -> bool:
@@ -776,6 +778,10 @@ class Client:
                 self.rooms[room_id].users[event.user_id].currently_active = event.currently_active
                 self.rooms[room_id].users[event.user_id].status_msg = event.status_msg
 
+            for cb in self.presence_callbacks:
+                if cb.filter is None or isinstance(event, cb.filter):
+                    cb.func(event)
+
     def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()
 
@@ -1200,6 +1206,25 @@ class Client:
         """
         cb = ClientCallback(callback, filter)
         self.to_device_callbacks.append(cb)
+
+    def add_presence_callback(
+        self,
+        callback: Callable[[PresenceEvent], None],
+        filter: Union[Type, Tuple[Type]],
+    ):
+        """Add a callback that will be executed on presence events.
+
+        Args:
+            callback (Callable[[PresenceEvent], None]): A function that will be
+                called if the event type in the filter argument is found in a
+                the presence part of the sync response.
+            filter (Union[Type, Tuple[Type]]): The event type or a tuple
+                containing multiple types for which the function
+                will be called.
+
+        """
+        cb = ClientCallback(callback, filter)
+        self.presence_callbacks.append(cb)
 
     @store_loaded
     def create_key_verification(self, device: OlmDevice) -> ToDeviceMessage:

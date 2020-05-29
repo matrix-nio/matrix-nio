@@ -577,6 +577,10 @@ class AsyncClient(Client):
                 self.rooms[room_id].users[event.user_id].currently_active = event.currently_active
                 self.rooms[room_id].users[event.user_id].status_msg = event.status_msg
 
+            for cb in self.presence_callbacks:
+                if cb.filter is None or isinstance(event, cb.filter):
+                    await asyncio.coroutine(cb.func)(event)
+
     async def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()
 
