@@ -1778,6 +1778,7 @@ class Schemas:
             "last_active_ago": {"type": "integer"},
             "status_msg": {"type": "string"},
             "currently_active": {"type": "boolean"},
+            "user_id": {"type": "string"},
         },
         "required": [
             "presence",

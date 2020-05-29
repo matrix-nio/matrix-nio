@@ -1363,18 +1363,21 @@ class PresenceGetResponse(Response):
             None if not set.
         currently_active (bool, optional): Whether the user is currently active. None if not set.
         status_msg (str, optional): The state message for this user. None if not set.
+        user_id (str, optional): The user´s id
     """
 
     presence: str
     last_active_ago: Optional[int]
     currently_active: Optional[bool]
     status_msg: Optional[str]
+    user_id: Optional[str]
 
     @classmethod
     @verify(Schemas.get_presence, PresenceGetError)
     def from_dict(cls, parsed_dict: Dict[Any, Any]) -> Union["PresenceGetResponse", PresenceGetError]:
         return cls(parsed_dict.get("presence", "offline"), parsed_dict.get("last_active_ago"),
-                   parsed_dict.get("currently_active"), parsed_dict.get("status_msg"))
+                   parsed_dict.get("currently_active"), parsed_dict.get("status_msg"),
+                   parsed_dict.get("user_id"))
 
 
 class PresenceSetResponse(EmptyResponse):
