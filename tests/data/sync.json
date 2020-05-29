@@ -220,6 +220,17 @@
         "events": []
     },
     "presence": {
-        "events": []
+        "events": [
+            {
+                "type": "m.presence",
+                "sender": "@example:localhost",
+                "content": {
+                    "presence": "online",
+                    "last_active_ago": 1337,
+                    "currently_active": true,
+                    "status_msg": "I am here."
+                }
+            }
+        ]
     }
 }
