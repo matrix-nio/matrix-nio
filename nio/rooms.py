@@ -41,7 +41,6 @@ logger_group.add_logger(logger)
 __all__ = [
     "MatrixRoom",
     "MatrixInvitedRoom",
-    "MatrixUserPresence",
     "MatrixUser",
 ]
 
@@ -484,16 +483,6 @@ class MatrixInvitedRoom(MatrixRoom):
             self.canonical_alias = event.canonical_alias
 
 
-class MatrixUserPresence(Enum):
-    """The user presence state.
-
-    An Enum holding differing values that a user presence can be in.
-    """
-    online = "online"
-    offline = "offline"
-    unavailable = "unavailable"
-
-
 class MatrixUser:
     def __init__(
         self,
@@ -502,7 +491,7 @@ class MatrixUser:
         avatar_url:   str  = None,
         power_level:  int  = 0,
         invited:      bool = False,
-        presence:     MatrixUserPresence = MatrixUserPresence.offline,
+        presence:     str = "offline",
         last_active_ago: int = None,
         currently_active: bool = False,
         status_msg: str = None

@@ -69,7 +69,7 @@ from ..responses import (
     SyncType,
     ToDeviceResponse,
 )
-from ..rooms import MatrixInvitedRoom, MatrixRoom, MatrixUserPresence
+from ..rooms import MatrixInvitedRoom, MatrixRoom
 
 from ..crypto import DeviceStore, OlmDevice, OutgoingKeyRequest
 
@@ -771,10 +771,10 @@ class Client:
                 if event.user_id not in self.rooms[room_id].users:
                     continue
 
-                self.rooms[room_id].users[event.user_id].presence = MatrixUserPresence(event.presence)
-                self.rooms[room_id].users[event.user_id].last_active_ago = MatrixUserPresence(event.last_active_ago)
-                self.rooms[room_id].users[event.user_id].currently_active = MatrixUserPresence(event.currently_active)
-                self.rooms[room_id].users[event.user_id].status_msg = MatrixUserPresence(event.status_msg)
+                self.rooms[room_id].users[event.user_id].presence = event.presence
+                self.rooms[room_id].users[event.user_id].last_active_ago = event.last_active_ago
+                self.rooms[room_id].users[event.user_id].currently_active = event.currently_active
+                self.rooms[room_id].users[event.user_id].status_msg = event.status_msg
 
     def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()

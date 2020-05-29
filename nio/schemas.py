@@ -1764,4 +1764,17 @@ class Schemas:
         ],
     }
 
+    get_presence = {
+        "type": "object",
+        "properties": {
+            "presence": {"type": "string"},
+            "last_active_ago": {"type": "integer"},
+            "status_msg": {"type": "string"},
+            "currently_active": {"type": "boolean"},
+        },
+        "required": [
+            "presence",
+        ],
+    }
+
     empty = {"type": "object", "properties": {}, "additionalProperties": False}

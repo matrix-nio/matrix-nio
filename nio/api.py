@@ -32,7 +32,6 @@ from enum import Enum, unique
 from typing import (Any, DefaultDict, Dict, Iterable, List,
                     Optional, Set, Sequence, Tuple, Union)
 
-from .rooms import MatrixUserPresence
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest
 
@@ -1503,7 +1502,7 @@ class Api:
         )
 
     @staticmethod
-    def set_presence(access_token: str, user_id: str, presence: MatrixUserPresence, status_msg: str = None):
+    def set_presence(access_token: str, user_id: str, presence: str, status_msg: str = None):
         """This API sets the given user's presence state.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -1511,11 +1510,11 @@ class Api:
         Args:
             access_token (str): The access token to be used with the request.
             user_id (str): User id whose presence state to get.
-            presence (MatrixUserPresence): The new presence state.
+            presence (str): The new presence state.
             status_msg (str, optional): The status message to attach to this state.
         """
         query_parameters = {"access_token": access_token}
-        content = {"presence": presence.name}
+        content = {"presence": presence}
         if status_msg:
             content["status_msg"] = status_msg
         path = "presence/{user_id}/status".format(user_id=user_id)
