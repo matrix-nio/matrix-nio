@@ -971,7 +971,7 @@ class Client:
 
                 self.rooms[room_id].users[response.user_id].presence = response.presence
                 self.rooms[room_id].users[response.user_id].last_active_ago = response.last_active_ago
-                self.rooms[room_id].users[response.user_id].currently_active = response.currently_active
+                self.rooms[room_id].users[response.user_id].currently_active = response.currently_active or False
                 self.rooms[room_id].users[response.user_id].status_msg = response.status_msg
 
     def receive_response(
