@@ -764,6 +764,8 @@ class Client:
                         cb.func(room, event)
 
             for event in join_info.account_data:
+                room.handle_account_data(event)
+
                 for cb in self.room_account_data_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
                         cb.func(room, event)
