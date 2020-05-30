@@ -360,7 +360,6 @@ class AsyncClient(Client):
         config: Optional[AsyncClientConfig] = None,
         ssl: Optional[bool] = None,
         proxy: Optional[str] = None,
-        presence: Optional[str] = None,
     ):
         self.homeserver = homeserver
         self.client_session: Optional[ClientSession] = None
@@ -368,7 +367,7 @@ class AsyncClient(Client):
         self.ssl = ssl
         self.proxy = proxy
 
-        self._presence = presence
+        self._presence: Optional[str] = None
 
         self.synced = AsyncioEvent()
         self.response_callbacks: List[ResponseCb] = []
@@ -1003,6 +1002,7 @@ class AsyncClient(Client):
         full_state: Optional[bool] = None,
         loop_sleep_time: Optional[int] = None,
         first_sync_filter: _FilterT = None,
+        set_presence: Optional[str] = None,
     ):
         """Continuously sync with the configured homeserver.
 
@@ -1050,6 +1050,9 @@ class AsyncClient(Client):
                 is used.
                 To have no filtering for the first sync regardless of
                 `sync_filter`'s value, pass `{}`.
+
+            set_presence (str, optional): The presence state.
+                One of: ["online", "offline", "unavailable"]
         """
 
         first_sync = True
@@ -1065,13 +1068,15 @@ class AsyncClient(Client):
                 # before the other requests, this helps to ensure that after one
                 # fired synced event the state is indeed fully synced.
                 if first_sync:
-                    sync_response = await self.sync(use_timeout, use_filter, since, full_state)
+                    presence = set_presence or self._presence
+                    sync_response = await self.sync(use_timeout, use_filter, since, full_state, presence)
                     await self.run_response_callbacks([sync_response])
                 else:
+                    presence = set_presence or self._presence
                     tasks = [
                         asyncio.ensure_future(coro)
                         for coro in (
-                            self.sync(use_timeout, use_filter, since, full_state),
+                            self.sync(use_timeout, use_filter, since, full_state, presence),
                             self.send_to_device_messages(),
                         )
                     ]
