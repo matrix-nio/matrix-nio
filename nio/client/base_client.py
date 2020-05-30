@@ -34,6 +34,7 @@ from collections import defaultdict
 
 from ..crypto import ENCRYPTION_ENABLED
 from ..events import (
+    AccountDataEvent,
     BadEventType,
     BadEvent,
     UnknownBadEvent,
@@ -218,6 +219,7 @@ class Client:
         self.ephemeral_callbacks: List[ClientCallback] = []
         self.to_device_callbacks: List[ClientCallback] = []
         self.presence_callbacks: List[ClientCallback] = []
+        self.room_account_data_callbacks: List[ClientCallback] = []
 
     @property
     def logged_in(self) -> bool:
@@ -760,6 +762,11 @@ class Client:
                     if cb.filter is None or isinstance(event, cb.filter):
                         cb.func(room, event)
 
+            for event in join_info.account_data:
+                for cb in self.room_account_data_callbacks:
+                    if cb.filter is None or isinstance(event, cb.filter):
+                        cb.func(room, event)
+
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)
 
@@ -1201,6 +1208,32 @@ class Client:
         """
         cb = ClientCallback(callback, filter)
         self.ephemeral_callbacks.append(cb)
+
+    def add_room_account_data_callback(
+        self,
+        callback: Callable[[MatrixRoom, AccountDataEvent], None],
+        filter: Union[
+            Type[AccountDataEvent],
+            Tuple[Type[AccountDataEvent], ...],
+        ],
+    ) -> None:
+        """Add a callback that will be executed on room account data events.
+
+        Args:
+            callback (Callable[[MatrixRoom, ToDeviceEvent], None]):
+                A function that will be
+                called if the event type in the filter argument is found in
+                the room account data event list.
+
+            filter
+            (Union[Type[AccountDataEvent], Tuple[Type[AccountDataEvent, ...]]):
+                The event type or a tuple
+                containing multiple types for which the function
+                will be called.
+
+        """
+        cb = ClientCallback(callback, filter)
+        self.room_account_data_callbacks.append(cb)
 
     def add_to_device_callback(
         self,
