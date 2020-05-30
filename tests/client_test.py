@@ -8,6 +8,8 @@ import pytest
 from helpers import FrameFactory, ephemeral, ephemeral_dir, faker
 from nio import (Client, DeviceList, DeviceOneTimeKeyCount, DownloadResponse,
                  EncryptionError,
+                 FullyReadEvent,
+                 TagEvent,
                  HttpClient, JoinedMembersResponse, KeysQueryResponse,
                  KeysUploadResponse, LocalProtocolError, LoginResponse,
                  LogoutResponse, MegolmEvent, ProfileGetAvatarResponse,
@@ -288,9 +290,9 @@ class TestClass:
             "prev_batch_token"
         )
         test_room_info = RoomInfo(
-            timeline,
-            [],
-            [
+            timeline = timeline,
+            state = [],
+            ephemeral = [
                 TypingNoticeEvent([ALICE_ID]),
                 ReceiptEvent(
                     [
@@ -303,22 +305,27 @@ class TestClass:
                     ]
                 )
             ],
-            [],
-            RoomSummary(invited_member_count=1, joined_member_count=2),
+            account_data = [
+                FullyReadEvent(event_id="event_id_2"),
+                TagEvent(tags={"u.test": {"order": 1}}),
+            ],
+            summary = RoomSummary(
+                invited_member_count=1, joined_member_count=2,
+            ),
         )
         rooms = Rooms(
-            {},
-            {
+            invite = {},
+            join = {
                 TEST_ROOM_ID: test_room_info
             },
-            {}
+            leave = {}
         )
         return SyncResponse(
-            "token123",
-            rooms,
-            DeviceOneTimeKeyCount(49, 50),
-            DeviceList([ALICE_ID], []),
-            [
+            next_batch = "token123",
+            rooms = rooms,
+            device_key_count = DeviceOneTimeKeyCount(49, 50),
+            device_list = DeviceList([ALICE_ID], []),
+            to_device_events = [
                 RoomEncryptionEvent(
                     {
                         "event_id": "event_id_2",
@@ -327,7 +334,7 @@ class TestClass:
                     }
                 )
             ],
-            [
+            presence_events = [
                 PresenceEvent(ALICE_ID, "online", 1337, True, "I am here.")
             ]
         )
@@ -1114,7 +1121,7 @@ class TestClass:
             population=ephemeral_events,
             # By the pigeonhole princple, we'll have at least one duplicate Event
             k=len(ephemeral_events) + 1
-        ) 
+        )
         # This will only print during a failure, at which point we want to know
         # what event selection caused an error.
         print(f"Random selection of EphemeralEvents: {event_selection}")
@@ -1131,9 +1138,31 @@ class TestClass:
                 raise exception_class()
 
             client.add_ephemeral_callback(callback, event)
-        
+
         with pytest.raises(tuple(exceptions)):
             client.receive_response(self.sync_response)
+
+    def test_room_account_data_cb(self, client):
+        client.receive_response(self.login_response)
+
+        class CallbackException(Exception):
+            pass
+
+        def cb(_, event):
+            raise CallbackException()
+
+        client.add_room_account_data_callback(cb, FullyReadEvent)
+
+        with pytest.raises(CallbackException):
+            client.receive_response(self.sync_response)
+
+    def test_handle_account_data(self, client):
+        client.receive_response(self.login_response)
+        client.receive_response(self.sync_response)
+
+        room = client.rooms[TEST_ROOM_ID]
+        assert room.fully_read_marker == "event_id_2"
+        assert room.tags == {"u.test": {"order": 1}}
 
     def test_no_encryption(self, client_no_e2e):
         client_no_e2e.receive_response(self.login_response)
