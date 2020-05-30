@@ -69,6 +69,7 @@ from ..responses import (
     SyncResponse,
     SyncType,
     ToDeviceResponse,
+    PresenceGetResponse,
 )
 from ..rooms import MatrixInvitedRoom, MatrixRoom
 
@@ -962,6 +963,17 @@ class Client:
         elif response.room_id in self.invited_rooms:
             del self.invited_rooms[response.room_id]
 
+    def _handle_presence_response(self, response: PresenceGetResponse):
+        if response.user_id:
+            for room_id in self.rooms.keys():
+                if response.user_id not in self.rooms[room_id].users:
+                    continue
+
+                self.rooms[room_id].users[response.user_id].presence = response.presence
+                self.rooms[room_id].users[response.user_id].last_active_ago = response.last_active_ago
+                self.rooms[room_id].users[response.user_id].currently_active = response.currently_active
+                self.rooms[room_id].users[response.user_id].status_msg = response.status_msg
+
     def receive_response(
         self, response: Response
     ) -> Union[None, Coroutine[Any, Any, None]]:
@@ -1011,6 +1023,8 @@ class Client:
                     response.event = self.decrypt_event(response.event)
                 except EncryptionError:
                     pass
+        elif isinstance(response, PresenceGetResponse):
+            self._handle_presence_response(response)
         elif isinstance(response, ErrorResponse):
             if response.soft_logout:
                 self.access_token = ""
