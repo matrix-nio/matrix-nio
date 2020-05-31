@@ -14,7 +14,7 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from typing import Dict
+from typing import Optional
 
 from dataclasses import dataclass, field
 from logbook import Logger
@@ -34,9 +34,9 @@ class PresenceEvent:
 
     user_id: str = field()
     presence: str = field()
-    last_active_ago: int = field()
-    currently_active: bool = field()
-    status_msg: str = field()
+    last_active_ago: Optional[int] = None
+    currently_active: Optional[bool] = None
+    status_msg: Optional[str] = None
 
     @classmethod
     @verify(Schemas.presence)
@@ -47,7 +47,10 @@ class PresenceEvent:
             parsed_dict (dict): The dictionary representation of the event.
 
         """
-        args = {"user_id": parsed_dict["sender"], "presence": parsed_dict["content"]["presence"]}
+        args = {
+            "user_id": parsed_dict["sender"],
+            "presence": parsed_dict["content"]["presence"],
+        }
 
         if "last_active_ago" in parsed_dict["content"]:
             args["last_active_ago"] = parsed_dict["content"]["last_active_ago"]
