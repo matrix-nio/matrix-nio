@@ -498,14 +498,14 @@ class MatrixUser:
     def __init__(
         self,
         user_id:      str,
-        display_name: str  = None,
-        avatar_url:   str  = None,
+        display_name: Optional[str] = None,
+        avatar_url:   Optional[str] = None,
         power_level:  int  = 0,
         invited:      bool = False,
         presence:     str = "offline",
-        last_active_ago: int = None,
-        currently_active: bool = False,
-        status_msg: str = None
+        last_active_ago: Optional[int] = None,
+        currently_active: Optional[bool] = None,
+        status_msg: Optional[str] = None
     ):
         # yapf: disable
         self.user_id = user_id
