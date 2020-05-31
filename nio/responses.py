@@ -169,9 +169,9 @@ def verify(schema, error_class, pass_arguments=True):
 
 @dataclass
 class Rooms:
-    invite: Dict = field()
-    join: Dict = field()
-    leave: Dict = field()
+    invite: Dict[str, "InviteInfo"] = field()
+    join: Dict[str, "RoomInfo"] = field()
+    leave: Dict[str, "RoomInfo"] = field()
 
 
 @dataclass
@@ -1662,13 +1662,13 @@ class _SyncResponse(Response):
         return join_info, unhandled_info
 
     @staticmethod
-    def _get_room_info(parsed_dict, max_events=0):
-        # type: (Dict[Any, Any], int) -> Tuple[Rooms, Dict[str, RoomInfo]]
-        joined_rooms = {
-            key: None for key in parsed_dict["join"].keys()
-        }  # type: Dict[str, Optional[RoomInfo]]
-        invited_rooms = {}  # type: Dict[str, InviteInfo]
-        left_rooms = {}     # type: Dict[str, RoomInfo]
+    def _get_room_info(
+            parsed_dict: Dict[Any, Any], max_events: int = 0,
+    ) -> Tuple[Rooms, Dict[str, RoomInfo]]:
+
+        joined_rooms: Dict[str, RoomInfo] = {}
+        invited_rooms: Dict[str, InviteInfo] = {}
+        left_rooms: Dict[str, RoomInfo] = {}
         unhandled_rooms = {}
 
         for room_id, room_dict in parsed_dict["invite"].items():
