@@ -88,7 +88,7 @@ class TagEvent(AccountDataEvent):
         - m.lowpriority for low priority room
 
        A tag may have an order between 0 and 1, indicating the
-       room's possition towards other rooms with the same tag.
+       room's position towards other rooms with the same tag.
 
     Attributes:
         tags (Dict[str, Optional[Dict[str, float]]]): The tags of the room

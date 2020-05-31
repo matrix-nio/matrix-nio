@@ -25,7 +25,9 @@ from typing import (Any, DefaultDict, Dict, List, NamedTuple, Optional, Tuple,
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
-from .events import (Event, InviteAliasEvent, InviteMemberEvent,
+from .events import (AccountDataEvent, FullyReadEvent, TagEvent,
+                     EphemeralEvent,
+                     Event, InviteAliasEvent, InviteMemberEvent,
                      InviteNameEvent, PowerLevels, PowerLevelsEvent,
                      RoomAliasEvent, RoomCreateEvent, RoomEncryptionEvent,
                      RoomGuestAccessEvent, RoomHistoryVisibilityEvent,
@@ -72,6 +74,8 @@ class MatrixRoom:
         self.read_receipts = {}       # type: Dict[str, Receipt]
         self.summary = None           # type: Optional[RoomSummary]
         self.room_avatar_url = None        # type: Optional[str]
+        self.fully_read_marker: Optional[str] = None
+        self.tags: Dict[str, Optional[Dict[str, float]]] = {}
         # yapf: enable
 
     @property
@@ -322,7 +326,7 @@ class MatrixRoom:
 
         return False
 
-    def handle_ephemeral_event(self, event) -> None:
+    def handle_ephemeral_event(self, event: EphemeralEvent) -> None:
         if isinstance(event, TypingNoticeEvent):
             self.typing_users = event.users
 
@@ -383,6 +387,13 @@ class MatrixRoom:
                         )
                     )
                     self.users[user_id].power_level = level
+
+    def handle_account_data(self, event: AccountDataEvent) -> None:
+        if isinstance(event, FullyReadEvent):
+            self.fully_read_marker = event.event_id
+
+        if isinstance(event, TagEvent):
+            self.tags = event.tags
 
     def update_summary(self, summary: RoomSummary) -> None:
         if not self.summary:

@@ -34,9 +34,11 @@ from collections import defaultdict
 
 from ..crypto import ENCRYPTION_ENABLED
 from ..events import (
+    AccountDataEvent,
     BadEventType,
     BadEvent,
     UnknownBadEvent,
+    EphemeralEvent,
     Event,
     MegolmEvent,
     RoomEncryptionEvent,
@@ -121,7 +123,7 @@ class ClientCallback:
     """nio internal callback class."""
 
     func: Callable = field()
-    filter: Union[Tuple[Type], Type, None] = None
+    filter: Union[Tuple[Type, ...], Type, None] = None
 
 
 @dataclass(frozen=True)
@@ -218,6 +220,7 @@ class Client:
         self.ephemeral_callbacks: List[ClientCallback] = []
         self.to_device_callbacks: List[ClientCallback] = []
         self.presence_callbacks: List[ClientCallback] = []
+        self.room_account_data_callbacks: List[ClientCallback] = []
 
     @property
     def logged_in(self) -> bool:
@@ -760,6 +763,13 @@ class Client:
                     if cb.filter is None or isinstance(event, cb.filter):
                         cb.func(room, event)
 
+            for event in join_info.account_data:
+                room.handle_account_data(event)
+
+                for cb in self.room_account_data_callbacks:
+                    if cb.filter is None or isinstance(event, cb.filter):
+                        cb.func(room, event)
+
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)
 
@@ -1164,8 +1174,8 @@ class Client:
     def add_event_callback(
         self,
         callback: Callable[[MatrixRoom, Event], None],
-        filter: Union[Type, Tuple[Type]],
-    ):
+        filter: Union[Type[Event], Tuple[Type[Event], ...]],
+    ) -> None:
         """Add a callback that will be executed on room events.
 
         The callback can be used on joined rooms as well as on invited rooms.
@@ -1176,7 +1186,9 @@ class Client:
             callback (Callable[[MatrixRoom, Event], None]): A
                 function that will be called if the event type in the filter
                 argument is found in a room timeline.
-            filter (Union[Type, Tuple[Type]]): The event type or a tuple
+
+            filter (Union[Type[Event], Tuple[Type[Event], ...]]):
+                The event type or a tuple
                 containing multiple types for which the function will be
                 called.
 
@@ -1186,34 +1198,67 @@ class Client:
 
     def add_ephemeral_callback(
         self,
-        callback: Callable[[MatrixRoom, Event], None],
-        filter: Union[Type, Tuple[Type]],
-    ):
+        callback: Callable[[MatrixRoom, EphemeralEvent], None],
+        filter: Union[Type[EphemeralEvent], Tuple[Type[EphemeralEvent], ...]],
+    ) -> None:
         """Add a callback that will be executed on ephemeral room events.
 
         Args:
-            callback (Callable[MatrixRoom, Event]): A function that will be
+            callback (Callable[MatrixRoom, EphemeralEvent]):
+                A function that will be
                 called if the event type in the filter argument is found in the
                 ephemeral room event list.
-            filter (Type, Tuple[Type]): The event type or a tuple containing
+
+            filter
+            (Union[Type[EphemeralEvent], Tuple[Type[EphemeralEvent], ...]]):
+                The event type or a tuple containing
                 multiple types for which the function will be called.
 
         """
         cb = ClientCallback(callback, filter)
         self.ephemeral_callbacks.append(cb)
 
+    def add_room_account_data_callback(
+        self,
+        callback: Callable[[MatrixRoom, AccountDataEvent], None],
+        filter: Union[
+            Type[AccountDataEvent],
+            Tuple[Type[AccountDataEvent], ...],
+        ],
+    ) -> None:
+        """Add a callback that will be executed on room account data events.
+
+        Args:
+            callback (Callable[[MatrixRoom, ToDeviceEvent], None]):
+                A function that will be
+                called if the event type in the filter argument is found in
+                the room account data event list.
+
+            filter
+            (Union[Type[AccountDataEvent], Tuple[Type[AccountDataEvent, ...]]):
+                The event type or a tuple
+                containing multiple types for which the function
+                will be called.
+
+        """
+        cb = ClientCallback(callback, filter)
+        self.room_account_data_callbacks.append(cb)
+
     def add_to_device_callback(
         self,
         callback: Callable[[ToDeviceEvent], None],
-        filter: Union[Type, Tuple[Type]],
-    ):
+        filter: Union[Type[ToDeviceEvent], Tuple[Type[ToDeviceEvent], ...]],
+    ) -> None:
         """Add a callback that will be executed on to-device events.
 
         Args:
             callback (Callable[[ToDeviceEvent], None]): A function that will be
                 called if the event type in the filter argument is found in a
                 the to-device part of the sync response.
-            filter (Union[Type, Tuple[Type]]): The event type or a tuple
+
+            filter
+            (Union[Type[ToDeviceEvent], Tuple[Type[ToDeviceEvent], ...]]):
+                The event type or a tuple
                 containing multiple types for which the function
                 will be called.
 
