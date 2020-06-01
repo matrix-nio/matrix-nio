@@ -716,6 +716,25 @@ class TestClass:
         assert user.presence == "online"
         assert user.status_msg == "I am here."
 
+    async def test_sync_notification_counts(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/sync?access_token=abc123",
+            status=200,
+            payload=self.sync_response,
+        )
+
+        resp = await async_client.sync()
+        assert isinstance(resp, SyncResponse)
+
+        room = async_client.rooms["!SVkFJHzfwvuaIEawgC:localhost"]
+        assert room.unread_notifications == 11
+        assert room.unread_highlights == 1
+
     def test_keys_upload(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
 
@@ -1564,7 +1583,7 @@ class TestClass:
             status=200,
             payload=self.upload_response,
             repeat=True,
-        ) 
+        )
 
         # Upload text file using a async file object
         async with aiofiles.open("tests/data/sample_text_file.py") as f:
