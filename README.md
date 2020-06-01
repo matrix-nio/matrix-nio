@@ -65,6 +65,9 @@ $ pip install "matrix-nio[e2e]"
 
 ```
 
+Additionally, a docker image with the e2ee enabled version of nio is provided in
+the `docker/` directory.
+
 Examples
 --------
 
