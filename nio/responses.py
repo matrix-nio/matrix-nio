@@ -206,12 +206,19 @@ class RoomSummary:
 
 
 @dataclass
+class UnreadNotifications:
+    notification_count: Optional[int] = None
+    highlight_count: Optional[int] = None
+
+
+@dataclass
 class RoomInfo:
     timeline: Timeline = field()
     state: List = field()
     ephemeral: List = field()
     account_data: List = field()
     summary: Optional[RoomSummary] = None
+    unread_notifications: Optional[UnreadNotifications] = None
 
     @staticmethod
     def parse_account_data(event_dict):
@@ -1591,14 +1598,15 @@ class _SyncResponse(Response):
 
     @staticmethod
     def _get_join_info(
-        state_events,         # type: List[Any]
-        timeline_events,      # type: List[Any]
-        prev_batch,           # type: str
-        limited,              # type: bool
-        ephemeral_events,     # type: List[Any]
-        summary_events,       # type: Dict[str, Any]
-        account_data_events,  # type: List[Any]
-        max_events=0          # type: int
+        state_events: List[Any],
+        timeline_events: List[Any],
+        prev_batch: str,
+        limited: bool,
+        ephemeral_events: List[Any],
+        summary_events: Dict[str, Any],
+        unread_notification_events: Dict[str, Any],
+        account_data_events: List[Any],
+        max_events: int = 0,
     ):
         # type: (...) -> Tuple[RoomInfo, Optional[RoomInfo]]
         counter, state = _SyncResponse._get_room_events(
@@ -1644,9 +1652,14 @@ class _SyncResponse(Response):
             )
 
         summary = RoomSummary(
-            summary_events.get("m.invited_member_count", None),
-            summary_events.get("m.joined_member_count", None),
-            summary_events.get("m.heroes", None),
+            summary_events.get("m.invited_member_count"),
+            summary_events.get("m.joined_member_count"),
+            summary_events.get("m.heroes"),
+        )
+
+        unread_notifications = UnreadNotifications(
+            unread_notification_events.get("notification_count"),
+            unread_notification_events.get("highlight_count"),
         )
 
         account_data = RoomInfo.parse_account_data(account_data_events)
@@ -1657,6 +1670,7 @@ class _SyncResponse(Response):
             ephemeral_event_list,
             account_data,
             summary,
+            unread_notifications,
         )
 
         return join_info, unhandled_info
@@ -1690,6 +1704,7 @@ class _SyncResponse(Response):
                 room_dict["timeline"]["limited"],
                 room_dict["ephemeral"]["events"],
                 room_dict.get("summary", {}),
+                room_dict.get("unread_notifications", {}),
                 room_dict["account_data"]["events"],
                 max_events
             )
@@ -1775,6 +1790,7 @@ class PartialSyncResponse(_SyncResponse):
                 room_info.timeline.prev_batch,
                 room_info.timeline.limited,
                 [],
+                {},
                 {},
                 [],
                 max_events
