@@ -1358,26 +1358,25 @@ class PresenceGetResponse(Response):
     """Response representing a successful get presence request.
 
     Attributes:
+        user_id (str): The user´s id
         presence (str): The user's presence state. One of: ["online", "offline", "unavailable"]
         last_active_ago (int, optional): The length of time in milliseconds since an action was performed by this user.
             None if not set.
         currently_active (bool, optional): Whether the user is currently active. None if not set.
         status_msg (str, optional): The state message for this user. None if not set.
-        user_id (str, optional): The user´s id
     """
 
+    user_id: str
     presence: str
     last_active_ago: Optional[int]
     currently_active: Optional[bool]
     status_msg: Optional[str]
-    user_id: Optional[str]
 
     @classmethod
     @verify(Schemas.get_presence, PresenceGetError)
-    def from_dict(cls, parsed_dict: Dict[Any, Any]) -> Union["PresenceGetResponse", PresenceGetError]:
-        return cls(parsed_dict.get("presence", "offline"), parsed_dict.get("last_active_ago"),
-                   parsed_dict.get("currently_active"), parsed_dict.get("status_msg"),
-                   parsed_dict.get("user_id"))
+    def from_dict(cls, parsed_dict: Dict[Any, Any], user_id: str) -> Union["PresenceGetResponse", PresenceGetError]:
+        return cls(user_id, parsed_dict.get("presence", "offline"), parsed_dict.get("last_active_ago"),
+                   parsed_dict.get("currently_active"), parsed_dict.get("status_msg"))
 
 
 class PresenceSetResponse(EmptyResponse):

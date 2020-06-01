@@ -974,15 +974,14 @@ class Client:
             del self.invited_rooms[response.room_id]
 
     def _handle_presence_response(self, response: PresenceGetResponse):
-        if response.user_id:
-            for room_id in self.rooms.keys():
-                if response.user_id not in self.rooms[room_id].users:
-                    continue
+        for room_id in self.rooms.keys():
+            if response.user_id not in self.rooms[room_id].users:
+                continue
 
-                self.rooms[room_id].users[response.user_id].presence = response.presence
-                self.rooms[room_id].users[response.user_id].last_active_ago = response.last_active_ago
-                self.rooms[room_id].users[response.user_id].currently_active = response.currently_active or False
-                self.rooms[room_id].users[response.user_id].status_msg = response.status_msg
+            self.rooms[room_id].users[response.user_id].presence = response.presence
+            self.rooms[room_id].users[response.user_id].last_active_ago = response.last_active_ago
+            self.rooms[room_id].users[response.user_id].currently_active = response.currently_active or False
+            self.rooms[room_id].users[response.user_id].status_msg = response.status_msg
 
     def receive_response(
         self, response: Response

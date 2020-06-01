@@ -2634,7 +2634,7 @@ class AsyncClient(Client):
         )
 
         return await self._send(
-            PresenceGetResponse, method, path
+            PresenceGetResponse, method, path, response_data=(user_id,)
         )
 
     @client_session

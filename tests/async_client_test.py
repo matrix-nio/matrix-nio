@@ -2031,6 +2031,7 @@ class TestClass:
         resp = await async_client.get_presence(user_id)
 
         assert isinstance(resp, PresenceGetResponse)
+        assert resp.user_id == user_id
         assert resp.presence == "unavailable"
         assert resp.last_active_ago == 420845
         assert not resp.currently_active
@@ -2047,18 +2048,17 @@ class TestClass:
                 "last_active_ago": 0,
                 "currently_active": True,
                 "status_msg": "I am here.",
-                "user_id": user_id
             }
         )
 
         resp = await async_client.get_presence(user_id)
 
         assert isinstance(resp, PresenceGetResponse)
+        assert resp.user_id == user_id
         assert resp.presence == "online"
         assert resp.last_active_ago == 0
         assert resp.currently_active
         assert resp.status_msg == "I am here."
-        assert resp.user_id == user_id
 
     async def test_set_presence(self, async_client, aioresponse):
         """Test if we can set the presence state of user
