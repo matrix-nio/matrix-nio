@@ -143,7 +143,9 @@ __all__ = [
     "ToDeviceResponse",
     "ToDeviceError",
     "RoomContextResponse",
-    "RoomContextError"
+    "RoomContextError",
+    "UpdateReceiptMarkerError",
+    "UpdateReceiptMarkerResponse",
 ]
 
 
@@ -419,6 +421,10 @@ class RoomResolveAliasError(ErrorResponse):
 class RoomTypingError(_ErrorWithRoomId):
     """A response representing a unsuccessful room typing request."""
 
+    pass
+
+
+class UpdateReceiptMarkerError(ErrorResponse):
     pass
 
 
@@ -1029,6 +1035,12 @@ class RoomTypingResponse(_EmptyResponseWithRoomId):
     @staticmethod
     def create_error(parsed_dict, room_id):
         return RoomTypingError.from_dict(parsed_dict, room_id)
+
+
+class UpdateReceiptMarkerResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict):
+        return UpdateReceiptMarkerError.from_dict(parsed_dict)
 
 
 class RoomReadMarkersResponse(_EmptyResponseWithRoomId):
