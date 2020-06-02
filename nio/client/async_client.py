@@ -2264,7 +2264,7 @@ class AsyncClient(Client):
         event_id: str,
         receipt_type: str = "m.read",
     ) -> None:
-        """Update the marker of given `receipt_type` to specified `event_id`.
+        """Update the marker of given the `receipt_type` to specified `event_id`.
 
         Calls receive_response() to update the client state if necessary.
 
@@ -2296,7 +2296,7 @@ class AsyncClient(Client):
         fully_read_event: str,
         read_event: Optional[str] = None
     ):
-        """Update fully read marker and optionally read marker for a room.
+        """Update the fully read marker and optionally the read marker for a room.
 
         Calls receive_response() to update the client state if necessary.
 
