@@ -699,6 +699,9 @@ class Client:
         if join_info.summary:
             room.update_summary(join_info.summary)
 
+        if join_info.unread_notifications:
+            room.update_unread_notifications(join_info.unread_notifications)
+
     def _handle_timeline_event(
         self,
         event: Union[Event, BadEventType],

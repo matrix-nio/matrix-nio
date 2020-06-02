@@ -183,6 +183,7 @@ from ..responses import (
     UploadResponse,
     UpdateDeviceResponse,
     UpdateDeviceError,
+    UpdateReceiptMarkerResponse,
 )
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
@@ -2257,18 +2258,51 @@ class AsyncClient(Client):
         )
 
     @logged_in
+    async def update_receipt_marker(
+        self,
+        room_id: str,
+        event_id: str,
+        receipt_type: str = "m.read",
+    ) -> None:
+        """Update the marker of given the `receipt_type` to specified `event_id`.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `UpdateReceiptMarkerResponse` if the request was
+        successful or a `UpdateReceiptMarkerError` if there was an error with
+        the request.
+
+        Args:
+            room_id (str): Room id of the room where the marker should
+                be updated
+            event_id (str): The event ID the read marker should be located at
+            receipt_type (str): The type of receipt to send. Currently, only
+                `m.read` is supported by the Matrix specification.
+        """
+        method, path = Api.update_receipt_marker(
+            self.access_token, room_id, event_id, receipt_type,
+        )
+
+        return await self._send(
+            UpdateReceiptMarkerResponse,
+            method,
+            path,
+        )
+
+    @logged_in
     async def room_read_markers(
         self,
         room_id: str,
         fully_read_event: str,
         read_event: Optional[str] = None
     ):
-        """Update read markers for a room.
+        """Update the fully read marker and optionally the read marker for a room.
 
         Calls receive_response() to update the client state if necessary.
 
-        Returns either a `RoomReadResponse` if the request was successful or
-        a `RoomReadError` if there was an error with the request.
+        Returns either a `RoomReadMarkersResponse` if the request was
+        successful or a `RoomReadMarkersError` if there was an error with
+        the request.
 
         This sets the position of the read markers. `fully_read_event` is the
         latest event in the set of events that the user has either fully read

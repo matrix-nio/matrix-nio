@@ -35,7 +35,7 @@ from .events import (AccountDataEvent, FullyReadEvent, TagEvent,
                      RoomTopicEvent, RoomAvatarEvent, TypingNoticeEvent,
                      ReceiptEvent, Receipt)
 from .log import logger_group
-from .responses import RoomSummary
+from .responses import RoomSummary, UnreadNotifications
 
 logger = Logger("nio.rooms")
 logger_group.add_logger(logger)
@@ -76,6 +76,8 @@ class MatrixRoom:
         self.room_avatar_url = None        # type: Optional[str]
         self.fully_read_marker: Optional[str] = None
         self.tags: Dict[str, Optional[Dict[str, float]]] = {}
+        self.unread_notifications: int = 0
+        self.unread_highlights: int = 0
         # yapf: enable
 
     @property
@@ -394,6 +396,13 @@ class MatrixRoom:
 
         if isinstance(event, TagEvent):
             self.tags = event.tags
+
+    def update_unread_notifications(self, unread: UnreadNotifications) -> None:
+        if unread.notification_count is not None:
+            self.unread_notifications = unread.notification_count
+
+        if unread.highlight_count is not None:
+            self.unread_highlights = unread.highlight_count
 
     def update_summary(self, summary: RoomSummary) -> None:
         if not self.summary:

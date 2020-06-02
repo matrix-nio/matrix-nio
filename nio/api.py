@@ -1248,6 +1248,30 @@ class Api:
         )
 
     @staticmethod
+    def update_receipt_marker(
+        access_token: str,
+        room_id: str,
+        event_id: str,
+        receipt_type: str = "m.read",
+    ) -> Tuple[str, str]:
+        """Update the marker of given `receipt_type` to specified `event_id`.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): Room id of the room where the marker should
+                be updated
+            event_id (str): The event ID the read marker should be located at
+            receipt_type (str): The type of receipt to send. Currently, only
+                `m.read` is supported by the Matrix specification.
+        """
+        query_parameters = {"access_token": access_token}
+        path = f"rooms/{room_id}/receipt/{receipt_type}/{event_id}"
+
+        return ("POST", Api._build_path(path, query_parameters))
+
+    @staticmethod
     def room_read_markers(
         access_token,       # type: str
         room_id,            # type: str
@@ -1255,7 +1279,7 @@ class Api:
         read_event=None,    # type: Optional[str]
     ):
         # type: (...) -> Tuple[str, str, str]
-        """Update read markers for a room.
+        """Update fully read marker and optionally read marker for a room.
 
         This sets the position of the read marker for a given room,
         and optionally the read receipt's location.
@@ -1264,7 +1288,7 @@ class Api:
 
         Args:
             access_token (str): The access token to be used with the request.
-            room_id (str): Room id of the room of the room where the read
+            room_id (str): Room id of the room where the read
                 markers should be updated
             fully_read_event (str): The event ID the read marker should be
                 located at.

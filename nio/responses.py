@@ -143,7 +143,9 @@ __all__ = [
     "ToDeviceResponse",
     "ToDeviceError",
     "RoomContextResponse",
-    "RoomContextError"
+    "RoomContextError",
+    "UpdateReceiptMarkerError",
+    "UpdateReceiptMarkerResponse",
 ]
 
 
@@ -169,9 +171,9 @@ def verify(schema, error_class, pass_arguments=True):
 
 @dataclass
 class Rooms:
-    invite: Dict = field()
-    join: Dict = field()
-    leave: Dict = field()
+    invite: Dict[str, "InviteInfo"] = field()
+    join: Dict[str, "RoomInfo"] = field()
+    leave: Dict[str, "RoomInfo"] = field()
 
 
 @dataclass
@@ -206,12 +208,19 @@ class RoomSummary:
 
 
 @dataclass
+class UnreadNotifications:
+    notification_count: Optional[int] = None
+    highlight_count: Optional[int] = None
+
+
+@dataclass
 class RoomInfo:
     timeline: Timeline = field()
     state: List = field()
     ephemeral: List = field()
     account_data: List = field()
     summary: Optional[RoomSummary] = None
+    unread_notifications: Optional[UnreadNotifications] = None
 
     @staticmethod
     def parse_account_data(event_dict):
@@ -412,6 +421,10 @@ class RoomResolveAliasError(ErrorResponse):
 class RoomTypingError(_ErrorWithRoomId):
     """A response representing a unsuccessful room typing request."""
 
+    pass
+
+
+class UpdateReceiptMarkerError(ErrorResponse):
     pass
 
 
@@ -1024,6 +1037,12 @@ class RoomTypingResponse(_EmptyResponseWithRoomId):
         return RoomTypingError.from_dict(parsed_dict, room_id)
 
 
+class UpdateReceiptMarkerResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict):
+        return UpdateReceiptMarkerError.from_dict(parsed_dict)
+
+
 class RoomReadMarkersResponse(_EmptyResponseWithRoomId):
     """A response representing a successful room read markers request."""
 
@@ -1590,14 +1609,15 @@ class _SyncResponse(Response):
 
     @staticmethod
     def _get_join_info(
-        state_events,         # type: List[Any]
-        timeline_events,      # type: List[Any]
-        prev_batch,           # type: str
-        limited,              # type: bool
-        ephemeral_events,     # type: List[Any]
-        summary_events,       # type: Dict[str, Any]
-        account_data_events,  # type: List[Any]
-        max_events=0          # type: int
+        state_events: List[Any],
+        timeline_events: List[Any],
+        prev_batch: str,
+        limited: bool,
+        ephemeral_events: List[Any],
+        summary_events: Dict[str, Any],
+        unread_notification_events: Dict[str, Any],
+        account_data_events: List[Any],
+        max_events: int = 0,
     ):
         # type: (...) -> Tuple[RoomInfo, Optional[RoomInfo]]
         counter, state = _SyncResponse._get_room_events(
@@ -1643,9 +1663,14 @@ class _SyncResponse(Response):
             )
 
         summary = RoomSummary(
-            summary_events.get("m.invited_member_count", None),
-            summary_events.get("m.joined_member_count", None),
-            summary_events.get("m.heroes", None),
+            summary_events.get("m.invited_member_count"),
+            summary_events.get("m.joined_member_count"),
+            summary_events.get("m.heroes"),
+        )
+
+        unread_notifications = UnreadNotifications(
+            unread_notification_events.get("notification_count"),
+            unread_notification_events.get("highlight_count"),
         )
 
         account_data = RoomInfo.parse_account_data(account_data_events)
@@ -1656,18 +1681,19 @@ class _SyncResponse(Response):
             ephemeral_event_list,
             account_data,
             summary,
+            unread_notifications,
         )
 
         return join_info, unhandled_info
 
     @staticmethod
-    def _get_room_info(parsed_dict, max_events=0):
-        # type: (Dict[Any, Any], int) -> Tuple[Rooms, Dict[str, RoomInfo]]
-        joined_rooms = {
-            key: None for key in parsed_dict["join"].keys()
-        }  # type: Dict[str, Optional[RoomInfo]]
-        invited_rooms = {}  # type: Dict[str, InviteInfo]
-        left_rooms = {}     # type: Dict[str, RoomInfo]
+    def _get_room_info(
+            parsed_dict: Dict[Any, Any], max_events: int = 0,
+    ) -> Tuple[Rooms, Dict[str, RoomInfo]]:
+
+        joined_rooms: Dict[str, RoomInfo] = {}
+        invited_rooms: Dict[str, InviteInfo] = {}
+        left_rooms: Dict[str, RoomInfo] = {}
         unhandled_rooms = {}
 
         for room_id, room_dict in parsed_dict["invite"].items():
@@ -1689,6 +1715,7 @@ class _SyncResponse(Response):
                 room_dict["timeline"]["limited"],
                 room_dict["ephemeral"]["events"],
                 room_dict.get("summary", {}),
+                room_dict.get("unread_notifications", {}),
                 room_dict["account_data"]["events"],
                 max_events
             )
@@ -1774,6 +1801,7 @@ class PartialSyncResponse(_SyncResponse):
                 room_info.timeline.prev_batch,
                 room_info.timeline.limited,
                 [],
+                {},
                 {},
                 [],
                 max_events
