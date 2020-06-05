@@ -402,7 +402,10 @@ class HttpConnection(Connection):
 class Http2Connection(Connection):
     def __init__(self):
         # type: () -> None
-        self._connection = h2.connection.H2Connection()
+        config = h2.config.H2Configuration(
+            client_side=True, validate_inbound_headers=False
+        )
+        self._connection = h2.connection.H2Connection(config=config)
         self._responses = OrderedDict()  \
             # type: OrderedDict[int, Http2Response]
         self._data_to_send = OrderedDict() \
