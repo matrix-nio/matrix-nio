@@ -10,7 +10,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name="matrix-nio",
-    version="0.12.0",
+    version="0.13.0",
     url="https://github.com/poljar/matrix-nio",
     author='Damir Jelić',
     author_email="poljar@termina.org.uk",
