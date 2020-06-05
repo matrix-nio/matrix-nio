@@ -1,20 +1,37 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.13.0 - 2020-06-05
 
 ### Added
 
-- [[#145]] Added the `room_get_event()` method.
+- [[#145]] Added the `room_get_event()` method to `AsyncClient`.
+- [[#151]] Added the `add_presence_callback` method to base `Client`.
+- [[#151]] Added the `get_presence()` and `set_presence()` methods
+  to `AsyncClient`.
+- [[#151]] Added the `presence`, `last_active_ago`, `currently_active` and
+  `status_msg` attributes to `MatrixUser`
+- [[#152]] Added a docker container with E2E dependencies pre-installed.
+- [[#153]] Added the `add_room_account_data_callback` method to base `Client`.
+- [[#153]] Added the `fully_read_marker` and `tags` attributes to `MatrixRoom`.
+- [[#156]] Added the `update_receipt_marker()` method to `AsyncClient`.
+- [[#156]] Added the `unread_notifications` and `unread_highlights` attributes
+  to `MatrixRoom`.
 
 ### Changed
+
 - [[#141]] Improved the upload method to accept file objects directly.
 
-[#145]: https://github.com/poljar/matrix-nio/pull/145
 [#141]: https://github.com/poljar/matrix-nio/pull/141
+[#145]: https://github.com/poljar/matrix-nio/pull/145
+[#151]: https://github.com/poljar/matrix-nio/pull/151
+[#152]: https://github.com/poljar/matrix-nio/pull/152
+[#153]: https://github.com/poljar/matrix-nio/pull/153
+[#156]: https://github.com/poljar/matrix-nio/pull/156
 
 ## 0.12.0 - 2020-05-21
 
@@ -25,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [[c4f460f]] Added support for the new SAS key agreement protocol.
 
 ### Fixed
+
 - [[#146]] Fix room summary updates when new summary doesn't have any
   attributes.
 - [[#147]] Added missing requirements to the test requirements file.
@@ -52,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.11.0 - 2020-05-10
 
 ### Added
+
 - Kick, ban, unban support to the AsyncClient.
 - Read receipt sending support in the AsyncClient.
 - Read receipt parsing and emitting.
@@ -61,14 +80,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support filter uploading.
 
 ### Changed
+
 - Convert attrs classes to dataclasses.
 - Fire the `synced` asyncio event only in the sync forever loop.
 
 ### Fixed
+
 - Don't encrypt reactions.
 - Properly put event relationships into the unencrypted content.
 - Catch Too Many Requests errors more reliably.
 - Better room name calculation, now using the room summary.
 
 ### Removed
+
 - Removed the legacy store.
