@@ -628,21 +628,38 @@ class HttpClient(Client):
         read_event=None,    # type: Optional[str]
     ):
         # type: (...) -> Tuple[UUID, bytes]
-        """Update read markers for a room.
+        """Update the fully read marker (and optionally the read receipt) for
+        a room.
 
-        This sets the position of the read marker for a given room,
-        and optionally the read receipt's location.
+        Calls receive_response() to update the client state if necessary.
 
-        Returns a unique uuid that identifies the request and the bytes that
-        should be sent to the socket.
+        Returns either a `RoomReadMarkersResponse` if the request was
+        successful or a `RoomReadMarkersError` if there was an error with
+        the request.
+
+        This sets the position of the read markers.
+
+        - `fully_read_event` is the latest event in the set of events that the
+          user has either fully read or indicated they aren't interested in. It
+          permits the implementation of a "jump to first unread message" kind
+          of feature. It is _private_ (not exposed to other room participants).
+
+        - `read_event` is the most recent message the user has read and is also
+          known as a _read receipt_. A read receipt being set on an event does
+          not imply that all previous events have been seen. This happens in
+          cases such as when a user comes back to a room after hundreds of
+          messages have been sent and _only_ reads the most recent message. The
+          read receipt is _public_ (exposed to other room participants).
+
+        If you want to set the read receipt, you _must_ set `read_event`.
 
         Args:
-            room_id (str): Room id of the room of the room where the read
-                markers should be updated
-            fully_read_event (str): The event ID the read marker should be
-                located at.
-            read_event (Optional[str]): The event ID to set the read
-                receipt location at.
+            room_id (str): The room ID of the room where the read markers should
+                be updated.
+            fully_read_event (str): The event ID that the user has fully read up
+                to.
+            read_event (Optional[str]): The event ID to set the read receipt
+                location at.
         """
         request = self._build_request(
             Api.room_read_markers(
