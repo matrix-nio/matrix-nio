@@ -2296,7 +2296,8 @@ class AsyncClient(Client):
         fully_read_event: str,
         read_event: Optional[str] = None
     ):
-        """Update the fully read marker and optionally the read marker for a room.
+        """Update the fully read marker (and optionally the read receipt) for
+        a room.
 
         Calls receive_response() to update the client state if necessary.
 
@@ -2304,12 +2305,19 @@ class AsyncClient(Client):
         successful or a `RoomReadMarkersError` if there was an error with
         the request.
 
-        This sets the position of the read markers. `fully_read_event` is the
-        latest event in the set of events that the user has either fully read
-        or indicated they aren't intersted in, while `read_event` is the most
-        recent message in the set of messages that the user may or may not have
-        read, as in when a user comes back to a room after hundreds of messages
-        has been sent and _only_ reads the most recent message.
+        This sets the position of the read markers.
+
+        - `fully_read_event` is the latest event in the set of events that the
+          user has either fully read or indicated they aren't interested in. It
+          permits the implementation of a "jump to first unread message" kind
+          of feature. It is _private_ (not exposed to other room participants).
+
+        - `read_event` is the most recent message the user has read and is also
+          known as a _read receipt_. A read receipt being set on an event does
+          not imply that all previous events have been seen. This happens in
+          cases such as when a user comes back to a room after hundreds of
+          messages have been sent and _only_ reads the most recent message. The
+          read receipt is _public_ (exposed to other room participants).
 
         If you want to set the read receipt, you _must_ set `read_event`.
 
