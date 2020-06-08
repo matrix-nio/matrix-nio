@@ -10,8 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [[#159]] Allow whitespace in HTTP headers in the HttpClient.
+- [[42e70de]] Fix the creation of PresenceGetError responses.
 
 [#159]: https://github.com/poljar/matrix-nio/pull/159
+[42e70de]: https://github.com/poljar/matrix-nio/commit/42e70dea945ae97b69b41d49cb57f64c3b6bd1c4
 
 ## 0.13.0 - 2020-06-05
 
