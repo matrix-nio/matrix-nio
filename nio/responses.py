@@ -1378,11 +1378,14 @@ class PresenceGetResponse(Response):
 
     Attributes:
         user_id (str): The user´s id
-        presence (str): The user's presence state. One of: ["online", "offline", "unavailable"]
-        last_active_ago (int, optional): The length of time in milliseconds since an action was performed by this user.
-            None if not set.
-        currently_active (bool, optional): Whether the user is currently active. None if not set.
-        status_msg (str, optional): The state message for this user. None if not set.
+        presence (str): The user's presence state. One of: ["online",
+            "offline", "unavailable"]
+        last_active_ago (int, optional): The length of time in milliseconds
+            since an action was performed by this user. None if not set.
+        currently_active (bool, optional): Whether the user is currently
+            active. None if not set.
+        status_msg (str, optional): The state message for this user. None if
+            not set.
     """
 
     user_id: str
@@ -1392,10 +1395,19 @@ class PresenceGetResponse(Response):
     status_msg: Optional[str]
 
     @classmethod
-    @verify(Schemas.get_presence, PresenceGetError)
-    def from_dict(cls, parsed_dict: Dict[Any, Any], user_id: str) -> Union["PresenceGetResponse", PresenceGetError]:
-        return cls(user_id, parsed_dict.get("presence", "offline"), parsed_dict.get("last_active_ago"),
-                   parsed_dict.get("currently_active"), parsed_dict.get("status_msg"))
+    @verify(Schemas.get_presence, PresenceGetError, pass_arguments=False)
+    def from_dict(
+        cls,
+        parsed_dict: Dict[Any, Any],
+        user_id: str
+    ) -> Union["PresenceGetResponse", PresenceGetError]:
+        return cls(
+            user_id,
+            parsed_dict.get("presence", "offline"),
+            parsed_dict.get("last_active_ago"),
+            parsed_dict.get("currently_active"),
+            parsed_dict.get("status_msg")
+        )
 
 
 class PresenceSetResponse(EmptyResponse):
