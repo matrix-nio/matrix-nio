@@ -109,7 +109,7 @@ class MatrixStore:
         self.database_name = self.database_name or "{}_{}.db".format(
             self.user_id,
             self.device_id
-        )
+        ).replace(":", "-")
         self.database_path = os.path.join(self.store_path, self.database_name)
         self.database = self._create_database()
         self.database.connect()
@@ -642,7 +642,7 @@ class DefaultStore(MatrixStore):
         trust_file_path = "{}_{}.trusted_devices".format(
             self.user_id,
             self.device_id
-        )
+        ).replace(":", "-")
         self.trust_db = KeyStore(
             os.path.join(self.store_path, trust_file_path)
         )
@@ -650,7 +650,7 @@ class DefaultStore(MatrixStore):
         blacklist_file_path = "{}_{}.blacklisted_devices".format(
             self.user_id,
             self.device_id
-        )
+        ).replace(":", "-")
         self.blacklist_db = KeyStore(
             os.path.join(self.store_path, blacklist_file_path)
         )
@@ -658,7 +658,7 @@ class DefaultStore(MatrixStore):
         ignore_file_path = "{}_{}.ignored_devices".format(
             self.user_id,
             self.device_id
-        )
+        ).replace(":", "-")
         self.ignore_db = KeyStore(
             os.path.join(self.store_path, ignore_file_path)
         )
