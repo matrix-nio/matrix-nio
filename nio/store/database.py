@@ -13,7 +13,7 @@
 
 import os
 import sqlite3
-from urllib.parse import  quote
+from urllib.parse import quote_plus as quote
 from builtins import super
 from functools import wraps
 from typing import Optional, List, Dict
