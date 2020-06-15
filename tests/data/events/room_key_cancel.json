@@ -1,0 +1,11 @@
+{
+    "content": {
+        "code": "m.user",
+        "reason": "User rejected the key verification request",
+        "transaction_id": "S0meUniqueAndOpaqueString"
+    },
+    "type": "m.key.verification.cancel",
+    "sender": "@bob:example.org",
+    "event_id": "$151800140517rfvjc:localhost",
+    "origin_server_ts": 1518001405556
+}
