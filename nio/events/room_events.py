@@ -22,9 +22,22 @@ from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field
 
 from ..schemas import Schemas
-from .misc import (BadEventType, UnknownBadEvent, validate_or_badevent, verify,
-                   BadEvent)
+from .misc import (
+    BadEventType,
+    UnknownBadEvent,
+    validate_or_badevent,
+    verify,
+    BadEvent,
+)
 from ..event_builders import RoomKeyRequestMessage
+from .common import (
+    KeyVerificationEventMixin,
+    KeyVerificationAcceptMixin,
+    KeyVerificationCancelMixin,
+    KeyVerificationKeyMixin,
+    KeyVerificationMacMixin,
+    KeyVerificationStartMixin,
+)
 
 
 @dataclass
@@ -97,7 +110,7 @@ class Event:
         type-checked. If this validation process fails for an event an BadEvent
         will be produced.
 
-        If the type of the event is now known an UnknownEvent will be produced.
+        If the type of the event is not known an UnknownEvent will be produced.
 
         Args:
             event_dict (dict): The dictionary representation of the event.
@@ -137,6 +150,8 @@ class Event:
             return Event.parse_encrypted_event(event_dict)
         elif event_dict["type"].startswith("m.call"):
             return CallEvent.parse_event(event_dict)
+        elif event_dict["type"].startswith("m.key.verification."):
+            return RoomKeyVerificationEvent.parse_event(event_dict)
 
         return UnknownEvent.from_dict(event_dict)
 
@@ -202,14 +217,12 @@ class UnknownEvent(Event):
         type (str): The type of the event.
 
     """
+
     type: str = field()
 
     @classmethod
     def from_dict(cls, event_dict):
-        return cls(
-            event_dict,
-            event_dict["type"],
-        )
+        return cls(event_dict, event_dict["type"],)
 
 
 @dataclass
@@ -231,9 +244,7 @@ class UnknownEncryptedEvent(Event):
     @classmethod
     def from_dict(cls, event_dict):
         return cls(
-            event_dict,
-            event_dict["type"],
-            event_dict["content"]["algorithm"],
+            event_dict, event_dict["type"], event_dict["content"]["algorithm"],
         )
 
 
@@ -271,6 +282,7 @@ class MegolmEvent(Event):
             our own device, otherwise None.
 
     """
+
     device_id: str = field()
     ciphertext: str = field()
     algorithm: str = field()
@@ -296,16 +308,13 @@ class MegolmEvent(Event):
         algorithm = content["algorithm"]
 
         room_id = event_dict.get("room_id", None)
-        tx_id = (event_dict["unsigned"].get("transaction_id", None)
-                 if "unsigned" in event_dict else None)
-
-        event = cls(
-            event_dict,
-            device_id,
-            ciphertext,
-            algorithm,
-            room_id,
+        tx_id = (
+            event_dict["unsigned"].get("transaction_id", None)
+            if "unsigned" in event_dict
+            else None
         )
+
+        event = cls(event_dict, device_id, ciphertext, algorithm, room_id,)
 
         event.sender_key = sender_key
         event.session_id = session_id
@@ -349,7 +358,7 @@ class MegolmEvent(Event):
                 "algorithm": self.algorithm,
                 "session_id": self.session_id,
                 "room_id": self.room_id,
-                "sender_key": self.sender_key
+                "sender_key": self.sender_key,
             },
             "request_id": request_id,
             "requesting_device_id": requesting_device_id,
@@ -392,7 +401,7 @@ class CallEvent(Event):
         type checked. If this validation process fails for an event an BadEvent
         will be produced.
 
-        If the type of the event is now known an UnknownEvent will be produced.
+        If the type of the event is not known an UnknownEvent will be produced.
 
         Args:
             event_dict (dict): The raw matrix event dictionary.
@@ -516,11 +525,7 @@ class CallHangupEvent(CallEvent):
     @verify(Schemas.call_hangup)
     def from_dict(cls, event_dict):
         content = event_dict.pop("content")
-        return cls(
-            event_dict,
-            content["call_id"],
-            content["version"],
-        )
+        return cls(event_dict, content["call_id"], content["version"],)
 
 
 @dataclass
@@ -559,12 +564,7 @@ class RedactedEvent(Event):
         content_dict = parsed_dict["unsigned"]["redacted_because"]["content"]
         reason = content_dict.get("reason", None)
 
-        return cls(
-            parsed_dict,
-            parsed_dict["type"],
-            redacter,
-            reason,
-        )
+        return cls(parsed_dict, parsed_dict["type"], redacter, reason,)
 
 
 @dataclass
@@ -590,6 +590,7 @@ class RoomCreateEvent(Event):
             this too much unless they want to perform room upgrades.
 
     """
+
     creator: str = field()
     federate: bool = True
     room_version: str = "1"
@@ -682,9 +683,9 @@ class RoomHistoryVisibilityEvent(Event):
 
     @classmethod
     @verify(Schemas.room_history_visibility)
-    def from_dict(cls,
-                  parsed_dict,  # type: Dict[Any, Any]
-                  ):
+    def from_dict(
+        cls, parsed_dict,  # type: Dict[Any, Any]
+    ):
         # type: (...) -> Union[RoomHistoryVisibilityEvent, BadEventType]
         history_visibility = parsed_dict["content"]["history_visibility"]
 
@@ -1042,12 +1043,7 @@ class RoomMessageFormatted(RoomMessage):
         else:
             formatted_body = None
 
-        return cls(
-            parsed_dict,
-            body,
-            formatted_body,
-            body_format,
-        )
+        return cls(parsed_dict, body, formatted_body, body_format,)
 
 
 @dataclass
@@ -1163,7 +1159,7 @@ class DefaultLevels:
             content["redact"],
             content["state_default"],
             content["events_default"],
-            content["users_default"]
+            content["users_default"],
         )
 
 
@@ -1315,6 +1311,7 @@ class PowerLevelsEvent(Event):
             of the power levels of the room.
 
     """
+
     power_levels: PowerLevels = field()
 
     @classmethod
@@ -1327,10 +1324,7 @@ class PowerLevelsEvent(Event):
 
         levels = PowerLevels(default_levels, users, events)
 
-        return cls(
-            parsed_dict,
-            levels,
-        )
+        return cls(parsed_dict, levels,)
 
 
 @dataclass
@@ -1357,11 +1351,7 @@ class RedactionEvent(Event):
         content = parsed_dict.get("content", {})
         reason = content.get("reason", None)
 
-        return cls(
-            parsed_dict,
-            parsed_dict["redacts"],
-            reason,
-        )
+        return cls(parsed_dict, parsed_dict["redacts"], reason,)
 
 
 @dataclass
@@ -1409,4 +1399,197 @@ class RoomMemberEvent(Event):
             prev_membership,
             content,
             prev_content,
+        )
+
+
+@dataclass
+class RoomKeyVerificationEvent(KeyVerificationEventMixin, Event):
+    """Base class for key verification events.
+
+    Attributes:
+        transaction_id (str): An opaque identifier for the verification
+            process. Must be unique with respect to the devices involved.
+
+    """
+
+    @classmethod
+    def parse_event(cls, event_dict):
+        """Parse a key verification event and create a higher level key
+        verification object.
+
+        The event structure is checked for correctness and the event fields are
+        type-checked. If this validation process fails for an event an BadEvent
+        will be produced.
+
+        If the type of the event is not known an UnknownEvent will be produced.
+
+        Args:
+            event_dict (dict): The dictionary representation of the event.
+
+        """
+
+        if event_dict["type"] == "m.key.verification.start":
+            return RoomKeyVerificationStart.from_dict(event_dict)
+        elif event_dict["type"] == "m.key.verification.accept":
+            return RoomKeyVerificationAccept.from_dict(event_dict)
+        elif event_dict["type"] == "m.key.verification.key":
+            return RoomKeyVerificationKey.from_dict(event_dict)
+        elif event_dict["type"] == "m.key.verification.mac":
+            return RoomKeyVerificationMac.from_dict(event_dict)
+        elif event_dict["type"] == "m.key.verification.cancel":
+            return RoomKeyVerificationCancel.from_dict(event_dict)
+
+        return UnknownEvent.from_dict(event_dict)
+
+
+@dataclass
+class RoomKeyVerificationStart(
+    KeyVerificationStartMixin, RoomKeyVerificationEvent
+):
+    """Event signaling the start of a SAS key verification process.
+
+    Attributes:
+        from_device (str): The device ID which is initiating the process.
+        method (str): The verification method to use.
+        key_agreement_protocols (list): A list of strings specifying the
+            key agreement protocols the sending device understands.
+        hashes (list): A list of strings specifying the hash methods the
+            sending device understands.
+        message_authentication_codes (list): A list of strings specifying the
+            message authentication codes that the sending device understands.
+        short_authentication_string (list): A list of strings specifying the
+            SAS methods the sending device (and the sending device's user)
+            understands.
+
+    """
+
+    @classmethod
+    @verify(Schemas.key_verification_start)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+        return cls(
+            parsed_dict,
+            content["transaction_id"],
+            content["from_device"],
+            content["method"],
+            content["key_agreement_protocols"],
+            content["hashes"],
+            content["message_authentication_codes"],
+            content["short_authentication_string"],
+        )
+
+
+@dataclass
+class RoomKeyVerificationAccept(
+    KeyVerificationAcceptMixin, RoomKeyVerificationEvent
+):
+    """Event signaling that the SAS verification start has been accepted.
+
+    Attributes:
+        commitment (str): The commitment value of the verification process.
+        key_agreement_protocol (str): The key agreement protocol the device is
+            choosing to use
+        hash (str): A list of strings specifying the hash methods the
+            sending device understands.
+        message_authentication_code (str): The message authentication code the
+            device is choosing to use.
+        short_authentication_string (list): A list of strings specifying the
+            SAS methods that can be used in the verification process.
+
+    """
+
+    @classmethod
+    @verify(Schemas.key_verification_accept)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+        return cls(
+            parsed_dict,
+            content["transaction_id"],
+            content["commitment"],
+            content["key_agreement_protocol"],
+            content["hash"],
+            content["message_authentication_code"],
+            content["short_authentication_string"],
+        )
+
+
+@dataclass
+class RoomKeyVerificationKey(
+    KeyVerificationKeyMixin, RoomKeyVerificationEvent
+):
+    """Event carrying a key verification key.
+
+    After this event is received the short authentication string can be shown
+    to the user.
+
+    Attributes:
+        key (str): The device's ephemeral public key, encoded as
+            unpadded base64.
+
+    """
+
+    @classmethod
+    @verify(Schemas.key_verification_key)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+        return cls(
+            parsed_dict,
+            content["transaction_id"],
+            content["key"],
+        )
+
+
+@dataclass
+class RoomKeyVerificationMac(
+    KeyVerificationMacMixin, RoomKeyVerificationEvent
+):
+    """Event holding a message authentication code of the verification process.
+
+    After this event is received the device that we are verifying will be
+    marked as verified given that we have accepted the short authentication
+    string as well.
+
+    Attributes:
+        mac (dict): A map of the key ID to the MAC of the key, using the
+            algorithm in the verification process. The MAC is encoded as
+            unpadded base64.
+        keys (str): The MAC of the comma-separated, sorted, list of key IDs
+            given in the mac property, encoded as unpadded base64.
+
+    """
+
+    @classmethod
+    @verify(Schemas.key_verification_mac)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+        return cls(
+            parsed_dict,
+            content["transaction_id"],
+            content["mac"],
+            content["keys"],
+        )
+
+
+@dataclass
+class RoomKeyVerificationCancel(
+    KeyVerificationCancelMixin, RoomKeyVerificationEvent
+):
+    """Event signaling that a key verification process has been canceled.
+
+    Attributes:
+        code (str): The error code for why the process/request was canceled by
+            the user.
+        reason (str): A human readable description of the cancellation code.
+
+    """
+
+    @classmethod
+    @verify(Schemas.key_verification_cancel)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+        return cls(
+            parsed_dict,
+            content["transaction_id"],
+            content["code"],
+            content["reason"],
         )

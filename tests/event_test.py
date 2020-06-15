@@ -57,6 +57,11 @@ from nio.events import (
     DummyEvent,
     RoomKeyRequest,
     RoomKeyRequestCancellation,
+    RoomKeyVerificationAccept,
+    RoomKeyVerificationCancel,
+    RoomKeyVerificationKey,
+    RoomKeyVerificationMac,
+    RoomKeyVerificationStart
 )
 
 
@@ -485,3 +490,17 @@ class TestClass:
         assert event.thumbnail_key
         assert event.thumbnail_hashes
         assert event.thumbnail_iv
+
+    def test_key_verification_room_events(self):
+        for event_type, event_file in [
+            (RoomKeyVerificationStart, "room_key_start.json"),
+            (RoomKeyVerificationAccept, "room_key_accept.json"),
+            (RoomKeyVerificationKey, "room_key_key.json"),
+            (RoomKeyVerificationMac, "room_key_mac.json"),
+            (RoomKeyVerificationCancel, "room_key_cancel.json"),
+        ]:
+            parsed_dict = TestClass._load_response(
+                "tests/data/events/{}".format(event_file)
+            )
+            event = Event.parse_event(parsed_dict)
+            assert isinstance(event, event_type)
