@@ -24,13 +24,21 @@ of a user.
 
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional, Union
 from copy import deepcopy
 
 from dataclasses import dataclass, field
 
 from ..schemas import Schemas
 from .misc import BadEventType, verify, logger
+from .common import (
+    KeyVerificationEventMixin,
+    KeyVerificationAcceptMixin,
+    KeyVerificationCancelMixin,
+    KeyVerificationKeyMixin,
+    KeyVerificationMacMixin,
+    KeyVerificationStartMixin,
+)
 
 
 @dataclass
@@ -109,8 +117,10 @@ class ToDeviceEvent:
         if content["algorithm"] == "m.olm.v1.curve25519-aes-sha2":
             return OlmEvent.from_dict(event_dict)
 
-        logger.warn("Received an encrypted event with an unknown "
-                    "algorithm {}.".format(content["algorithm"]))
+        logger.warn(
+            "Received an encrypted event with an unknown "
+            "algorithm {}.".format(content["algorithm"])
+        )
 
         return None
 
@@ -132,6 +142,7 @@ class BaseRoomKeyRequest(ToDeviceEvent):
             key.
         request_id (str): A unique identifier for the request.
     """
+
     requesting_device_id: str = field()
     request_id: str = field()
 
@@ -201,7 +212,7 @@ class RoomKeyRequestCancellation(BaseRoomKeyRequest):
 
 
 @dataclass
-class KeyVerificationEvent(ToDeviceEvent):
+class KeyVerificationEvent(KeyVerificationEventMixin, ToDeviceEvent):
     """Base class for key verification events.
 
     Attributes:
@@ -210,11 +221,9 @@ class KeyVerificationEvent(ToDeviceEvent):
 
     """
 
-    transaction_id: str = field()
-
 
 @dataclass
-class KeyVerificationStart(KeyVerificationEvent):
+class KeyVerificationStart(KeyVerificationStartMixin, KeyVerificationEvent):
     """Event signaling the start of a SAS key verification process.
 
     Attributes:
@@ -231,13 +240,6 @@ class KeyVerificationStart(KeyVerificationEvent):
             understands.
 
     """
-
-    from_device: str = field()
-    method: str = field()
-    key_agreement_protocols: List[str] = field()
-    hashes: List[str] = field()
-    message_authentication_codes: List[str] = field()
-    short_authentication_string: List[str] = field()
 
     @classmethod
     @verify(Schemas.key_verification_start)
@@ -257,7 +259,7 @@ class KeyVerificationStart(KeyVerificationEvent):
 
 
 @dataclass
-class KeyVerificationAccept(KeyVerificationEvent):
+class KeyVerificationAccept(KeyVerificationAcceptMixin, KeyVerificationEvent):
     """Event signaling that the SAS verification start has been accepted.
 
     Attributes:
@@ -272,12 +274,6 @@ class KeyVerificationAccept(KeyVerificationEvent):
             SAS methods that can be used in the verification process.
 
     """
-
-    commitment: str = field()
-    key_agreement_protocol: str = field()
-    hash: str = field()
-    message_authentication_code: str = field()
-    short_authentication_string: List[str] = field()
 
     @classmethod
     @verify(Schemas.key_verification_accept)
@@ -296,7 +292,7 @@ class KeyVerificationAccept(KeyVerificationEvent):
 
 
 @dataclass
-class KeyVerificationKey(KeyVerificationEvent):
+class KeyVerificationKey(KeyVerificationKeyMixin, KeyVerificationEvent):
     """Event carrying a key verification key.
 
     After this event is received the short authentication string can be shown
@@ -307,8 +303,6 @@ class KeyVerificationKey(KeyVerificationEvent):
             unpadded base64.
 
     """
-
-    key: str = field()
 
     @classmethod
     @verify(Schemas.key_verification_key)
@@ -323,7 +317,7 @@ class KeyVerificationKey(KeyVerificationEvent):
 
 
 @dataclass
-class KeyVerificationMac(KeyVerificationEvent):
+class KeyVerificationMac(KeyVerificationMacMixin, KeyVerificationEvent):
     """Event holding a message authentication code of the verification process.
 
     After this event is received the device that we are verifying will be
@@ -339,9 +333,6 @@ class KeyVerificationMac(KeyVerificationEvent):
 
     """
 
-    mac: Dict[str, str] = field()
-    keys: str = field()
-
     @classmethod
     @verify(Schemas.key_verification_mac)
     def from_dict(cls, parsed_dict):
@@ -356,7 +347,7 @@ class KeyVerificationMac(KeyVerificationEvent):
 
 
 @dataclass
-class KeyVerificationCancel(KeyVerificationEvent):
+class KeyVerificationCancel(KeyVerificationCancelMixin, KeyVerificationEvent):
     """Event signaling that a key verification process has been canceled.
 
     Attributes:
@@ -365,9 +356,6 @@ class KeyVerificationCancel(KeyVerificationEvent):
         reason (str): A human readable description of the cancellation code.
 
     """
-
-    code: str = field()
-    reason: str = field()
 
     @classmethod
     @verify(Schemas.key_verification_cancel)
@@ -422,15 +410,14 @@ class OlmEvent(EncryptedToDeviceEvent):
         ciphertext = content["ciphertext"]
         sender_key = content["sender_key"]
 
-        tx_id = (event_dict["unsigned"].get("transaction_id", None)
-                 if "unsigned" in event_dict else None)
+        tx_id = (
+            event_dict["unsigned"].get("transaction_id", None)
+            if "unsigned" in event_dict
+            else None
+        )
 
         return cls(
-            event_dict,
-            event_dict["sender"],
-            sender_key,
-            ciphertext,
-            tx_id
+            event_dict, event_dict["sender"], sender_key, ciphertext, tx_id
         )
 
 
@@ -453,12 +440,7 @@ class DummyEvent(ToDeviceEvent):
     @classmethod
     @verify(Schemas.dummy_event)
     def from_dict(cls, event_dict, sender, sender_key):
-        return cls(
-            event_dict,
-            sender,
-            sender_key,
-            event_dict["sender_device"]
-        )
+        return cls(event_dict, sender, sender_key, event_dict["sender_device"])
 
 
 @dataclass
@@ -495,7 +477,7 @@ class RoomKeyEvent(ToDeviceEvent):
             sender_key,
             content["room_id"],
             content["session_id"],
-            content["algorithm"]
+            content["algorithm"],
         )
 
 
@@ -533,5 +515,5 @@ class ForwardedRoomKeyEvent(RoomKeyEvent):
             sender_key,
             content["room_id"],
             content["session_id"],
-            content["algorithm"]
+            content["algorithm"],
         )
