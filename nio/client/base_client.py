@@ -59,7 +59,6 @@ from ..responses import (
     KeysUploadResponse,
     LoginResponse,
     LogoutResponse,
-    PartialSyncResponse,
     RegisterResponse,
     Response,
     RoomContextResponse,
@@ -69,7 +68,6 @@ from ..responses import (
     RoomGetEventResponse,
     ShareGroupSessionResponse,
     SyncResponse,
-    SyncType,
     ToDeviceResponse,
     PresenceGetResponse,
 )
@@ -618,7 +616,7 @@ class Client:
     def _replace_decrypted_to_device(
         self,
         decrypted_events: List[Tuple[int, ToDeviceEvent]],
-        response: SyncType,
+        response: SyncResponse,
     ):
         # Replace the encrypted to_device events with decrypted ones
         for decrypted_event in decrypted_events:
@@ -630,7 +628,7 @@ class Client:
             if cb.filter is None or isinstance(event, cb.filter):
                 cb.func(event)
 
-    def _handle_to_device(self, response: SyncType):
+    def _handle_to_device(self, response: SyncResponse):
         decrypted_to_device = []
 
         for index, to_device_event in enumerate(response.to_device_events):
@@ -661,7 +659,7 @@ class Client:
 
         return self.invited_rooms[room_id]
 
-    def _handle_invited_rooms(self, response: SyncType):
+    def _handle_invited_rooms(self, response: SyncResponse):
         for room_id, info in response.rooms.invite.items():
             room = self._get_invited_room(room_id)
 
@@ -733,7 +731,7 @@ class Client:
 
         return decrypted_event
 
-    def _handle_joined_rooms(self, response: SyncType):
+    def _handle_joined_rooms(self, response: SyncResponse):
         encrypted_rooms: Set[str] = set()
 
         for room_id, join_info in response.rooms.join.items():
@@ -781,7 +779,7 @@ class Client:
         if self.store:
             self.store.save_encrypted_rooms(encrypted_rooms)
 
-    def _handle_presence_events(self, response: SyncType):
+    def _handle_presence_events(self, response: SyncResponse):
         for event in response.presence_events:
             for room_id in self.rooms.keys():
                 if event.user_id not in self.rooms[room_id].users:
@@ -804,7 +802,7 @@ class Client:
                 if cb.filter is None or isinstance(event, cb.filter):
                     cb.func(event)
 
-    def _handle_olm_events(self, response: SyncType):
+    def _handle_olm_events(self, response: SyncResponse):
         assert self.olm
 
         changed_users = set()
@@ -831,17 +829,16 @@ class Client:
         self.olm.add_changed_users(changed_users)
 
     def _handle_sync(
-        self, response: SyncType
+        self, response: SyncResponse
     ) -> Union[None, Coroutine[Any, Any, None]]:
         # We already recieved such a sync response, do nothing in that case.
         if self.next_batch == response.next_batch:
             return None
 
-        if isinstance(response, SyncResponse):
-            self.next_batch = response.next_batch
+        self.next_batch = response.next_batch
 
-            if self.config.store_sync_tokens and self.store:
-                self.store.save_sync_token(self.next_batch)
+        if self.config.store_sync_tokens and self.store:
+            self.store.save_sync_token(self.next_batch)
 
         self._handle_to_device(response)
 
@@ -1007,7 +1004,7 @@ class Client:
             self._handle_logout(response)
         elif isinstance(response, RegisterResponse):
             self._handle_register(response)
-        elif isinstance(response, (SyncResponse, PartialSyncResponse)):
+        elif isinstance(response, SyncResponse):
             self._handle_sync(response)
         elif isinstance(response, RoomMessagesResponse):
             self._handle_messages_response(response)

@@ -88,7 +88,6 @@ from ..event_builders import ToDeviceMessage
 from ..monitors import TransferMonitor
 from ..responses import (
     ContentRepositoryConfigError,
-    SyncType,
     KeysUploadError,
     KeysQueryError,
     ContentRepositoryConfigResponse,
@@ -174,7 +173,6 @@ from ..responses import (
     ShareGroupSessionResponse,
     SyncError,
     SyncResponse,
-    PartialSyncResponse,
     ThumbnailError,
     ThumbnailResponse,
     ToDeviceError,
@@ -492,7 +490,7 @@ class AsyncClient(Client):
             if cb.filter is None or isinstance(event, cb.filter):
                 await asyncio.coroutine(cb.func)(event)
 
-    async def _handle_to_device(self, response: SyncType):
+    async def _handle_to_device(self, response: SyncResponse):
         decrypted_to_device = []
 
         for index, to_device_event in enumerate(response.to_device_events):
@@ -514,7 +512,7 @@ class AsyncClient(Client):
 
         self._replace_decrypted_to_device(decrypted_to_device, response)
 
-    async def _handle_invited_rooms(self, response: SyncType):
+    async def _handle_invited_rooms(self, response: SyncResponse):
         for room_id, info in response.rooms.invite.items():
             room = self._get_invited_room(room_id)
 
@@ -525,7 +523,7 @@ class AsyncClient(Client):
                     if cb.filter is None or isinstance(event, cb.filter):
                         await asyncio.coroutine(cb.func)(room, event)
 
-    async def _handle_joined_rooms(self, response: SyncType) -> None:
+    async def _handle_joined_rooms(self, response: SyncResponse) -> None:
         encrypted_rooms: Set[str] = set()
 
         for room_id, join_info in response.rooms.join.items():
@@ -566,7 +564,7 @@ class AsyncClient(Client):
         if self.store:
             self.store.save_encrypted_rooms(encrypted_rooms)
 
-    async def _handle_presence_events(self, response: SyncType):
+    async def _handle_presence_events(self, response: SyncResponse):
         for event in response.presence_events:
             for room_id in self.rooms.keys():
                 if event.user_id not in self.rooms[room_id].users:
@@ -589,16 +587,15 @@ class AsyncClient(Client):
                 if cb.filter is None or isinstance(event, cb.filter):
                     await asyncio.coroutine(cb.func)(event)
 
-    async def _handle_sync(self, response: SyncType) -> None:
+    async def _handle_sync(self, response: SyncResponse) -> None:
         # We already recieved such a sync response, do nothing in that case.
         if self.next_batch == response.next_batch:
             return
 
-        if isinstance(response, SyncResponse):
-            self.next_batch = response.next_batch
+        self.next_batch = response.next_batch
 
-            if self.config.store_sync_tokens and self.store:
-                self.store.save_sync_token(self.next_batch)
+        if self.config.store_sync_tokens and self.store:
+            self.store.save_sync_token(self.next_batch)
 
         await self._handle_to_device(response)
 
@@ -634,7 +631,7 @@ class AsyncClient(Client):
         if not isinstance(response, Response):
             raise ValueError("Invalid response received")
 
-        if isinstance(response, (SyncResponse, PartialSyncResponse)):
+        if isinstance(response, SyncResponse):
             await self._handle_sync(response)
         else:
             super().receive_response(response)

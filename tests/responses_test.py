@@ -11,7 +11,7 @@ from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
                            KeysClaimResponse,
                            KeysQueryResponse, KeysUploadResponse, LoginError,
                            LoginResponse, LogoutError, LogoutResponse,
-                           PartialSyncResponse, ProfileGetAvatarResponse,
+                           ProfileGetAvatarResponse,
                            ProfileGetDisplayNameResponse, ProfileGetResponse,
                            RoomContextError, RoomContextResponse,
                            RoomCreateResponse, RoomForgetResponse,
@@ -176,40 +176,6 @@ class TestClass:
                 {}, "1", "1", TEST_ROOM_ID, "megolm.v1"
         )
         assert isinstance(response, RoomKeyRequestResponse)
-
-    def test_partial_sync(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/sync.json")
-        response = SyncResponse.from_dict(parsed_dict, 5)
-        assert isinstance(response, PartialSyncResponse)
-        assert len(
-            response.rooms.join[
-                "!SVkFJHzfwvuaIEawgC:localhost"
-            ].timeline.events
-        ) == 0
-        assert len(
-            response.rooms.join["!SVkFJHzfwvuaIEawgC:localhost"].state
-        ) == 5
-
-        new_response = response.next_part(1)
-        assert isinstance(new_response, PartialSyncResponse)
-
-        assert len(
-            new_response.rooms.join[
-                "!SVkFJHzfwvuaIEawgC:localhost"
-            ].timeline.events
-        ) == 0
-        assert len(
-            new_response.rooms.join["!SVkFJHzfwvuaIEawgC:localhost"].state
-        ) == 1
-
-        final_response = new_response.next_part()
-        assert isinstance(final_response, SyncResponse)
-        assert len(
-            final_response.rooms.join[
-                "!SVkFJHzfwvuaIEawgC:localhost"
-            ].timeline.events
-        ) == 1
 
     def test_get_profile(self):
         parsed_dict = TestClass._load_response(

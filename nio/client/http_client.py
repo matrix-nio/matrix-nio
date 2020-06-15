@@ -49,7 +49,7 @@ from ..responses import (DeleteDevicesAuthResponse, DeleteDevicesResponse,
                          JoinedMembersResponse, JoinResponse,
                          KeysClaimResponse, KeysQueryResponse, KeysUploadError,
                          KeysUploadResponse, LoginResponse, LogoutResponse,
-                         PartialSyncResponse, ProfileGetAvatarResponse,
+                         ProfileGetAvatarResponse,
                          ProfileGetDisplayNameResponse, ProfileGetResponse,
                          ProfileSetAvatarResponse,
                          ProfileSetDisplayNameResponse, Response,
@@ -107,7 +107,6 @@ class HttpClient(Client):
         self.requests_made = {}  # type: Dict[UUID, RequestInfo]
         self.parse_queue = deque()  \
             # type: Deque[Tuple[RequestInfo, TransportResponse]]
-        self.partial_sync = None  # type: Optional[PartialSyncResponse]
 
         self.connection = None \
             # type: Optional[Union[HttpConnection, Http2Connection]]
@@ -1336,19 +1335,8 @@ class HttpClient(Client):
 
     def next_response(self, max_events=0):
         # type: (int) -> Optional[Union[TransportResponse, Response]]
-        if not self.parse_queue and not self.partial_sync:
+        if not self.parse_queue:
             return None
-
-        if self.partial_sync:
-            sync_response = self.partial_sync.next_part(max_events)
-            self.receive_response(sync_response)
-
-            if isinstance(sync_response, PartialSyncResponse):
-                self.partial_sync = sync_response
-            else:
-                self.partial_sync = None
-
-            return sync_response
 
         request_info, transport_response = self.parse_queue.popleft()
         response = self._create_response(
@@ -1357,10 +1345,7 @@ class HttpClient(Client):
             max_events
         )
 
-        if isinstance(response, PartialSyncResponse):
-            self.partial_sync = response
-
-        elif isinstance(response, KeysUploadError):
+        if isinstance(response, KeysUploadError):
             self.handle_key_upload_error(response)
 
         self.receive_response(response)
