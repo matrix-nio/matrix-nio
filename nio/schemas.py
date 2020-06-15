@@ -1595,6 +1595,52 @@ class Schemas:
         "required": ["avatar_url"]
     }
 
+    to_device_key_verification = {
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "object",
+                "properties": {
+                    "transaction_id": {"type": "string"},
+                },
+                "required": [
+                    "transaction_id",
+                ]
+            }
+        },
+        "required": [
+            "content",
+        ]
+    }
+
+    room_key_verification = {
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "object",
+                "properties": {
+                    "m.relates_to": {
+                        "type": "object",
+                        "properties": {
+                            "rel_type": {"type": "string"},
+                            "event_id": {"type": "string"},
+                        },
+                        "required": [
+                            "rel_type",
+                            "event_id",
+                        ]
+                    },
+                },
+                "required": [
+                    "m.relates_to",
+                ]
+            }
+        },
+        "required": [
+            "content",
+        ]
+    }
+
     key_verification_start = {
         "type": "object",
         "properties": {
@@ -1623,7 +1669,6 @@ class Schemas:
                     },
                 },
                 "required": [
-                    "transaction_id",
                     "from_device",
                     "method",
                     "key_agreement_protocols",
@@ -1657,7 +1702,6 @@ class Schemas:
                     },
                 },
                 "required": [
-                    "transaction_id",
                     "commitment",
                     "key_agreement_protocol",
                     "hash",
@@ -1683,7 +1727,6 @@ class Schemas:
                     "key": {"type": "string"},
                 },
                 "required": [
-                    "transaction_id",
                     "key",
                 ]
             }
@@ -1710,7 +1753,6 @@ class Schemas:
                     "keys": {"type": "string"},
                 },
                 "required": [
-                    "transaction_id",
                     "mac",
                     "keys",
                 ]
@@ -1734,7 +1776,6 @@ class Schemas:
                     "reason": {"type": "string"},
                 },
                 "required": [
-                    "transaction_id",
                     "code",
                     "reason",
                 ]

@@ -31,7 +31,6 @@ from .misc import (
 )
 from ..event_builders import RoomKeyRequestMessage
 from .common import (
-    KeyVerificationEventMixin,
     KeyVerificationAcceptMixin,
     KeyVerificationCancelMixin,
     KeyVerificationKeyMixin,
@@ -1403,16 +1402,19 @@ class RoomMemberEvent(Event):
 
 
 @dataclass
-class RoomKeyVerificationEvent(KeyVerificationEventMixin, Event):
+class RoomKeyVerificationEvent(Event):
     """Base class for key verification events.
 
     Attributes:
-        transaction_id (str): An opaque identifier for the verification
-            process. Must be unique with respect to the devices involved.
+        relates_to (str): The event id of the key verification request that
+        started the verification process and this verification event is a
+        response to.
 
     """
+    relates_to: str = field()
 
     @classmethod
+    @verify(Schemas.room_key_verification)
     def parse_event(cls, event_dict):
         """Parse a key verification event and create a higher level key
         verification object.
@@ -1469,7 +1471,7 @@ class RoomKeyVerificationStart(
         content = parsed_dict["content"]
         return cls(
             parsed_dict,
-            content["transaction_id"],
+            content["m.relates_to"]["event_id"],
             content["from_device"],
             content["method"],
             content["key_agreement_protocols"],
@@ -1504,7 +1506,7 @@ class RoomKeyVerificationAccept(
         content = parsed_dict["content"]
         return cls(
             parsed_dict,
-            content["transaction_id"],
+            content["m.relates_to"]["event_id"],
             content["commitment"],
             content["key_agreement_protocol"],
             content["hash"],
@@ -1534,7 +1536,7 @@ class RoomKeyVerificationKey(
         content = parsed_dict["content"]
         return cls(
             parsed_dict,
-            content["transaction_id"],
+            content["m.relates_to"]["event_id"],
             content["key"],
         )
 
@@ -1564,7 +1566,7 @@ class RoomKeyVerificationMac(
         content = parsed_dict["content"]
         return cls(
             parsed_dict,
-            content["transaction_id"],
+            content["m.relates_to"]["event_id"],
             content["mac"],
             content["keys"],
         )
@@ -1589,7 +1591,7 @@ class RoomKeyVerificationCancel(
         content = parsed_dict["content"]
         return cls(
             parsed_dict,
-            content["transaction_id"],
+            content["m.relates_to"]["event_id"],
             content["code"],
             content["reason"],
         )

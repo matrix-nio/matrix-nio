@@ -26,19 +26,6 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class KeyVerificationEventMixin:
-    """Base class for key verification events.
-
-    Attributes:
-        transaction_id (str): An opaque identifier for the verification
-            process. Must be unique with respect to the devices involved.
-
-    """
-
-    transaction_id: str = field()
-
-
-@dataclass
 class KeyVerificationStartMixin:
     """Event signaling the start of a SAS key verification process.
 

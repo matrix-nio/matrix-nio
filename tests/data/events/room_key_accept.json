@@ -9,7 +9,10 @@
             "decimal",
             "emoji"
         ],
-        "transaction_id": "S0meUniqueAndOpaqueString"
+        "m.relates_to": {
+            "rel_type": "m.reference",
+            "event_id": "$verification_request_event"
+        }
     },
     "type": "m.key.verification.accept",
     "sender": "@bob:example.org",

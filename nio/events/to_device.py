@@ -32,7 +32,6 @@ from dataclasses import dataclass, field
 from ..schemas import Schemas
 from .misc import BadEventType, verify, logger
 from .common import (
-    KeyVerificationEventMixin,
     KeyVerificationAcceptMixin,
     KeyVerificationCancelMixin,
     KeyVerificationKeyMixin,
@@ -73,24 +72,12 @@ class ToDeviceEvent:
             event_dict (dict): The dictionary representation of the event.
 
         """
-        # A redacted event will have an empty content.
-        if not event_dict["content"]:
-            return None
-
         if event_dict["type"] == "m.room.encrypted":
             return ToDeviceEvent.parse_encrypted_event(event_dict)
-        elif event_dict["type"] == "m.key.verification.start":
-            return KeyVerificationStart.from_dict(event_dict)
-        elif event_dict["type"] == "m.key.verification.accept":
-            return KeyVerificationAccept.from_dict(event_dict)
-        elif event_dict["type"] == "m.key.verification.key":
-            return KeyVerificationKey.from_dict(event_dict)
-        elif event_dict["type"] == "m.key.verification.mac":
-            return KeyVerificationMac.from_dict(event_dict)
-        elif event_dict["type"] == "m.key.verification.cancel":
-            return KeyVerificationCancel.from_dict(event_dict)
         elif event_dict["type"] == "m.room_key_request":
             return BaseRoomKeyRequest.parse_event(event_dict)
+        elif event_dict["type"].startswith("m.key.verification."):
+            return KeyVerificationEvent.parse_event(event_dict)
 
         return None
 
@@ -212,7 +199,7 @@ class RoomKeyRequestCancellation(BaseRoomKeyRequest):
 
 
 @dataclass
-class KeyVerificationEvent(KeyVerificationEventMixin, ToDeviceEvent):
+class KeyVerificationEvent(ToDeviceEvent):
     """Base class for key verification events.
 
     Attributes:
@@ -220,6 +207,24 @@ class KeyVerificationEvent(KeyVerificationEventMixin, ToDeviceEvent):
             process. Must be unique with respect to the devices involved.
 
     """
+
+    transaction_id: str = field()
+
+    @classmethod
+    @verify(Schemas.to_device_key_verification)
+    def parse_event(cls, event_dict):
+        if event_dict["type"] == "m.key.verification.start":
+            return KeyVerificationStart.from_dict(event_dict)
+        elif event_dict["type"] == "m.key.verification.accept":
+            return KeyVerificationAccept.from_dict(event_dict)
+        elif event_dict["type"] == "m.key.verification.key":
+            return KeyVerificationKey.from_dict(event_dict)
+        elif event_dict["type"] == "m.key.verification.mac":
+            return KeyVerificationMac.from_dict(event_dict)
+        elif event_dict["type"] == "m.key.verification.cancel":
+            return KeyVerificationCancel.from_dict(event_dict)
+
+        return None
 
 
 @dataclass

@@ -2,7 +2,10 @@
     "content": {
         "code": "m.user",
         "reason": "User rejected the key verification request",
-        "transaction_id": "S0meUniqueAndOpaqueString"
+        "m.relates_to": {
+            "rel_type": "m.reference",
+            "event_id": "$verification_request_event"
+        }
     },
     "type": "m.key.verification.cancel",
     "sender": "@bob:example.org",
