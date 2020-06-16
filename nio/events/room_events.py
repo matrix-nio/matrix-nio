@@ -285,7 +285,7 @@ class MegolmEvent(Event):
     device_id: str = field()
     ciphertext: str = field()
     algorithm: str = field()
-    room_id: str = ""
+    room_id: str = field()
 
     @classmethod
     @verify(Schemas.room_megolm_encrypted)

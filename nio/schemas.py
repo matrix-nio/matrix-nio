@@ -1030,7 +1030,6 @@ class Schemas:
         "required": ["room_id", "servers"],
     }
 
-
     room_event_id = {
         "type": "object",
         "properties": {"event_id": {"type": "string"}},
@@ -1136,7 +1135,7 @@ class Schemas:
                                     UserIdRegex: {
                                         "type": ["object", "string"],
                                         "properties": {
-                                            "ts": {"type" : "integer"}
+                                            "ts": {"type": "integer"}
                                         },
                                         "required": ["ts"]
                                     }

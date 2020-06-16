@@ -15,8 +15,6 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import unicode_literals
-
 from builtins import str
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -1112,11 +1110,11 @@ class RoomIdResponse(Response):
 
         return cls(parsed_dict["room_id"])
 
+
 @dataclass
 class RoomCreateResponse(Response):
     """Response representing a successful create room request."""
     room_id: str = field()
-
 
     @classmethod
     @verify(
@@ -1128,7 +1126,6 @@ class RoomCreateResponse(Response):
     ):
         # type: (...) -> Union[RoomCreateResponse, RoomCreateError]
         return cls(parsed_dict["room_id"])
-
 
 
 class JoinResponse(RoomIdResponse):
@@ -1167,6 +1164,9 @@ class KeysUploadResponse(Response):
 class KeysQueryResponse(Response):
     device_keys: Dict = field()
     failures: Dict = field()
+    master_keys: Dict = field()
+    self_signing_keys: Dict = field()
+    user_signing_keys: Dict = field()
     changed: Dict[str, Dict[str, Any]] = field(
         init=False, default_factory=dict,
     )
@@ -1177,8 +1177,17 @@ class KeysQueryResponse(Response):
         # type: (...) -> Union[KeysQueryResponse, ErrorResponse]
         device_keys = parsed_dict["device_keys"]
         failures = parsed_dict["failures"]
+        master_keys = parsed_dict.get("master_keys", {})
+        self_signing = parsed_dict.get("self_signing_keys", {})
+        user_signing = parsed_dict.get("user_signing_keys", {})
 
-        return cls(device_keys, failures)
+        return cls(
+            device_keys,
+            failures,
+            master_keys,
+            self_signing,
+            user_signing
+        )
 
 
 @dataclass
