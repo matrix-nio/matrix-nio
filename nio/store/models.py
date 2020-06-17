@@ -133,6 +133,20 @@ class Keys(Model):
         constraints = [SQL("UNIQUE(device_id,key_type)")]
 
 
+class DeviceSignatures(Model):
+    user_id = TextField()
+    key_id = TextField()
+    signature = TextField()
+    device = ForeignKeyField(
+        model=DeviceKeys,
+        column_name="device_id",
+        backref="signatures",
+    )
+
+    class Meta:
+        constraints = [SQL("UNIQUE(device_id, user_id, key_id)")]
+
+
 class DeviceTrustState(Model):
     state = DeviceTrustField()
     device = ForeignKeyField(

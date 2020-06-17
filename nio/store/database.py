@@ -15,7 +15,8 @@ import os
 import sqlite3
 from builtins import super
 from functools import wraps
-from typing import Optional, List, Dict
+from typing import Optional, List
+from collections import defaultdict
 
 from dataclasses import dataclass, field
 from peewee import DoesNotExist, SqliteDatabase
@@ -24,6 +25,7 @@ from playhouse.sqliteq import SqliteQueueDatabase
 from . import (Accounts, DeviceKeys, DeviceKeys_v1, DeviceTrustState,
                EncryptedRooms, ForwardedChains, Key, Keys, KeyStore,
                MegolmInboundSessions, OlmSessions, OutgoingKeyRequests,
+               DeviceSignatures,
                StoreVersion, SyncTokens)
 from ..crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
                       OlmAccount, OlmDevice, OutgoingKeyRequest, Session,
@@ -73,7 +75,8 @@ class MatrixStore:
         OutgoingKeyRequests,
         StoreVersion,
         Keys,
-        SyncTokens
+        SyncTokens,
+        DeviceSignatures,
     ]
     store_version = 2
 
@@ -320,10 +323,16 @@ class MatrixStore:
             return store
 
         for d in account.device_keys:
+            signatures = defaultdict(dict)
+
+            for s in d.signatures:
+                signatures[s.user_id][s.key_id] = s.signature
+
             store.add(OlmDevice(
                 d.user_id,
                 d.device_id,
                 {k.key_type if ":" in k.key_type else f"{k.key_type}:{d.device_id}": k.key for k in d.keys},
+                signatures,
                 display_name=d.display_name,
                 deleted=d.deleted,
             ))
@@ -379,6 +388,15 @@ class MatrixStore:
                         key=key,
                         device=d
                     ).execute()
+
+                for user_id, signatures_dict in device.signatures.items():
+                    for key_id, signature in signatures_dict.items():
+                        DeviceSignatures.replace(
+                            user_id=user_id,
+                            key_id=key_id,
+                            signature=signature,
+                            device=d,
+                        ).execute()
 
     @use_database
     def load_encrypted_rooms(self):
@@ -755,10 +773,16 @@ class DefaultStore(MatrixStore):
             return store
 
         for d in account.device_keys:
+            signatures = defaultdict(dict)
+
+            for s in d.signatures:
+                signatures[s.user_id][s.key_id] = s.signature
+
             device = OlmDevice(
                 d.user_id,
                 d.device_id,
                 {k.key_type if ":" in k.key_type else f"{k.key_type}:{d.device_id}": k.key for k in d.keys},
+                signatures,
                 display_name=d.display_name,
                 deleted=d.deleted,
             )
@@ -1053,10 +1077,16 @@ class SqliteStore(MatrixStore):
             except IndexError:
                 trust_state = TrustState.unset
 
+            signatures = defaultdict(dict)
+
+            for s in d.signatures:
+                signatures[s.user_id][s.key_id] = s.signature
+
             store.add(OlmDevice(
                 d.user_id,
                 d.device_id,
                 {k.key_type if ":" in k.key_type else f"{k.key_type}:{d.device_id}": k.key for k in d.keys},
+                signatures,
                 display_name=d.display_name,
                 deleted=d.deleted,
                 trust_state=trust_state

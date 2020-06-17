@@ -30,7 +30,8 @@ if package_installed("olm"):
         DeviceTrustField,
         StoreVersion,
         Keys,
-        SyncTokens
+        SyncTokens,
+        DeviceSignatures,
     )
     from .database import (
         DefaultStore,
