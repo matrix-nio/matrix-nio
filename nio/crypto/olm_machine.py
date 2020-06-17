@@ -874,15 +874,15 @@ class Olm:
                     continue
 
                 if (
-                    payload["user_id"] != user_id
-                    or payload["device_id"] != device_id
+                    payload.get("user_id") != user_id
+                    or payload.get("device_id") != device_id
                 ):
                     logger.warn(
                         "Mismatch in keys payload of device %s "
                         "(%s) of user %s (%s).",
-                        payload["device_id"],
+                        payload.get("device_id"),
                         device_id,
-                        payload["user_id"],
+                        payload.get("user_id"),
                         user_id,
                     )
                     continue
@@ -916,6 +916,7 @@ class Olm:
                     continue
 
                 user_devices = self.device_store[user_id]
+                signatures = payload.get("signatures", {})
 
                 try:
                     device = user_devices[device_id]
@@ -929,7 +930,7 @@ class Olm:
                             user_id,
                             device_id,
                             key_dict,
-                            payload.get("signatures", {}),
+                            signatures,
                             display_name=display_name,
                         )
                     )
@@ -944,6 +945,7 @@ class Olm:
                     if (
                         device.curve25519 == curve_key
                         and device.display_name == display_name
+                        and device.signatures == signatures
                     ):
                         continue
 
@@ -963,6 +965,13 @@ class Olm:
                             "store for user {} with device id "
                             "{}".format(user_id, device_id)
                         )
+
+                    elif device.signatures != signatures:
+                        logger.info(
+                            f"The signatures for device {device.device_id} of "
+                            f"user {device.user_id} have been updated"
+                        )
+                        device.signatures = signatures
 
                 changed[user_id][device_id] = user_devices[device_id]
 
