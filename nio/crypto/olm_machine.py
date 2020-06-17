@@ -928,7 +928,7 @@ class Olm:
                         OlmDevice(
                             user_id,
                             device_id,
-                            {"ed25519": signing_key, "curve25519": curve_key},
+                            key_dict,
                             display_name=display_name,
                         )
                     )

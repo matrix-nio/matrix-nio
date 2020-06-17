@@ -30,6 +30,7 @@ SAMPLE_SETTINGS = {
 
 faker = Faker()
 
+
 class Provider(BaseProvider):
     def mx_id(self):
         return "@{}:{}".format(faker.user_name(), faker.hostname())
@@ -43,13 +44,14 @@ class Provider(BaseProvider):
     def device_id(self):
         return "".join(choice(ascii_uppercase) for i in range(10))
 
-    def olm_key_pair(self):
-        return OlmAccount().identity_keys
+    def olm_key_pair(self, device_id):
+        keys = OlmAccount().identity_keys
+        return {f"{key_type}:{device_id}": key for key_type, key in keys.items()}
 
     def olm_device(self):
         user_id = faker.mx_id()
         device_id = faker.device_id()
-        key_pair = faker.olm_key_pair()
+        key_pair = faker.olm_key_pair(device_id)
 
         return OlmDevice(
             user_id,
@@ -58,10 +60,11 @@ class Provider(BaseProvider):
         )
 
     def ed25519_key(self):
+        device_id = faker.device_id()
         return Ed25519Key(
             faker.mx_id(),
-            faker.device_id(),
-            faker.olm_key_pair()["ed25519"]
+            device_id,
+            faker.olm_key_pair(device_id)[f"ed25519:{device_id}"]
         )
 
 

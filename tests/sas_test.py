@@ -11,11 +11,11 @@ from nio.exceptions import LocalProtocolError
 
 alice_id = "@alice:example.org"
 alice_device_id = "JLAFKJWSCS"
-alice_keys = faker.olm_key_pair()
+alice_keys = faker.olm_key_pair(alice_device_id)
 
 bob_id = "@bob:example.org"
 bob_device_id = "JLAFKJWSRS"
-bob_keys = faker.olm_key_pair()
+bob_keys = faker.olm_key_pair(bob_device_id)
 
 alice_device = OlmDevice(
     alice_id,
@@ -35,7 +35,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device
         )
 
@@ -46,7 +46,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
         assert alice.state == SasState.created
@@ -62,7 +62,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id,
             bob_device_id,
-            bob_keys["ed25519"],
+            bob_keys[f"ed25519:{bob_device_id}"],
             alice_device,
             start_event
         )
@@ -76,7 +76,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
         start = {
@@ -88,7 +88,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id,
             bob_device,
-            bob_keys["ed25519"],
+            bob_keys[f"ed25519:{bob_device_id}"],
             alice_device,
             start_event
         )
@@ -106,7 +106,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
         start = {
@@ -118,7 +118,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id,
             bob_device_id,
-            bob_keys["ed25519"],
+            bob_keys[f"ed25519:{bob_device_id}"],
             alice_device,
             start_event
         )
@@ -155,7 +155,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
         start = {
@@ -167,7 +167,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id,
             bob_device_id,
-            bob_keys["ed25519"],
+            bob_keys[f"ed25519:{bob_device_id}"],
             alice_device,
             start_event
         )
@@ -188,7 +188,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
         start = {
@@ -200,7 +200,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id,
             bob_device_id,
-            bob_keys["ed25519"],
+            bob_keys[f"ed25519:{bob_device_id}"],
             alice_device,
             start_event
         )
@@ -237,7 +237,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
         start = {
@@ -249,7 +249,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id,
             bob_device_id,
-            bob_keys["ed25519"],
+            bob_keys[f"ed25519:{bob_device_id}"],
             alice_device,
             start_event
         )
@@ -289,7 +289,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
         start = {
@@ -302,7 +302,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id,
             bob_device_id,
-            bob_keys["ed25519"],
+            bob_keys[f"ed25519:{bob_device_id}"],
             alice_device,
             start_event
         )
@@ -342,7 +342,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
         assert not alice.canceled
@@ -367,7 +367,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
 
@@ -381,7 +381,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id,
             bob_device_id,
-            bob_keys["ed25519"],
+            bob_keys[f"ed25519:{bob_device_id}"],
             alice_device,
             start_event
         )
@@ -392,7 +392,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
 
@@ -405,7 +405,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id,
             bob_device_id,
-            bob_keys["ed25519"],
+            bob_keys[f"ed25519:{bob_device_id}"],
             alice_device,
             start_event
         )
@@ -426,7 +426,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
 
@@ -444,7 +444,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
         minute = timedelta(minutes=1)
@@ -458,7 +458,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
         start = {
@@ -470,7 +470,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id,
             bob_device_id,
-            bob_keys["ed25519"],
+            bob_keys[f"ed25519:{bob_device_id}"],
             alice_device,
             start_event
         )
@@ -494,7 +494,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
         start = {
@@ -506,7 +506,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id,
             bob_device_id,
-            bob_keys["ed25519"],
+            bob_keys[f"ed25519:{bob_device_id}"],
             alice_device,
             start_event
         )
@@ -571,7 +571,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
         start = {
@@ -583,7 +583,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id,
             bob_device_id,
-            bob_keys["ed25519"],
+            bob_keys[f"ed25519:{bob_device_id}"],
             alice_device,
             start_event
         )
@@ -607,7 +607,7 @@ class TestClass:
         alice = Sas(
             alice_id,
             alice_device_id,
-            alice_keys["ed25519"],
+            alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
         )
         start = {
@@ -619,7 +619,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id,
             bob_device_id,
-            bob_keys["ed25519"],
+            bob_keys[f"ed25519:{bob_device_id}"],
             alice_device,
             start_event
         )
@@ -787,7 +787,7 @@ class TestClass:
         bob_sas = Sas(
             bob_id,
             bob_device_id,
-            faker.olm_key_pair()["ed25519"],
+            faker.olm_key_pair("FAKEDEVICE")["ed25519:FAKEDEVICE"],
             alice_device,
         )
 

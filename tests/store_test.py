@@ -75,8 +75,8 @@ class TestClass:
         bob_device = OlmDevice(
             BOB_ID,
             BOB_DEVICE,
-            {"ed25519": BOB_ONETIME,
-             "curve25519": BOB_CURVE}
+            {f"ed25519:{BOB_DEVICE}": BOB_ONETIME,
+             f"curve25519:{BOB_DEVICE}": BOB_CURVE}
         )
 
         devices[BOB_ID][BOB_DEVICE] = bob_device
@@ -99,7 +99,7 @@ class TestClass:
     def test_key(self):
         user_id = faker.mx_id()
         device_id = faker.device_id()
-        fp_key = faker.olm_key_pair()["ed25519"]
+        fp_key = faker.olm_key_pair("DEVICE")["ed25519:DEVICE"]
         key = Ed25519Key(user_id, device_id, fp_key)
 
         assert (

@@ -127,7 +127,7 @@ class TestClass:
         device = OlmDevice(
             "example",
             "DEVICEID",
-            account.identity_keys
+            {f"{key_type}:DEVICEID": key for key_type, key in account.identity_keys.items()}
         )
         key = Key.from_olmdevice(device)
 
@@ -206,8 +206,8 @@ class TestClass:
         alice = OlmDevice(
             "example",
             "DEVICEID",
-            {"ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA",
-             "curve25519": "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
+            {"ed25519:DEVICEID": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA",
+             "curve25519:DEVICEID": "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
         )
 
         store = DeviceStore()
@@ -225,7 +225,7 @@ class TestClass:
         bob_device = OlmDevice(
             BobId,
             Bob_device,
-            bob.identity_keys
+            {f"{key_type}:{Bob_device}": key for key_type, key in bob.identity_keys.items()}
         )
 
         olm = self.ephemeral_olm
@@ -326,18 +326,18 @@ class TestClass:
         alice_device = OlmDevice(
             AliceId,
             Alice_device,
-            alice.account.identity_keys
+            {f"{key_type}:{Alice_device}": key for key_type, key in alice.account.identity_keys.items()}
         )
         bob_device = OlmDevice(
             BobId,
             Bob_device,
-            bob.account.identity_keys
+            {f"{key_type}:{Bob_device}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         malory_device = OlmDevice(
             MaloryId,
             Malory_device,
-            malory.account.identity_keys
+            {f"{key_type}:{Malory_device}": key for key_type, key in malory.account.identity_keys.items()}
         )
 
         # add the devices to the device list
@@ -475,18 +475,18 @@ class TestClass:
         alice_device = OlmDevice(
             AliceId,
             Alice_device,
-            alice.account.identity_keys
+            {f"{key_type}:{Alice_device}": key for key_type, key in alice.account.identity_keys.items()}
         )
         bob_device = OlmDevice(
             BobId,
             Bob_device,
-            bob.account.identity_keys
+            {f"{key_type}:{Bob_device}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         malory_device = OlmDevice(
             MaloryId,
             Malory_device,
-            malory.account.identity_keys
+            {f"{key_type}:{Malory_device}": key for key_type, key in malory.account.identity_keys.items()}
         )
 
         # add the devices to the device list
@@ -660,13 +660,13 @@ class TestClass:
         bob_device = OlmDevice(
             BobId,
             Bob_device,
-            bob.account.identity_keys
+            {f"{key_type}:{Bob_device}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         bob2_device = OlmDevice(
             BobId,
             Malory_device,
-            bob.account.identity_keys
+            {f"{key_type}:{Malory_device}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         alice.device_store.add(bob_device)
@@ -790,7 +790,7 @@ class TestClass:
         bob_device = OlmDevice(
             BobId,
             Bob_device,
-            bob.account.identity_keys
+            {f"{key_type}:{Bob_device}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         assert not alice.get_missing_sessions([BobId])
@@ -843,12 +843,12 @@ class TestClass:
         alice_device = OlmDevice(
             alice.user_id,
             alice.device_id,
-            alice.account.identity_keys
+            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
         )
         bob_device = OlmDevice(
             bob.user_id,
             bob.device_id,
-            bob.account.identity_keys
+            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         alice.device_store.add(bob_device)
@@ -878,12 +878,12 @@ class TestClass:
         alice_device = OlmDevice(
             alice.user_id,
             alice.device_id,
-            alice.account.identity_keys
+            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
         )
         bob_device = OlmDevice(
             bob.user_id,
             bob.device_id,
-            bob.account.identity_keys
+            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         alice.device_store.add(bob_device)
@@ -1057,12 +1057,12 @@ class TestClass:
         alice_device = OlmDevice(
             alice.user_id,
             alice.device_id,
-            alice.account.identity_keys
+            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
         )
         bob_device = OlmDevice(
             bob.user_id,
             bob.device_id,
-            bob.account.identity_keys
+            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         alice.device_store.add(bob_device)
@@ -1146,12 +1146,12 @@ class TestClass:
         alice_device = OlmDevice(
             alice.user_id,
             alice.device_id,
-            alice.account.identity_keys
+            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
         )
         bob_device = OlmDevice(
             bob.user_id,
             bob.device_id,
-            bob.account.identity_keys
+            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         alice.device_store.add(bob_device)
@@ -1273,12 +1273,12 @@ class TestClass:
         alice_device = OlmDevice(
             alice.user_id,
             alice.device_id,
-            alice.account.identity_keys
+            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
         )
         bob_device = OlmDevice(
             bob.user_id,
             bob.device_id,
-            bob.account.identity_keys
+            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         alice.device_store.add(bob_device)
@@ -1401,12 +1401,12 @@ class TestClass:
         alice_device = OlmDevice(
             alice.user_id,
             alice.device_id,
-            alice.account.identity_keys
+            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
         )
         bob_device = OlmDevice(
             bob.user_id,
             bob.device_id,
-            bob.account.identity_keys
+            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         alice.device_store.add(bob_device)
@@ -1537,15 +1537,16 @@ class TestClass:
         bob = bob_account
         bob.user_id = alice.user_id
 
+
         alice_device = OlmDevice(
             alice.user_id,
             alice.device_id,
-            alice.account.identity_keys
+            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
         )
         bob_device = OlmDevice(
             bob.user_id,
             bob.device_id,
-            bob.account.identity_keys
+            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         alice.device_store.add(bob_device)
@@ -1680,12 +1681,12 @@ class TestClass:
         alice_device = OlmDevice(
             alice.user_id,
             alice.device_id,
-            alice.account.identity_keys
+            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
         )
         bob_device = OlmDevice(
             bob.user_id,
             bob.device_id,
-            bob.account.identity_keys
+            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         alice.device_store.add(bob_device)
@@ -1843,12 +1844,12 @@ class TestClass:
         alice_device = OlmDevice(
             alice.user_id,
             alice.device_id,
-            alice.account.identity_keys
+            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
         )
         bob_device = OlmDevice(
             bob.user_id,
             bob.device_id,
-            bob.account.identity_keys
+            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         alice.device_store.add(bob_device)
@@ -1960,12 +1961,12 @@ class TestClass:
         alice_device = OlmDevice(
             alice.user_id,
             alice.device_id,
-            alice.account.identity_keys
+            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
         )
         bob_device = OlmDevice(
             bob.user_id,
             bob.device_id,
-            bob.account.identity_keys
+            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
         )
 
         alice.device_store.add(bob_device)

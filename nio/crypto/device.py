@@ -81,20 +81,20 @@ class OlmDevice:
     @property
     def ed25519(self) -> str:
         """The ed25519 fingerprint key of the device."""
-        return self.keys["ed25519"]
+        return self.keys[f"ed25519:{self.device_id}"]
 
     @ed25519.setter
     def ed25519(self, new_value):
-        self.keys["ed25519"] = new_value
+        self.keys[f"ed25519:{self.device_id}"] = new_value
 
     @property
     def curve25519(self) -> str:
         """The curve25519 key of the device."""
-        return self.keys["curve25519"]
+        return self.keys[f"curve25519:{self.device_id}"]
 
     @curve25519.setter
     def curve25519(self, new_value):
-        self.keys["curve25519"] = new_value
+        self.keys[f"curve25519:{self.device_id}"] = new_value
 
     def as_dict(self):
         """Convert the OlmDevice into a dictionary."""

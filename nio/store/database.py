@@ -323,7 +323,7 @@ class MatrixStore:
             store.add(OlmDevice(
                 d.user_id,
                 d.device_id,
-                {k.key_type: k.key for k in d.keys},
+                {k.key_type if ":" in k.key_type else f"{k.key_type}:{d.device_id}": k.key for k in d.keys},
                 display_name=d.display_name,
                 deleted=d.deleted,
             ))
@@ -758,7 +758,7 @@ class DefaultStore(MatrixStore):
             device = OlmDevice(
                 d.user_id,
                 d.device_id,
-                {k.key_type: k.key for k in d.keys},
+                {k.key_type if ":" in k.key_type else f"{k.key_type}:{d.device_id}": k.key for k in d.keys},
                 display_name=d.display_name,
                 deleted=d.deleted,
             )
@@ -1056,7 +1056,7 @@ class SqliteStore(MatrixStore):
             store.add(OlmDevice(
                 d.user_id,
                 d.device_id,
-                {k.key_type: k.key for k in d.keys},
+                {k.key_type if ":" in k.key_type else f"{k.key_type}:{d.device_id}": k.key for k in d.keys},
                 display_name=d.display_name,
                 deleted=d.deleted,
                 trust_state=trust_state

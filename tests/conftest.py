@@ -36,7 +36,6 @@ def client_no_e2e(tempdir):
     return Client("ephemeral", "DEVICEID", tempdir, config)
 
 
-
 @pytest.fixture
 def olm_machine():
     key_pair = Account().identity_keys
@@ -44,7 +43,7 @@ def olm_machine():
     bob_device = OlmDevice(
             BOB_DEVICE,
             BOB_DEVICE_ID,
-            key_pair
+            {f"{key_type}:{BOB_DEVICE_ID}": key for key_type, key in key_pair.items()}
         )
 
     store = SqliteMemoryStore(ALICE_ID, ALICE_DEVICE_ID)
