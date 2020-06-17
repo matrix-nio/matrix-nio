@@ -68,7 +68,7 @@ class OlmDevice:
     user_id: str = field()
     device_id: str = field()
     keys: Dict[str, str] = field()
-    signatures: Dict[str, str] = field(default_factory=dict)
+    signatures: Dict[str, Dict[str, str]] = field(default_factory=dict)
     display_name: str = ""
     deleted: bool = False
     trust_state: TrustState = TrustState.unset

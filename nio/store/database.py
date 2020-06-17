@@ -15,7 +15,7 @@ import os
 import sqlite3
 from builtins import super
 from functools import wraps
-from typing import Optional, List
+from typing import Optional, List, Dict, DefaultDict
 from collections import defaultdict
 
 from dataclasses import dataclass, field
@@ -323,7 +323,7 @@ class MatrixStore:
             return store
 
         for d in account.device_keys:
-            signatures = defaultdict(dict)
+            signatures: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
 
             for s in d.signatures:
                 signatures[s.user_id][s.key_id] = s.signature
@@ -773,7 +773,7 @@ class DefaultStore(MatrixStore):
             return store
 
         for d in account.device_keys:
-            signatures = defaultdict(dict)
+            signatures: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
 
             for s in d.signatures:
                 signatures[s.user_id][s.key_id] = s.signature
@@ -1077,7 +1077,7 @@ class SqliteStore(MatrixStore):
             except IndexError:
                 trust_state = TrustState.unset
 
-            signatures = defaultdict(dict)
+            signatures: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
 
             for s in d.signatures:
                 signatures[s.user_id][s.key_id] = s.signature
