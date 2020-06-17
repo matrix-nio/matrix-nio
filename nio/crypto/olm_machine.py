@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2020 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -929,6 +929,7 @@ class Olm:
                             user_id,
                             device_id,
                             key_dict,
+                            payload.get("signatures", {}),
                             display_name=display_name,
                         )
                     )

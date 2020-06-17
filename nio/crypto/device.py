@@ -56,6 +56,8 @@ class OlmDevice:
             identifies the device.
         keys (Dict): A dictionary containing the type and the public part
             of this devices encryption keys.
+        signatures (Dict): A dictionary containing the key id a signature that
+            that signed the device keys.
         display_name (str): The human readable name of this device.
         deleted (bool): A boolean signaling if this device has been deleted by
             its owner.
@@ -66,6 +68,7 @@ class OlmDevice:
     user_id: str = field()
     device_id: str = field()
     keys: Dict[str, str] = field()
+    signatures: Dict[str, str] = field(default_factory=dict)
     display_name: str = ""
     deleted: bool = False
     trust_state: TrustState = TrustState.unset
