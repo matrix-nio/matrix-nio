@@ -522,6 +522,22 @@ class TestClass:
         assert client.store
         assert client.olm
 
+    def test_client_restore_login(self, tempdir):
+        client = Client(BOB_ID, store_path=tempdir)
+        assert not client.user_id
+        assert not client.device_id
+        assert not client.access_token
+        assert not client.store
+        assert not client.olm
+
+        client.restore_login(BOB_ID, DEVICE_ID, "ABCD")
+
+        assert client.user_id
+        assert client.device_id
+        assert client.access_token
+        assert client.store
+        assert client.olm
+
     def test_client_logout(self, client):
         client.receive_response(self.login_response)
         assert client.access_token
