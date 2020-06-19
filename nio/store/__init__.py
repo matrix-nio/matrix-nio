@@ -32,6 +32,9 @@ if package_installed("olm"):
         Keys,
         SyncTokens,
         DeviceSignatures,
+        CrossSigningIdentities,
+        CrossSigningSignatures,
+        PublicCrossSigningKeys,
     )
     from .database import (
         DefaultStore,

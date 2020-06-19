@@ -11,7 +11,7 @@ import pytest
 from helpers import ephemeral, ephemeral_dir, faker
 from nio.crypto import (InboundGroupSession, OlmAccount, OlmDevice,
                         OutboundGroupSession, OutboundSession,
-                        OutgoingKeyRequest, TrustState)
+                        OutgoingKeyRequest, TrustState, UserIdentity)
 from nio.exceptions import OlmTrustError
 from nio.store import (Ed25519Key, Key, KeyStore, MatrixStore, DefaultStore,
                        SqliteMemoryStore, SqliteStore)
@@ -761,3 +761,12 @@ class TestClass:
         sqlstore.save_sync_token(token)
         loaded_token = sqlstore.load_sync_token()
         assert token == loaded_token
+
+    def test_cross_signing_storing(self, sqlstore):
+        identity = faker.cross_signing_identity()
+        sqlstore.save_cross_signing_identities({identity.user_id: identity})
+
+        identities = sqlstore.load_cross_signing_identities()
+
+        assert identity.user_id in identities
+        # assert identity in identities.values()

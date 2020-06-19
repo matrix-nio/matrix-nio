@@ -58,6 +58,13 @@ from . import (
     logger,
     OutgoingKeyRequest,
 )
+from .user_identities import (
+    MasterPubkeys,
+    SelfSigningPubkeys,
+    UserSigningPubkeys,
+    UserIdentity,
+)
+
 from ..api import Api
 from ..events import (
     BadEvent,
@@ -857,6 +864,114 @@ class Olm:
                         "Olm session.".format(device_id, user_id)
                     )
 
+    def _get_key_id(self, keys_dict: Dict[str, str]) -> Optional[str]:
+        for key_header, key in keys_dict.items():
+            try:
+                key_type, key_id = key_header.split(":")
+            except ValueError:
+                continue
+
+            if key_type == "ed25519":
+                return key_id
+
+        return None
+
+    def _handle_cross_signing_for_user(
+        self, user_id, master_keys, user_signing_keys, self_signing_keys
+    ) -> Optional[Tuple[MasterPubkeys, UserSigningPubkeys, SelfSigningPubkeys]]:
+        logger.debug(f"Received cross signing keys for {user_id}")
+        master_key_id = self._get_key_id(master_keys.get("keys", {}))
+
+        # If there isn't an ed25519 master key we don't know what to do with
+        # this anyways, so skip.
+        if not master_key_id:
+            logger.warn(
+                f"The master key of user {user_id} doesn't have a ed25519 key"
+            )
+            return None
+
+        # TODO check the signature of the master key.
+        master = MasterPubkeys(
+            master_key_id,
+            master_keys.get("keys"),
+            master_keys.get("signatures", {}),
+            master_keys.get("usage", []),
+        )
+
+        if not self.verify_json(
+            self_signing_keys, master.ed25519, user_id, master.key_id
+        ):
+            logger.warn(
+                f"Self signing keys of {user_id} aren't properly "
+                "signed with the master key"
+            )
+            return None
+
+        if not self.verify_json(
+            user_signing_keys, master.ed25519, user_id, master.key_id
+        ):
+            logger.warn(
+                f"User signing keys of {user_id} aren't properly "
+                "signed with the master key"
+            )
+            return None
+
+        # TODO this can be None we likely want any key id for the non-master
+        # keys
+        self_signing_key_id = self._get_key_id(
+            self_signing_keys.get("keys", {})
+        )
+        assert self_signing_key_id
+
+        self_signing = SelfSigningPubkeys(
+            self_signing_key_id,
+            self_signing_keys.get("keys", {}),
+            self_signing_keys.get("signatures", {}),
+            self_signing_keys.get("usage", []),
+        )
+
+        # TODO this can be None we likely want any key id for the non-master
+        # keys
+        user_signing_key_id = self._get_key_id(
+            user_signing_keys.get("keys", {})
+        )
+        assert user_signing_key_id
+
+        user_signing = UserSigningPubkeys(
+            user_signing_key_id,
+            user_signing_keys.get("keys", {}),
+            user_signing_keys.get("signatures", {}),
+            user_signing_keys.get("usage", []),
+        )
+
+        return (master, user_signing, self_signing)
+
+    def _handle_cross_signing_keys(self, response: KeysQueryResponse):
+        for user_id in response.master_keys:
+            master_keys = response.master_keys.get(user_id, {})
+            user_keys = response.user_signing_keys.get(user_id, {})
+            self_signing_keys = response.self_signing_keys.get(user_id, {})
+            master_keys = response.master_keys.get(user_id, {})
+
+            keys = self._handle_cross_signing_for_user(
+                user_id, master_keys, user_keys, self_signing_keys
+            )
+
+            if not keys:
+                return
+
+            master, user_signing, self_signing = keys
+
+            if False:
+                pass
+            else:
+                identity = UserIdentity(
+                    user_id, master.key_id, master, user_signing, self_signing
+                )
+                # TODO store the identity
+
+            logger.debug(f"Created a new identity for {user_id}, {identity}")
+
     # This function is copyrighted under the Apache 2.0 license Zil0
     def _handle_key_query(self, response: KeysQueryResponse):
         changed: DefaultDict[str, Dict[str, OlmDevice]] = defaultdict(dict)
@@ -991,6 +1106,8 @@ class Olm:
                     )
                 )
                 changed[user_id][device_id] = device
+
+        self._handle_cross_signing_keys(response)
 
         self.store.save_device_keys(changed)
         response.changed = changed
@@ -2058,7 +2175,9 @@ class Olm:
         return signature
 
     # This function is copyrighted under the Apache 2.0 license Zil0
-    def verify_json(self, json, user_key, user_id, device_id):
+    def verify_json(
+        self, json: Dict[Any, Any], user_key: str, user_id: str, key_id: str
+    ) -> bool:
         """Verifies a signed key object's signature.
         The object must have a 'signatures' key associated with an object of
         the form `user_id: {key_id: signature}`.
@@ -2067,7 +2186,9 @@ class Olm:
             user_key (str): The public ed25519 key which was used to sign
                 the object.
             user_id (str): The user who owns the device.
-            device_id (str): The device who owns the key.
+            key_id (str): The id of the signing key, will be the device id if
+                the device signed the device and the public key if a cross
+                signing key signed the device.
         Returns:
             True if the verification was successful, False if not.
         """
@@ -2076,7 +2197,7 @@ class Olm:
         except (KeyError, ValueError):
             return False
 
-        key_id = "ed25519:{}".format(device_id)
+        key_id = "ed25519:{}".format(key_id)
         try:
             signature_base64 = signatures[user_id][key_id]
         except KeyError:

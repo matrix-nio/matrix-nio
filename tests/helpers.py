@@ -18,8 +18,17 @@ from hyperframe.frame import (AltSvcFrame, ContinuationFrame, DataFrame,
                               PriorityFrame, PushPromiseFrame, RstStreamFrame,
                               SettingsFrame, WindowUpdateFrame)
 
-from nio.crypto import OlmAccount, OlmDevice
+from nio.crypto import (
+    OlmAccount,
+    OlmDevice,
+    UserIdentity,
+    MasterPubkeys,
+    SelfSigningPubkeys,
+    UserSigningPubkeys
+)
+from olm import PkSigning
 from nio.store import Ed25519Key
+from nio import Api
 
 SAMPLE_SETTINGS = {
     SettingsFrame.HEADER_TABLE_SIZE: 4096,
@@ -43,6 +52,84 @@ class Provider(BaseProvider):
 
     def device_id(self):
         return "".join(choice(ascii_uppercase) for i in range(10))
+
+    def cross_signing_identity(self):
+        user_id = faker.mx_id()
+
+        master = PkSigning(PkSigning.generate_seed())
+        self_signing = PkSigning(PkSigning.generate_seed())
+        user = PkSigning(PkSigning.generate_seed())
+
+        master_keys = {
+            "keys": {
+                f"ed25519:{master.public_key}": master.public_key,
+            },
+            "user_id": user_id,
+            "usage": ["master"],
+        }
+
+        master_keys["signatures"] = {}
+
+        self_signing_keys = {
+            "keys": {
+                f"ed25519:{self_signing.public_key}": self_signing.public_key,
+            },
+            "user_id": user_id,
+            "usage": ["self_signing"],
+        }
+
+        self_signature = master.sign(Api.to_canonical_json(self_signing_keys))
+
+        self_signing_keys["signatures"] = {
+            user_id: {
+                f"ed25519:{master.public_key}": self_signature
+            }
+        }
+
+        user_keys = {
+            "keys": {
+                f"ed25519:{user.public_key}": user.public_key,
+            },
+            "user_id": user_id,
+            "usage": ["user_signing"],
+        }
+
+        user_signature = master.sign(Api.to_canonical_json(user_keys))
+
+        user_keys["signatures"] = {
+            user_id: {
+                f"ed25519:{master.public_key}": user_signature
+            }
+        }
+
+        master_keys = MasterPubkeys(
+            master.public_key,
+            master_keys["keys"],
+            master_keys["signatures"],
+            master_keys["usage"],
+        )
+
+        self_signing_keys = SelfSigningPubkeys(
+            self_signing.public_key,
+            self_signing_keys["keys"],
+            self_signing_keys["signatures"],
+            self_signing_keys["usage"],
+        )
+
+        user_signing_keys = UserSigningPubkeys(
+            user.public_key,
+            user_keys["keys"],
+            user_keys["signatures"],
+            user_keys["usage"],
+        )
+
+        return UserIdentity(
+            user_id,
+            master.public_key,
+            master_keys,
+            user_signing_keys,
+            self_signing_keys
+        )
 
     def olm_key_pair(self, device_id):
         keys = OlmAccount().identity_keys

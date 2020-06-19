@@ -30,6 +30,14 @@ if package_installed("olm"):
     )
     from .device import DeviceStore, OlmDevice, TrustState
     from .key_request import OutgoingKeyRequest
+    from .user_identities import (
+        CrossSigningKeyType,
+        CrossSigningPubkey,
+        UserIdentity,
+        UserSigningPubkeys,
+        SelfSigningPubkeys,
+        MasterPubkeys,
+    )
 
     from .memorystores import (
         SessionStore,

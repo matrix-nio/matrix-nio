@@ -25,11 +25,13 @@ from playhouse.sqliteq import SqliteQueueDatabase
 from . import (Accounts, DeviceKeys, DeviceKeys_v1, DeviceTrustState,
                EncryptedRooms, ForwardedChains, Key, Keys, KeyStore,
                MegolmInboundSessions, OlmSessions, OutgoingKeyRequests,
-               DeviceSignatures,
-               StoreVersion, SyncTokens)
+               DeviceSignatures, CrossSigningIdentities, CrossSigningSignatures,
+               PublicCrossSigningKeys, StoreVersion, SyncTokens)
 from ..crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
                       OlmAccount, OlmDevice, OutgoingKeyRequest, Session,
-                      SessionStore, TrustState)
+                      SessionStore, TrustState, UserIdentity,
+                      CrossSigningKeyType, MasterPubkeys, SelfSigningPubkeys,
+                      UserSigningPubkeys)
 
 
 def use_database(fn):
@@ -77,6 +79,9 @@ class MatrixStore:
         Keys,
         SyncTokens,
         DeviceSignatures,
+        CrossSigningIdentities,
+        CrossSigningSignatures,
+        PublicCrossSigningKeys,
     ]
     store_version = 2
 
@@ -308,6 +313,152 @@ class MatrixStore:
                 sender_key=chain,
                 session=session.id
             ).execute()
+
+    def save_cross_signing_keys(self, identity, key_type, keys, signatures):
+        for key_id, key in keys.items():
+            PublicCrossSigningKeys.replace(
+                key_id=key_id,
+                key=key,
+                key_type=key_type,
+                identity=identity
+            ).execute()
+
+        for user_id, signatures_dict in signatures.items():
+            for key_id, signature in signatures_dict.items():
+                CrossSigningSignatures.replace(
+                    user_id=user_id,
+                    signing_key_id=key_id,
+                    signature=signature,
+                    key_type=key_type,
+                    identity=identity,
+                ).execute()
+
+    @use_database_atomic
+    def save_cross_signing_identities(self, identities: Dict[str, UserIdentity]):
+        """Save the provided cross signing identities in the database.
+
+        Args:
+            identites (Dict[str, UserIdentity]): A dictionary
+                containing a mapping from a user id to the cross signing
+                identity of the user.
+        """
+        account = self._get_account()
+        assert account
+        rows = []
+
+        for user_id, identity in identities.items():
+            rows.append(
+                {
+                    "account": account,
+                    "user_id": user_id,
+                    "main_key_id": identity.main_key_id,
+                }
+            )
+
+        if not rows:
+            return
+
+        for idx in range(0, len(rows), 100):
+            data = rows[idx:idx + 100]
+            CrossSigningIdentities.insert_many(data).on_conflict_ignore().execute()
+
+        for user_id, identity in identities.items():
+            i = CrossSigningIdentities.get(
+                (CrossSigningIdentities.account == account)
+                & (CrossSigningIdentities.user_id == user_id)
+            )
+
+            self.save_cross_signing_keys(
+                i,
+                CrossSigningKeyType.Master,
+                identity.master_keys.keys,
+                identity.master_keys.signatures
+            )
+
+            self.save_cross_signing_keys(
+                i,
+                CrossSigningKeyType.SelfSign,
+                identity.self_signing_keys.keys,
+                identity.self_signing_keys.signatures
+            )
+
+            self.save_cross_signing_keys(
+                i,
+                CrossSigningKeyType.UserSign,
+                identity.user_signing_keys.keys,
+                identity.user_signing_keys.signatures
+            )
+
+    @use_database
+    def load_cross_signing_identities(self):
+        # type: () -> DeviceStore
+        """Load all the cross signing identities from the database.
+
+        Returns DeviceStore containing the OlmDevices with the device keys.
+        """
+        store = {}
+        account = self._get_account()
+
+        if not account:
+            return store
+
+        for i in account.cross_signing_identities:
+            user_id = i.user_id
+
+            master_keys: Dict[str, str] = {}
+            user_keys: Dict[str, str] = {}
+            self_keys: Dict[str, str] = {}
+
+            for key in i.keys:
+                if key.key_type == CrossSigningKeyType.Master:
+                    master_keys[key.key_id] = key.key
+                elif key.key_type == CrossSigningKeyType.UserSign:
+                    user_keys[key.key_id] = key.key
+                elif key.key_type == CrossSigningKeyType.SelfSign:
+                    self_keys[key.key_id] = key.key
+
+            master_signatures: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
+            user_signatures: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
+            self_signatures: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
+
+            for signature in i.signatures:
+                if signature.key_type == CrossSigningKeyType.Master:
+                    master_signatures[signature.user_id][signature.signing_key_id] = signature.signature
+                elif signature.key_type == CrossSigningKeyType.UserSign:
+                    user_signatures[signature.user_id][signature.signing_key_id] = signature.signature
+                elif signature.key_type == CrossSigningKeyType.SelfSign:
+                    self_signatures[signature.user_id][signature.signing_key_id] = signature.signature
+
+            master_keys = MasterPubkeys(
+                user_id,
+                i.main_key_id,
+                master_keys,
+                master_signatures
+            )
+
+            user_keys = UserSigningPubkeys(
+                user_id,
+                i.main_key_id,
+                user_keys,
+                user_signatures
+            )
+
+            self_keys = SelfSigningPubkeys(
+                user_id,
+                i.main_key_id,
+                self_keys,
+                self_signatures,
+            )
+
+            store[i.user_id] = UserIdentity(
+                user_id,
+                i.main_key_id,
+                master_keys,
+                user_keys,
+                self_keys,
+            )
+
+        return store
 
     @use_database
     def load_device_keys(self):

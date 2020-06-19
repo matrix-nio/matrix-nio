@@ -15,10 +15,10 @@ import time
 from builtins import bytes
 from datetime import datetime
 
-from peewee import (SQL, BlobField, BooleanField, CompositeKey,
+from peewee import (SQL, BlobField, BooleanField,
                     ForeignKeyField, IntegerField, Model, TextField)
 
-from ..crypto import TrustState
+from ..crypto import TrustState, CrossSigningKeyType
 
 
 class ByteField(BlobField):
@@ -42,6 +42,16 @@ class DeviceTrustField(IntegerField):
         return TrustState(value)
 
     def db_value(self, value):  # pragma: no cover
+        return value.value
+
+
+class CrossSigningKeyTypeField(IntegerField):
+    """Database field to hold the type of the cross signing key."""
+
+    def python_value(self, value):
+        return CrossSigningKeyType(value)
+
+    def db_value(self, value):
         return value.value
 
 
@@ -155,6 +165,48 @@ class DeviceTrustState(Model):
         backref="trust_state",
         column_name="device_id",
     )
+
+
+class CrossSigningIdentities(Model):
+    user_id = TextField()
+    main_key_id = TextField()
+    account = ForeignKeyField(
+        model=Accounts,
+        column_name="account_id",
+        backref="cross_signing_identities",
+        on_delete="CASCADE",
+    )
+
+
+class PublicCrossSigningKeys(Model):
+    key_id = TextField()
+    key = TextField()
+    key_type = CrossSigningKeyTypeField()
+    identity = ForeignKeyField(
+        model=CrossSigningIdentities,
+        column_name="identity",
+        backref="keys",
+        on_delete="CASCADE",
+    )
+
+    class Meta:
+        constraints = [SQL("UNIQUE(key_id,key)")]
+
+
+class CrossSigningSignatures(Model):
+    user_id = TextField()
+    signing_key_id = TextField()
+    signature = TextField()
+    key_type = CrossSigningKeyTypeField()
+    identity = ForeignKeyField(
+        model=CrossSigningIdentities,
+        column_name="identity",
+        backref="signatures",
+        on_delete="CASCADE",
+    )
+
+    class Meta:
+        constraints = [SQL("UNIQUE(user_id, signing_key_id)")]
 
 
 class MegolmInboundSessions(Model):
