@@ -317,8 +317,8 @@ class MatrixStore:
     def save_cross_signing_keys(self, identity, key_type, keys, signatures):
         for key_id, key in keys.items():
             PublicCrossSigningKeys.replace(
-                key_id=key_id,
                 key=key,
+                key_id=key_id,
                 key_type=key_type,
                 identity=identity
             ).execute()
@@ -351,7 +351,6 @@ class MatrixStore:
                 {
                     "account": account,
                     "user_id": user_id,
-                    "main_key_id": identity.main_key_id,
                 }
             )
 
@@ -429,29 +428,28 @@ class MatrixStore:
                     self_signatures[signature.user_id][signature.signing_key_id] = signature.signature
 
             masters = MasterPubkeys(
-                i.main_key_id,
+                user_id,
                 master_keys,
                 master_signatures,
                 [],
             )
 
             users = UserSigningPubkeys(
-                i.main_key_id,
+                user_id,
                 user_keys,
                 user_signatures,
                 [],
             )
 
             selfs = SelfSigningPubkeys(
-                i.main_key_id,
+                user_id,
                 self_keys,
                 self_signatures,
                 [],
             )
 
-            store[i.user_id] = UserIdentity(
+            store[user_id] = UserIdentity(
                 user_id,
-                i.main_key_id,
                 masters,
                 users,
                 selfs,

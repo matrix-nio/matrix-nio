@@ -169,7 +169,6 @@ class DeviceTrustState(Model):
 
 class CrossSigningIdentities(Model):
     user_id = TextField()
-    main_key_id = TextField()
     account = ForeignKeyField(
         model=Accounts,
         column_name="account_id",
@@ -179,8 +178,8 @@ class CrossSigningIdentities(Model):
 
 
 class PublicCrossSigningKeys(Model):
-    key_id = TextField()
     key = TextField()
+    key_id = TextField()
     key_type = CrossSigningKeyTypeField()
     identity = ForeignKeyField(
         model=CrossSigningIdentities,

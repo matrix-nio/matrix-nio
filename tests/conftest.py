@@ -26,6 +26,11 @@ def tempdir():
 
 
 @pytest.fixture
+def cross_signing_identity():
+    return helpers.faker.cross_signing_identity()
+
+
+@pytest.fixture
 def client(tempdir):
     return Client("ephemeral", "DEVICEID", tempdir)
 

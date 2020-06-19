@@ -2176,7 +2176,12 @@ class TestClass:
         event = bob.decrypt_megolm_event(megolm_event)
         assert isinstance(event, RoomMessageText)
 
-    def test_keys_query(self, olm_account):
+    def test_cross_signing_signatures(self, cross_signing_identity):
+        alice = cross_signing_identity
+
+        assert alice.user_signing_keys.verify_signature(alice.master_keys)
+
+    def test_keys_query_cross_signing(self, olm_account):
         parsed_dict = TestClass._load_response(
             "tests/data/keys_query_cross_signing.json")
         response = KeysQueryResponse.from_dict(parsed_dict)

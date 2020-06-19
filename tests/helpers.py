@@ -103,21 +103,21 @@ class Provider(BaseProvider):
         }
 
         master_keys = MasterPubkeys(
-            master.public_key,
+            user_id,
             master_keys["keys"],
             master_keys["signatures"],
             master_keys["usage"],
         )
 
         self_signing_keys = SelfSigningPubkeys(
-            self_signing.public_key,
+            user_id,
             self_signing_keys["keys"],
             self_signing_keys["signatures"],
             self_signing_keys["usage"],
         )
 
         user_signing_keys = UserSigningPubkeys(
-            user.public_key,
+            user_id,
             user_keys["keys"],
             user_keys["signatures"],
             user_keys["usage"],
@@ -125,7 +125,6 @@ class Provider(BaseProvider):
 
         return UserIdentity(
             user_id,
-            master.public_key,
             master_keys,
             user_signing_keys,
             self_signing_keys
