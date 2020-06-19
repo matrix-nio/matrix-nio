@@ -7,7 +7,13 @@ import time
 from datetime import datetime, timedelta
 
 import pytest
-from olm import Account, OlmMessage, OlmPreKeyMessage, OutboundGroupSession
+from olm import (
+    Account,
+    OlmMessage,
+    OlmPreKeyMessage,
+    OutboundGroupSession,
+    PkSigning
+)
 
 from nio.crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
                         Olm, OlmDevice, OutboundSession, OutgoingKeyRequest,
@@ -2180,6 +2186,13 @@ class TestClass:
         alice = cross_signing_identity
 
         assert alice.user_signing_keys.verify_signature(alice.master_keys)
+
+        fake_key = PkSigning(PkSigning.generate_seed())
+        alice.master_keys.keys = {
+            f"ed25519{fake_key.public_key}": fake_key.public_key
+        }
+
+        assert not alice.user_signing_keys.verify_signature(alice.master_keys)
 
     def test_keys_query_cross_signing(self, olm_account):
         parsed_dict = TestClass._load_response(
