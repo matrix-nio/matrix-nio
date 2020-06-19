@@ -390,13 +390,12 @@ class MatrixStore:
             )
 
     @use_database
-    def load_cross_signing_identities(self):
-        # type: () -> DeviceStore
+    def load_cross_signing_identities(self) -> Dict[str, UserIdentity]:
         """Load all the cross signing identities from the database.
 
         Returns DeviceStore containing the OlmDevices with the device keys.
         """
-        store = {}
+        store: Dict[str, UserIdentity] = {}
         account = self._get_account()
 
         if not account:
@@ -429,33 +428,33 @@ class MatrixStore:
                 elif signature.key_type == CrossSigningKeyType.SelfSign:
                     self_signatures[signature.user_id][signature.signing_key_id] = signature.signature
 
-            master_keys = MasterPubkeys(
-                user_id,
+            masters = MasterPubkeys(
                 i.main_key_id,
                 master_keys,
-                master_signatures
+                master_signatures,
+                [],
             )
 
-            user_keys = UserSigningPubkeys(
-                user_id,
+            users = UserSigningPubkeys(
                 i.main_key_id,
                 user_keys,
-                user_signatures
+                user_signatures,
+                [],
             )
 
-            self_keys = SelfSigningPubkeys(
-                user_id,
+            selfs = SelfSigningPubkeys(
                 i.main_key_id,
                 self_keys,
                 self_signatures,
+                [],
             )
 
             store[i.user_id] = UserIdentity(
                 user_id,
                 i.main_key_id,
-                master_keys,
-                user_keys,
-                self_keys,
+                masters,
+                users,
+                selfs,
             )
 
         return store

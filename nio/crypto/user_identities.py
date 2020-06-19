@@ -30,7 +30,7 @@ class CrossSigningKeyType(Enum):
 class CrossSigningPubkey:
     key_id: str = field()
     keys: Dict[str, str] = field()
-    signatures: Dict[str, str] = field()
+    signatures: Dict[str, Dict[str, str]] = field()
     usage: List[str] = field()
 
 
