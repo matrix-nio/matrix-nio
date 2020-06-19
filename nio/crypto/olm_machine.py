@@ -178,6 +178,10 @@ class Olm:
         # for room message encryption are shared this way).
         self.session_store: SessionStore = SessionStore()
 
+        # A dictionary holding a mapping from the user id to the cross signing
+        # user identity.
+        self.cross_signing_store: Dict[str, UserIdentity] = {}
+
         # This store holds all the encryption keys that are used to decrypt
         # room messages. An encryption key gets added to the store either if we
         # add our own locally or if it gets shared usin 1on1 Olm sessions with
@@ -947,6 +951,8 @@ class Olm:
         return (master, user_signing, self_signing)
 
     def _handle_cross_signing_keys(self, response: KeysQueryResponse):
+        changed = {}
+
         for user_id in response.master_keys:
             master_keys = response.master_keys.get(user_id, {})
             user_keys = response.user_signing_keys.get(user_id, {})
@@ -968,9 +974,11 @@ class Olm:
                 identity = UserIdentity(
                     user_id, master.key_id, master, user_signing, self_signing
                 )
-                # TODO store the identity
+                changed[user_id] = identity
+                self.cross_signing_store[user_id] = identity
+                logger.debug(f"Created a new identity for {user_id}, {identity}")
 
-            logger.debug(f"Created a new identity for {user_id}, {identity}")
+            self.store.save_cross_signing_identities(changed)
 
     # This function is copyrighted under the Apache 2.0 license Zil0
     def _handle_key_query(self, response: KeysQueryResponse):
@@ -2156,6 +2164,7 @@ class Olm:
         self.inbound_group_store = self.store.load_inbound_group_sessions()
         self.device_store = self.store.load_device_keys()
         self.outgoing_key_requests = self.store.load_outgoing_key_requests()
+        self.cross_signing_store = self.store.load_cross_signing_identities()
 
     def save_session(self, curve_key: str, session: Session):
         self.store.save_session(curve_key, session)

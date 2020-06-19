@@ -1,0 +1,97 @@
+{
+  "device_keys": {
+    "@alice:example.org": {
+      "JLAFKJWSCS": {
+          "algorithms": [
+              "m.olm.v1.curve25519-aes-sha2",
+              "m.megolm.v1.aes-sha2"
+          ],
+          "device_id": "JLAFKJWSCS",
+          "user_id": "@alice:example.org",
+          "keys": {
+              "curve25519:JLAFKJWSCS": "wjLpTLRqbqBzLs63aYaEv2Boi6cFEbbM/sSRQ2oAKk4",
+              "ed25519:JLAFKJWSCS": "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
+          },
+          "signatures": {
+              "@alice:example.org": {
+                  "ed25519:JLAFKJWSCS": "m53Wkbh2HXkc3vFApZvCrfXcX3AI51GsDHustMhKwlv3TuOJMj4wistcOTM8q2+e/Ro7rWFUb9ZfnNbwptSUBA"
+              }
+          },
+          "unsigned": {
+              "device_display_name": "Alice's mobile phone"
+          }
+      }
+    },
+    "@carol:example.org": {
+      "AZERTYUIOP": {
+          "algorithms": [
+              "m.olm.v1.curve25519-aes-sha2",
+              "m.megolm.v1.aes-sha2"
+          ],
+          "device_id": "AZERTYUIOP",
+          "user_id": "@carol:example.org",
+          "keys": {
+              "curve25519:AZERTYUIOP": "zjLpTLRqbqBzLs63aYaEv2Boi6cFEbbM/sSRQ2oAKk4",
+              "ed25519:AZERTYUIOP": "zE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
+          },
+          "signatures": {
+              "@carol:example.org": {
+                  "ed25519:AZERTYUIOP": "z53Wkbh2HXkc3vFApZvCrfXcX3AI51GsDHustMhKwlv3TuOJMj4wistcOTM8q2+e/Ro7rWFUb9ZfnNbwptSUBA"
+              }
+          },
+          "unsigned": {
+              "device_display_name": "Carol's typewriter"
+          }
+      }
+    }
+  },
+  "master_keys": {
+        "@example:localhost": {
+            "keys": {
+                "ed25519:rJ2TAGkEOP6dX41Ksll6cl8K3J48l8s/59zaXyvl2p0": "rJ2TAGkEOP6dX41Ksll6cl8K3J48l8s/59zaXyvl2p0"
+            },
+            "signatures": {
+                "@example:localhost": {
+                    "ed25519:WSKKLTJZCL": "ZzJp1wtmRdykXAUEItEjNiFlBrxx8L6/Vaen9am8AuGwlxxJtOkuY4m+4MPLvDPOgavKHLsrRuNLAfCeakMlCQ"
+                }
+            },
+            "usage": [
+                "master"
+            ],
+            "user_id": "@example:localhost"
+        }
+  },
+  "self_signing_keys": {
+        "@example:localhost": {
+            "keys": {
+                "ed25519:0C8lCBxrvrv/O7BQfsKnkYogHZX3zAgw3RfJuyiq210": "0C8lCBxrvrv/O7BQfsKnkYogHZX3zAgw3RfJuyiq210"
+            },
+            "signatures": {
+                "@example:localhost": {
+                    "ed25519:rJ2TAGkEOP6dX41Ksll6cl8K3J48l8s/59zaXyvl2p0": "AC7oDUW4rUhtInwb4lAoBJ0wAuu4a5k+8e34B5+NKsDB8HXRwgVwUWN/MRWc/sJgtSbVlhzqS9THEmQQ1C51Bw"
+                }
+            },
+            "usage": [
+                "self_signing"
+            ],
+            "user_id": "@example:localhost"
+        }
+  },
+  "user_signing_keys": {
+        "@example:localhost": {
+            "keys": {
+                "ed25519:DU9z4gBFKFKCk7a13sW9wjT0Iyg7Hqv5f0BPM7DEhPo": "DU9z4gBFKFKCk7a13sW9wjT0Iyg7Hqv5f0BPM7DEhPo"
+            },
+            "signatures": {
+                "@example:localhost": {
+                    "ed25519:rJ2TAGkEOP6dX41Ksll6cl8K3J48l8s/59zaXyvl2p0": "C4L2sx9frGqj8w41KyynHGqwUbbwBYRZpYCB+6QWnvQFA5Oi/1PJj8w5anwzEsoO0TWmLYmf7FXuAGewanOWDg"
+                }
+            },
+            "usage": [
+                "user_signing"
+            ],
+            "user_id": "@example:localhost"
+        }
+  },
+  "failures": {}
+}

@@ -2175,3 +2175,16 @@ class TestClass:
         bob.handle_to_device_event(forwarded_key_event)
         event = bob.decrypt_megolm_event(megolm_event)
         assert isinstance(event, RoomMessageText)
+
+    def test_keys_query(self, olm_account):
+        parsed_dict = TestClass._load_response(
+            "tests/data/keys_query_cross_signing.json")
+        response = KeysQueryResponse.from_dict(parsed_dict)
+
+        assert isinstance(response, KeysQueryResponse)
+
+        olm_account.handle_response(response)
+
+        example = olm_account.cross_signing_store["@example:localhost"]
+
+        assert example.master_keys
