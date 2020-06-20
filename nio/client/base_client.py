@@ -372,6 +372,25 @@ class Client:
             if self.config.store_sync_tokens:
                 self.loaded_sync_token = self.store.load_sync_token()
 
+    def restore_login(
+        self,
+        user_id: str,
+        device_id: str,
+        access_token: str,
+    ):
+        """Restore a previous login to the homeserver.
+
+        Args:
+           user_id (str): The full mxid of the current user.
+           device_id (str): An unique identifier that distinguishes
+               this client instance.
+           access_token (str): Token authorizing the user with the server.
+        """
+        self.user_id = user_id
+        self.device_id = device_id
+        self.access_token = access_token
+        self.load_store()
+
     def room_contains_unverified(self, room_id: str) -> bool:
         """Check if a room contains unverified devices.
 
