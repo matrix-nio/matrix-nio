@@ -948,7 +948,7 @@ class Api:
         if isinstance(direction, str):
             if direction in ("b", "back"):
                 direction = MessageDirection.back
-            elif direction in ("f", "fron"):
+            elif direction in ("f", "front"):
                 direction = MessageDirection.front
             else:
                 raise ValueError("Invalid direction")
