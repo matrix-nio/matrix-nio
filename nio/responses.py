@@ -1685,7 +1685,7 @@ class SyncResponse(Response):
     @staticmethod
     def _get_presence(parsed_dict) -> List[PresenceEvent]:
         presence_events = []
-        for presence_dict in parsed_dict["presence"]["events"]:
+        for presence_dict in parsed_dict.get("presence", {}).get("events", []):
             presence_events.append(PresenceEvent.from_dict(presence_dict))
 
         return presence_events

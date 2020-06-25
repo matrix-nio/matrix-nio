@@ -5,15 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.14.0 - 2020-06-21
+
+### Added
+
+- [[#166]] Add a method to restore the login with an access token.
 
 ### Changed
 
 - [[#159]] Allow whitespace in HTTP headers in the HttpClient.
 - [[42e70de]] Fix the creation of PresenceGetError responses.
+- [[bf60bd1]] Split out the bulk of the key verification events into a common module.
+- [[9a01396]] Don't require the presence dict to be in the sync response.
 
+
+### Removed
+
+- [[cc789f6]] Remove the PartialSyncResponse. This is a breaking change, but
+  hopefully nobody used this.
+
+[#166]: https://github.com/poljar/matrix-nio/pull/166
 [#159]: https://github.com/poljar/matrix-nio/pull/159
 [42e70de]: https://github.com/poljar/matrix-nio/commit/42e70dea945ae97b69b41d49cb57f64c3b6bd1c4
+[cc789f6]: https://github.com/poljar/matrix-nio/commit/cc789f665063b38be5b4146855e5204e9bc5bdb6
+[bf60bd1]: https://github.com/poljar/matrix-nio/commit/bf60bd19a15429dc03616b9be11c3a205768e5ad
+[9a01396]: https://github.com/poljar/matrix-nio/commit/9a0139673329fb82abc59496025d78a34b419b77
 
 ## 0.13.0 - 2020-06-05
 

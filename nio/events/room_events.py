@@ -437,7 +437,7 @@ class CallCandidatesEvent(CallEvent):
     @classmethod
     @verify(Schemas.call_candidates)
     def from_dict(cls, event_dict):
-        content = event_dict.pop("content")
+        content = event_dict.get("content", {})
         return cls(
             event_dict,
             content["call_id"],
@@ -473,7 +473,7 @@ class CallInviteEvent(CallEvent):
     @classmethod
     @verify(Schemas.call_invite)
     def from_dict(cls, event_dict):
-        content = event_dict.pop("content")
+        content = event_dict.get("content", {})
         return cls(
             event_dict,
             content["call_id"],
@@ -501,7 +501,7 @@ class CallAnswerEvent(CallEvent):
     @classmethod
     @verify(Schemas.call_answer)
     def from_dict(cls, event_dict):
-        content = event_dict.pop("content")
+        content = event_dict.get("content", {})
         return cls(
             event_dict,
             content["call_id"],
@@ -523,8 +523,8 @@ class CallHangupEvent(CallEvent):
     @classmethod
     @verify(Schemas.call_hangup)
     def from_dict(cls, event_dict):
-        content = event_dict.pop("content")
-        return cls(event_dict, content["call_id"], content["version"],)
+        content = event_dict.get("content", {})
+        return cls(event_dict, content["call_id"], content["version"])
 
 
 @dataclass
@@ -989,7 +989,7 @@ class RoomMessageUnknown(RoomMessage):
         return cls(
             parsed_dict,
             parsed_dict["content"]["msgtype"],
-            parsed_dict.pop("content"),
+            parsed_dict.get("content", {}),
         )
 
     @property
@@ -1318,8 +1318,8 @@ class PowerLevelsEvent(Event):
     def from_dict(cls, parsed_dict):
         default_levels = DefaultLevels.from_dict(parsed_dict)
 
-        users = parsed_dict["content"].pop("users")
-        events = parsed_dict["content"].pop("events")
+        users = parsed_dict["content"].get("users", {})
+        events = parsed_dict["content"].get("events", {})
 
         levels = PowerLevels(default_levels, users, events)
 
@@ -1382,7 +1382,7 @@ class RoomMemberEvent(Event):
     @verify(Schemas.room_membership)
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[RoomMemberEvent, BadEventType]
-        content = parsed_dict.pop("content")
+        content = parsed_dict.get("content", {})
         unsigned = parsed_dict.get("unsigned", {})
         prev_content = unsigned.get("prev_content", None)
 

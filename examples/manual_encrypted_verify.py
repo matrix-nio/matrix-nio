@@ -43,29 +43,13 @@ BOB_DEVICE_IDS = [
     "URDEVICEID",
     ]
 
-BOB_ID = "@phil:denhoff.ca"
-BOB_DEVICE_IDS = [
-    # You can find these in Riot under Settings > Security & Privacy.
-    # They may also be called "session IDs". You'll want to add ALL of them here
-    # for the one other user in your encrypted room
-    "FWIYREXSGP",
-    "ITPUNWYKJE",
-    "KENYSBIIPY",
-    "YELSRWSWHX",
-    ]
-
 # the ID of the room you want your bot to join and send commands in.
 # This can be a direct message or room; Matrix treats them the same
 ROOM_ID = "!myfavouriteroom:example.org"
-ROOM_ID = "!kifpxjVYatUcoVRMkB:denhoff.ca"
 
 ALICE_USER_ID = "@alice:example.org"
 ALICE_HOMESERVER = "https://matrix.example.org"
 ALICE_PASSWORD = "hunter2"
-
-ALICE_USER_ID = "@olive:denhoff.ca"
-ALICE_HOMESERVER = "https://matrix.denhoff.ca"
-ALICE_PASSWORD = "I0$aO5viUP9e0LfS"
 
 class CustomEncryptedClient(AsyncClient):
     def __init__(self, homeserver, user='', device_id='', store_path='', config=None, ssl=None, proxy=None):
