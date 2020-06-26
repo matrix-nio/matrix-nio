@@ -19,7 +19,7 @@ from dataclasses import dataclass, field, asdict
 
 from enum import Enum
 from collections import defaultdict
-from typing import DefaultDict, Dict, KeysView, Iterator, Optional
+from typing import DefaultDict, Dict, KeysView, Iterator, Optional, List
 
 
 # TODO document the values better.
@@ -68,6 +68,7 @@ class OlmDevice:
     user_id: str = field()
     device_id: str = field()
     keys: Dict[str, str] = field()
+    algorithms: List[str] = field()
     signatures: Dict[str, Dict[str, str]] = field(default_factory=dict)
     display_name: str = ""
     deleted: bool = False

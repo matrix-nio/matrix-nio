@@ -76,7 +76,8 @@ class TestClass:
             BOB_ID,
             BOB_DEVICE,
             {f"ed25519:{BOB_DEVICE}": BOB_ONETIME,
-             f"curve25519:{BOB_DEVICE}": BOB_CURVE}
+             f"curve25519:{BOB_DEVICE}": BOB_CURVE},
+            ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
         )
 
         devices[BOB_ID][BOB_DEVICE] = bob_device

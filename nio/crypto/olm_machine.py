@@ -1016,6 +1016,7 @@ class Olm:
 
                 user_devices = self.device_store[user_id]
                 signatures = payload.get("signatures", {})
+                algorithms = payload.get("algorithms", [])
 
                 try:
                     device = user_devices[device_id]
@@ -1029,7 +1030,8 @@ class Olm:
                             user_id,
                             device_id,
                             key_dict,
-                            signatures,
+                            algorithms=algorithms,
+                            signatures=signatures,
                             display_name=display_name,
                         )
                     )

@@ -20,17 +20,27 @@ bob_keys = faker.olm_key_pair(bob_device_id)
 alice_device = OlmDevice(
     alice_id,
     alice_device_id,
-    alice_keys
+    alice_keys,
+    ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
 )
 
 bob_device = OlmDevice(
     bob_id,
     bob_device_id,
-    bob_keys
+    bob_keys,
+    ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
 )
 
 
 class TestClass:
+    def device_from_machine(self, machine):
+        return OlmDevice(
+            machine.user_id,
+            machine.device_id,
+            machine.account.identity_keys,
+            ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
+        )
+
     def test_sas_creation(self):
         alice = Sas(
             alice_id,
@@ -706,11 +716,7 @@ class TestClass:
             )
 
     def test_client_full_sas(self, olm_machine):
-        alice_device = OlmDevice(
-            olm_machine.user_id,
-            olm_machine.device_id,
-            olm_machine.account.identity_keys
-        )
+        alice_device = self.device_from_machine(olm_machine)
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
         bob_sas = Sas(
             bob_id,
@@ -779,11 +785,7 @@ class TestClass:
         assert alice_sas.verified
 
     def test_client_invalid_key(self, olm_machine):
-        alice_device = OlmDevice(
-            olm_machine.user_id,
-            olm_machine.device_id,
-            olm_machine.account.identity_keys
-        )
+        alice_device = self.device_from_machine(olm_machine)
         bob_sas = Sas(
             bob_id,
             bob_device_id,
@@ -845,11 +847,7 @@ class TestClass:
             alice_sas.accept_sas()
 
     def test_client_full_we_start(self, olm_machine):
-        alice_device = OlmDevice(
-            olm_machine.user_id,
-            olm_machine.device_id,
-            olm_machine.account.identity_keys
-        )
+        alice_device = self.device_from_machine(olm_machine)
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         start = {
@@ -911,11 +909,7 @@ class TestClass:
         assert olm_machine.is_device_verified(bob_device)
 
     def test_client_unknown_device(self, olm_machine):
-        alice_device = OlmDevice(
-            olm_machine.user_id,
-            olm_machine.device_id,
-            olm_machine.account.identity_keys
-        )
+        alice_device = self.device_from_machine(olm_machine)
 
         bob_device = faker.olm_device()
 
@@ -937,11 +931,7 @@ class TestClass:
         assert bob_device.user_id in olm_machine.users_for_key_query
 
     def test_client_unsupported_method(self, olm_machine):
-        alice_device = OlmDevice(
-            olm_machine.user_id,
-            olm_machine.device_id,
-            olm_machine.account.identity_keys
-        )
+        alice_device = self.device_from_machine(olm_machine)
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         bob_sas = Sas(
@@ -969,11 +959,7 @@ class TestClass:
         )
 
     def test_client_unknown_txid(self, olm_machine):
-        alice_device = OlmDevice(
-            olm_machine.user_id,
-            olm_machine.device_id,
-            olm_machine.account.identity_keys
-        )
+        alice_device = self.device_from_machine(olm_machine)
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         bob_sas = Sas(
@@ -1006,11 +992,7 @@ class TestClass:
         )
 
     def test_client_accept_cancel(self, olm_machine):
-        alice_device = OlmDevice(
-            olm_machine.user_id,
-            olm_machine.device_id,
-            olm_machine.account.identity_keys
-        )
+        alice_device = self.device_from_machine(olm_machine)
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         start = {
@@ -1041,11 +1023,7 @@ class TestClass:
         assert alice_sas.canceled
 
     def test_client_cancel_event(self, olm_machine):
-        alice_device = OlmDevice(
-            olm_machine.user_id,
-            olm_machine.device_id,
-            olm_machine.account.identity_keys
-        )
+        alice_device = self.device_from_machine(olm_machine)
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         start = {
@@ -1077,11 +1055,7 @@ class TestClass:
         assert alice_sas.transaction_id not in olm_machine.key_verifications
 
     def test_key_cancel(self, olm_machine):
-        alice_device = OlmDevice(
-            olm_machine.user_id,
-            olm_machine.device_id,
-            olm_machine.account.identity_keys
-        )
+        alice_device = self.device_from_machine(olm_machine)
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         bob_sas = Sas(
@@ -1120,11 +1094,7 @@ class TestClass:
         )
 
     def test_duplicate_verification(self, olm_machine):
-        alice_device = OlmDevice(
-            olm_machine.user_id,
-            olm_machine.device_id,
-            olm_machine.account.identity_keys
-        )
+        alice_device = self.device_from_machine(olm_machine)
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         bob_sas = Sas(
@@ -1168,11 +1138,7 @@ class TestClass:
         assert sas not in olm_machine.key_verifications.values()
 
     def test_full_sas_key_agreement_v1(self, olm_machine):
-        alice_device = OlmDevice(
-            olm_machine.user_id,
-            olm_machine.device_id,
-            olm_machine.account.identity_keys
-        )
+        alice_device = self.device_from_machine(olm_machine)
 
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
         bob_sas = Sas(

@@ -87,6 +87,13 @@ class TestClass:
             "content": olm_content,
         }
 
+    def device_from_client(self, client):
+        return OlmDevice(
+            client.user_id,
+            client.device_id,
+            {f"{key_type}:{client.device_id}": key for key_type, key in client.olm.account.identity_keys.items()},
+            ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
+        )
 
     @staticmethod
     def _load_response(filename):
@@ -1000,7 +1007,8 @@ class TestClass:
         alice_device = OlmDevice(
             ALICE_ID,
             ALICE_DEVICE_ID,
-            {f"{key_type}:{ALICE_DEVICE_ID}": key for key_type, key in alice_client.olm.account.identity_keys.items()}
+            {f"{key_type}:{ALICE_DEVICE_ID}": key for key_type, key in alice_client.olm.account.identity_keys.items()},
+            ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
         )
 
         async_client.device_store.add(alice_device)
@@ -1033,7 +1041,8 @@ class TestClass:
         alice_device = OlmDevice(
             ALICE_ID,
             ALICE_DEVICE_ID,
-            {f"{key_type}:{ALICE_DEVICE_ID}": key for key_type, key in alice_client.olm.account.identity_keys}
+            {f"{key_type}:{ALICE_DEVICE_ID}": key for key_type, key in alice_client.olm.account.identity_keys},
+            ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
         )
 
         async_client.device_store.add(alice_device)
@@ -2467,18 +2476,8 @@ class TestClass:
         await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in
-                alice.olm.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in
-                bob.olm.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_client(alice)
+        bob_device = self.device_from_client(bob)
 
         alice.olm.device_store.add(bob_device)
         bob.olm.device_store.add(alice_device)
@@ -2715,18 +2714,8 @@ class TestClass:
         await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in
-                alice.olm.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in
-                bob.olm.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_client(alice)
+        bob_device = self.device_from_client(bob)
 
         alice.olm.device_store.add(bob_device)
         bob.olm.device_store.add(alice_device)
@@ -2893,18 +2882,8 @@ class TestClass:
         await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in
-                alice.olm.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in
-                bob.olm.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_client(alice)
+        bob_device = self.device_from_client(bob)
 
         alice.olm.device_store.add(bob_device)
         bob.olm.device_store.add(alice_device)
@@ -3182,18 +3161,8 @@ class TestClass:
         await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in
-                alice.olm.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in
-                bob.olm.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_client(alice)
+        bob_device = self.device_from_client(bob)
 
         def key_request_cb(event):
             print(event)
@@ -3369,18 +3338,8 @@ class TestClass:
         await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in
-                alice.olm.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in
-                bob.olm.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_client(alice)
+        bob_device = self.device_from_client(bob)
 
         alice.olm.device_store.add(bob_device)
         bob.olm.device_store.add(alice_device)
@@ -3444,18 +3403,8 @@ class TestClass:
         await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in
-                alice.olm.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in
-                bob.olm.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_client(alice)
+        bob_device = self.device_from_client(bob)
 
         alice.olm.device_store.add(bob_device)
         bob.olm.device_store.add(alice_device)
@@ -3609,18 +3558,8 @@ class TestClass:
         await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in
-                alice.olm.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in
-                bob.olm.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_client(alice)
+        bob_device = self.device_from_client(bob)
 
         alice.olm.device_store.add(bob_device)
         bob.olm.device_store.add(alice_device)
@@ -3795,18 +3734,8 @@ class TestClass:
 
         alice.add_event_callback(alice_event_cb, (RoomMessageText, MegolmEvent))
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in
-                alice.olm.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in
-                bob.olm.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_client(alice)
+        bob_device = self.device_from_client(bob)
 
         alice.olm.device_store.add(bob_device)
         bob.olm.device_store.add(alice_device)

@@ -138,11 +138,13 @@ class Provider(BaseProvider):
         user_id = faker.mx_id()
         device_id = faker.device_id()
         key_pair = faker.olm_key_pair(device_id)
+        algorithms = ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
 
         return OlmDevice(
             user_id,
             device_id,
             key_pair,
+            algorithms,
         )
 
     def ed25519_key(self):

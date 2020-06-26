@@ -48,7 +48,8 @@ def olm_machine():
     bob_device = OlmDevice(
             BOB_DEVICE,
             BOB_DEVICE_ID,
-            {f"{key_type}:{BOB_DEVICE_ID}": key for key_type, key in key_pair.items()}
+            {f"{key_type}:{BOB_DEVICE_ID}": key for key_type, key in key_pair.items()},
+            ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
         )
 
     store = SqliteMemoryStore(ALICE_ID, ALICE_DEVICE_ID)

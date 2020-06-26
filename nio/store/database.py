@@ -22,26 +22,55 @@ from dataclasses import dataclass, field
 from peewee import DoesNotExist, SqliteDatabase
 from playhouse.sqliteq import SqliteQueueDatabase
 
-from . import (Accounts, DeviceKeys, DeviceKeys_v1, DeviceTrustState,
-               EncryptedRooms, ForwardedChains, Key, Keys, KeyStore,
-               MegolmInboundSessions, OlmSessions, OutgoingKeyRequests,
-               DeviceSignatures, CrossSigningIdentities, CrossSigningSignatures,
-               PublicCrossSigningKeys, StoreVersion, SyncTokens)
-from ..crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
-                      OlmAccount, OlmDevice, OutgoingKeyRequest, Session,
-                      SessionStore, TrustState, UserIdentity,
-                      CrossSigningKeyType, MasterPubkeys, SelfSigningPubkeys,
-                      UserSigningPubkeys)
+from . import (
+    Accounts,
+    DeviceKeys,
+    DeviceKeys_v1,
+    DeviceTrustState,
+    EncryptedRooms,
+    ForwardedChains,
+    Key,
+    Keys,
+    KeyStore,
+    MegolmInboundSessions,
+    OlmSessions,
+    OutgoingKeyRequests,
+    DeviceSignatures,
+    CrossSigningIdentities,
+    CrossSigningSignatures,
+    PublicCrossSigningKeys,
+    StoreVersion,
+    SyncTokens,
+    Algorithms,
+)
+from ..crypto import (
+    DeviceStore,
+    GroupSessionStore,
+    InboundGroupSession,
+    OlmAccount,
+    OlmDevice,
+    OutgoingKeyRequest,
+    Session,
+    SessionStore,
+    TrustState,
+    UserIdentity,
+    CrossSigningKeyType,
+    MasterPubkeys,
+    SelfSigningPubkeys,
+    UserSigningPubkeys,
+)
 
 
 def use_database(fn):
     """
     Ensure that the correct database context is used for the wrapped function.
     """
+
     @wraps(fn)
     def inner(self, *args, **kwargs):
         with self.database.bind_ctx(self.models):
             return fn(self, *args, **kwargs)
+
     return inner
 
 
@@ -60,6 +89,7 @@ def use_database_atomic(fn):
             else:
                 with self.database.atomic():
                     return fn(self, *args, **kwargs)
+
     return inner
 
 
@@ -69,6 +99,7 @@ class MatrixStore:
 
     models = [
         Accounts,
+        Algorithms,
         OlmSessions,
         MegolmInboundSessions,
         ForwardedChains,
@@ -96,18 +127,14 @@ class MatrixStore:
     def _create_database(self):
         return SqliteDatabase(
             self.database_path,
-            pragmas={
-                "foreign_keys": 1,
-                "secure_delete": 1,
-            }
+            pragmas={"foreign_keys": 1, "secure_delete": 1,},
         )
 
     def upgrate_to_v2(self):
         with self.database.bind_ctx([DeviceKeys_v1]):
-            self.database.drop_tables([
-                DeviceTrustState,
-                DeviceKeys_v1,
-            ], safe=True)
+            self.database.drop_tables(
+                [DeviceTrustState, DeviceKeys_v1,], safe=True
+            )
 
         with self.database.bind_ctx(self.models):
             self.database.create_tables([DeviceKeys, DeviceTrustState])
@@ -115,8 +142,7 @@ class MatrixStore:
 
     def __post_init__(self):
         self.database_name = self.database_name or "{}_{}.db".format(
-            self.user_id,
-            self.device_id
+            self.user_id, self.device_id
         )
         self.database_path = os.path.join(self.store_path, self.database_name)
         self.database = self._create_database()
@@ -152,7 +178,7 @@ class MatrixStore:
         try:
             return Accounts.get(
                 Accounts.user_id == self.user_id,
-                Accounts.device_id == self.device_id
+                Accounts.device_id == self.device_id,
             )
         except DoesNotExist:
             return None
@@ -172,9 +198,7 @@ class MatrixStore:
             return None
 
         return OlmAccount.from_pickle(
-            account.account,
-            self.pickle_key,
-            account.shared
+            account.account, self.pickle_key, account.shared
         )
 
     @use_database
@@ -189,13 +213,13 @@ class MatrixStore:
             user_id=self.user_id,
             device_id=self.device_id,
             shared=account.shared,
-            account=account.pickle(self.pickle_key)
+            account=account.pickle(self.pickle_key),
         ).on_conflict_ignore().execute()
 
         Accounts.update(
             {
                 Accounts.account: account.pickle(self.pickle_key),
-                Accounts.shared: account.shared
+                Accounts.shared: account.shared,
             }
         ).where(
             (Accounts.user_id == self.user_id)
@@ -220,9 +244,7 @@ class MatrixStore:
 
         for s in account.olm_sessions:
             session = Session.from_pickle(
-                s.session,
-                s.creation_time,
-                self.pickle_key
+                s.session, s.creation_time, self.pickle_key
             )
             session_store.add(s.sender_key, session)
 
@@ -246,7 +268,7 @@ class MatrixStore:
             session=session.pickle(self.pickle_key),
             session_id=session.id,
             creation_time=session.creation_time,
-            last_usage_date=session.use_time
+            last_usage_date=session.use_time,
         ).execute()
 
     @use_database
@@ -272,7 +294,7 @@ class MatrixStore:
                 s.sender_key,
                 s.room_id,
                 self.pickle_key,
-                [chain.sender_key for chain in s.forwarded_chains]
+                [chain.sender_key for chain in s.forwarded_chains],
             )
             store.add(session)
 
@@ -294,33 +316,23 @@ class MatrixStore:
             fp_key=session.ed25519,
             room_id=session.room_id,
             session=session.pickle(self.pickle_key),
-            session_id=session.id
+            session_id=session.id,
         ).on_conflict_ignore().execute()
 
         MegolmInboundSessions.update(
-            {
-                MegolmInboundSessions.session: session.pickle(
-                    self.pickle_key
-                )
-            }
-        ).where(
-            MegolmInboundSessions.session_id == session.id
-        ).execute()
+            {MegolmInboundSessions.session: session.pickle(self.pickle_key)}
+        ).where(MegolmInboundSessions.session_id == session.id).execute()
 
         # TODO, use replace many here
         for chain in session.forwarding_chain:
             ForwardedChains.replace(
-                sender_key=chain,
-                session=session.id
+                sender_key=chain, session=session.id
             ).execute()
 
     def save_cross_signing_keys(self, identity, key_type, keys, signatures):
         for key_id, key in keys.items():
             PublicCrossSigningKeys.replace(
-                key=key,
-                key_id=key_id,
-                key_type=key_type,
-                identity=identity
+                key=key, key_id=key_id, key_type=key_type, identity=identity
             ).execute()
 
         for user_id, signatures_dict in signatures.items():
@@ -334,7 +346,9 @@ class MatrixStore:
                 ).execute()
 
     @use_database_atomic
-    def save_cross_signing_identities(self, identities: Dict[str, UserIdentity]):
+    def save_cross_signing_identities(
+        self, identities: Dict[str, UserIdentity]
+    ):
         """Save the provided cross signing identities in the database.
 
         Args:
@@ -348,18 +362,17 @@ class MatrixStore:
 
         for user_id, identity in identities.items():
             rows.append(
-                {
-                    "account": account,
-                    "user_id": user_id,
-                }
+                {"account": account, "user_id": user_id,}
             )
 
         if not rows:
             return
 
         for idx in range(0, len(rows), 100):
-            data = rows[idx:idx + 100]
-            CrossSigningIdentities.insert_many(data).on_conflict_ignore().execute()
+            data = rows[idx : idx + 100]
+            CrossSigningIdentities.insert_many(
+                data
+            ).on_conflict_ignore().execute()
 
         for user_id, identity in identities.items():
             i = CrossSigningIdentities.get(
@@ -371,21 +384,21 @@ class MatrixStore:
                 i,
                 CrossSigningKeyType.Master,
                 identity.master_keys.keys,
-                identity.master_keys.signatures
+                identity.master_keys.signatures,
             )
 
             self.save_cross_signing_keys(
                 i,
                 CrossSigningKeyType.SelfSign,
                 identity.self_signing_keys.keys,
-                identity.self_signing_keys.signatures
+                identity.self_signing_keys.signatures,
             )
 
             self.save_cross_signing_keys(
                 i,
                 CrossSigningKeyType.UserSign,
                 identity.user_signing_keys.keys,
-                identity.user_signing_keys.signatures
+                identity.user_signing_keys.signatures,
             )
 
     @use_database
@@ -415,45 +428,43 @@ class MatrixStore:
                 elif key.key_type == CrossSigningKeyType.SelfSign:
                     self_keys[key.key_id] = key.key
 
-            master_signatures: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
-            user_signatures: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
-            self_signatures: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
+            master_signatures: DefaultDict[str, Dict[str, str]] = defaultdict(
+                dict
+            )
+            user_signatures: DefaultDict[str, Dict[str, str]] = defaultdict(
+                dict
+            )
+            self_signatures: DefaultDict[str, Dict[str, str]] = defaultdict(
+                dict
+            )
 
             for signature in i.signatures:
                 if signature.key_type == CrossSigningKeyType.Master:
-                    master_signatures[signature.user_id][signature.signing_key_id] = signature.signature
+                    master_signatures[signature.user_id][
+                        signature.signing_key_id
+                    ] = signature.signature
                 elif signature.key_type == CrossSigningKeyType.UserSign:
-                    user_signatures[signature.user_id][signature.signing_key_id] = signature.signature
+                    user_signatures[signature.user_id][
+                        signature.signing_key_id
+                    ] = signature.signature
                 elif signature.key_type == CrossSigningKeyType.SelfSign:
-                    self_signatures[signature.user_id][signature.signing_key_id] = signature.signature
+                    self_signatures[signature.user_id][
+                        signature.signing_key_id
+                    ] = signature.signature
 
             masters = MasterPubkeys(
-                user_id,
-                master_keys,
-                master_signatures,
-                [],
+                user_id, master_keys, master_signatures, [],
             )
 
             users = UserSigningPubkeys(
-                user_id,
-                user_keys,
-                user_signatures,
-                [],
+                user_id, user_keys, user_signatures, [],
             )
 
             selfs = SelfSigningPubkeys(
-                user_id,
-                self_keys,
-                self_signatures,
-                [],
+                user_id, self_keys, self_signatures, [],
             )
 
-            store[user_id] = UserIdentity(
-                user_id,
-                masters,
-                users,
-                selfs,
-            )
+            store[user_id] = UserIdentity(user_id, masters, users, selfs,)
 
         return store
 
@@ -476,14 +487,22 @@ class MatrixStore:
             for s in d.signatures:
                 signatures[s.user_id][s.key_id] = s.signature
 
-            store.add(OlmDevice(
-                d.user_id,
-                d.device_id,
-                {k.key_type if ":" in k.key_type else f"{k.key_type}:{d.device_id}": k.key for k in d.keys},
-                signatures,
-                display_name=d.display_name,
-                deleted=d.deleted,
-            ))
+            store.add(
+                OlmDevice(
+                    d.user_id,
+                    d.device_id,
+                    {
+                        k.key_type
+                        if ":" in k.key_type
+                        else f"{k.key_type}:{d.device_id}": k.key
+                        for k in d.keys
+                    },
+                    [a.algorithm for a in d.algorithms],
+                    signatures,
+                    display_name=d.display_name,
+                    deleted=d.deleted,
+                )
+            )
 
         return store
 
@@ -516,7 +535,7 @@ class MatrixStore:
             return
 
         for idx in range(0, len(rows), 100):
-            data = rows[idx:idx + 100]
+            data = rows[idx : idx + 100]
             DeviceKeys.insert_many(data).on_conflict_ignore().execute()
 
         for user_id, devices_dict in device_keys.items():
@@ -532,10 +551,11 @@ class MatrixStore:
 
                 for key_type, key in device.keys.items():
                     Keys.replace(
-                        key_type=key_type,
-                        key=key,
-                        device=d
+                        key_type=key_type, key=key, device=d
                     ).execute()
+
+                for algorithm in device.algorithms:
+                    Algorithms.replace(algorithm=algorithm, device=d).execute()
 
                 for user_id, signatures_dict in device.signatures.items():
                     for key_id, signature in signatures_dict.items():
@@ -574,8 +594,10 @@ class MatrixStore:
         if not account:
             return dict()
 
-        return {request.request_id: OutgoingKeyRequest.from_database(request)
-                for request in account.out_key_requests}
+        return {
+            request.request_id: OutgoingKeyRequest.from_database(request)
+            for request in account.out_key_requests
+        }
 
     @use_database
     def add_outgoing_key_request(self, key_request):
@@ -589,7 +611,7 @@ class MatrixStore:
             session_id=key_request.session_id,
             room_id=key_request.room_id,
             algorithm=key_request.algorithm,
-            account=account
+            account=account,
         ).on_conflict_ignore().execute()
 
     @use_database
@@ -601,7 +623,7 @@ class MatrixStore:
 
         db_key_request = OutgoingKeyRequests.get_or_none(
             OutgoingKeyRequests.request_id == key_request.request_id,
-            OutgoingKeyRequests.account == account
+            OutgoingKeyRequests.account == account,
         )
 
         if db_key_request:
@@ -617,11 +639,10 @@ class MatrixStore:
         data = [(room_id, account) for room_id in rooms]
 
         for idx in range(0, len(data), 400):
-            rows = data[idx:idx + 400]
-            EncryptedRooms.insert_many(rows, fields=[
-                EncryptedRooms.room_id,
-                EncryptedRooms.account
-            ]).on_conflict_ignore().execute()
+            rows = data[idx: idx + 400]
+            EncryptedRooms.insert_many(
+                rows, fields=[EncryptedRooms.room_id, EncryptedRooms.account]
+            ).on_conflict_ignore().execute()
 
     @use_database
     def save_sync_token(self, token):
@@ -630,10 +651,7 @@ class MatrixStore:
         account = self._get_account()
         assert account
 
-        SyncTokens.replace(
-            account=account,
-            token=token
-        ).execute()
+        SyncTokens.replace(account=account, token=token).execute()
 
     @use_database
     def load_sync_token(self):
@@ -643,9 +661,7 @@ class MatrixStore:
         if not account:
             return None
 
-        token = SyncTokens.get_or_none(
-            SyncTokens.account == account.id,
-        )
+        token = SyncTokens.get_or_none(SyncTokens.account == account.id,)
         if token:
             return token.token
 
@@ -806,24 +822,21 @@ class DefaultStore(MatrixStore):
         super().__post_init__()
 
         trust_file_path = "{}_{}.trusted_devices".format(
-            self.user_id,
-            self.device_id
+            self.user_id, self.device_id
         )
         self.trust_db = KeyStore(
             os.path.join(self.store_path, trust_file_path)
         )
 
         blacklist_file_path = "{}_{}.blacklisted_devices".format(
-            self.user_id,
-            self.device_id
+            self.user_id, self.device_id
         )
         self.blacklist_db = KeyStore(
             os.path.join(self.store_path, blacklist_file_path)
         )
 
         ignore_file_path = "{}_{}.ignored_devices".format(
-            self.user_id,
-            self.device_id
+            self.user_id, self.device_id
         )
         self.ignore_db = KeyStore(
             os.path.join(self.store_path, ignore_file_path)
@@ -929,7 +942,13 @@ class DefaultStore(MatrixStore):
             device = OlmDevice(
                 d.user_id,
                 d.device_id,
-                {k.key_type if ":" in k.key_type else f"{k.key_type}:{d.device_id}": k.key for k in d.keys},
+                {
+                    k.key_type
+                    if ":" in k.key_type
+                    else f"{k.key_type}:{d.device_id}": k.key
+                    for k in d.keys
+                },
+                [a.algorithm for a in d.algorithms],
                 signatures,
                 display_name=d.display_name,
                 deleted=d.deleted,
@@ -981,7 +1000,7 @@ class SqliteStore(MatrixStore):
             return DeviceKeys.get(
                 DeviceKeys.user_id == device.user_id,
                 DeviceKeys.device_id == device.id,
-                DeviceKeys.account == acc
+                DeviceKeys.account == acc,
             )
         except DoesNotExist:
             return None
@@ -995,10 +1014,7 @@ class SqliteStore(MatrixStore):
         d = self._get_device(device)
         assert d
 
-        DeviceTrustState.replace(
-            device=d,
-            state=TrustState.verified
-        ).execute()
+        DeviceTrustState.replace(device=d, state=TrustState.verified).execute()
 
         device.trust_state = TrustState.verified
 
@@ -1013,10 +1029,7 @@ class SqliteStore(MatrixStore):
         d = self._get_device(device)
         assert d
 
-        DeviceTrustState.replace(
-            device=d,
-            state=TrustState.unset
-        ).execute()
+        DeviceTrustState.replace(device=d, state=TrustState.unset).execute()
 
         device.trust_state = TrustState.unset
 
@@ -1047,8 +1060,7 @@ class SqliteStore(MatrixStore):
         assert d
 
         DeviceTrustState.replace(
-            device=d,
-            state=TrustState.blacklisted
+            device=d, state=TrustState.blacklisted
         ).execute()
 
         device.trust_state = TrustState.blacklisted
@@ -1064,10 +1076,7 @@ class SqliteStore(MatrixStore):
         d = self._get_device(device)
         assert d
 
-        DeviceTrustState.replace(
-            device=d,
-            state=TrustState.unset
-        ).execute()
+        DeviceTrustState.replace(device=d, state=TrustState.unset).execute()
 
         device.trust_state = TrustState.unset
 
@@ -1097,10 +1106,7 @@ class SqliteStore(MatrixStore):
         d = self._get_device(device)
         assert d
 
-        DeviceTrustState.replace(
-            device=d,
-            state=TrustState.ignored
-        ).execute()
+        DeviceTrustState.replace(device=d, state=TrustState.ignored).execute()
 
         device.trust_state = TrustState.ignored
 
@@ -1115,10 +1121,7 @@ class SqliteStore(MatrixStore):
         d = self._get_device(device)
         assert d
 
-        DeviceTrustState.replace(
-            device=d,
-            state=TrustState.unset
-        ).execute()
+        DeviceTrustState.replace(device=d, state=TrustState.unset).execute()
 
         device.trust_state = TrustState.unset
 
@@ -1147,20 +1150,17 @@ class SqliteStore(MatrixStore):
         values = [item for sublist in tuple_values for item in sublist]
 
         for idx in range(0, len(values), 300):
-            data = values[idx:idx + 300]
+            data = values[idx : idx + 300]
 
             query_string = (
                 "SELECT devicekeys.* from devicekeys "
                 "JOIN accounts ON devicekeys.account_id=accounts.id "
                 "WHERE accounts.id == ? AND "
                 "(devicekeys.user_id, devicekeys.device_id) IN "
-                "(VALUES {})".format(",".join(["(?, ?)"] * (len(data) // 2))))
-
-            query = DeviceKeys.raw(
-                query_string,
-                account.id,
-                *data
+                "(VALUES {})".format(",".join(["(?, ?)"] * (len(data) // 2)))
             )
+
+            query = DeviceKeys.raw(query_string, account.id, *data)
 
             device_ids += [device_key.id for device_key in query]
 
@@ -1180,16 +1180,14 @@ class SqliteStore(MatrixStore):
             device_ids = self._legacy_get_device_ids(acc, devices)
 
         rows = [
-            {
-                "device_id": device_id,
-                "state": TrustState.ignored
-            } for device_id in device_ids
+            {"device_id": device_id, "state": TrustState.ignored}
+            for device_id in device_ids
         ]
 
         assert len(rows) == len(devices)
 
         for idx in range(0, len(rows), 100):
-            trust_data = rows[idx:idx + 100]
+            trust_data = rows[idx : idx + 100]
             DeviceTrustState.replace_many(trust_data).execute()
 
         for device in devices:
@@ -1230,15 +1228,23 @@ class SqliteStore(MatrixStore):
             for s in d.signatures:
                 signatures[s.user_id][s.key_id] = s.signature
 
-            store.add(OlmDevice(
-                d.user_id,
-                d.device_id,
-                {k.key_type if ":" in k.key_type else f"{k.key_type}:{d.device_id}": k.key for k in d.keys},
-                signatures,
-                display_name=d.display_name,
-                deleted=d.deleted,
-                trust_state=trust_state
-            ))
+            store.add(
+                OlmDevice(
+                    d.user_id,
+                    d.device_id,
+                    {
+                        k.key_type
+                        if ":" in k.key_type
+                        else f"{k.key_type}:{d.device_id}": k.key
+                        for k in d.keys
+                    },
+                    [a.algorithm for a in d.algorithms],
+                    signatures,
+                    display_name=d.display_name,
+                    deleted=d.deleted,
+                    trust_state=trust_state,
+                )
+            )
 
         return store
 
@@ -1262,9 +1268,5 @@ class SqliteMemoryStore(SqliteStore):
 
     def _create_database(self):
         return SqliteDatabase(
-            ":memory:",
-            pragmas={
-                "foreign_keys": 1,
-                "secure_delete": 1,
-            }
+            ":memory:", pragmas={"foreign_keys": 1, "secure_delete": 1,}
         )

@@ -35,6 +35,7 @@ if package_installed("olm"):
         CrossSigningIdentities,
         CrossSigningSignatures,
         PublicCrossSigningKeys,
+        Algorithms,
     )
     from .database import (
         DefaultStore,

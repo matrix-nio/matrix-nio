@@ -94,6 +94,14 @@ class TestClass:
             "content": olm_content,
         }
 
+    def device_from_machine(self, machine):
+        return OlmDevice(
+            machine.user_id,
+            machine.device_id,
+            {f"{key_type}:{machine.device_id}": key for key_type, key in machine.account.identity_keys.items()},
+            ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
+        )
+
     @property
     def ephemeral_olm(self):
         user_id = "ephemeral"
@@ -133,7 +141,8 @@ class TestClass:
         device = OlmDevice(
             "example",
             "DEVICEID",
-            {f"{key_type}:DEVICEID": key for key_type, key in account.identity_keys.items()}
+            {f"{key_type}:DEVICEID": key for key_type, key in account.identity_keys.items()},
+            ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
         )
         key = Key.from_olmdevice(device)
 
@@ -213,7 +222,8 @@ class TestClass:
             "example",
             "DEVICEID",
             {"ed25519:DEVICEID": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA",
-             "curve25519:DEVICEID": "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
+             "curve25519:DEVICEID": "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"},
+            ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
         )
 
         store = DeviceStore()
@@ -231,7 +241,8 @@ class TestClass:
         bob_device = OlmDevice(
             BobId,
             Bob_device,
-            {f"{key_type}:{Bob_device}": key for key_type, key in bob.identity_keys.items()}
+            {f"{key_type}:{Bob_device}": key for key_type, key in bob.identity_keys.items()},
+            ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
         )
 
         olm = self.ephemeral_olm
@@ -316,7 +327,6 @@ class TestClass:
         olm.handle_response(response)
         assert response2.changed
 
-
     def test_olm_inbound_session(self, monkeypatch):
         def mocksave(self):
             return
@@ -329,21 +339,14 @@ class TestClass:
         malory = self._load(BobId, Bob_device)
 
         # create olm devices for each others known devices list
-        alice_device = OlmDevice(
-            AliceId,
-            Alice_device,
-            {f"{key_type}:{Alice_device}": key for key_type, key in alice.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            BobId,
-            Bob_device,
-            {f"{key_type}:{Bob_device}": key for key_type, key in bob.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_machine(alice)
+        bob_device = self.device_from_machine(bob)
 
         malory_device = OlmDevice(
-            MaloryId,
-            Malory_device,
-            {f"{key_type}:{Malory_device}": key for key_type, key in malory.account.identity_keys.items()}
+             MaloryId,
+             Malory_device,
+             {f"{key_type}:{Malory_device}": key for key_type, key in malory.account.identity_keys.items()},
+            ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
         )
 
         # add the devices to the device list
@@ -478,21 +481,13 @@ class TestClass:
         malory = self._load(BobId, Bob_device)
 
         # create olm devices for each others known devices list
-        alice_device = OlmDevice(
-            AliceId,
-            Alice_device,
-            {f"{key_type}:{Alice_device}": key for key_type, key in alice.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            BobId,
-            Bob_device,
-            {f"{key_type}:{Bob_device}": key for key_type, key in bob.account.identity_keys.items()}
-        )
-
+        alice_device = self.device_from_machine(alice)
+        bob_device = self.device_from_machine(bob)
         malory_device = OlmDevice(
-            MaloryId,
-            Malory_device,
-            {f"{key_type}:{Malory_device}": key for key_type, key in malory.account.identity_keys.items()}
+             MaloryId,
+             Malory_device,
+             {f"{key_type}:{Malory_device}": key for key_type, key in malory.account.identity_keys.items()},
+            ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
         )
 
         # add the devices to the device list
@@ -663,16 +658,13 @@ class TestClass:
         bob = self._load(BobId, Bob_device)
 
         # create olm devices for each others known devices list
-        bob_device = OlmDevice(
-            BobId,
-            Bob_device,
-            {f"{key_type}:{Bob_device}": key for key_type, key in bob.account.identity_keys.items()}
-        )
+        bob_device = self.device_from_machine(bob)
 
         bob2_device = OlmDevice(
             BobId,
             Malory_device,
-            {f"{key_type}:{Malory_device}": key for key_type, key in bob.account.identity_keys.items()}
+            {f"{key_type}:{Malory_device}": key for key_type, key in bob.account.identity_keys.items()},
+            ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
         )
 
         alice.device_store.add(bob_device)
@@ -793,11 +785,7 @@ class TestClass:
         alice = self._load(AliceId, Alice_device)
         bob = self._load(BobId, Bob_device)
 
-        bob_device = OlmDevice(
-            BobId,
-            Bob_device,
-            {f"{key_type}:{Bob_device}": key for key_type, key in bob.account.identity_keys.items()}
-        )
+        bob_device = self.device_from_machine(bob)
 
         assert not alice.get_missing_sessions([BobId])
 
@@ -846,16 +834,8 @@ class TestClass:
         alice = olm_account
         bob = bob_account
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_machine(alice)
+        bob_device = self.device_from_machine(bob)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -881,16 +861,8 @@ class TestClass:
         alice = olm_account
         bob = bob_account
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_machine(alice)
+        bob_device = self.device_from_machine(bob)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1060,16 +1032,8 @@ class TestClass:
         alice = olm_account
         bob = bob_account
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_machine(alice)
+        bob_device = self.device_from_machine(bob)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1149,16 +1113,8 @@ class TestClass:
         alice = olm_account
         bob = bob_account
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_machine(alice)
+        bob_device = self.device_from_machine(bob)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1276,16 +1232,8 @@ class TestClass:
         bob = bob_account
         bob.user_id = alice.user_id
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_machine(alice)
+        bob_device = self.device_from_machine(bob)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1404,16 +1352,8 @@ class TestClass:
         bob = bob_account
         bob.user_id = alice.user_id
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_machine(alice)
+        bob_device = self.device_from_machine(bob)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1543,17 +1483,8 @@ class TestClass:
         bob = bob_account
         bob.user_id = alice.user_id
 
-
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_machine(alice)
+        bob_device = self.device_from_machine(bob)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1684,16 +1615,8 @@ class TestClass:
         bob = bob_account
         bob.user_id = alice.user_id
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_machine(alice)
+        bob_device = self.device_from_machine(bob)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1847,16 +1770,8 @@ class TestClass:
         alice = olm_account
         bob = bob_account
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_machine(alice)
+        bob_device = self.device_from_machine(bob)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1964,16 +1879,8 @@ class TestClass:
         alice = olm_account
         bob = bob_account
 
-        alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            {f"{key_type}:{alice.device_id}": key for key_type, key in alice.account.identity_keys.items()}
-        )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            {f"{key_type}:{bob.device_id}": key for key_type, key in bob.account.identity_keys.items()}
-        )
+        alice_device = self.device_from_machine(alice)
+        bob_device = self.device_from_machine(bob)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -2185,14 +2092,18 @@ class TestClass:
     def test_cross_signing_signatures(self, cross_signing_identity):
         alice = cross_signing_identity
 
-        assert alice.master_keys.verify_signature(alice.user_signing_keys)
+        assert alice.master_keys.verify_cross_signing_subkey(
+            alice.user_signing_keys
+        )
 
         fake_key = PkSigning(PkSigning.generate_seed())
         alice.master_keys.keys = {
             f"ed25519{fake_key.public_key}": fake_key.public_key
         }
 
-        assert not alice.master_keys.verify_signature(alice.user_signing_keys)
+        assert not alice.master_keys.verify_cross_signing_subkey(
+            alice.user_signing_keys
+        )
 
     def test_keys_query_cross_signing(self, olm_account):
         parsed_dict = TestClass._load_response(
