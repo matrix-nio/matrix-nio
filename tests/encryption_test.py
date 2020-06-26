@@ -27,6 +27,7 @@ from nio.responses import (KeysClaimResponse, KeysQueryResponse,
                            KeysUploadResponse)
 from nio.store import DefaultStore, Ed25519Key, Key, KeyStore
 from nio.event_builders import RoomKeyRequestMessage
+from nio import Api
 
 from helpers import faker
 
@@ -2117,3 +2118,24 @@ class TestClass:
         example = olm_account.cross_signing_store["@example:localhost"]
 
         assert example.master_keys
+
+    def test_cross_signing_verify_signed_device(self, cross_signing_identity_and_keys, olm_device):
+        _, _, self_signing_key, alice = cross_signing_identity_and_keys
+        olm_device.user_id = alice.user_id
+
+        message = {
+            "algorithms": olm_device.algorithms,
+            "device_id": olm_device.device_id,
+            "user_id": olm_device.user_id,
+            "keys": olm_device.keys
+        }
+
+        assert not alice.is_device_signed(olm_device)
+
+        alice_signatures = olm_device.signatures[alice.user_id] = {}
+
+        alice_signatures[next(iter(alice.self_signing_keys.keys))] = (
+            self_signing_key.sign(Api.to_canonical_json(message))
+        )
+
+        assert alice.is_device_signed(olm_device)

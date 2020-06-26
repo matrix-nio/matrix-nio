@@ -54,6 +54,11 @@ class Provider(BaseProvider):
         return "".join(choice(ascii_uppercase) for i in range(10))
 
     def cross_signing_identity(self):
+        _, _, _, identity = self.cross_signing_identity_and_keys()
+
+        return identity
+
+    def cross_signing_identity_and_keys(self):
         user_id = faker.mx_id()
 
         master = PkSigning(PkSigning.generate_seed())
@@ -123,11 +128,16 @@ class Provider(BaseProvider):
             user_keys["usage"],
         )
 
-        return UserIdentity(
-            user_id,
-            master_keys,
-            user_signing_keys,
-            self_signing_keys
+        return (
+            master,
+            user,
+            self_signing,
+            UserIdentity(
+                user_id,
+                master_keys,
+                user_signing_keys,
+                self_signing_keys
+            )
         )
 
     def olm_key_pair(self, device_id):

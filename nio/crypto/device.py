@@ -19,7 +19,7 @@ from dataclasses import dataclass, field, asdict
 
 from enum import Enum
 from collections import defaultdict
-from typing import DefaultDict, Dict, KeysView, Iterator, Optional, List
+from typing import Any, DefaultDict, Dict, KeysView, Iterator, Optional, List
 
 
 # TODO document the values better.
@@ -121,6 +121,14 @@ class OlmDevice:
     def blacklisted(self) -> bool:
         """Is the device blacklisted."""
         return self.trust_state == TrustState.blacklisted
+
+    def as_signature_message(self) -> Dict[str, Any]:
+        return {
+            "user_id": self.user_id,
+            "device_id": self.device_id,
+            "keys": self.keys,
+            "algorithms": self.algorithms,
+        }
 
 
 class DeviceStore:

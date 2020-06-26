@@ -26,6 +26,16 @@ def tempdir():
 
 
 @pytest.fixture
+def cross_signing_identity_and_keys():
+    return helpers.faker.cross_signing_identity_and_keys()
+
+
+@pytest.fixture
+def olm_device():
+    return helpers.faker.olm_device()
+
+
+@pytest.fixture
 def cross_signing_identity():
     return helpers.faker.cross_signing_identity()
 
