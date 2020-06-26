@@ -53,12 +53,12 @@ class CrossSigningPubkey:
             if not key_id.startswith("ed25519"):
                 continue
 
-            key = cross_signing_key.keys[key_id]
+            key = self.keys[key_id]
 
             message = {
-                "user_id": self.user_id,
-                "keys": self.keys,
-                "usage": self.usage,
+                "user_id": cross_signing_key.user_id,
+                "keys": cross_signing_key.keys,
+                "usage": cross_signing_key.usage,
             }
 
             try:
@@ -69,21 +69,17 @@ class CrossSigningPubkey:
 
         return verified
 
-    def find_signatures(self, key: "CrossSigningPubkey") -> Dict[str, str]:
-        signatures: Dict[str, str] = {}
 
-        user_signatures = self.signatures.get(key.user_id)
+    def find_signatures(self, key: "CrossSigningPubkey") -> Dict[str, str]:
+        user_signatures = key.signatures.get(self.user_id)
 
         if not user_signatures:
-            return signatures
+            return {}
 
-        for key_id in key.keys:
-            signature = user_signatures.get(key_id)
-
-            if signature:
-                signatures[key_id] = signature
-
-        return signatures
+        return {
+            key_id: user_signatures[key_id] for key_id
+            in self.keys if key_id in user_signatures
+        }
 
 
 class MasterPubkeys(CrossSigningPubkey):

@@ -897,14 +897,14 @@ class Olm:
             user_signing_keys.get("usage", []),
         )
 
-        if not self_signing.verify_signature(master):
+        if not master.verify_signature(self_signing):
             logger.warn(
                 f"Self signing keys of {user_id} aren't properly "
                 "signed with the master key"
             )
             return None
 
-        if not user_signing.verify_signature(master):
+        if not master.verify_signature(user_signing):
             logger.warn(
                 f"User signing keys of {user_id} aren't properly "
                 "signed with the master key"
