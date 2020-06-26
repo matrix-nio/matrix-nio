@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.14.1 - 2020-06-26
+
+### Fixed
+
+- [[238b6ad]] Fix the schema for the devices response.
+
+[238b6ad]: https://github.com/poljar/matrix-nio/commit/238b6addaaa85b994552e00007638b0170c47c43
+
 ## 0.14.0 - 2020-06-21
 
 ### Added
