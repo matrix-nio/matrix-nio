@@ -63,6 +63,7 @@ from .user_identities import (
     SelfSigningPubkeys,
     UserSigningPubkeys,
     UserIdentity,
+    IdentityChange,
 )
 
 from ..api import Api
@@ -870,7 +871,9 @@ class Olm:
 
     def _handle_cross_signing_for_user(
         self, user_id, master_keys, user_signing_keys, self_signing_keys
-    ) -> Optional[Tuple[MasterPubkeys, UserSigningPubkeys, SelfSigningPubkeys]]:
+    ) -> Optional[
+        Tuple[MasterPubkeys, UserSigningPubkeys, SelfSigningPubkeys]
+    ]:
         logger.debug(f"Received cross signing keys for {user_id}")
 
         master = MasterPubkeys(
@@ -928,13 +931,28 @@ class Olm:
 
             master, user_signing, self_signing = keys
 
-            if False:
-                pass
-            else:
-                identity = UserIdentity(user_id, master, user_signing, self_signing)
+            try:
+                identity = self.cross_signing_store[user_id]
+            except KeyError:
+                identity = UserIdentity(
+                    user_id, master, user_signing, self_signing
+                )
                 changed[user_id] = identity
                 self.cross_signing_store[user_id] = identity
-                logger.debug(f"Created a new identity for {user_id}, {identity}")
+                logger.debug(
+                    f"Created a new identity for {user_id}, {identity}"
+                )
+            else:
+                change_type = identity.update(
+                    master, user_signing, self_signing
+                )
+
+                if change_type == IdentityChange.NoChange:
+                    continue
+                else:
+                    # TODO we might want to forward the change type to the
+                    # user?
+                    changed[user_id] = identity
 
             self.store.save_cross_signing_identities(changed)
 

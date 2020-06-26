@@ -29,6 +29,12 @@ class CrossSigningKeyType(Enum):
     UserSign = 2
 
 
+class IdentityChange(Enum):
+    NoChange = 0
+    Master = 1
+    SubKey = 2
+
+
 @dataclass
 class CrossSigningPubkey:
     user_id: str = field()
@@ -98,3 +104,25 @@ class UserIdentity:
     master_keys: MasterPubkeys = field()
     user_signing_keys: UserSigningPubkeys = field()
     self_signing_keys: SelfSigningPubkeys = field()
+
+    def update(
+        self,
+        master: MasterPubkeys,
+        user: UserSigningPubkeys,
+        self_signing: SelfSigningPubkeys,
+    ) -> IdentityChange:
+        if (
+            self.master_keys == master
+            and self.user_signing_keys == user
+            and self.self_signing_keys == self_signing
+        ):
+            return IdentityChange.NoChange
+
+        self.master_keys = master
+        self.user_signing_keys = user
+        self.self_signing_keys = self_signing
+
+        if self.master_keys != master:
+            return IdentityChange.Master
+
+        return IdentityChange.SubKey
