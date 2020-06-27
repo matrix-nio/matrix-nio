@@ -1465,10 +1465,14 @@ class AsyncClient(Client):
                 # Check if we need to share a group session, it might have been
                 # invalidated or expired.
                 if self.olm.should_share_group_session(room_id):
-                    await self.share_group_session(
-                        room_id,
-                        ignore_unverified_devices=ignore_unverified_devices,
-                    )
+                    try:
+                        event = self.sharing_session[room_id]
+                        await event.wait()
+                    except KeyError:
+                        await self.share_group_session(
+                            room_id,
+                            ignore_unverified_devices=ignore_unverified_devices,
+                        )
 
                 # Reactions as of yet don't support encryption.
                 # Relevant spec proposal https://github.com/matrix-org/matrix-doc/pull/1849
