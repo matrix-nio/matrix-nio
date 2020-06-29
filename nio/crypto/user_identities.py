@@ -37,7 +37,7 @@ class IdentityChange(Enum):
 
 
 @dataclass
-class CrossSigningPubkey:
+class CrossSigningPubkeys:
     user_id: str = field()
     keys: Dict[str, str] = field()
     signatures: Dict[str, Dict[str, str]] = field()
@@ -75,7 +75,7 @@ def get_signatures(
 
 
 def verify_cross_signing_key(
-    signer: CrossSigningPubkey, signee: CrossSigningPubkey
+    signer: CrossSigningPubkeys, signee: CrossSigningPubkeys
 ) -> bool:
     user_signatures = signee.signatures.get(signer.user_id)
 
@@ -97,12 +97,12 @@ def verify_cross_signing_key(
     return verified
 
 
-class MasterPubkeys(CrossSigningPubkey):
-    def verify_cross_signing_subkey(self, key: CrossSigningPubkey) -> bool:
+class MasterPubkeys(CrossSigningPubkeys):
+    def verify_cross_signing_subkey(self, key: CrossSigningPubkeys) -> bool:
         return verify_cross_signing_key(self, key)
 
 
-class SelfSigningPubkeys(CrossSigningPubkey):
+class SelfSigningPubkeys(CrossSigningPubkeys):
     def verify_device_signature(self, device: OlmDevice):
         verified = False
 
@@ -122,7 +122,7 @@ class SelfSigningPubkeys(CrossSigningPubkey):
         return verified
 
 
-class UserSigningPubkeys(CrossSigningPubkey):
+class UserSigningPubkeys(CrossSigningPubkeys):
     def verify_cross_signing_master_key(self, key: MasterPubkeys) -> bool:
         return verify_cross_signing_key(self, key)
 

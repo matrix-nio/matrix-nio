@@ -41,6 +41,17 @@ def cross_signing_identity():
 
 
 @pytest.fixture
+def alice_xsign(cross_signing_identity_and_keys):
+    master, user, self_sign, alice_xsign = cross_signing_identity_and_keys
+    alice_xsign.user_id = ALICE_ID
+    alice_xsign.master_keys.user_id = ALICE_ID
+    alice_xsign.user_signing_keys.user_id = ALICE_ID
+    alice_xsign.self_signing_keys.user_id = ALICE_ID
+
+    return master, user, self_sign, alice_xsign
+
+
+@pytest.fixture
 def client(tempdir):
     return Client("ephemeral", "DEVICEID", tempdir)
 

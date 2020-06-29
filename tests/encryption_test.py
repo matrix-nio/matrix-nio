@@ -2134,7 +2134,7 @@ class TestClass:
         assert alice.is_device_signed(olm_device)
 
     def test_cross_signing_verify_signed_identity(self, cross_signing_identity_and_keys, cross_signing_identity):
-        _, user_signing_key, self_signing_key, alice = cross_signing_identity_and_keys
+        _, user_signing_key, _, alice = cross_signing_identity_and_keys
         bob = cross_signing_identity
 
         assert not alice.is_identity_signed(bob)
@@ -2146,3 +2146,31 @@ class TestClass:
         )
 
         assert alice.is_identity_signed(bob)
+
+    def test_cross_signing_device_verification(self, olm_machine, alice_xsign, cross_signing_identity_and_keys, olm_device):
+        alice = olm_machine
+        _, alice_user, _, alice_xsign = alice_xsign
+        _, _, bob_self_signing, bob_xsign = cross_signing_identity_and_keys
+
+        bob_device = olm_device
+        bob_device.user_id = bob_xsign.user_id
+
+        alice.cross_signing_store[alice_xsign.user_id] = alice_xsign
+        alice.cross_signing_store[bob_xsign.user_id] = bob_xsign
+        alice.device_store.add(bob_device)
+
+        bob_signatures = bob_device.signatures[bob_xsign.user_id] = {}
+
+        bob_signatures[next(iter(bob_xsign.self_signing_keys.keys))] = (
+            bob_self_signing.sign(Api.to_canonical_json(bob_device.as_signature_message()))
+        )
+
+        alice_signatures = bob_xsign.signatures[alice_xsign.user_id] = {}
+
+        alice_signatures[next(iter(alice_xsign.user_signing_keys.keys))] = (
+            alice_user.sign(Api.to_canonical_json(bob_xsign.as_signature_message()))
+        )
+
+        assert alice_xsign.is_identity_signed(bob_xsign)
+        assert alice.is_user_identity_trusted(bob_xsign)
+        assert alice.is_device_verified(bob_device)

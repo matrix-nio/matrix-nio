@@ -32,7 +32,7 @@ if package_installed("olm"):
     from .key_request import OutgoingKeyRequest
     from .user_identities import (
         CrossSigningKeyType,
-        CrossSigningPubkey,
+        CrossSigningPubkeys,
         UserIdentity,
         OwnUserIdentity,
         UserSigningPubkeys,

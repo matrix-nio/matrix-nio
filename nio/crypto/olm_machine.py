@@ -1203,8 +1203,40 @@ class Olm:
     def verify_device(self, device: OlmDevice) -> bool:
         return self.store.verify_device(device)
 
+    def is_user_identity_trusted(self, identity: UserIdentity):
+        # Try to find our own user identity.
+        try:
+            own_identity = self.cross_signing_store[self.user_id]
+            assert isinstance(own_identity, OwnUserIdentity)
+        except KeyError:
+            return False
+
+        # If our own identity is trusted, check that the other identity is
+        # signed by it.
+        # TODO we need to check that our own identity is trusted.
+        if True:
+            return own_identity.is_identity_signed(identity)
+        else:
+            return False
+
     def is_device_verified(self, device: OlmDevice) -> bool:
-        return self.store.is_device_verified(device)
+        # Check if we marked the device locally as verified.
+        if self.store.is_device_verified(device):
+            return True
+
+        try:
+            identity = self.cross_signing_store[device.user_id]
+
+            # If the user identity is trusted check that the device is signed
+            # by that identity. If so the device is trusted, otherwise it
+            # isn't.
+            if self.is_user_identity_trusted(identity):
+                return identity.is_device_signed(device)
+            else:
+                return False
+
+        except KeyError:
+            return False
 
     def is_device_blacklisted(self, device: OlmDevice) -> bool:
         return self.store.is_device_blacklisted(device)
