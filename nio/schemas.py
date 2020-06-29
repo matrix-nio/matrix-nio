@@ -1277,8 +1277,8 @@ class Schemas:
                     ]
                 }
             },
-            "required": ["devices"]
         },
+        "required": ["devices"]
     }
 
     delete_devices = {

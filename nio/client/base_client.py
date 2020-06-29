@@ -77,7 +77,7 @@ from ..crypto import DeviceStore, OlmDevice, OutgoingKeyRequest
 
 if ENCRYPTION_ENABLED:
     from ..crypto import Olm
-    from ..store import DefaultStore, MatrixStore
+    from ..store import DefaultStore, MatrixStore, SqliteMemoryStore
 
 from ..event_builders import ToDeviceMessage
 
@@ -336,14 +336,17 @@ class Client:
     def load_store(self):
         """Load the session store and olm account.
 
-        Raises LocalProtocolError if the session_path, user_id and device_id
-            are not set.
+        If the SqliteMemoryStore is set as the store a store path isn't
+        required, if no store path is provided and a store class that requires
+        a path is used this method will be a no op.
+
+        This method does nothing if the store is already loaded.
+
+        Raises LocalProtocolError if a store class, user_id and device_id are
+            not set.
         """
         if self.store:
-            raise LocalProtocolError("Store is already loaded")
-
-        if not self.store_path:
-            raise LocalProtocolError("Store path is not defined.")
+            return
 
         if not self.user_id:
             raise LocalProtocolError("User id is not set")
@@ -357,13 +360,23 @@ class Client:
             )
 
         if self.config.encryption_enabled:
-            self.store = self.config.store(
-                self.user_id,
-                self.device_id,
-                self.store_path,
-                self.config.pickle_key,
-                self.config.store_name,
-            )
+            if self.config.store is SqliteMemoryStore:
+                self.store = self.config.store(
+                    self.user_id,
+                    self.device_id,
+                    self.config.pickle_key,
+                )
+            else:
+                if not self.store_path:
+                    return
+
+                self.store = self.config.store(
+                    self.user_id,
+                    self.device_id,
+                    self.store_path,
+                    self.config.pickle_key,
+                    self.config.store_name,
+                )
             assert self.store
 
             self.olm = Olm(self.user_id, self.device_id, self.store)
@@ -584,23 +597,21 @@ class Client:
         if isinstance(response, ErrorResponse):
             return
 
-        self.access_token = response.access_token
-        self.user_id = response.user_id
-        self.device_id = response.device_id
-
-        if self.store_path and not (self.store and self.olm):
-            self.load_store()
+        self.restore_login(
+            response.user_id,
+            response.device_id,
+            response.access_token
+        )
 
     def _handle_login(self, response: Union[LoginResponse, ErrorResponse]):
         if isinstance(response, ErrorResponse):
             return
 
-        self.access_token = response.access_token
-        self.user_id = response.user_id
-        self.device_id = response.device_id
-
-        if self.store_path and not (self.store and self.olm):
-            self.load_store()
+        self.restore_login(
+            response.user_id,
+            response.device_id,
+            response.access_token
+        )
 
     def _handle_logout(self, response: Union[LogoutResponse, ErrorResponse]):
         if not isinstance(response, ErrorResponse):
