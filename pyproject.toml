@@ -4,6 +4,9 @@ version = "0.14.1"
 description = "A Python Matrix client library, designed according to sans I/O principles."
 authors = ["Damir Jelić <poljar@termina.org.uk>"]
 license = "ISC"
+readme = "README.md"
+repository = "https://github.com/poljar/matrix-nio"
+documentation = "https://matrix-nio.readthedocs.io/en/latest/"
 packages = [
     {include = "nio"}
 ]
