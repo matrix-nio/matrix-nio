@@ -34,6 +34,7 @@ if package_installed("olm"):
         CrossSigningKeyType,
         CrossSigningPubkey,
         UserIdentity,
+        OwnUserIdentity,
         UserSigningPubkeys,
         SelfSigningPubkeys,
         MasterPubkeys,

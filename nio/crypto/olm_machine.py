@@ -63,6 +63,7 @@ from .user_identities import (
     SelfSigningPubkeys,
     UserSigningPubkeys,
     UserIdentity,
+    OwnUserIdentity,
     IdentityChange,
 )
 
@@ -934,11 +935,19 @@ class Olm:
             try:
                 identity = self.cross_signing_store[user_id]
             except KeyError:
-                identity = UserIdentity(
-                    user_id, master, user_signing, self_signing
-                )
+                if user_id == self.user_id:
+                    identity = OwnUserIdentity(
+                        user_id, master, user_signing, self_signing
+                    )
+                else:
+                    identity = UserIdentity(
+                        user_id, master, user_signing, self_signing
+                    )
+
                 changed[user_id] = identity
+
                 self.cross_signing_store[user_id] = identity
+
                 logger.debug(
                     f"Created a new identity for {user_id}, {identity}"
                 )

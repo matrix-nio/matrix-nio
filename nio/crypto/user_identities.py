@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright © 2020 Damir Jelić <poljar@termina.org.uk>
+# Copyright 2020 The Matrix.org Foundation C.I.C.
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -165,3 +165,18 @@ class UserIdentity:
         signing_key = self.self_signing_keys
 
         return signing_key.verify_device_signature(device)
+
+    @property
+    def signatures(self) -> Dict[str, Dict[str, str]]:
+        return self.master_keys.signatures
+
+    def as_signature_message(self):
+        return self.master_keys.as_signature_message()
+
+
+@dataclass
+class OwnUserIdentity(UserIdentity):
+    def is_identity_signed(self, identity: UserIdentity) -> bool:
+        return self.user_signing_keys.verify_cross_signing_master_key(
+            identity.master_keys
+        )

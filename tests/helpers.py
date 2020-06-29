@@ -22,6 +22,7 @@ from nio.crypto import (
     OlmAccount,
     OlmDevice,
     UserIdentity,
+    OwnUserIdentity,
     MasterPubkeys,
     SelfSigningPubkeys,
     UserSigningPubkeys
@@ -56,6 +57,12 @@ class Provider(BaseProvider):
     def cross_signing_identity(self):
         _, _, _, identity = self.cross_signing_identity_and_keys()
 
+        return UserIdentity(
+            identity.user_id,
+            identity.master_keys,
+            identity.user_signing_keys,
+            identity.self_signing_keys,
+        )
         return identity
 
     def cross_signing_identity_and_keys(self):
@@ -132,7 +139,7 @@ class Provider(BaseProvider):
             master,
             user,
             self_signing,
-            UserIdentity(
+            OwnUserIdentity(
                 user_id,
                 master_keys,
                 user_signing_keys,

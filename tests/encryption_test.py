@@ -2123,19 +2123,26 @@ class TestClass:
         _, _, self_signing_key, alice = cross_signing_identity_and_keys
         olm_device.user_id = alice.user_id
 
-        message = {
-            "algorithms": olm_device.algorithms,
-            "device_id": olm_device.device_id,
-            "user_id": olm_device.user_id,
-            "keys": olm_device.keys
-        }
-
         assert not alice.is_device_signed(olm_device)
 
         alice_signatures = olm_device.signatures[alice.user_id] = {}
 
         alice_signatures[next(iter(alice.self_signing_keys.keys))] = (
-            self_signing_key.sign(Api.to_canonical_json(message))
+            self_signing_key.sign(Api.to_canonical_json(olm_device.as_signature_message()))
         )
 
         assert alice.is_device_signed(olm_device)
+
+    def test_cross_signing_verify_signed_identity(self, cross_signing_identity_and_keys, cross_signing_identity):
+        _, user_signing_key, self_signing_key, alice = cross_signing_identity_and_keys
+        bob = cross_signing_identity
+
+        assert not alice.is_identity_signed(bob)
+
+        alice_signatures = bob.signatures[alice.user_id] = {}
+
+        alice_signatures[next(iter(alice.user_signing_keys.keys))] = (
+            user_signing_key.sign(Api.to_canonical_json(bob.as_signature_message()))
+        )
+
+        assert alice.is_identity_signed(bob)

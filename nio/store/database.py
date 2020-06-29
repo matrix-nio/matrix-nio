@@ -54,6 +54,7 @@ from ..crypto import (
     SessionStore,
     TrustState,
     UserIdentity,
+    OwnUserIdentity,
     CrossSigningKeyType,
     MasterPubkeys,
     SelfSigningPubkeys,
@@ -464,7 +465,11 @@ class MatrixStore:
                 user_id, self_keys, self_signatures, [],
             )
 
-            store[user_id] = UserIdentity(user_id, masters, users, selfs,)
+            if user_id == self.user_id:
+                store[user_id] = OwnUserIdentity(user_id, masters, users, selfs)
+                pass
+            else:
+                store[user_id] = UserIdentity(user_id, masters, users, selfs)
 
         return store
 
