@@ -1213,8 +1213,8 @@ class Olm:
 
         # If our own identity is trusted, check that the other identity is
         # signed by it.
-        # TODO we need to check that our own identity is trusted.
-        if True:
+
+        if own_identity.verified:
             return own_identity.is_identity_signed(identity)
         else:
             return False

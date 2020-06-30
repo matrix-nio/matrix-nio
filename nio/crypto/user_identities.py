@@ -176,6 +176,8 @@ class UserIdentity:
 
 @dataclass
 class OwnUserIdentity(UserIdentity):
+    verified: bool = field(init=False, default=False)
+
     def is_identity_signed(self, identity: UserIdentity) -> bool:
         return self.user_signing_keys.verify_cross_signing_master_key(
             identity.master_keys
