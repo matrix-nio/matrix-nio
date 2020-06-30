@@ -33,6 +33,7 @@ from . import (
     Keys,
     KeyStore,
     MegolmInboundSessions,
+    IdentityTrustState,
     OlmSessions,
     OutgoingKeyRequests,
     DeviceSignatures,
@@ -114,6 +115,7 @@ class MatrixStore:
         CrossSigningIdentities,
         CrossSigningSignatures,
         PublicCrossSigningKeys,
+        IdentityTrustState
     ]
     store_version = 2
 
@@ -330,10 +332,10 @@ class MatrixStore:
                 sender_key=chain, session=session.id
             ).execute()
 
-    def save_cross_signing_keys(self, identity, key_type, keys, signatures):
+    def save_cross_signing_keys(self, identity, key_type, keys, signatures, usage):
         for key_id, key in keys.items():
             PublicCrossSigningKeys.replace(
-                key=key, key_id=key_id, key_type=key_type, identity=identity
+                key=key, key_id=key_id, key_type=key_type, key_usage=usage, identity=identity
             ).execute()
 
         for user_id, signatures_dict in signatures.items():
@@ -381,11 +383,15 @@ class MatrixStore:
                 & (CrossSigningIdentities.user_id == user_id)
             )
 
+            if isinstance(identity, OwnUserIdentity):
+                IdentityTrustState.replace(identity=i, verified=identity.verified).execute()
+
             self.save_cross_signing_keys(
                 i,
                 CrossSigningKeyType.Master,
                 identity.master_keys.keys,
                 identity.master_keys.signatures,
+                identity.master_keys.usage,
             )
 
             self.save_cross_signing_keys(
@@ -393,6 +399,7 @@ class MatrixStore:
                 CrossSigningKeyType.SelfSign,
                 identity.self_signing_keys.keys,
                 identity.self_signing_keys.signatures,
+                identity.self_signing_keys.usage,
             )
 
             self.save_cross_signing_keys(
@@ -400,6 +407,7 @@ class MatrixStore:
                 CrossSigningKeyType.UserSign,
                 identity.user_signing_keys.keys,
                 identity.user_signing_keys.signatures,
+                identity.user_signing_keys.usage,
             )
 
     @use_database
@@ -421,13 +429,28 @@ class MatrixStore:
             user_keys: Dict[str, str] = {}
             self_keys: Dict[str, str] = {}
 
+            master_usage = set()
+            user_usage = set()
+            self_usage = set()
+
             for key in i.keys:
                 if key.key_type == CrossSigningKeyType.Master:
                     master_keys[key.key_id] = key.key
+
+                    for usage in key.key_usage:
+                        master_usage.add(usage)
+
                 elif key.key_type == CrossSigningKeyType.UserSign:
                     user_keys[key.key_id] = key.key
+
+                    for usage in key.key_usage:
+                        user_usage.add(usage)
+
                 elif key.key_type == CrossSigningKeyType.SelfSign:
                     self_keys[key.key_id] = key.key
+
+                    for usage in key.key_usage:
+                        self_usage.add(usage)
 
             master_signatures: DefaultDict[str, Dict[str, str]] = defaultdict(
                 dict
@@ -454,20 +477,26 @@ class MatrixStore:
                     ] = signature.signature
 
             masters = MasterPubkeys(
-                user_id, master_keys, master_signatures, [],
+                user_id, master_keys, master_signatures, list(master_usage),
             )
 
             users = UserSigningPubkeys(
-                user_id, user_keys, user_signatures, [],
+                user_id, user_keys, user_signatures, list(user_usage),
             )
 
             selfs = SelfSigningPubkeys(
-                user_id, self_keys, self_signatures, [],
+                user_id, self_keys, self_signatures, list(self_usage),
             )
 
             if user_id == self.user_id:
-                store[user_id] = OwnUserIdentity(user_id, masters, users, selfs)
-                pass
+                try:
+                    verified = i.trust_state[0].verified
+                except IndexError:
+                    verified = False
+
+                identity = OwnUserIdentity(user_id, masters, users, selfs)
+                identity.verified = verified
+                store[user_id] = identity
             else:
                 store[user_id] = UserIdentity(user_id, masters, users, selfs)
 

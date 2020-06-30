@@ -33,6 +33,7 @@ if package_installed("olm"):
         SyncTokens,
         DeviceSignatures,
         CrossSigningIdentities,
+        IdentityTrustState,
         CrossSigningSignatures,
         PublicCrossSigningKeys,
         Algorithms,

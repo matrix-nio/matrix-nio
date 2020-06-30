@@ -14,6 +14,7 @@
 import time
 from builtins import bytes
 from datetime import datetime
+from typing import List
 
 from peewee import (SQL, BlobField, BooleanField,
                     ForeignKeyField, IntegerField, Model, TextField)
@@ -43,6 +44,17 @@ class DeviceTrustField(IntegerField):
 
     def db_value(self, value):  # pragma: no cover
         return value.value
+
+
+class CrossSigningKeyUsageField(TextField):
+    """Database field to the usage of a cross signing key"""
+
+    def python_value(self, value: str) -> List[str]:  # pragma: no cover
+        return value.split(",")
+
+    def db_value(self, value: List[str]) -> str:  # pragma: no cover
+        return ",".join(value)
+
 
 
 class CrossSigningKeyTypeField(IntegerField):
@@ -189,10 +201,24 @@ class CrossSigningIdentities(Model):
     )
 
 
+class IdentityTrustState(Model):
+    identity = ForeignKeyField(
+        model=CrossSigningIdentities,
+        column_name="identity",
+        backref="trust_state",
+        on_delete="CASCADE",
+    )
+    verified = BooleanField()
+
+    class Meta:
+        constraints = [SQL("UNIQUE(identity)")]
+
+
 class PublicCrossSigningKeys(Model):
     key = TextField()
     key_id = TextField()
     key_type = CrossSigningKeyTypeField()
+    key_usage = CrossSigningKeyUsageField()
     identity = ForeignKeyField(
         model=CrossSigningIdentities,
         column_name="identity",
@@ -217,7 +243,7 @@ class CrossSigningSignatures(Model):
     )
 
     class Meta:
-        constraints = [SQL("UNIQUE(user_id, signing_key_id)")]
+        constraints = [SQL("UNIQUE(user_id, signing_key_id, key_type)")]
 
 
 class MegolmInboundSessions(Model):

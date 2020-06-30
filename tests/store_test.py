@@ -11,7 +11,8 @@ import pytest
 from helpers import ephemeral, ephemeral_dir, faker
 from nio.crypto import (InboundGroupSession, OlmAccount, OlmDevice,
                         OutboundGroupSession, OutboundSession,
-                        OutgoingKeyRequest, TrustState, UserIdentity)
+                        OutgoingKeyRequest, TrustState, UserIdentity,
+                        OwnUserIdentity)
 from nio.exceptions import OlmTrustError
 from nio.store import (Ed25519Key, Key, KeyStore, MatrixStore, DefaultStore,
                        SqliteMemoryStore, SqliteStore)
@@ -765,9 +766,26 @@ class TestClass:
 
     def test_cross_signing_storing(self, sqlstore):
         identity = faker.cross_signing_identity()
-        sqlstore.save_cross_signing_identities({identity.user_id: identity})
+        own_id = faker.cross_signing_identity()
+        own_id = OwnUserIdentity(
+            own_id.user_id,
+            own_id.master_keys,
+            own_id.user_signing_keys,
+            own_id.self_signing_keys
+        )
+        own_id.veirified = True
+        own_id.user_id = sqlstore.user_id
+        own_id.master_keys.user_id = sqlstore.user_id
+        own_id.user_signing_keys.user_id = sqlstore.user_id
+        own_id.self_signing_keys.user_id = sqlstore.user_id
+
+        sqlstore.save_cross_signing_identities({
+            identity.user_id: identity,
+            own_id.user_id: own_id,
+        })
 
         identities = sqlstore.load_cross_signing_identities()
 
         assert identity.user_id in identities
-        # assert identity in identities.values()
+        assert identity in identities.values()
+        assert own_id in identities.values()
