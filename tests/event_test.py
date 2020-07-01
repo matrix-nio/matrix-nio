@@ -61,7 +61,8 @@ from nio.events import (
     RoomKeyVerificationCancel,
     RoomKeyVerificationKey,
     RoomKeyVerificationMac,
-    RoomKeyVerificationStart
+    RoomKeyVerificationStart,
+    RoomKeyVerificationRequest,
 )
 
 
@@ -493,6 +494,7 @@ class TestClass:
 
     def test_key_verification_room_events(self):
         for event_type, event_file in [
+            (RoomKeyVerificationRequest, "room_key_verif_request.json"),
             (RoomKeyVerificationStart, "room_key_start.json"),
             (RoomKeyVerificationAccept, "room_key_accept.json"),
             (RoomKeyVerificationKey, "room_key_key.json"),

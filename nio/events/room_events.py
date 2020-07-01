@@ -809,6 +809,8 @@ class RoomMessage(Event):
             event = RoomMessageVideo.from_dict(parsed_dict)
         elif content_dict["msgtype"] == "m.file":
             event = RoomMessageFile.from_dict(parsed_dict)
+        elif content_dict["msgtype"].startswith("m.key.verification.request"):
+            event = RoomKeyVerificationRequest.from_dict(parsed_dict)
         else:
             event = RoomMessageUnknown.from_dict(parsed_dict)
 
@@ -1442,6 +1444,38 @@ class RoomKeyVerificationEvent(Event):
             return RoomKeyVerificationCancel.from_dict(event_dict)
 
         return UnknownEvent.from_dict(event_dict)
+
+
+@dataclass
+class RoomKeyVerificationRequest(RoomMessage):
+    """Event signaling that a device is requesting an interactive verification
+    to stare.
+
+    Attributes:
+        body (str): The fallback message if clients don't support interactive
+            verification.
+        from_device (str): The device ID which is initiating the process.
+        methods (str): The verification methods supported by the sender.
+        timestamp (int): The POSIX timestamp in milliseconds for when the
+            request was made.
+
+    """
+    body: str = field()
+    from_device: str = field()
+    methods: str = field()
+    to: int = field()
+
+    @classmethod
+    @verify(Schemas.room_verification_request)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+        return cls(
+            parsed_dict,
+            content.get("body", ""),
+            content["from_device"],
+            content["methods"],
+            content["to"],
+        )
 
 
 @dataclass

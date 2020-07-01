@@ -1612,6 +1612,29 @@ class Schemas:
         ]
     }
 
+    room_verification_request = {
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "object",
+                "properties": {
+                    "body": {"type": "string"},
+                    "from_device": {"type": "string"},
+                    "to": {"type": "string"},
+                    "methods": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": [
+                    "from_device",
+                    "to",
+                    "methods",
+                ]
+            }
+        },
+        "required": [
+            "content",
+        ]
+    }
+
     room_key_verification = {
         "type": "object",
         "properties": {
