@@ -6,7 +6,7 @@ from helpers import faker
 from nio.crypto import OlmDevice, Sas, SasState
 from nio.events import (KeyVerificationAccept, KeyVerificationCancel,
                         KeyVerificationKey, KeyVerificationMac,
-                        KeyVerificationStart)
+                        KeyVerificationStart, RoomKeyVerificationStart)
 from nio.exceptions import LocalProtocolError
 
 alice_id = "@alice:example.org"
@@ -1136,3 +1136,50 @@ class TestClass:
         olm_machine.clear_verifications()
         assert sas.canceled
         assert sas not in olm_machine.key_verifications.values()
+
+    def test_sas_room_creation(self):
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys[f"ed25519:{alice_device_id}"],
+            bob_device,
+            room_verification=True
+        )
+
+        assert alice.room_verification
+
+        with pytest.raises(LocalProtocolError):
+            alice.accept_verification()
+
+    def test_room_sas_start(self):
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys[f"ed25519:{alice_device_id}"],
+            bob_device,
+            room_verification=True
+        )
+        assert alice.state == SasState.created
+
+        start = {
+            "sender": alice_id,
+            "event_id": "test_id",
+            "origin_server_ts": 10,
+            "content": alice.start_verification().as_dict()
+        }
+
+        start_event = RoomKeyVerificationStart.from_dict(start)
+        assert isinstance(start_event, RoomKeyVerificationStart)
+
+        bob = Sas.from_key_verification_start(
+            bob_id,
+            bob_device_id,
+            bob_keys[f"ed25519:{bob_device_id}"],
+            alice_device,
+            start_event
+        )
+
+        with pytest.raises(LocalProtocolError):
+            bob.start_verification()
+
+        assert bob.state == SasState.started

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2019 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2020 The Matrix.org Foundation C.I.C.
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -14,21 +13,24 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import unicode_literals
-
 from builtins import bytes, super
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 from uuid import uuid4
 
 import olm
 from future.moves.itertools import zip_longest
 
 from ..api import Api
-from ..events import KeyVerificationEvent, KeyVerificationStart
+from ..events import (
+    KeyVerificationEvent,
+    KeyVerificationStart,
+    RoomKeyVerificationStart,
+    RoomKeyVerificationEvent
+)
 from ..exceptions import LocalProtocolError
-from ..event_builders import ToDeviceMessage
+from ..event_builders import ToDeviceMessage, RoomEvent
 from .device import OlmDevice
 
 
@@ -38,12 +40,14 @@ class SasState(Enum):
     This enum tracks the current state of our verification process.
     """
 
-    created = 0
-    started = 1
-    accepted = 2
-    key_received = 3
-    mac_received = 4
-    canceled = 5
+    request = 0
+    ready = 1
+    created = 2
+    started = 3
+    accepted = 4
+    key_received = 5
+    mac_received = 6
+    canceled = 7
 
 
 class Sas(olm.Sas):
@@ -74,7 +78,9 @@ class Sas(olm.Sas):
             authentication methods that the client would like to allow for this
             authentication session. By default the 'emoji' and 'decimal'
             methods are allowed.
-
+        room_verification (bool, optional): Is the verification happening
+            inside a room or as to-device messages. True if it's a room
+            verification, False otherwise. Defaults to False.
     """
 
     _sas_method_v1 = "m.sas.v1"
@@ -182,6 +188,7 @@ class Sas(olm.Sas):
         transaction_id: str = None,
         short_auth_string: Optional[List[str]] = None,
         mac_methods: Optional[List[str]] = None,
+        room_verification: bool = False,
     ):
         self.own_user = own_user
         self.own_device = own_device
@@ -193,6 +200,7 @@ class Sas(olm.Sas):
 
         self.short_auth_string = short_auth_string or ["emoji", "decimal"]
         self.mac_methods = mac_methods or Sas._mac_v1
+        self.room_verification = room_verification
         self.chosen_mac_method = ""
         self.key_agreement_protocols = Sas._key_agreeemnt_protocols
         self.chosen_key_agreement: Optional[str] = None
@@ -213,9 +221,9 @@ class Sas(olm.Sas):
 
     @classmethod
     def from_key_verification_start(
-        cls, own_user, own_device, own_fp_key, other_olm_device, event
-    ):
-        # type: (str, str, str, OlmDevice, KeyVerificationStart) -> Sas
+            cls, own_user: str, own_device: str, own_fp_key: str,
+            other_olm_device: OlmDevice, event: Union[RoomKeyVerificationStart, KeyVerificationStart]
+    ) -> "Sas":
         """Create a SAS object from a KeyVerificationStart event.
 
         Args:
@@ -229,14 +237,22 @@ class Sas(olm.Sas):
                 other device to start the key verification process.
 
         """
+        if isinstance(event, RoomKeyVerificationStart):
+            transaction_id = event.relates_to
+            room_verification = True
+        else:
+            transaction_id = event.transaction_id
+            room_verification = False
+
         obj = cls(
             own_user,
             own_device,
             own_fp_key,
             other_olm_device,
-            event.transaction_id,
+            transaction_id,
             event.short_authentication_string,
             event.message_authentication_codes,
+            room_verification=room_verification,
         )
         obj.we_started_it = False
         obj.state = SasState.started
@@ -422,14 +438,24 @@ class Sas(olm.Sas):
             "short_authentication_string": self._strings_v1,
         }
 
-        message = ToDeviceMessage(
-            "m.key.verification.start",
-            self.other_olm_device.user_id,
-            self.other_olm_device.id,
-            content,
-        )
+        event_type = "m.key.verification.start",
 
-        return message
+        if self.room_verification:
+            content["m.relates_to"] = {
+                "rel_type": "m.reference",
+                "event_id": self.transaction_id,
+            }
+
+            return RoomEvent(event_type, content)
+        else:
+            content["transaction_id"] = self.transaction_id
+
+            return ToDeviceMessage(
+                event_type,
+                self.other_olm_device.user_id,
+                self.other_olm_device.id,
+                content,
+            )
 
     def accept_verification(self) -> ToDeviceMessage:
         """Create a content dictionary to accept the verification offer."""

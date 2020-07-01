@@ -9,3 +9,4 @@ It also provides classes for some direct events such as to-device messages.
 from .event_builder import EventBuilder
 from .state_events import *
 from .direct_messages import *
+from .room_events import *
