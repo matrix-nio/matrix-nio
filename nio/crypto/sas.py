@@ -16,7 +16,7 @@
 from builtins import bytes, super
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 import olm
@@ -26,8 +26,9 @@ from ..api import Api
 from ..events import (
     KeyVerificationEvent,
     KeyVerificationStart,
+    RoomKeyVerificationRequest,
     RoomKeyVerificationStart,
-    RoomKeyVerificationEvent
+    RoomKeyVerificationEvent,
 )
 from ..exceptions import LocalProtocolError
 from ..event_builders import ToDeviceMessage, RoomEvent
@@ -220,9 +221,54 @@ class Sas(olm.Sas):
         super().__init__()
 
     @classmethod
+    def from_key_verification_request(
+        cls,
+        own_user: str,
+        own_device: str,
+        own_fp_key: str,
+        other_olm_device: OlmDevice,
+        event: RoomKeyVerificationRequest,
+    ):
+        """Create a SAS object from a KeyVerificationRequest event.
+
+        Args:
+            own_user (str): The user id of our own user.
+            own_device (str): The device id of our own user.
+            own_fp_key (str): The fingerprint key of our own device that will
+                be verified by the other client.
+            other_olm_device (OlmDevice): The Olm device of the other user that
+                should be verified.
+            event (KeyVerificationRequest): The event that we received from a
+            device, requesting to start the interactive verification process.
+        """
+        transaction_id = event.event_id
+        room_verification = True
+
+        if Sas._sas_method_v1 not in event.methods:
+            raise ValueError(
+                "Verification request event doesn't contain a "
+                "supported SAS method"
+            )
+
+        obj = cls(
+            own_user,
+            own_device,
+            own_fp_key,
+            other_olm_device,
+            transaction_id,
+            room_verification=room_verification,
+        )
+        obj.state = SasState.request
+        return obj
+
+    @classmethod
     def from_key_verification_start(
-            cls, own_user: str, own_device: str, own_fp_key: str,
-            other_olm_device: OlmDevice, event: Union[RoomKeyVerificationStart, KeyVerificationStart]
+        cls,
+        own_user: str,
+        own_device: str,
+        own_fp_key: str,
+        other_olm_device: OlmDevice,
+        event: Union[RoomKeyVerificationStart, KeyVerificationStart],
     ) -> "Sas":
         """Create a SAS object from a KeyVerificationStart event.
 
@@ -263,9 +309,7 @@ class Sas(olm.Sas):
 
         if (
             Sas._sas_method_v1 != event.method
-            or (
-                Sas._key_agreement_v2 not in event.key_agreement_protocols
-            )
+            or (Sas._key_agreement_v2 not in event.key_agreement_protocols)
             or Sas._hash_v1 not in event.hashes
             or (
                 Sas._mac_normal not in event.message_authentication_codes
@@ -366,19 +410,27 @@ class Sas(olm.Sas):
         assert self.their_sas_key
 
         our_info = f"{self.own_user}|{self.own_device}|{self.pubkey}"
-        their_info = f"{device.user_id}|{device.device_id}|{self.their_sas_key}"
+        their_info = (
+            f"{device.user_id}|{device.device_id}|{self.their_sas_key}"
+        )
 
         if self.we_started_it:
-            return f"MATRIX_KEY_VERIFICATION_SAS|{our_info}|{their_info}|{tx_id}"
+            return (
+                f"MATRIX_KEY_VERIFICATION_SAS|{our_info}|{their_info}|{tx_id}"
+            )
         else:
-            return f"MATRIX_KEY_VERIFICATION_SAS|{their_info}|{our_info}|{tx_id}"
+            return (
+                f"MATRIX_KEY_VERIFICATION_SAS|{their_info}|{our_info}|{tx_id}"
+            )
 
     @property
     def _extra_info(self) -> str:
         if self.chosen_key_agreement == Sas._key_agreement_v2:
             return self._extra_info_v2
 
-        raise ValueError(f"Unknown key agreement protocol {self.chosen_key_agreement}")
+        raise ValueError(
+            f"Unknown key agreement protocol {self.chosen_key_agreement}"
+        )
 
     def get_emoji(self) -> List[Tuple[str, str]]:
         """Get the emoji short authentication string.
@@ -414,7 +466,7 @@ class Sas(olm.Sas):
             for x in map("".join, list(self._grouper(number[:-1], 13)))
         )
 
-    def start_verification(self) -> ToDeviceMessage:
+    def start_verification(self) -> Union[RoomEvent, ToDeviceMessage]:
         """Create a content dictionary to start the verification."""
         if not self.we_started_it:
             raise LocalProtocolError(
@@ -428,7 +480,7 @@ class Sas(olm.Sas):
                 "can't send start verification message."
             )
 
-        content = {
+        content: Dict[str, Any] = {
             "from_device": self.own_device,
             "method": self._sas_method_v1,
             "transaction_id": self.transaction_id,
@@ -438,7 +490,7 @@ class Sas(olm.Sas):
             "short_authentication_string": self._strings_v1,
         }
 
-        event_type = "m.key.verification.start",
+        event_type = "m.key.verification.start"
 
         if self.room_verification:
             content["m.relates_to"] = {
@@ -449,7 +501,6 @@ class Sas(olm.Sas):
             return RoomEvent(event_type, content)
         else:
             content["transaction_id"] = self.transaction_id
-
             return ToDeviceMessage(
                 event_type,
                 self.other_olm_device.user_id,

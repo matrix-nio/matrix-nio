@@ -6,7 +6,8 @@ from helpers import faker
 from nio.crypto import OlmDevice, Sas, SasState
 from nio.events import (KeyVerificationAccept, KeyVerificationCancel,
                         KeyVerificationKey, KeyVerificationMac,
-                        KeyVerificationStart, RoomKeyVerificationStart)
+                        KeyVerificationStart, RoomKeyVerificationStart,
+                        RoomKeyVerificationRequest)
 from nio.exceptions import LocalProtocolError
 
 alice_id = "@alice:example.org"
@@ -1144,6 +1145,40 @@ class TestClass:
             alice_keys[f"ed25519:{alice_device_id}"],
             bob_device,
             room_verification=True
+        )
+
+        assert alice.room_verification
+
+        with pytest.raises(LocalProtocolError):
+            alice.accept_verification()
+
+    def test_sas_from_request(self):
+        event = RoomKeyVerificationRequest.from_dict(
+            {
+                "sender": bob_id,
+                "event_id": "test_id",
+                "origin_server_ts": 10,
+                "content": {
+                    "msgtype": "m.key.verification.request",
+                    "to": "@example:morpheus.localhost",
+                    "from_device": "HBJSNGHJNB",
+                    "methods": [
+                      "m.sas.v1",
+                      "m.qr_code.show.v1",
+                      "m.reciprocate.v1"
+                    ]
+                }
+            }
+        )
+
+        assert isinstance(event, RoomKeyVerificationRequest)
+
+        alice = Sas.from_key_verification_request(
+            alice_id,
+            alice_device_id,
+            alice_keys[f"ed25519:{alice_device_id}"],
+            bob_device,
+            event,
         )
 
         assert alice.room_verification

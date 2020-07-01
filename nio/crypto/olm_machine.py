@@ -110,6 +110,7 @@ from .key_export import decrypt_and_read, encrypt_and_save
 from .sas import Sas
 from ..event_builders import (
     ToDeviceMessage,
+    RoomEvent,
     DummyMessage,
     RoomKeyRequestMessage,
 )
@@ -2409,7 +2410,7 @@ class Olm:
 
         return events
 
-    def create_sas(self, olm_device: OlmDevice) -> ToDeviceMessage:
+    def create_sas(self, olm_device: OlmDevice) -> Union[ToDeviceMessage, RoomEvent]:
         sas = Sas(
             self.user_id,
             self.device_id,

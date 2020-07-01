@@ -79,7 +79,7 @@ if ENCRYPTION_ENABLED:
     from ..crypto import Olm
     from ..store import DefaultStore, MatrixStore, SqliteMemoryStore
 
-from ..event_builders import ToDeviceMessage
+from ..event_builders import ToDeviceMessage, RoomEvent
 
 if False:
     from ..crypto import Sas
@@ -1315,7 +1315,7 @@ class Client:
         self.presence_callbacks.append(cb)
 
     @store_loaded
-    def create_key_verification(self, device: OlmDevice) -> ToDeviceMessage:
+    def create_key_verification(self, device: OlmDevice) -> Union[ToDeviceMessage, RoomEvent]:
         """Start a new key verification process with the given device.
 
         Args:
