@@ -78,9 +78,8 @@ class Sas(olm.Sas):
     """
 
     _sas_method_v1 = "m.sas.v1"
-    _key_agreement_v1 = "curve25519"
     _key_agreement_v2 = "curve25519-hkdf-sha256"
-    _key_agreeemnt_protocols = [_key_agreement_v1, _key_agreement_v2]
+    _key_agreeemnt_protocols = [_key_agreement_v2]
     _hash_v1 = "sha256"
     _mac_normal = "hkdf-hmac-sha256"
     _mac_old = "hmac-sha256"
@@ -249,7 +248,6 @@ class Sas(olm.Sas):
         if (
             Sas._sas_method_v1 != event.method
             or (
-                Sas._key_agreement_v1 not in event.key_agreement_protocols and
                 Sas._key_agreement_v2 not in event.key_agreement_protocols
             )
             or Sas._hash_v1 not in event.hashes
@@ -345,19 +343,6 @@ class Sas(olm.Sas):
         return zip_longest(*args, fillvalue=fillvalue)
 
     @property
-    def _extra_info_v1(self) -> str:
-        device = self.other_olm_device
-        tx_id = self.transaction_id
-
-        our_info = f"{self.own_user}{self.own_device}"
-        their_info = f"{device.user_id}{device.device_id}"
-
-        if self.we_started_it:
-            return f"MATRIX_KEY_VERIFICATION_SAS{our_info}{their_info}{tx_id}"
-        else:
-            return f"MATRIX_KEY_VERIFICATION_SAS{their_info}{our_info}{tx_id}"
-
-    @property
     def _extra_info_v2(self) -> str:
         device = self.other_olm_device
         tx_id = self.transaction_id
@@ -374,9 +359,7 @@ class Sas(olm.Sas):
 
     @property
     def _extra_info(self) -> str:
-        if self.chosen_key_agreement == Sas._key_agreement_v1:
-            return self._extra_info_v1
-        elif self.chosen_key_agreement == Sas._key_agreement_v2:
+        if self.chosen_key_agreement == Sas._key_agreement_v2:
             return self._extra_info_v2
 
         raise ValueError(f"Unknown key agreement protocol {self.chosen_key_agreement}")
@@ -473,10 +456,7 @@ class Sas(olm.Sas):
         else:
             self.chosen_mac_method = self._mac_old
 
-        if Sas._key_agreement_v2 in self.key_agreement_protocols:
-            self.chosen_key_agreement = Sas._key_agreement_v2
-        else:
-            self.chosen_key_agreement = Sas._key_agreement_v1
+        self.chosen_key_agreement = Sas._key_agreement_v2
 
         content = {
             "transaction_id": self.transaction_id,

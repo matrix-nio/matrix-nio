@@ -56,7 +56,6 @@ class CrossSigningKeyUsageField(TextField):
         return ",".join(value)
 
 
-
 class CrossSigningKeyTypeField(IntegerField):
     """Database field to hold the type of the cross signing key."""
 
