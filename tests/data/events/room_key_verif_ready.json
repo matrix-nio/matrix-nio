@@ -1,0 +1,14 @@
+{
+    "content": {
+        "from_device": "BobDevice1",
+        "methods": ["m.sas.v1"],
+        "m.relates_to": {
+            "rel_type": "m.reference",
+            "event_id": "$verification_request_event"
+        }
+    },
+    "type": "m.key.verification.ready",
+    "sender": "@bob:example.org",
+    "event_id": "$151800140517rfvjc:localhost",
+    "origin_server_ts": 1518001405556
+}

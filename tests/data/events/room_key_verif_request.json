@@ -1,0 +1,13 @@
+{
+    "content": {
+        "body": "@example:morpheus.localhost is requesting to verify your key, but your client does not support in-chat key verification.  You will need to use legacy key verification to verify keys.",
+        "from_device": "BobDevice1",
+        "methods": ["m.sas.v1"],
+        "to": "@alice:example.org",
+        "msgtype": "m.key.verification.request"
+    },
+    "type": "m.room.message",
+    "sender": "@bob:example.org",
+    "event_id": "$151800140517rfvjc:localhost",
+    "origin_server_ts": 1518001405556
+}

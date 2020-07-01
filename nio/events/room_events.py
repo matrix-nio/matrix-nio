@@ -1442,14 +1442,44 @@ class RoomKeyVerificationEvent(Event):
             return RoomKeyVerificationMac.from_dict(event_dict)
         elif event_dict["type"] == "m.key.verification.cancel":
             return RoomKeyVerificationCancel.from_dict(event_dict)
+        elif event_dict["type"] == "m.key.verification.ready":
+            return RoomKeyVerificationReady.from_dict(event_dict)
 
         return UnknownEvent.from_dict(event_dict)
 
 
 @dataclass
+class RoomKeyVerificationReady(RoomKeyVerificationEvent):
+    """Event signaling that a device is ready for a interactive verification.
+
+    Attributes:
+        body (str): The fallback message if clients don't support interactive
+            verification.
+        from_device (str): The device ID which is initiating the process.
+        methods (str): The verification methods supported by the sender.
+        timestamp (int): The POSIX timestamp in milliseconds for when the
+            request was made.
+
+    """
+    from_device: str = field()
+    methods: List[str] = field()
+
+    @classmethod
+    @verify(Schemas.room_verification_ready)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]
+        return cls(
+            parsed_dict,
+            content["m.relates_to"]["event_id"],
+            content["from_device"],
+            content["methods"],
+        )
+
+
+@dataclass
 class RoomKeyVerificationRequest(RoomMessage):
     """Event signaling that a device is requesting an interactive verification
-    to stare.
+    to start.
 
     Attributes:
         body (str): The fallback message if clients don't support interactive
@@ -1462,7 +1492,7 @@ class RoomKeyVerificationRequest(RoomMessage):
     """
     body: str = field()
     from_device: str = field()
-    methods: str = field()
+    methods: List[str] = field()
     to: int = field()
 
     @classmethod
