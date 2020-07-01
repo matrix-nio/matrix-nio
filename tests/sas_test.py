@@ -7,7 +7,7 @@ from nio.crypto import OlmDevice, Sas, SasState
 from nio.events import (KeyVerificationAccept, KeyVerificationCancel,
                         KeyVerificationKey, KeyVerificationMac,
                         KeyVerificationStart, RoomKeyVerificationStart,
-                        RoomKeyVerificationRequest)
+                        RoomKeyVerificationRequest, RoomKeyVerificationReady)
 from nio.exceptions import LocalProtocolError
 
 alice_id = "@alice:example.org"
@@ -42,24 +42,34 @@ class TestClass:
             ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
         )
 
-    def test_sas_creation(self):
-        alice = Sas(
+    @property
+    def alice_sas(self):
+        return Sas(
             alice_id,
             alice_device_id,
             alice_keys[f"ed25519:{alice_device_id}"],
+            bob_device.user_id,
             bob_device
         )
+
+    def wrap_room_message(self, sending_sas, message, event_class):
+        message = {
+            "sender": sending_sas.own_user,
+            "event_id": "test_id",
+            "origin_server_ts": 10,
+            "type": message.type,
+            "content": message.as_dict(),
+        }
+        return event_class.from_dict(message)
+
+    def test_sas_creation(self):
+        alice = self.alice_sas
 
         with pytest.raises(LocalProtocolError):
             alice.accept_verification()
 
     def test_sas_start(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
         assert alice.state == SasState.created
 
         start = {
@@ -84,12 +94,7 @@ class TestClass:
         assert bob.state == SasState.started
 
     def test_sas_accept(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
         start = {
             "sender": alice_id,
             "content": alice.start_verification().content
@@ -114,12 +119,7 @@ class TestClass:
         assert alice.state == SasState.accepted
 
     def test_sas_share_keys(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
         start = {
             "sender": alice_id,
             "content": alice.start_verification().content
@@ -163,12 +163,7 @@ class TestClass:
         assert alice.get_emoji() == bob.get_emoji()
 
     def test_sas_decimals(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
         start = {
             "sender": alice_id,
             "content": alice.start_verification().content
@@ -196,12 +191,7 @@ class TestClass:
         assert alice.get_decimals() == bob.get_decimals()
 
     def test_sas_invalid_commitment(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
         start = {
             "sender": alice_id,
             "content": alice.start_verification().content
@@ -245,12 +235,7 @@ class TestClass:
         assert alice.state == SasState.canceled
 
     def test_sas_mac(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
         start = {
             "sender": alice_id,
             "content": alice.start_verification().content
@@ -297,12 +282,7 @@ class TestClass:
         assert bob.verified
 
     def test_sas_old_mac_method(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
         start = {
             "sender": alice_id,
             "content": alice.start_verification().content
@@ -350,12 +330,7 @@ class TestClass:
         assert bob.verified
 
     def test_sas_cancellation(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
         assert not alice.canceled
 
         with pytest.raises(LocalProtocolError):
@@ -375,12 +350,7 @@ class TestClass:
         }
 
     def test_sas_invalid_start(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
 
         start = {
             "sender": alice_id,
@@ -400,12 +370,7 @@ class TestClass:
         assert bob.canceled
 
     def test_sas_reject(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
 
         start = {
             "sender": alice_id,
@@ -434,12 +399,7 @@ class TestClass:
         assert alice.canceled
 
     def test_sas_timeout(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
 
         assert not alice.timed_out
 
@@ -452,12 +412,7 @@ class TestClass:
         assert alice.canceled
 
     def test_sas_event_timeout(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
         minute = timedelta(minutes=1)
 
         assert not alice.timed_out
@@ -466,12 +421,7 @@ class TestClass:
         assert alice.canceled
 
     def test_sas_local_errors(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
         start = {
             "sender": alice_id,
             "content": alice.start_verification().content
@@ -502,12 +452,7 @@ class TestClass:
             alice.get_mac()
 
     def test_sas_not_ok_events(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
         start = {
             "sender": alice_id,
             "content": alice.start_verification().content
@@ -579,12 +524,7 @@ class TestClass:
         assert alice.canceled
 
     def test_sas_mac_before_key(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
         start = {
             "sender": alice_id,
             "content": alice.start_verification().content
@@ -615,12 +555,7 @@ class TestClass:
         assert alice.canceled
 
     def test_sas_invalid_mac(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys[f"ed25519:{alice_device_id}"],
-            bob_device,
-        )
+        alice = self.alice_sas
         start = {
             "sender": alice_id,
             "content": alice.start_verification().content
@@ -674,6 +609,7 @@ class TestClass:
             bob_id,
             bob_device_id,
             olm_machine.account.identity_keys["ed25519"],
+            bob_device.user_id,
             bob_device
         )
 
@@ -695,6 +631,7 @@ class TestClass:
             bob_id,
             bob_device_id,
             olm_machine.account.identity_keys["ed25519"],
+            bob_device.user_id,
             bob_device
         )
 
@@ -723,6 +660,7 @@ class TestClass:
             bob_id,
             bob_device_id,
             bob_device.ed25519,
+            alice_device.user_id,
             alice_device,
         )
 
@@ -791,6 +729,7 @@ class TestClass:
             bob_id,
             bob_device_id,
             faker.olm_key_pair("FAKEDEVICE")["ed25519:FAKEDEVICE"],
+            alice_device.user_id,
             alice_device,
         )
 
@@ -918,6 +857,7 @@ class TestClass:
             bob_device.user_id,
             bob_device.id,
             bob_device.ed25519,
+            alice_device.user_id,
             alice_device
         )
 
@@ -939,6 +879,7 @@ class TestClass:
             bob_device.user_id,
             bob_device.id,
             bob_device.ed25519,
+            alice_device.user_id,
             alice_device
         )
 
@@ -967,6 +908,7 @@ class TestClass:
             bob_device.user_id,
             bob_device.id,
             bob_device.ed25519,
+            alice_device.user_id,
             alice_device
         )
 
@@ -1063,6 +1005,7 @@ class TestClass:
             bob_device.user_id,
             bob_device.id,
             bob_device.ed25519,
+            alice_device.user_id,
             alice_device
         )
 
@@ -1102,6 +1045,7 @@ class TestClass:
             bob_device.user_id,
             bob_device.id,
             bob_device.ed25519,
+            alice_device.user_id,
             alice_device
         )
         start = {
@@ -1143,6 +1087,7 @@ class TestClass:
             alice_id,
             alice_device_id,
             alice_keys[f"ed25519:{alice_device_id}"],
+            bob_device.user_id,
             bob_device,
             room_verification=True
         )
@@ -1191,6 +1136,7 @@ class TestClass:
             alice_id,
             alice_device_id,
             alice_keys[f"ed25519:{alice_device_id}"],
+            bob_device.user_id,
             bob_device,
             room_verification=True
         )
@@ -1218,3 +1164,44 @@ class TestClass:
             bob.start_verification()
 
         assert bob.state == SasState.started
+
+    def test_sas_from_request_full(self):
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys[f"ed25519:{alice_device_id}"],
+            bob_device.user_id,
+            room_verification=True,
+        )
+
+        event = self.wrap_room_message(alice, alice.get_request_message(), RoomKeyVerificationRequest)
+
+        # We need to set the transaction id to our event id.
+        alice.transaction_id = "test_id"
+        assert isinstance(event, RoomKeyVerificationRequest)
+
+        bob = Sas.from_key_verification_request(
+            bob_id,
+            bob_device_id,
+            bob_keys[f"ed25519:{bob_device_id}"],
+            alice_device,
+            event
+        )
+
+        assert alice.room_verification
+        assert bob.room_verification
+        assert alice.state == SasState.request
+        assert bob.state == SasState.request
+
+        with pytest.raises(LocalProtocolError):
+            alice.accept_verification()
+
+        event = self.wrap_room_message(bob, bob.get_ready_message(), RoomKeyVerificationReady)
+
+        alice.receive_ready_event(event, bob_device)
+        assert alice.state == SasState.created
+
+        event = self.wrap_room_message(bob, bob.start_verification(), RoomKeyVerificationStart)
+        assert isinstance(event, RoomKeyVerificationStart)
+        alice.receive_start_event(event)
+        assert alice.state == SasState.started

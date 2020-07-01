@@ -29,7 +29,9 @@ from ..events import (
     RoomKeyVerificationRequest,
     RoomKeyVerificationStart,
     RoomKeyVerificationEvent,
+    RoomKeyVerificationReady,
 )
+from ..responses import RoomSendResponse
 from ..exceptions import LocalProtocolError
 from ..event_builders import ToDeviceMessage, RoomEvent
 from .device import OlmDevice
@@ -185,7 +187,8 @@ class Sas(olm.Sas):
         own_user: str,
         own_device: str,
         own_fp_key: str,
-        other_olm_device: OlmDevice,
+        other_user_id: str,
+        other_olm_device: Optional[OlmDevice] = None,
         transaction_id: str = None,
         short_auth_string: Optional[List[str]] = None,
         mac_methods: Optional[List[str]] = None,
@@ -194,6 +197,7 @@ class Sas(olm.Sas):
         self.own_user = own_user
         self.own_device = own_device
         self.own_fp_key = own_fp_key
+        self.other_user_id = other_user_id
 
         self.other_olm_device = other_olm_device
 
@@ -205,7 +209,7 @@ class Sas(olm.Sas):
         self.chosen_mac_method = ""
         self.key_agreement_protocols = Sas._key_agreeemnt_protocols
         self.chosen_key_agreement: Optional[str] = None
-        self.state = SasState.created
+        self.state = SasState.created if other_olm_device else SasState.request
         self.we_started_it = True
         self.sas_accepted = False
         self.commitment = None
@@ -254,6 +258,7 @@ class Sas(olm.Sas):
             own_user,
             own_device,
             own_fp_key,
+            other_olm_device.user_id,
             other_olm_device,
             transaction_id,
             room_verification=room_verification,
@@ -294,6 +299,7 @@ class Sas(olm.Sas):
             own_user,
             own_device,
             own_fp_key,
+            other_olm_device.user_id,
             other_olm_device,
             transaction_id,
             event.short_authentication_string,
@@ -307,6 +313,11 @@ class Sas(olm.Sas):
         obj.commitment = olm.sha256(obj.pubkey + string_content)
         obj.key_agreement_protocols = event.key_agreement_protocols
 
+        obj._check_start(event)
+
+        return obj
+
+    def _check_start(self, event):
         if (
             Sas._sas_method_v1 != event.method
             or (Sas._key_agreement_v2 not in event.key_agreement_protocols)
@@ -320,10 +331,8 @@ class Sas(olm.Sas):
                 and "decimal" not in event.short_authentication_string
             )
         ):
-            obj.state = SasState.canceled
-            obj.cancel_code, obj.cancel_reason = obj._unknonw_method_error
-
-        return obj
+            self.state = SasState.canceled
+            self.cancel_code, self.cancel_reason = self._unknonw_method_error
 
     @property
     def canceled(self) -> bool:
@@ -466,6 +475,41 @@ class Sas(olm.Sas):
             for x in map("".join, list(self._grouper(number[:-1], 13)))
         )
 
+    def receive_room_send_response(self, response: RoomSendResponse):
+        self.transaction_id = response.event_id
+
+    def get_request_message(self) -> RoomEvent:
+        content: Dict[str, Any] = {
+            "from_device": self.own_device,
+            "msgtype": "m.key.verification.request",
+            "methods": [self._sas_method_v1],
+            "body": f"{self.own_user} is requesting to verify your key, "
+                    "but your client does not support in-chat key "
+                    "verification. You will need to use legacy key "
+                    "verification to verify keys.",
+            "to": self.other_user_id,
+        }
+
+        event_type = "m.room.message"
+
+        return RoomEvent(event_type, content)
+
+    def get_ready_message(self) -> RoomEvent:
+        content: Dict[str, Any] = {
+            "from_device": self.own_device,
+            "methods": [self._sas_method_v1],
+            "to": self.other_olm_device.user_id,
+        }
+
+        content["m.relates_to"] = {
+            "rel_type": "m.reference",
+            "event_id": self.transaction_id,
+        }
+
+        event_type = "m.key.verification.ready"
+
+        return RoomEvent(event_type, content)
+
     def start_verification(self) -> Union[RoomEvent, ToDeviceMessage]:
         """Create a content dictionary to start the verification."""
         if not self.we_started_it:
@@ -483,7 +527,6 @@ class Sas(olm.Sas):
         content: Dict[str, Any] = {
             "from_device": self.own_device,
             "method": self._sas_method_v1,
-            "transaction_id": self.transaction_id,
             "key_agreement_protocols": Sas._key_agreeemnt_protocols,
             "hashes": [self._hash_v1],
             "message_authentication_codes": self._mac_v1,
@@ -512,12 +555,12 @@ class Sas(olm.Sas):
         """Create a content dictionary to accept the verification offer."""
         if self.we_started_it:
             raise LocalProtocolError(
-                "Verification was started by us, can't " "accept offer."
+                "Verification was started by us, can't accept offer."
             )
 
         if self.state == SasState.canceled:
             raise LocalProtocolError(
-                "SAS verification was canceled, can't " "accept offer."
+                "SAS verification was canceled, can't accept offer."
             )
 
         sas_methods = []
@@ -641,21 +684,65 @@ class Sas(olm.Sas):
 
         return message
 
-    def _event_ok(self, event: KeyVerificationEvent):
+    def _event_ok(self, event: Union[RoomKeyVerificationEvent, KeyVerificationEvent]):
         if self.state == SasState.canceled:
             return False
 
-        if event.transaction_id != self.transaction_id:
+        transaction_id: str = ""
+
+        if isinstance(event, RoomKeyVerificationEvent):
+            assert event.relates_to
+            transaction_id = event.relates_to
+        else:
+            assert event.transaction_id
+            transaction_id = event.transaction_id
+
+        if transaction_id != self.transaction_id:
             self.state = SasState.canceled
             self.cancel_code, self.cancel_reason = self._txid_error
             return False
 
-        if self.other_olm_device.user_id != event.sender:
+        if self.other_user_id != event.sender:
             self.state = SasState.canceled
             self.cancel_code, self.cancel_reason = self._user_mismatch_error
             return False
 
         return True
+
+    def receive_ready_event(self, event: RoomKeyVerificationReady, olm_device: OlmDevice):
+        if not self._event_ok(event):
+            return
+
+        self.other_olm_device = olm_device
+        self.state = SasState.created
+
+    def receive_start_event(self, event):
+        if not self._event_ok(event):
+            return
+
+        if self.state != SasState.ready and self.state != SasState.created:
+            self.state = SasState.canceled
+            (
+                self.cancel_code,
+                self.cancel_reason,
+            ) = Sas._unexpected_message_error
+            return
+
+        if event.method != Sas._sas_method_v1:
+            self.state = SasState.canceled
+            self.cancel_code, self.cancel_reason = self._unknonw_method_error
+            return
+
+        self.we_started_it = False
+        self.state = SasState.started
+
+        string_content = Api.to_canonical_json(event.source["content"])
+        self.commitment = olm.sha256(self.pubkey + string_content)
+        self.key_agreement_protocols = event.key_agreement_protocols
+
+        self._check_start(event)
+
+        return
 
     def receive_accept_event(self, event):
         """Receive a KeyVerificationAccept event."""

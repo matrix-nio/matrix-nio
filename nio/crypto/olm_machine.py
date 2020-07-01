@@ -2415,6 +2415,7 @@ class Olm:
             self.user_id,
             self.device_id,
             self.account.identity_keys["ed25519"],
+            olm_device.user_id,
             olm_device,
         )
         self.key_verifications[sas.transaction_id] = sas
