@@ -81,9 +81,9 @@ class Sas(olm.Sas):
             authentication methods that the client would like to allow for this
             authentication session. By default the 'emoji' and 'decimal'
             methods are allowed.
-        room_verification (bool, optional): Is the verification happening
-            inside a room or as to-device messages. True if it's a room
-            verification, False otherwise. Defaults to False.
+        room (str, optional): If the verification is happening inside of a room
+            a room id should be given here. This is None if the verification is
+            happening using to-device messages.
     """
 
     _sas_method_v1 = "m.sas.v1"
@@ -192,7 +192,7 @@ class Sas(olm.Sas):
         transaction_id: str = None,
         short_auth_string: Optional[List[str]] = None,
         mac_methods: Optional[List[str]] = None,
-        room_verification: bool = False,
+        room_id: Optional[str] = None,
     ):
         self.own_user = own_user
         self.own_device = own_device
@@ -205,7 +205,7 @@ class Sas(olm.Sas):
 
         self.short_auth_string = short_auth_string or ["emoji", "decimal"]
         self.mac_methods = mac_methods or Sas._mac_v1
-        self.room_verification = room_verification
+        self.room_id = room_id
         self.chosen_mac_method = ""
         self.key_agreement_protocols = Sas._key_agreeemnt_protocols
         self.chosen_key_agreement: Optional[str] = None
@@ -242,11 +242,12 @@ class Sas(olm.Sas):
                 be verified by the other client.
             other_olm_device (OlmDevice): The Olm device of the other user that
                 should be verified.
-            event (KeyVerificationRequest): The event that we received from a
-            device, requesting to start the interactive verification process.
+            event (RoomKeyVerificationRequest): The event that we received from
+            a device, requesting to start the interactive verification process.
+            Note that the event needs to have the room id set.
         """
         transaction_id = event.event_id
-        room_verification = True
+        room_id = event.room_id
 
         if Sas._sas_method_v1 not in event.methods:
             raise ValueError(
@@ -261,7 +262,7 @@ class Sas(olm.Sas):
             other_olm_device.user_id,
             other_olm_device,
             transaction_id,
-            room_verification=room_verification,
+            room_id=room_id,
         )
         obj.state = SasState.request
         return obj
@@ -290,10 +291,10 @@ class Sas(olm.Sas):
         """
         if isinstance(event, RoomKeyVerificationStart):
             transaction_id = event.relates_to
-            room_verification = True
+            room_id = event.room_id
         else:
             transaction_id = event.transaction_id
-            room_verification = False
+            room_id = None
 
         obj = cls(
             own_user,
@@ -304,7 +305,7 @@ class Sas(olm.Sas):
             transaction_id,
             event.short_authentication_string,
             event.message_authentication_codes,
-            room_verification=room_verification,
+            room_id=room_id,
         )
         obj.we_started_it = False
         obj.state = SasState.started
@@ -492,7 +493,8 @@ class Sas(olm.Sas):
 
         event_type = "m.room.message"
 
-        return RoomEvent(event_type, content)
+        assert self.room_id
+        return RoomEvent(self.room_id, event_type, content)
 
     def get_ready_message(self) -> RoomEvent:
         content: Dict[str, Any] = {
@@ -507,8 +509,8 @@ class Sas(olm.Sas):
         }
 
         event_type = "m.key.verification.ready"
-
-        return RoomEvent(event_type, content)
+        assert self.room_id
+        return RoomEvent(self.room_id, event_type, content)
 
     def start_verification(self) -> Union[RoomEvent, ToDeviceMessage]:
         """Create a content dictionary to start the verification."""
@@ -535,13 +537,13 @@ class Sas(olm.Sas):
 
         event_type = "m.key.verification.start"
 
-        if self.room_verification:
+        if self.room_id:
             content["m.relates_to"] = {
                 "rel_type": "m.reference",
                 "event_id": self.transaction_id,
             }
 
-            return RoomEvent(event_type, content)
+            return RoomEvent(self.room_id, event_type, content)
         else:
             content["transaction_id"] = self.transaction_id
             return ToDeviceMessage(
@@ -551,7 +553,7 @@ class Sas(olm.Sas):
                 content,
             )
 
-    def accept_verification(self) -> ToDeviceMessage:
+    def accept_verification(self) -> Union[RoomEvent, ToDeviceMessage]:
         """Create a content dictionary to accept the verification offer."""
         if self.we_started_it:
             raise LocalProtocolError(
@@ -578,8 +580,7 @@ class Sas(olm.Sas):
 
         self.chosen_key_agreement = Sas._key_agreement_v2
 
-        content = {
-            "transaction_id": self.transaction_id,
+        content: Dict[str, Any] = {
             "key_agreement_protocol": self.chosen_key_agreement,
             "hash": self._hash_v1,
             "message_authentication_code": self.chosen_mac_method,
@@ -587,34 +588,52 @@ class Sas(olm.Sas):
             "commitment": self.commitment,
         }
 
-        message = ToDeviceMessage(
-            "m.key.verification.accept",
-            self.other_olm_device.user_id,
-            self.other_olm_device.id,
-            content,
-        )
+        event_type = "m.key.verification.accept"
 
-        return message
+        if self.room_id:
+            content["m.relates_to"] = {
+                "rel_type": "m.reference",
+                "event_id": self.transaction_id,
+            }
 
-    def share_key(self) -> ToDeviceMessage:
+            return RoomEvent(self.room_id, event_type, content)
+        else:
+            content["transaction_id"] = self.transaction_id
+            return ToDeviceMessage(
+                event_type,
+                self.other_olm_device.user_id,
+                self.other_olm_device.id,
+                content,
+            )
+
+    def share_key(self) -> Union[RoomEvent, ToDeviceMessage]:
         """Create a dictionary containing our public key."""
         if self.state == SasState.canceled:
             raise LocalProtocolError(
                 "SAS verification was canceled, can't " "share our public key."
             )
 
-        content = {"transaction_id": self.transaction_id, "key": self.pubkey}
+        content = {"key": self.pubkey}
 
-        message = ToDeviceMessage(
-            "m.key.verification.key",
-            self.other_olm_device.user_id,
-            self.other_olm_device.id,
-            content,
-        )
+        event_type = "m.key.verification.key"
 
-        return message
+        if self.room_id:
+            content["m.relates_to"] = {
+                "rel_type": "m.reference",
+                "event_id": self.transaction_id,
+            }
 
-    def get_mac(self) -> ToDeviceMessage:
+            return RoomEvent(self.room_id, event_type, content)
+        else:
+            content["transaction_id"] = self.transaction_id
+            return ToDeviceMessage(
+                event_type,
+                self.other_olm_device.user_id,
+                self.other_olm_device.id,
+                content,
+            )
+
+    def get_mac(self) -> Union[RoomEvent, ToDeviceMessage]:
         """Create a dictionary containing our MAC."""
         if not self.sas_accepted:
             raise LocalProtocolError("SAS string wasn't yet accepted")
@@ -649,19 +668,27 @@ class Sas(olm.Sas):
         content = {
             "mac": mac,
             "keys": calculate_mac(key_id, info + "KEY_IDS"),
-            "transaction_id": self.transaction_id,
         }
 
-        message = ToDeviceMessage(
-            "m.key.verification.mac",
-            self.other_olm_device.user_id,
-            self.other_olm_device.id,
-            content,
-        )
+        event_type = "m.key.verification.mac"
 
-        return message
+        if self.room_id:
+            content["m.relates_to"] = {
+                "rel_type": "m.reference",
+                "event_id": self.transaction_id,
+            }
 
-    def get_cancellation(self) -> ToDeviceMessage:
+            return RoomEvent(self.room_id, event_type, content)
+        else:
+            content["transaction_id"] = self.transaction_id
+            return ToDeviceMessage(
+                event_type,
+                self.other_olm_device.user_id,
+                self.other_olm_device.id,
+                content,
+            )
+
+    def get_cancellation(self) -> Union[RoomEvent, ToDeviceMessage]:
         """Create a dictionary containing our verification cancellation."""
         if self.state != SasState.canceled:
             raise LocalProtocolError("Sas process isn't canceled.")
@@ -669,20 +696,28 @@ class Sas(olm.Sas):
         assert self.cancel_code
         assert self.cancel_reason
 
-        content = {
+        content: Dict[str, Any] = {
             "code": self.cancel_code,
             "reason": self.cancel_reason,
-            "transaction_id": self.transaction_id,
         }
 
-        message = ToDeviceMessage(
-            "m.key.verification.cancel",
-            self.other_olm_device.user_id,
-            self.other_olm_device.id,
-            content,
-        )
+        event_type = "m.key.verification.cancel"
 
-        return message
+        if self.room_id:
+            content["m.relates_to"] = {
+                "rel_type": "m.reference",
+                "event_id": self.transaction_id,
+            }
+
+            return RoomEvent(self.room_id, event_type, content)
+        else:
+            content["transaction_id"] = self.transaction_id
+            return ToDeviceMessage(
+                event_type,
+                self.other_olm_device.user_id,
+                self.other_olm_device.id,
+                content,
+            )
 
     def _event_ok(self, event: Union[RoomKeyVerificationEvent, KeyVerificationEvent]):
         if self.state == SasState.canceled:
@@ -749,7 +784,7 @@ class Sas(olm.Sas):
         if not self._event_ok(event):
             return
 
-        if self.state != SasState.created:
+        if (self.state != SasState.created and self.state != SasState.request):
             self.state = SasState.canceled
             (
                 self.cancel_code,

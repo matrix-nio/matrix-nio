@@ -20,13 +20,15 @@ from . import EventBuilder
 
 @dataclass
 class RoomEvent(EventBuilder):
-    """A state event sent to enable encryption in a room.
+    """An event that can be sent as a message to a room.
 
     Attributes:
+        room_id (str): The room that the event should be sent to.
         type (str): The type of the event.
         content (Dict[Any, Any]): The content of the event.
     """
 
+    room_id: str = field()
     type: str = field()
     content: Dict[Any, Any] = field()
 

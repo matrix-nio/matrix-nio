@@ -2422,14 +2422,15 @@ class Olm:
 
         return sas.start_verification()
 
-    def get_active_sas(self, user_id: str, device_id: str) -> Optional[Sas]:
+    def get_active_sas(self, user_id: str, device_id: Optional[str]) -> Optional[Sas]:
         """Find a non-canceled SAS verification object for the provided user.
 
         Args:
             user_id (str): The user for which we should find a SAS verification
                 object.
-            device_id (str): The device_id for which we should find the SAS
-                verification object.
+            device_id (str, optional): The device_id for which we should find
+                the SAS verification object. If not given the newest SAS
+                verification object for the given user will be returned.
 
         Returns the object if it's found, otherwise None.
         """
@@ -2440,9 +2441,13 @@ class Olm:
         for sas in sorted(
             verifications, key=lambda x: x.creation_time, reverse=True
         ):
-            device = sas.other_olm_device
-            if device.user_id == user_id and device.id == device_id:
-                return sas
+            if user_id == sas.other_user_id:
+                if device_id:
+                    if (sas.other_olm_device
+                            and device_id == sas.other_olm_device.device_id):
+                        return sas
+                else:
+                    return sas
 
         return None
 
@@ -2599,4 +2604,5 @@ class Olm:
                         )
                     )
                     device = sas.other_olm_device
+                    assert device
                     self.verify_device(device)

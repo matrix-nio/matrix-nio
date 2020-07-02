@@ -7,7 +7,9 @@ from nio.crypto import OlmDevice, Sas, SasState
 from nio.events import (KeyVerificationAccept, KeyVerificationCancel,
                         KeyVerificationKey, KeyVerificationMac,
                         KeyVerificationStart, RoomKeyVerificationStart,
-                        RoomKeyVerificationRequest, RoomKeyVerificationReady)
+                        RoomKeyVerificationRequest, RoomKeyVerificationReady,
+                        RoomKeyVerificationAccept, RoomKeyVerificationKey,
+                        RoomKeyVerificationMac)
 from nio.exceptions import LocalProtocolError
 
 alice_id = "@alice:example.org"
@@ -55,6 +57,7 @@ class TestClass:
     def wrap_room_message(self, sending_sas, message, event_class):
         message = {
             "sender": sending_sas.own_user,
+            "room_id": "!test_room",
             "event_id": "test_id",
             "origin_server_ts": 10,
             "type": message.type,
@@ -1089,10 +1092,10 @@ class TestClass:
             alice_keys[f"ed25519:{alice_device_id}"],
             bob_device.user_id,
             bob_device,
-            room_verification=True
+            room_id="!test_room",
         )
 
-        assert alice.room_verification
+        assert alice.room_id
 
         with pytest.raises(LocalProtocolError):
             alice.accept_verification()
@@ -1103,6 +1106,7 @@ class TestClass:
                 "sender": bob_id,
                 "event_id": "test_id",
                 "origin_server_ts": 10,
+                "room_id": "!test_room",
                 "content": {
                     "msgtype": "m.key.verification.request",
                     "to": "@example:morpheus.localhost",
@@ -1126,7 +1130,7 @@ class TestClass:
             event,
         )
 
-        assert alice.room_verification
+        assert alice.room_id
 
         with pytest.raises(LocalProtocolError):
             alice.accept_verification()
@@ -1138,7 +1142,7 @@ class TestClass:
             alice_keys[f"ed25519:{alice_device_id}"],
             bob_device.user_id,
             bob_device,
-            room_verification=True
+            room_id="!test_room",
         )
         assert alice.state == SasState.created
 
@@ -1171,7 +1175,7 @@ class TestClass:
             alice_device_id,
             alice_keys[f"ed25519:{alice_device_id}"],
             bob_device.user_id,
-            room_verification=True,
+            room_id="!test_room",
         )
 
         event = self.wrap_room_message(alice, alice.get_request_message(), RoomKeyVerificationRequest)
@@ -1188,8 +1192,8 @@ class TestClass:
             event
         )
 
-        assert alice.room_verification
-        assert bob.room_verification
+        assert alice.room_id
+        assert bob.room_id
         assert alice.state == SasState.request
         assert bob.state == SasState.request
 
@@ -1205,3 +1209,32 @@ class TestClass:
         assert isinstance(event, RoomKeyVerificationStart)
         alice.receive_start_event(event)
         assert alice.state == SasState.started
+
+        event = self.wrap_room_message(alice, alice.accept_verification(), RoomKeyVerificationAccept)
+
+        bob.receive_accept_event(event)
+
+        assert bob.state == SasState.accepted
+
+        event = self.wrap_room_message(alice, alice.share_key(), RoomKeyVerificationKey)
+        bob.receive_key_event(event)
+
+        assert bob.state == SasState.key_received
+
+        event = self.wrap_room_message(bob, bob.share_key(), RoomKeyVerificationKey)
+        alice.receive_key_event(event)
+
+        assert alice.state == SasState.key_received
+
+        alice.accept_sas()
+        bob.accept_sas()
+
+        event = self.wrap_room_message(bob, bob.get_mac(), RoomKeyVerificationMac)
+        alice.receive_mac_event(event)
+        event = self.wrap_room_message(alice, alice.get_mac(), RoomKeyVerificationMac)
+        bob.receive_mac_event(event)
+
+        assert alice.state == SasState.mac_received
+        assert alice.verified
+        assert bob.state == SasState.mac_received
+        assert bob.verified

@@ -79,8 +79,10 @@ class Event:
     sender_key: Optional[str] = field(default=None, init=False)
     session_id: Optional[str] = field(default=None, init=False)
     transaction_id: Optional[str] = field(default=None, init=False)
+    room_id: Optional[str] = field(default=None, init=False)
 
     def __post_init__(self):
+        self.room_id = self.source.get("room_id")
         self.event_id = self.source["event_id"]
         self.sender = self.source["sender"]
         self.server_timestamp = self.source["origin_server_ts"]
@@ -285,7 +287,6 @@ class MegolmEvent(Event):
     device_id: str = field()
     ciphertext: str = field()
     algorithm: str = field()
-    room_id: str = field()
 
     @classmethod
     @verify(Schemas.room_megolm_encrypted)
@@ -306,14 +307,13 @@ class MegolmEvent(Event):
         device_id = content["device_id"]
         algorithm = content["algorithm"]
 
-        room_id = event_dict.get("room_id", None)
         tx_id = (
             event_dict["unsigned"].get("transaction_id", None)
             if "unsigned" in event_dict
             else None
         )
 
-        event = cls(event_dict, device_id, ciphertext, algorithm, room_id,)
+        event = cls(event_dict, device_id, ciphertext, algorithm)
 
         event.sender_key = sender_key
         event.session_id = session_id
@@ -362,6 +362,8 @@ class MegolmEvent(Event):
             "request_id": request_id,
             "requesting_device_id": requesting_device_id,
         }
+
+        assert self.room_id
 
         return RoomKeyRequestMessage(
             "m.room_key_request",
