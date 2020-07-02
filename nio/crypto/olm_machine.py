@@ -88,6 +88,11 @@ from ..events import (
     validate_or_badevent,
     RoomKeyRequest,
     RoomKeyRequestCancellation,
+    RoomKeyVerificationStart,
+    RoomKeyVerificationRequest,
+    RoomKeyVerificationReady,
+    RoomKeyVerificationKey,
+    RoomKeyVerificationMac
 )
 from ..exceptions import (
     EncryptionError,
@@ -2427,7 +2432,7 @@ class Olm:
 
         return sas.start_verification()
 
-    def get_active_sas(self, user_id: str, device_id: Optional[str]) -> Optional[Sas]:
+    def get_active_sas(self, user_id: str, device_id: Optional[str] = None) -> Optional[Sas]:
         """Find a non-canceled SAS verification object for the provided user.
 
         Args:
@@ -2464,7 +2469,7 @@ class Olm:
 
     def handle_key_verification(self, event: KeyVerificationEvent):
         """Receive key verification events."""
-        if isinstance(event, KeyVerificationStart):
+        if isinstance(event, (KeyVerificationStart, RoomKeyVerificationRequest)):
             logger.info(
                 "Received key verification start event from "
                 "{} {} {}".format(
@@ -2481,13 +2486,22 @@ class Olm:
                 self.users_for_key_query.add(event.sender)
                 return
 
-            new_sas = Sas.from_key_verification_start(
-                self.user_id,
-                self.device_id,
-                self.account.identity_keys["ed25519"],
-                device,
-                event,
-            )
+            if isinstance(event, KeyVerificationStart):
+                new_sas = Sas.from_key_verification_start(
+                    self.user_id,
+                    self.device_id,
+                    self.account.identity_keys["ed25519"],
+                    device,
+                    event,
+                )
+            else:
+                new_sas = Sas.from_key_verification_request(
+                    self.user_id,
+                    self.device_id,
+                    self.account.identity_keys["ed25519"],
+                    device,
+                    event,
+                )
 
             if new_sas.canceled:
                 logger.warn(
@@ -2522,10 +2536,32 @@ class Olm:
                         event.sender, event.from_device, new_sas.transaction_id
                     )
                 )
-                self.key_verifications[event.transaction_id] = new_sas
+                if isinstance(event, KeyVerificationStart):
+                    self.key_verifications[event.transaction_id] = new_sas
+                else:
+                    self.key_verifications[event.event_id] = new_sas
 
+        elif isinstance(event, RoomKeyVerificationStart):
+            sas = self.key_verifications.get(event.relates_to)
+
+            if not sas:
+                logger.warn(
+                    "Received key verification event with an unknown "
+                    "transaction id from {}".format(event.sender)
+                )
+            else:
+                sas.receive_start_event(event)
+
+                if sas.canceled:
+                    message = sas.get_cancellation()
+                    self.store_verification_message(message)
         else:
-            sas = self.key_verifications.get(event.transaction_id, None)
+            if isinstance(event, KeyVerificationEvent):
+                transaction_id = event.transaction_id
+            else:
+                transaction_id = event.relates_to
+
+            sas = self.key_verifications.get(transaction_id)
 
             if not sas:
                 logger.warn(
@@ -2566,7 +2602,7 @@ class Olm:
                 if sas:
                     sas.cancel()
 
-            elif isinstance(event, KeyVerificationKey):
+            elif isinstance(event, (KeyVerificationKey, RoomKeyVerificationKey)):
                 sas.receive_key_event(event)
                 outgoing_message: Optional[Union[RoomEvent, ToDeviceMessage]] = None
 
@@ -2588,7 +2624,7 @@ class Olm:
                 if outgoing_message:
                     self.store_verification_message(outgoing_message)
 
-            elif isinstance(event, KeyVerificationMac):
+            elif isinstance(event, (KeyVerificationMac, RoomKeyVerificationMac)):
                 sas.receive_mac_event(event)
 
                 if sas.canceled:

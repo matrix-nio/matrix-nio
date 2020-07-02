@@ -759,7 +759,9 @@ class Sas(olm.Sas):
         if not self._event_ok(event):
             return
 
-        if self.state != SasState.ready and self.state != SasState.created:
+        if (self.state != SasState.ready
+                and self.state != SasState.created
+                and self.state != SasState.request):
             self.state = SasState.canceled
             (
                 self.cancel_code,

@@ -40,7 +40,10 @@ class TestClass:
         return OlmDevice(
             machine.user_id,
             machine.device_id,
-            machine.account.identity_keys,
+            {
+                f"{key_type}:{machine.device_id}": key for key_type,
+                key in machine.account.identity_keys.items()
+            },
             ["m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2"]
         )
 
@@ -57,7 +60,7 @@ class TestClass:
     def wrap_room_message(self, sending_sas, message, event_class):
         message = {
             "sender": sending_sas.own_user,
-            "room_id": "!test_room",
+            "room_id": "!test_room:localhost",
             "event_id": "test_id",
             "origin_server_ts": 10,
             "type": message.type,
@@ -1238,3 +1241,67 @@ class TestClass:
         assert alice.verified
         assert bob.state == SasState.mac_received
         assert bob.verified
+
+    def test_client_full_room_sas(self, olm_machine):
+        room_id = "!test_room:localhost"
+        alice = olm_machine
+
+        alice_device = self.device_from_machine(alice)
+        bob_device = alice.device_store[bob_id][bob_device_id]
+
+        bob_sas = Sas(
+            bob_id,
+            bob_device_id,
+            bob_device.ed25519,
+            alice_device.user_id,
+            room_id=room_id,
+        )
+        # We need to set the transaction id to our event id.
+        bob_sas.transaction_id = "test_id"
+
+        event = self.wrap_room_message(bob_sas, bob_sas.get_request_message(), RoomKeyVerificationRequest)
+        alice.handle_key_verification(event)
+
+        alice_sas = alice.get_active_sas(bob_id)
+        assert alice_sas
+
+        assert alice_sas.state == SasState.request
+
+        event = self.wrap_room_message(alice_sas, alice_sas.get_ready_message(), RoomKeyVerificationReady)
+        bob_sas.receive_ready_event(event, alice_device)
+        assert bob_sas.state == SasState.created
+
+        event = self.wrap_room_message(bob_sas, bob_sas.start_verification(), RoomKeyVerificationStart)
+        alice.handle_key_verification(event)
+
+        assert alice_sas.state == SasState.started
+
+        event = self.wrap_room_message(alice_sas, alice_sas.accept_verification(), RoomKeyVerificationAccept)
+
+        bob_sas.receive_accept_event(event)
+
+        assert bob_sas.state == SasState.accepted
+
+        event = self.wrap_room_message(bob_sas, bob_sas.share_key(), RoomKeyVerificationKey)
+        alice.handle_key_verification(event)
+
+        event = self.wrap_room_message(alice_sas, alice.outgoing_room_messages.pop(), RoomKeyVerificationKey)
+        bob_sas.receive_key_event(event)
+
+        assert alice_sas.state == SasState.key_received
+        assert bob_sas.state == SasState.key_received
+
+        assert alice_sas.get_emoji() == bob_sas.get_emoji()
+
+        alice_sas.accept_sas()
+        bob_sas.accept_sas()
+
+        event = self.wrap_room_message(bob_sas, bob_sas.get_mac(), RoomKeyVerificationMac)
+        alice.handle_key_verification(event)
+        event = self.wrap_room_message(alice_sas, alice_sas.get_mac(), RoomKeyVerificationMac)
+        bob_sas.receive_mac_event(event)
+
+        assert alice_sas.state == SasState.mac_received
+        assert alice_sas.verified
+        assert bob_sas.state == SasState.mac_received
+        assert bob_sas.verified
