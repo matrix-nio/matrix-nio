@@ -258,6 +258,11 @@ class Olm:
         # unwedging.
         self.outgoing_to_device_messages: List[ToDeviceMessage] = []
 
+        # Alist of room messages that need to be sent to the given room. This
+        # will get populated by room messages for interactive device
+        # verification that happens inside a room.
+        self.outgoing_room_messages: List[RoomEvent] = []
+
         # A least recently used cache for replay attack protection for Megolm
         # encrypted messages. This is a dict holding a tuple of the
         # sender_key, the session id and message index as the key and a tuple
@@ -2451,6 +2456,12 @@ class Olm:
 
         return None
 
+    def store_verification_message(self, message: Union[ToDeviceMessage, RoomEvent]):
+        if isinstance(message, ToDeviceMessage):
+            self.outgoing_to_device_messages.append(message)
+        else:
+            self.outgoing_room_messages.append(message)
+
     def handle_key_verification(self, event: KeyVerificationEvent):
         """Receive key verification events."""
         if isinstance(event, KeyVerificationStart):
@@ -2484,7 +2495,7 @@ class Olm:
                     "{} {}".format(event.sender, event.from_device)
                 )
                 message = new_sas.get_cancellation()
-                self.outgoing_to_device_messages.append(message)
+                self.store_verification_message(message)
 
             else:
                 old_sas = self.get_active_sas(event.sender, event.from_device)
@@ -2502,7 +2513,8 @@ class Olm:
                     )
                     old_sas.cancel()
                     cancel_message = old_sas.get_cancellation()
-                    self.outgoing_to_device_messages.append(cancel_message)
+
+                    self.store_verification_message(cancel_message)
 
                 logger.info(
                     "Successfully started key verification with "
@@ -2538,7 +2550,7 @@ class Olm:
                     )
                     message = sas.share_key()
 
-                self.outgoing_to_device_messages.append(message)
+                self.store_verification_message(message)
 
             elif isinstance(event, KeyVerificationCancel):
                 logger.info(
@@ -2556,10 +2568,10 @@ class Olm:
 
             elif isinstance(event, KeyVerificationKey):
                 sas.receive_key_event(event)
-                to_device_message: Optional[ToDeviceMessage] = None
+                outgoing_message: Optional[Union[RoomEvent, ToDeviceMessage]] = None
 
                 if sas.canceled:
-                    to_device_message = sas.get_cancellation()
+                    outgoing_message = sas.get_cancellation()
                 else:
                     logger.info(
                         "Received a key verification pubkey "
@@ -2571,18 +2583,18 @@ class Olm:
                     )
 
                 if not sas.we_started_it and not sas.canceled:
-                    to_device_message = sas.share_key()
+                    outgoing_message = sas.share_key()
 
-                if to_device_message:
-                    self.outgoing_to_device_messages.append(to_device_message)
+                if outgoing_message:
+                    self.store_verification_message(outgoing_message)
 
             elif isinstance(event, KeyVerificationMac):
                 sas.receive_mac_event(event)
 
                 if sas.canceled:
-                    self.outgoing_to_device_messages.append(
-                        sas.get_cancellation()
-                    )
+                    cancel_message = sas.get_cancellation()
+                    self.store_verification_message(cancel_message)
+
                     return
 
                 logger.info(

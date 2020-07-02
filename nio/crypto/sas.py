@@ -485,9 +485,9 @@ class Sas(olm.Sas):
             "msgtype": "m.key.verification.request",
             "methods": [self._sas_method_v1],
             "body": f"{self.own_user} is requesting to verify your key, "
-                    "but your client does not support in-chat key "
-                    "verification. You will need to use legacy key "
-                    "verification to verify keys.",
+            "but your client does not support in-chat key "
+            "verification. You will need to use legacy key "
+            "verification to verify keys.",
             "to": self.other_user_id,
         }
 
@@ -719,7 +719,9 @@ class Sas(olm.Sas):
                 content,
             )
 
-    def _event_ok(self, event: Union[RoomKeyVerificationEvent, KeyVerificationEvent]):
+    def _event_ok(
+        self, event: Union[RoomKeyVerificationEvent, KeyVerificationEvent]
+    ):
         if self.state == SasState.canceled:
             return False
 
@@ -744,7 +746,9 @@ class Sas(olm.Sas):
 
         return True
 
-    def receive_ready_event(self, event: RoomKeyVerificationReady, olm_device: OlmDevice):
+    def receive_ready_event(
+        self, event: RoomKeyVerificationReady, olm_device: OlmDevice
+    ):
         if not self._event_ok(event):
             return
 
@@ -784,7 +788,7 @@ class Sas(olm.Sas):
         if not self._event_ok(event):
             return
 
-        if (self.state != SasState.created and self.state != SasState.request):
+        if self.state != SasState.created and self.state != SasState.request:
             self.state = SasState.canceled
             (
                 self.cancel_code,
