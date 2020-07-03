@@ -902,9 +902,7 @@ class Sas(olm.Sas):
                 return
 
             if key_type != "ed25519":
-                self.state = SasState.canceled
-                self.cancel_code, self.cancel_reason = self._key_mismatch_error
-                return
+                continue
 
             if device_id != self.other_olm_device.id:
                 continue
