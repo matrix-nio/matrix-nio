@@ -2480,9 +2480,7 @@ class Olm:
 
     def handle_key_verification(self, event: KeyVerificationEvent):
         """Receive key verification events."""
-        if isinstance(
-            event, (KeyVerificationStart, RoomKeyVerificationRequest)
-        ):
+        if isinstance(event, KeyVerificationStart):
             logger.info(
                 "Received key verification start event from "
                 "{} {} {}".format(
@@ -2499,22 +2497,13 @@ class Olm:
                 self.users_for_key_query.add(event.sender)
                 return
 
-            if isinstance(event, KeyVerificationStart):
-                new_sas = Sas.from_key_verification_start(
-                    self.user_id,
-                    self.device_id,
-                    self.account.identity_keys["ed25519"],
-                    device,
-                    event,
-                )
-            else:
-                new_sas = Sas.from_key_verification_request(
-                    self.user_id,
-                    self.device_id,
-                    self.account.identity_keys["ed25519"],
-                    device,
-                    event,
-                )
+            new_sas = Sas.from_key_verification_start(
+                self.user_id,
+                self.device_id,
+                self.account.identity_keys["ed25519"],
+                device,
+                event,
+            )
 
             if new_sas.canceled:
                 logger.warn(
@@ -2550,10 +2539,7 @@ class Olm:
                         new_sas.verification_flow_id
                     )
                 )
-                if isinstance(event, KeyVerificationStart):
-                    self.key_verifications[event.transaction_id] = new_sas
-                else:
-                    self.key_verifications[event.event_id] = new_sas
+                self.key_verifications[event.transaction_id] = new_sas
 
         elif isinstance(event, RoomKeyVerificationStart):
             sas = self.key_verifications.get(event.relates_to)

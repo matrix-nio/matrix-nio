@@ -3020,7 +3020,7 @@ class TestClass:
         assert not alice_device.verified
         assert not bob_device.verified
 
-        await alice.confirm_short_auth_string(alice_sas.transaction_id)
+        await alice.confirm_short_auth_string(alice_sas.verification_flow_id)
 
         aioresponse.get(
             sync_url,
@@ -3033,7 +3033,7 @@ class TestClass:
 
         await bob.sync()
 
-        await bob.confirm_short_auth_string(bob_sas.transaction_id)
+        await bob.confirm_short_auth_string(bob_sas.verification_flow_id)
 
         aioresponse.get(
             sync_url,
@@ -3696,7 +3696,7 @@ class TestClass:
         assert not alice_device.verified
         assert not bob_device.verified
 
-        await alice.cancel_key_verification(alice_sas.transaction_id)
+        await alice.cancel_key_verification(alice_sas.verification_flow_id)
 
         aioresponse.get(
             sync_url,

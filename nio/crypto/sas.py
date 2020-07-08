@@ -35,6 +35,7 @@ from ..responses import RoomSendResponse
 from ..exceptions import LocalProtocolError
 from ..event_builders import ToDeviceMessage, RoomEvent
 from .device import OlmDevice
+from .user_identities import UserIdentity
 
 
 class SasState(Enum):
@@ -43,8 +44,6 @@ class SasState(Enum):
     This enum tracks the current state of our verification process.
     """
 
-    request = 0
-    ready = 1
     created = 2
     started = 3
     accepted = 4
@@ -190,7 +189,7 @@ class Sas(olm.Sas):
         own_device: str,
         own_fp_key: str,
         other_user_id: str,
-        other_olm_device: Optional[OlmDevice] = None,
+        other_olm_device: OlmDevice,
         verification_flow_id: str = None,
         short_auth_string: Optional[List[str]] = None,
         mac_methods: Optional[List[str]] = None,
@@ -211,7 +210,7 @@ class Sas(olm.Sas):
         self.chosen_mac_method = ""
         self.key_agreement_protocols = Sas._key_agreeemnt_protocols
         self.chosen_key_agreement: Optional[str] = None
-        self.state = SasState.created if other_olm_device else SasState.request
+        self.state = SasState.created
         self.we_started_it = True
         self.sas_accepted = False
         self.commitment = None
@@ -225,49 +224,6 @@ class Sas(olm.Sas):
         self.creation_time = datetime.now()
         self._last_event_time = self.creation_time
         super().__init__()
-
-    @classmethod
-    def from_key_verification_request(
-        cls,
-        own_user: str,
-        own_device: str,
-        own_fp_key: str,
-        other_olm_device: OlmDevice,
-        event: RoomKeyVerificationRequest,
-    ):
-        """Create a SAS object from a KeyVerificationRequest event.
-
-        Args:
-            own_user (str): The user id of our own user.
-            own_device (str): The device id of our own user.
-            own_fp_key (str): The fingerprint key of our own device that will
-                be verified by the other client.
-            other_olm_device (OlmDevice): The Olm device of the other user that
-                should be verified.
-            event (RoomKeyVerificationRequest): The event that we received from
-            a device, requesting to start the interactive verification process.
-            Note that the event needs to have the room id set.
-        """
-        verification_flow_id = event.event_id
-        room_id = event.room_id
-
-        if Sas._sas_method_v1 not in event.methods:
-            raise ValueError(
-                "Verification request event doesn't contain a "
-                "supported SAS method"
-            )
-
-        obj = cls(
-            own_user,
-            own_device,
-            own_fp_key,
-            other_olm_device.user_id,
-            other_olm_device,
-            verification_flow_id,
-            room_id=room_id,
-        )
-        obj.state = SasState.request
-        return obj
 
     @classmethod
     def from_key_verification_start(
@@ -477,42 +433,6 @@ class Sas(olm.Sas):
             int(x, 2) + 1000
             for x in map("".join, list(self._grouper(number[:-1], 13)))
         )
-
-    def receive_room_send_response(self, response: RoomSendResponse):
-        self.verification_flow_id = response.event_id
-
-    def get_request_message(self) -> RoomEvent:
-        content: Dict[str, Any] = {
-            "from_device": self.own_device,
-            "msgtype": "m.key.verification.request",
-            "methods": [self._sas_method_v1],
-            "body": f"{self.own_user} is requesting to verify your key, "
-            "but your client does not support in-chat key "
-            "verification. You will need to use legacy key "
-            "verification to verify keys.",
-            "to": self.other_user_id,
-        }
-
-        event_type = "m.room.message"
-
-        assert self.room_id
-        return RoomEvent(self.room_id, event_type, content)
-
-    def get_ready_message(self) -> RoomEvent:
-        content: Dict[str, Any] = {
-            "from_device": self.own_device,
-            "methods": [self._sas_method_v1],
-            "to": self.other_olm_device.user_id,
-        }
-
-        content["m.relates_to"] = {
-            "rel_type": "m.reference",
-            "event_id": self.verification_flow_id,
-        }
-
-        event_type = "m.key.verification.ready"
-        assert self.room_id
-        return RoomEvent(self.room_id, event_type, content)
 
     def start_verification(self) -> Union[RoomEvent, ToDeviceMessage]:
         """Create a content dictionary to start the verification."""
@@ -748,22 +668,15 @@ class Sas(olm.Sas):
 
         return True
 
-    def receive_ready_event(
-        self, event: RoomKeyVerificationReady, olm_device: OlmDevice
-    ):
-        if not self._event_ok(event):
-            return
-
-        self.other_olm_device = olm_device
-        self.state = SasState.created
-
     def receive_start_event(self, event):
         if not self._event_ok(event):
             return
 
-        if (self.state != SasState.ready
-                and self.state != SasState.created
-                and self.state != SasState.request):
+        if (
+            self.state != SasState.ready
+            and self.state != SasState.created
+            and self.state != SasState.request
+        ):
             self.state = SasState.canceled
             (
                 self.cancel_code,
@@ -792,7 +705,7 @@ class Sas(olm.Sas):
         if not self._event_ok(event):
             return
 
-        if self.state != SasState.created and self.state != SasState.request:
+        if self.state != SasState.created:
             self.state = SasState.canceled
             (
                 self.cancel_code,
@@ -923,3 +836,143 @@ class Sas(olm.Sas):
             self.cancel_code, self.cancel_reason = self._key_mismatch_error
 
         self.state = SasState.mac_received
+
+
+class VerificationRequestState(Enum):
+    created = 0
+    requested = 1
+    ready = 2
+    passive = 3
+
+
+class VerificationRequest:
+    def __init__(
+        self,
+        own_user: str,
+        own_device: str,
+        own_fp_key: str,
+        own_user_identity: UserIdentity,
+        other_user_identity: UserIdentity,
+        room_id: str,
+        methods: List[str] = None,
+    ):
+        self.own_user = own_user
+        self.own_device = own_device
+        self.own_fp_key = own_fp_key
+        self.room_id = room_id
+        self.own_user_identity = own_user_identity
+        self.other_user_identity = other_user_identity
+        self.other_device_id: Optional[str] = None
+        self.verification_flow_id: Optional[str] = None
+        self.methods: List[str] = methods or [Sas._sas_method_v1]
+
+        self.state = VerificationRequestState.created
+
+    @classmethod
+    def from_request_event(
+        cls,
+        own_user: str,
+        own_device: str,
+        own_fp_key: str,
+        own_user_identity: UserIdentity,
+        other_user_identity: UserIdentity,
+        event: RoomKeyVerificationRequest,
+    ):
+        assert event.room_id
+        # TODO check
+        obj = cls(
+            own_user,
+            own_device,
+            own_fp_key,
+            own_user_identity,
+            other_user_identity,
+            event.room_id,
+        )
+
+        obj.other_device_id = event.from_device
+
+        # If we don't support any of the methods, become passive.
+        if Sas._sas_method_v1 in event.methods:
+            obj.state = VerificationRequestState.requested
+        else:
+            obj.state = VerificationRequestState.passive
+        return obj
+
+    def receive_room_send_response(self, response: RoomSendResponse):
+        self.verification_flow_id = response.event_id
+
+    def get_request_message(self) -> RoomEvent:
+        if self.state != VerificationRequestState.created:
+            raise ValueError(
+                "The verficiation request wasn't created by us, so we "
+                "can't send out a verification request"
+            )
+
+        content: Dict[str, Any] = {
+            "from_device": self.own_device,
+            "msgtype": "m.key.verification.request",
+            "methods": [Sas._sas_method_v1],
+            "body": f"{self.own_user} is requesting to verify your key, "
+            "but your client does not support in-chat key "
+            "verification. You will need to use legacy key "
+            "verification to verify keys.",
+            "to": self.other_user_identity.user_id,
+        }
+
+        event_type = "m.room.message"
+
+        assert self.room_id
+        return RoomEvent(self.room_id, event_type, content)
+
+    def get_ready_message(self) -> RoomEvent:
+        if self.state == VerificationRequestState.passive:
+            raise ValueError(
+                "The verficiation request does not support any method that we "
+                "support, can't send out a verification ready message"
+            )
+        if self.state != VerificationRequestState.requested:
+            raise ValueError(
+                "The verficiation request was created by us, "
+                "can't send out a verification ready message"
+            )
+
+        content: Dict[str, Any] = {
+            "from_device": self.own_device,
+            "methods": [Sas._sas_method_v1],
+            "to": self.other_user_identity.user_id,
+        }
+
+        content["m.relates_to"] = {
+            "rel_type": "m.reference",
+            "event_id": self.verification_flow_id,
+        }
+
+        event_type = "m.key.verification.ready"
+        assert self.room_id
+        return RoomEvent(self.room_id, event_type, content)
+
+    def receive_ready_event(self, event: RoomKeyVerificationReady):
+        if (
+            event.sender == self.own_user
+            and event.from_device != self.own_device
+        ):
+            self.state = VerificationRequestState.passive
+
+        self.other_device_id = event.from_device
+        self.state = VerificationRequestState.ready
+
+    def into_sas_verification(self, other_device: OlmDevice) -> Sas:
+        if other_device.device_id != self.other_device_id:
+            raise ValueError(
+                "The given device doesn't match the other users" "device id"
+            )
+
+        return Sas(
+            self.own_user,
+            self.own_device,
+            self.own_fp_key,
+            other_device.user_id,
+            other_device,
+            self.verification_flow_id,
+            room_id=self.room_id,
+        )
