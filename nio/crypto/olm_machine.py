@@ -2402,7 +2402,7 @@ class Olm:
 
         now = datetime.now()
 
-        for transaction_id, sas in self.key_verifications.items():
+        for verification_flow_id, sas in self.key_verifications.items():
             if sas.timed_out:
                 message = sas.get_cancellation()
                 self.outgoing_to_device_messages.append(message)
@@ -2415,9 +2415,9 @@ class Olm:
             elif sas.canceled or sas.verified:
                 if now - sas.creation_time > self._max_sas_life:
                     continue
-                acitve_sas[transaction_id] = sas
+                acitve_sas[verification_flow_id] = sas
             else:
-                acitve_sas[transaction_id] = sas
+                acitve_sas[verification_flow_id] = sas
 
         self.key_verifications = acitve_sas
 
@@ -2433,7 +2433,7 @@ class Olm:
             olm_device.user_id,
             olm_device,
         )
-        self.key_verifications[sas.transaction_id] = sas
+        self.key_verifications[sas.verification_flow_id] = sas
 
         return sas.start_verification()
 
@@ -2535,7 +2535,7 @@ class Olm:
                         "Old Sas: {} {} {}".format(
                             event.sender,
                             event.from_device,
-                            old_sas.transaction_id,
+                            old_sas.verification_flow_id,
                         )
                     )
                     old_sas.cancel()
@@ -2546,7 +2546,8 @@ class Olm:
                 logger.info(
                     "Successfully started key verification with "
                     "{} {} {}".format(
-                        event.sender, event.from_device, new_sas.transaction_id
+                        event.sender, event.from_device,
+                        new_sas.verification_flow_id
                     )
                 )
                 if isinstance(event, KeyVerificationStart):
@@ -2594,7 +2595,7 @@ class Olm:
                         "from {} {}, sharing keys {}".format(
                             event.sender,
                             sas.other_olm_device.id,
-                            sas.transaction_id,
+                            sas.verification_flow_id,
                         )
                     )
                     message = sas.share_key()
@@ -2607,7 +2608,7 @@ class Olm:
                     "from {} {}. Canceling verification {}.".format(
                         event.sender,
                         sas.other_olm_device.id,
-                        sas.transaction_id,
+                        sas.verification_flow_id,
                     )
                 )
                 sas = self.key_verifications.pop(event.transaction_id, None)
@@ -2631,7 +2632,7 @@ class Olm:
                         "from {} {} {}.".format(
                             event.sender,
                             sas.other_olm_device.id,
-                            sas.transaction_id,
+                            sas.verification_flow_id,
                         )
                     )
 

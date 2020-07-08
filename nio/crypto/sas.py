@@ -74,9 +74,11 @@ class Sas(olm.Sas):
             be verified by the other client.
         other_olm_device (OlmDevice): The OlmDevice which we would like to
             verify.
-        transaction_id (str, optional): A string that will uniquely identify
-            this verification process. A random and unique string will be
-            generated if one isn't provided.
+        verification_flow_id (str, optional): A string that will uniquely
+            identify this verification process. A random and unique string will
+            be generated if one isn't provided. If the verification process is
+            happening inside a room, this will be the event id of the event
+            that requested the verification to start.
         short_auth_string (List[str], optional): A list of valid short
             authentication methods that the client would like to allow for this
             authentication session. By default the 'emoji' and 'decimal'
@@ -189,7 +191,7 @@ class Sas(olm.Sas):
         own_fp_key: str,
         other_user_id: str,
         other_olm_device: Optional[OlmDevice] = None,
-        transaction_id: str = None,
+        verification_flow_id: str = None,
         short_auth_string: Optional[List[str]] = None,
         mac_methods: Optional[List[str]] = None,
         room_id: Optional[str] = None,
@@ -201,7 +203,7 @@ class Sas(olm.Sas):
 
         self.other_olm_device = other_olm_device
 
-        self.transaction_id = transaction_id or str(uuid4())
+        self.verification_flow_id = verification_flow_id or str(uuid4())
 
         self.short_auth_string = short_auth_string or ["emoji", "decimal"]
         self.mac_methods = mac_methods or Sas._mac_v1
@@ -246,7 +248,7 @@ class Sas(olm.Sas):
             a device, requesting to start the interactive verification process.
             Note that the event needs to have the room id set.
         """
-        transaction_id = event.event_id
+        verification_flow_id = event.event_id
         room_id = event.room_id
 
         if Sas._sas_method_v1 not in event.methods:
@@ -261,7 +263,7 @@ class Sas(olm.Sas):
             own_fp_key,
             other_olm_device.user_id,
             other_olm_device,
-            transaction_id,
+            verification_flow_id,
             room_id=room_id,
         )
         obj.state = SasState.request
@@ -290,10 +292,10 @@ class Sas(olm.Sas):
 
         """
         if isinstance(event, RoomKeyVerificationStart):
-            transaction_id = event.relates_to
+            verification_flow_id = event.relates_to
             room_id = event.room_id
         else:
-            transaction_id = event.transaction_id
+            verification_flow_id = event.transaction_id
             room_id = None
 
         obj = cls(
@@ -302,7 +304,7 @@ class Sas(olm.Sas):
             own_fp_key,
             other_olm_device.user_id,
             other_olm_device,
-            transaction_id,
+            verification_flow_id,
             event.short_authentication_string,
             event.message_authentication_codes,
             room_id=room_id,
@@ -415,7 +417,7 @@ class Sas(olm.Sas):
     @property
     def _extra_info_v2(self) -> str:
         device = self.other_olm_device
-        tx_id = self.transaction_id
+        tx_id = self.verification_flow_id
 
         assert self.their_sas_key
 
@@ -477,7 +479,7 @@ class Sas(olm.Sas):
         )
 
     def receive_room_send_response(self, response: RoomSendResponse):
-        self.transaction_id = response.event_id
+        self.verification_flow_id = response.event_id
 
     def get_request_message(self) -> RoomEvent:
         content: Dict[str, Any] = {
@@ -505,7 +507,7 @@ class Sas(olm.Sas):
 
         content["m.relates_to"] = {
             "rel_type": "m.reference",
-            "event_id": self.transaction_id,
+            "event_id": self.verification_flow_id,
         }
 
         event_type = "m.key.verification.ready"
@@ -540,12 +542,12 @@ class Sas(olm.Sas):
         if self.room_id:
             content["m.relates_to"] = {
                 "rel_type": "m.reference",
-                "event_id": self.transaction_id,
+                "event_id": self.verification_flow_id,
             }
 
             return RoomEvent(self.room_id, event_type, content)
         else:
-            content["transaction_id"] = self.transaction_id
+            content["transaction_id"] = self.verification_flow_id
             return ToDeviceMessage(
                 event_type,
                 self.other_olm_device.user_id,
@@ -593,12 +595,12 @@ class Sas(olm.Sas):
         if self.room_id:
             content["m.relates_to"] = {
                 "rel_type": "m.reference",
-                "event_id": self.transaction_id,
+                "event_id": self.verification_flow_id,
             }
 
             return RoomEvent(self.room_id, event_type, content)
         else:
-            content["transaction_id"] = self.transaction_id
+            content["transaction_id"] = self.verification_flow_id
             return ToDeviceMessage(
                 event_type,
                 self.other_olm_device.user_id,
@@ -620,12 +622,12 @@ class Sas(olm.Sas):
         if self.room_id:
             content["m.relates_to"] = {
                 "rel_type": "m.reference",
-                "event_id": self.transaction_id,
+                "event_id": self.verification_flow_id,
             }
 
             return RoomEvent(self.room_id, event_type, content)
         else:
-            content["transaction_id"] = self.transaction_id
+            content["transaction_id"] = self.verification_flow_id
             return ToDeviceMessage(
                 event_type,
                 self.other_olm_device.user_id,
@@ -654,12 +656,12 @@ class Sas(olm.Sas):
         info = (
             "MATRIX_KEY_VERIFICATION_MAC"
             "{first_user}{first_device}"
-            "{second_user}{second_device}{transaction_id}".format(
+            "{second_user}{second_device}{verification_flow_id}".format(
                 first_user=self.own_user,
                 first_device=self.own_device,
                 second_user=self.other_olm_device.user_id,
                 second_device=self.other_olm_device.id,
-                transaction_id=self.transaction_id,
+                verification_flow_id=self.verification_flow_id,
             )
         )
 
@@ -675,12 +677,12 @@ class Sas(olm.Sas):
         if self.room_id:
             content["m.relates_to"] = {
                 "rel_type": "m.reference",
-                "event_id": self.transaction_id,
+                "event_id": self.verification_flow_id,
             }
 
             return RoomEvent(self.room_id, event_type, content)
         else:
-            content["transaction_id"] = self.transaction_id
+            content["transaction_id"] = self.verification_flow_id
             return ToDeviceMessage(
                 event_type,
                 self.other_olm_device.user_id,
@@ -706,12 +708,12 @@ class Sas(olm.Sas):
         if self.room_id:
             content["m.relates_to"] = {
                 "rel_type": "m.reference",
-                "event_id": self.transaction_id,
+                "event_id": self.verification_flow_id,
             }
 
             return RoomEvent(self.room_id, event_type, content)
         else:
-            content["transaction_id"] = self.transaction_id
+            content["transaction_id"] = self.verification_flow_id
             return ToDeviceMessage(
                 event_type,
                 self.other_olm_device.user_id,
@@ -725,16 +727,16 @@ class Sas(olm.Sas):
         if self.state == SasState.canceled:
             return False
 
-        transaction_id: str = ""
+        verification_flow_id: str = ""
 
         if isinstance(event, RoomKeyVerificationEvent):
             assert event.relates_to
-            transaction_id = event.relates_to
+            verification_flow_id = event.relates_to
         else:
             assert event.transaction_id
-            transaction_id = event.transaction_id
+            verification_flow_id = event.transaction_id
 
-        if transaction_id != self.transaction_id:
+        if verification_flow_id != self.verification_flow_id:
             self.state = SasState.canceled
             self.cancel_code, self.cancel_reason = self._txid_error
             return False
@@ -867,12 +869,12 @@ class Sas(olm.Sas):
         info = (
             "MATRIX_KEY_VERIFICATION_MAC"
             "{first_user}{first_device}"
-            "{second_user}{second_device}{transaction_id}".format(
+            "{second_user}{second_device}{verification_flow_id}".format(
                 first_user=self.other_olm_device.user_id,
                 first_device=self.other_olm_device.id,
                 second_user=self.own_user,
                 second_device=self.own_device,
-                transaction_id=self.transaction_id,
+                verification_flow_id=self.verification_flow_id,
             )
         )
 

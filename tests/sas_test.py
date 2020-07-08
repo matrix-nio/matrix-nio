@@ -350,7 +350,7 @@ class TestClass:
 
         cancellation = alice.get_cancellation().content
         assert cancellation == {
-            "transaction_id": alice.transaction_id,
+            "transaction_id": alice.verification_flow_id,
             "code": "m.user",
             "reason": "Canceled by user"
         }
@@ -487,7 +487,7 @@ class TestClass:
         alice.receive_accept_event(accept_event)
         assert alice.canceled
 
-        accept_event.transaction_id = alice.transaction_id
+        accept_event.transaction_id = alice.verification_flow_id
         alice.receive_accept_event(accept_event)
         assert alice.canceled
 
@@ -1001,7 +1001,7 @@ class TestClass:
         assert not alice_sas.canceled
         olm_machine.handle_key_verification(cancel_event)
         assert alice_sas.canceled
-        assert alice_sas.transaction_id not in olm_machine.key_verifications
+        assert alice_sas.verification_flow_id not in olm_machine.key_verifications
 
     def test_key_cancel(self, olm_machine):
         alice_device = self.device_from_machine(olm_machine)
@@ -1184,7 +1184,7 @@ class TestClass:
         event = self.wrap_room_message(alice, alice.get_request_message(), RoomKeyVerificationRequest)
 
         # We need to set the transaction id to our event id.
-        alice.transaction_id = "test_id"
+        alice.verification_flow_id = "test_id"
         assert isinstance(event, RoomKeyVerificationRequest)
 
         bob = Sas.from_key_verification_request(
@@ -1257,7 +1257,7 @@ class TestClass:
             room_id=room_id,
         )
         # We need to set the transaction id to our event id.
-        bob_sas.transaction_id = "test_id"
+        bob_sas.verification_flow_id = "test_id"
 
         event = self.wrap_room_message(bob_sas, bob_sas.get_request_message(), RoomKeyVerificationRequest)
         alice.handle_key_verification(event)
