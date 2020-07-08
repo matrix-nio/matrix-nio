@@ -23,11 +23,8 @@ import warnings
 from asyncio import Event as AsyncioEvent
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
-from pathlib import Path
 from typing import (
     Any,
-    AsyncIterable,
-    BinaryIO,
     Callable,
     Set,
     Coroutine,
@@ -70,10 +67,7 @@ from ..crypto import (
     async_generator_from_data,
 )
 from ..exceptions import (
-    GroupEncryptionError,
     LocalProtocolError,
-    MembersSyncError,
-    SendRetryError,
     TransferCancelledError,
 )
 from ..events import (
@@ -198,9 +192,10 @@ SynchronousFile = (
     io.TextIOBase,
     io.BufferedReader,
     io.BufferedRandom,
-    io.FileIO
+    io.FileIO,
 )
 AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
+
 
 @dataclass
 class ResponseCb:
@@ -570,10 +565,18 @@ class AsyncClient(Client):
                 if event.user_id not in self.rooms[room_id].users:
                     continue
 
-                self.rooms[room_id].users[event.user_id].presence = event.presence
-                self.rooms[room_id].users[event.user_id].last_active_ago = event.last_active_ago
-                self.rooms[room_id].users[event.user_id].currently_active = event.currently_active
-                self.rooms[room_id].users[event.user_id].status_msg = event.status_msg
+                self.rooms[room_id].users[
+                    event.user_id
+                ].presence = event.presence
+                self.rooms[room_id].users[
+                    event.user_id
+                ].last_active_ago = event.last_active_ago
+                self.rooms[room_id].users[
+                    event.user_id
+                ].currently_active = event.currently_active
+                self.rooms[room_id].users[
+                    event.user_id
+                ].status_msg = event.status_msg
 
             for cb in self.presence_callbacks:
                 if cb.filter is None or isinstance(event, cb.filter):
@@ -679,7 +682,7 @@ class AsyncClient(Client):
                 # method generated during runtime that may or may not be
                 # Awaitable. The actual type is a union of the types that we
                 # can receive from reading files.
-                data = await data_provider(got_429, got_timeouts) # type: ignore
+                data = await data_provider(got_429, got_timeouts)  # type: ignore
 
             try:
                 transport_resp = await self.send(
@@ -690,11 +693,9 @@ class AsyncClient(Client):
                     response_class, transport_resp, response_data,
                 )
 
-                if (
-                    transport_resp.status == 429 or (
-                        isinstance(resp, ErrorResponse) and
-                        resp.status_code in ("M_LIMIT_EXCEEDED", 429)
-                    )
+                if transport_resp.status == 429 or (
+                    isinstance(resp, ErrorResponse)
+                    and resp.status_code in ("M_LIMIT_EXCEEDED", 429)
                 ):
                     got_429 += 1
 
@@ -950,10 +951,11 @@ class AsyncClient(Client):
             path,
             # 0 if full_state: server doesn't respect timeout if full_state
             # + 15: give server a chance to naturally return before we timeout
-            timeout =
-                0 if full_state else
-                timeout / 1000 + 15 if timeout else
-                timeout,
+            timeout=0
+            if full_state
+            else timeout / 1000 + 15
+            if timeout
+            else timeout,
         )
 
         return response
@@ -1062,19 +1064,28 @@ class AsyncClient(Client):
 
                 tasks = []
 
-                # Make sure that if this is our first sync that the sync happens
-                # before the other requests, this helps to ensure that after one
-                # fired synced event the state is indeed fully synced.
+                # Make sure that if this is our first sync that the sync
+                # happens before the other requests, this helps to ensure that
+                # after one fired synced event the state is indeed fully
+                # synced.
                 if first_sync:
                     presence = set_presence or self._presence
-                    sync_response = await self.sync(use_timeout, use_filter, since, full_state, presence)
+                    sync_response = await self.sync(
+                        use_timeout, use_filter, since, full_state, presence
+                    )
                     await self.run_response_callbacks([sync_response])
                 else:
                     presence = set_presence or self._presence
                     tasks = [
                         asyncio.ensure_future(coro)
                         for coro in (
-                            self.sync(use_timeout, use_filter, since, full_state, presence),
+                            self.sync(
+                                use_timeout,
+                                use_filter,
+                                since,
+                                full_state,
+                                presence,
+                            ),
                             self.send_to_device_messages(),
                         )
                     ]
@@ -1304,19 +1315,17 @@ class AsyncClient(Client):
 
     @logged_in
     async def update_device(
-            self,
-            device_id: str,
-            content: Dict[str, str]
+        self, device_id: str, content: Dict[str, str]
     ) -> Union[UpdateDeviceResponse, UpdateDeviceError]:
         """Update the metadata of the given device.
 
-        Returns either a `UpdateDeviceResponse` if the request was successful or
-        a `UpdateDeviceError` if there was an error with the request.
+        Returns either a `UpdateDeviceResponse` if the request was successful
+        or a `UpdateDeviceError` if there was an error with the request.
 
         Args:
             device_id (str): The device for which the metadata will be updated.
-            content (Dict[str, str]): A dictionary of metadata values that will be
-                updated for the device.
+            content (Dict[str, str]): A dictionary of metadata values that will
+                be updated for the device.
 
         Example:
             >>> device_id = "QBUAZIFURK"
@@ -1453,8 +1462,8 @@ class AsyncClient(Client):
                 )
 
             if room.encrypted:
-                # Check if the members are synced, otherwise users might not get
-                # the megolm seession.
+                # Check if the members are synced, otherwise users might not
+                # get the megolm seession.
                 if not room.members_synced:
                     responses = []
                     responses.append(await self.joined_members(room_id))
@@ -1486,13 +1495,13 @@ class AsyncClient(Client):
             self.access_token, room_id, message_type, content, uuid
         )
 
-        return await self._send(RoomSendResponse, method, path, data, (room_id,))
+        return await self._send(
+            RoomSendResponse, method, path, data, (room_id,)
+        )
 
     @logged_in
     async def room_get_event(
-        self,
-        room_id: str,
-        event_id: str
+        self, room_id: str, event_id: str
     ) -> Union[RoomGetEventResponse, RoomGetEventError]:
         """Get a single event based on roomId/eventId.
 
@@ -1505,15 +1514,9 @@ class AsyncClient(Client):
             room_id (str): The room id of the room where the event is in.
             event_id (str): The event id to get.
         """
-        method, path = Api.room_get_event(
-            self.access_token,
-            room_id,
-            event_id
-        )
+        method, path = Api.room_get_event(self.access_token, room_id, event_id)
 
-        return await self._send(
-            RoomGetEventResponse, method, path
-        )
+        return await self._send(RoomGetEventResponse, method, path)
 
     @logged_in
     async def room_put_state(
@@ -1685,9 +1688,7 @@ class AsyncClient(Client):
     @logged_in
     @store_loaded
     async def share_group_session(
-        self,
-        room_id: str,
-        ignore_unverified_devices: bool = False,
+        self, room_id: str, ignore_unverified_devices: bool = False,
     ) -> Union[ShareGroupSessionResponse, ShareGroupSessionError]:
         """Share a group session with a room.
 
@@ -1739,22 +1740,34 @@ class AsyncClient(Client):
         try:
             requests = []
 
-            for sharing_with, to_device_dict in self.olm.share_group_session_parallel(
+            for (
+                sharing_with,
+                to_device_dict,
+            ) in self.olm.share_group_session_parallel(
                 room_id,
                 list(room.users.keys()),
-                ignore_unverified_devices=ignore_unverified_devices
+                ignore_unverified_devices=ignore_unverified_devices,
             ):
                 method, path, data = Api.to_device(
-                    self.access_token, "m.room.encrypted", to_device_dict,
-                    uuid4()
+                    self.access_token,
+                    "m.room.encrypted",
+                    to_device_dict,
+                    uuid4(),
                 )
 
-                requests.append(self._send(
-                    ShareGroupSessionResponse, method, path, data,
-                    response_data=(room_id, sharing_with)
-                ))
+                requests.append(
+                    self._send(
+                        ShareGroupSessionResponse,
+                        method,
+                        path,
+                        data,
+                        response_data=(room_id, sharing_with),
+                    )
+                )
 
-            for response in await asyncio.gather(*requests, return_exceptions=True):
+            for response in await asyncio.gather(
+                *requests, return_exceptions=True
+            ):
                 if isinstance(response, ShareGroupSessionResponse):
                     shared_with.update(response.users_shared_with)
 
@@ -2120,7 +2133,7 @@ class AsyncClient(Client):
     @logged_in
     async def room_unban(
         self, room_id: str, user_id: str,
-    ) -> Union[RoomBanResponse, RoomBanError]:
+    ) -> Union[RoomUnbanResponse, RoomUnbanError]:
         """Unban a user from a room.
 
         This allows them to be invited and join the room again.
@@ -2186,8 +2199,8 @@ class AsyncClient(Client):
 
         Calls receive_response() to update the client state if necessary.
 
-        Returns either a `RoomMessagesResponse` if the request was successful or
-        a `RoomMessagesResponse` if there was an error with the request.
+        Returns either a `RoomMessagesResponse` if the request was successful
+        or a `RoomMessagesResponse` if there was an error with the request.
 
         Args:
             room_id (str): The room id of the room for which we would like to
@@ -2260,10 +2273,7 @@ class AsyncClient(Client):
 
     @logged_in
     async def update_receipt_marker(
-        self,
-        room_id: str,
-        event_id: str,
-        receipt_type: str = "m.read",
+        self, room_id: str, event_id: str, receipt_type: str = "m.read",
     ) -> None:
         """Update the marker of given the `receipt_type` to specified `event_id`.
 
@@ -2284,19 +2294,15 @@ class AsyncClient(Client):
             self.access_token, room_id, event_id, receipt_type,
         )
 
-        return await self._send(
-            UpdateReceiptMarkerResponse,
-            method,
-            path,
-        )
+        return await self._send(UpdateReceiptMarkerResponse, method, path,)
 
     @logged_in
     async def room_read_markers(
         self,
         room_id: str,
         fully_read_event: str,
-        read_event: Optional[str] = None
-    ):
+        read_event: Optional[str] = None,
+    ) -> Union[RoomReadMarkersResponse, RoomReadMarkersError]:
         """Update the fully read marker (and optionally the read receipt) for
         a room.
 
@@ -2323,10 +2329,10 @@ class AsyncClient(Client):
         If you want to set the read receipt, you _must_ set `read_event`.
 
         Args:
-            room_id (str): The room ID of the room where the read markers should
-                be updated.
-            fully_read_event (str): The event ID that the user has fully read up
-                to.
+            room_id (str): The room ID of the room where the read markers
+                should be updated.
+            fully_read_event (str): The event ID that the user has fully read
+                up to.
             read_event (Optional[str]): The event ID to set the read receipt
                 location at.
         """
@@ -2335,9 +2341,12 @@ class AsyncClient(Client):
         )
 
         return await self._send(
-            RoomReadMarkersResponse, method, path, data, response_data=(room_id,)
+            RoomReadMarkersResponse,
+            method,
+            path,
+            data,
+            response_data=(room_id,),
         )
-
 
     @logged_in
     async def content_repository_config(
@@ -2528,7 +2537,7 @@ class AsyncClient(Client):
                     f"data_provider type {type(data_provider)} "
                     "is not of a usable type "
                     f"(Callable, {SynchronousFile}, {AsyncFile})"
-            )
+                )
 
             if encrypt:
                 return self._encrypted_data_generator(
@@ -2656,7 +2665,9 @@ class AsyncClient(Client):
         return await self._send(ProfileGetResponse, method, path,)
 
     @client_session
-    async def get_presence(self, user_id: str) -> Union[PresenceGetResponse, PresenceGetError]:
+    async def get_presence(
+        self, user_id: str
+    ) -> Union[PresenceGetResponse, PresenceGetError]:
         """Get a user's presence state.
 
         This queries the presence state of a user from the server.
@@ -2671,10 +2682,7 @@ class AsyncClient(Client):
             user_id (str): User id of the user to get the presence state for.
         """
 
-        method, path = Api.get_presence(
-            self.access_token,
-            user_id
-        )
+        method, path = Api.get_presence(self.access_token, user_id)
 
         return await self._send(
             PresenceGetResponse, method, path, response_data=(user_id,)
@@ -2682,9 +2690,7 @@ class AsyncClient(Client):
 
     @client_session
     async def set_presence(
-        self,
-        presence: str,
-        status_msg: str = None
+        self, presence: str, status_msg: str = None
     ) -> Union[PresenceSetResponse, PresenceSetError]:
         """Set our user's presence state.
 
@@ -2698,20 +2704,17 @@ class AsyncClient(Client):
         with the request.
 
         Args:
-            presence (str): The new presence state. One of: ["online", "offline", "unavailable"]
-            status_msg (str, optional): The status message to attach to this state.
+            presence (str): The new presence state. One of:
+                ["online", "offline", "unavailable"]
+            status_msg (str, optional): The status message to attach to this
+                state.
         """
 
         method, path, data = Api.set_presence(
-            self.access_token,
-            self.user_id,
-            presence,
-            status_msg
+            self.access_token, self.user_id, presence, status_msg
         )
 
-        resp = await self._send(
-            PresenceSetResponse, method, path, data
-        )
+        resp = await self._send(PresenceSetResponse, method, path, data)
         if isinstance(resp, PresenceSetResponse):
             self._presence = presence
 
