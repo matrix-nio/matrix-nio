@@ -12,8 +12,9 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from typing import Dict, Any
+from typing import Dict, Any, Union
 from dataclasses import dataclass, field
+from uuid import UUID, uuid4
 
 from . import EventBuilder
 
@@ -31,6 +32,7 @@ class RoomEvent(EventBuilder):
     room_id: str = field()
     type: str = field()
     content: Dict[Any, Any] = field()
+    transaction_id: Union[str, UUID] = field(default=uuid4())
 
     def as_dict(self):
         return self.content

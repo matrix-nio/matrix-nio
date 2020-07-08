@@ -1285,7 +1285,8 @@ class TestClass:
         event = self.wrap_room_message(bob_sas, bob_sas.share_key(), RoomKeyVerificationKey)
         alice.handle_key_verification(event)
 
-        event = self.wrap_room_message(alice_sas, alice.outgoing_room_messages.pop(), RoomKeyVerificationKey)
+        _, message = alice.outgoing_room_messages.popitem()
+        event = self.wrap_room_message(alice_sas, message, RoomKeyVerificationKey)
         bob_sas.receive_key_event(event)
 
         assert alice_sas.state == SasState.key_received
