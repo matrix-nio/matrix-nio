@@ -113,7 +113,7 @@ from ..responses import (
 from ..schemas import Schemas, validate_json
 from ..store import MatrixStore
 from .key_export import decrypt_and_read, encrypt_and_save
-from .sas import Sas
+from .sas import Sas, VerificationRequest
 from ..event_builders import (
     ToDeviceMessage,
     RoomEvent,
@@ -253,6 +253,9 @@ class Olm:
         self.key_re_requests_events: DefaultDict[
             Tuple[str, str], List[MegolmEvent]
         ] = defaultdict(list)
+
+        # A mapping from the user to a verification request
+        self.verification_requests: Dict[str, VerificationRequest] = dict()
 
         # A mapping from a transaction id to a Sas key verification object. The
         # transaction id uniquely identifies the key verification session.
@@ -2438,7 +2441,7 @@ class Olm:
         return sas.start_verification()
 
     def get_active_sas(
-        self, user_id: str, device_id: Optional[str] = None
+        self, user_id: str, device_id: str = None
     ) -> Optional[Sas]:
         """Find a non-canceled SAS verification object for the provided user.
 
@@ -2458,15 +2461,9 @@ class Olm:
         for sas in sorted(
             verifications, key=lambda x: x.creation_time, reverse=True
         ):
-            if user_id == sas.other_user_id:
-                if device_id:
-                    if (
-                        sas.other_olm_device
-                        and device_id == sas.other_olm_device.device_id
-                    ):
-                        return sas
-                else:
-                    return sas
+            if (user_id == sas.other_user_id
+                    and device_id == sas.other_olm_device.device_id):
+                return sas
 
         return None
 
@@ -2480,7 +2477,29 @@ class Olm:
 
     def handle_key_verification(self, event: KeyVerificationEvent):
         """Receive key verification events."""
-        if isinstance(event, KeyVerificationStart):
+        if isinstance(event, RoomKeyVerificationRequest):
+            logger.info(
+                f"Received a verification request from {event.sender} "
+                f"{event.from_device}"
+            )
+
+            own_user_identity = self.cross_signing_store.get(self.user_id)
+            other_user_identity = self.cross_signing_store.get(event.sender)
+
+            request = VerificationRequest.from_request_event(
+                self.user_id,
+                self.device_id,
+                self.account.identity_keys["ed25519"],
+                own_user_identity,
+                other_user_identity,
+                event,
+            )
+
+            self.verification_requests[event.sender] = request
+
+        elif isinstance(
+            event, (RoomKeyVerificationStart, KeyVerificationStart)
+        ):
             logger.info(
                 "Received key verification start event from "
                 "{} {} {}".format(
@@ -2535,26 +2554,29 @@ class Olm:
                 logger.info(
                     "Successfully started key verification with "
                     "{} {} {}".format(
-                        event.sender, event.from_device,
-                        new_sas.verification_flow_id
+                        event.sender,
+                        event.from_device,
+                        new_sas.verification_flow_id,
                     )
                 )
-                self.key_verifications[event.transaction_id] = new_sas
+                self.key_verifications[new_sas.verification_flow_id] = new_sas
 
-        elif isinstance(event, RoomKeyVerificationStart):
-            sas = self.key_verifications.get(event.relates_to)
+                # If this was started with a verification request the
+                # verification process is already accepted by the user so send
+                # out an accept message
 
-            if not sas:
-                logger.warn(
-                    "Received key verification event with an unknown "
-                    "transaction id from {}".format(event.sender)
-                )
-            else:
-                sas.receive_start_event(event)
+                try:
+                    request = self.verification_requests.pop(event.sender)
+                    if (
+                        request.verification_flow_id
+                        == new_sas.verification_flow_id
+                    ):
+                        self.store_verification_message(
+                            new_sas.accept_verification()
+                        )
+                except KeyError:
+                    pass
 
-                if sas.canceled:
-                    message = sas.get_cancellation()
-                    self.store_verification_message(message)
         else:
             if isinstance(event, KeyVerificationEvent):
                 transaction_id = event.transaction_id

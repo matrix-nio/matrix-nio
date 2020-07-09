@@ -865,6 +865,7 @@ class VerificationRequest:
         self.other_device_id: Optional[str] = None
         self.verification_flow_id: Optional[str] = None
         self.methods: List[str] = methods or [Sas._sas_method_v1]
+        self.we_started = True
 
         self.state = VerificationRequestState.created
 
@@ -890,6 +891,8 @@ class VerificationRequest:
         )
 
         obj.other_device_id = event.from_device
+        obj.verification_flow_id = event.event_id
+        obj.we_started = False
 
         # If we don't support any of the methods, become passive.
         if Sas._sas_method_v1 in event.methods:
@@ -967,7 +970,7 @@ class VerificationRequest:
                 "The given device doesn't match the other users" "device id"
             )
 
-        return Sas(
+        sas = Sas(
             self.own_user,
             self.own_device,
             self.own_fp_key,
@@ -976,3 +979,6 @@ class VerificationRequest:
             self.verification_flow_id,
             room_id=self.room_id,
         )
+        sas.we_started_it = self.we_started
+
+        return sas
