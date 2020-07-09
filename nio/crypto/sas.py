@@ -35,8 +35,10 @@ from ..events import (
     RoomKeyVerificationMac,
     KeyVerificationKey,
     RoomKeyVerificationKey,
+    RoomKeyVerificationCancel,
     KeyVerificationCancel,
     KeyVerificationAccept,
+    RoomKeyVerificationAccept,
 )
 from ..responses import RoomSendResponse
 from ..exceptions import LocalProtocolError
@@ -47,6 +49,15 @@ from ..store import MatrixStore
 from .device import OlmDevice
 from . import DeviceStore, logger
 from .user_identities import UserIdentity
+
+
+def get_verification_id(
+    event: Union[RoomKeyVerificationEvent, KeyVerificationEvent]
+) -> str:
+    if isinstance(event, KeyVerificationEvent):
+        return event.transaction_id
+    else:
+        return event.relates_to
 
 
 class SasState(Enum):
@@ -259,10 +270,8 @@ class Sas(olm.Sas):
 
         """
         if isinstance(event, RoomKeyVerificationStart):
-            verification_flow_id = event.relates_to
             room_id = event.room_id
         else:
-            verification_flow_id = event.transaction_id
             room_id = None
 
         obj = cls(
@@ -271,7 +280,7 @@ class Sas(olm.Sas):
             own_fp_key,
             other_olm_device.user_id,
             other_olm_device,
-            verification_flow_id,
+            get_verification_id(event),
             event.short_authentication_string,
             event.message_authentication_codes,
             room_id=room_id,
@@ -658,14 +667,7 @@ class Sas(olm.Sas):
         if self.state == SasState.canceled:
             return False
 
-        verification_flow_id: str = ""
-
-        if isinstance(event, RoomKeyVerificationEvent):
-            assert event.relates_to
-            verification_flow_id = event.relates_to
-        else:
-            assert event.transaction_id
-            verification_flow_id = event.transaction_id
+        verification_flow_id: str = get_verification_id(event)
 
         if verification_flow_id != self.verification_flow_id:
             self.state = SasState.canceled
@@ -1024,8 +1026,8 @@ class VerificationMachine:
         # A mapping from the user to a verification request
         self.verification_requests: Dict[str, VerificationRequest] = dict()
 
-        # A mapping from a transaction id to a Sas key verification object. The
-        # transaction id uniquely identifies the key verification session.
+        # A mapping from a verification id to a Sas key verification object.
+        # The verification id uniquely identifies the key verification session.
         self.key_verifications: Dict[str, Sas] = dict()
 
         # A list of to-device messages that need to be sent to the homeserver
@@ -1132,6 +1134,209 @@ class VerificationMachine:
         else:
             self.outgoing_room_messages[message.transaction_id] = message
 
+    def handle_verification_request(self, event: RoomKeyVerificationRequest):
+        logger.info(
+            f"Received a verification request from {event.sender} "
+            f"{event.from_device}"
+        )
+
+        own_user_identity = self.cross_signing_store.get(self.user_id)
+        other_user_identity = self.cross_signing_store.get(event.sender)
+
+        request = VerificationRequest.from_request_event(
+            self.user_id,
+            self.device_id,
+            self.account.identity_keys["ed25519"],
+            own_user_identity,
+            other_user_identity,
+            event,
+        )
+
+        self.verification_requests[event.sender] = request
+
+    def handle_start_events(
+        self, event: Union[KeyVerificationStart, RoomKeyVerificationStart]
+    ):
+        logger.info(
+            "Received key verification start event from "
+            "{} {} {}".format(
+                event.sender, event.from_device, get_verification_id(event)
+            )
+        )
+
+        try:
+            device = self.device_store[event.sender][event.from_device]
+        except KeyError:
+            logger.warn(
+                "Received key verification event from unknown "
+                "device: {} {}".format(event.sender, event.from_device)
+            )
+            self.users_for_key_query.add(event.sender)
+            return
+
+        new_sas = Sas.from_key_verification_start(
+            self.user_id,
+            self.device_id,
+            self.account.identity_keys["ed25519"],
+            device,
+            event,
+        )
+
+        if new_sas.canceled:
+            logger.warn(
+                "Received malformed key verification event from "
+                "{} {}".format(event.sender, event.from_device)
+            )
+            message = new_sas.get_cancellation()
+            self.store_verification_message(message)
+
+        else:
+            old_sas = self.get_active_sas(event.sender, event.from_device)
+
+            if old_sas:
+                logger.info(
+                    "Found an active verification process for the "
+                    "same user/device combination, "
+                    "canceling the old one. "
+                    "Old Sas: {} {} {}".format(
+                        event.sender,
+                        event.from_device,
+                        old_sas.verification_flow_id,
+                    )
+                )
+                old_sas.cancel()
+                cancel_message = old_sas.get_cancellation()
+
+                self.store_verification_message(cancel_message)
+
+            logger.info(
+                "Successfully started key verification with "
+                "{} {} {}".format(
+                    event.sender,
+                    event.from_device,
+                    new_sas.verification_flow_id,
+                )
+            )
+            self.key_verifications[new_sas.verification_flow_id] = new_sas
+
+            # If this was started with a verification request the
+            # verification process is already accepted by the user so send
+            # out an accept message
+
+            try:
+                request = self.verification_requests.pop(event.sender)
+                if (
+                    request.verification_flow_id
+                    == new_sas.verification_flow_id
+                ):
+                    self.store_verification_message(
+                        new_sas.accept_verification()
+                    )
+            except KeyError:
+                pass
+
+    def handle_accept_event(
+        self,
+        sas: Sas,
+        event: Union[RoomKeyVerificationAccept, KeyVerificationAccept],
+    ):
+        sas.receive_accept_event(event)
+
+        if sas.canceled:
+            message = sas.get_cancellation()
+        else:
+            logger.info(
+                "Received a key verification accept event "
+                "from {} {}, sharing keys {}".format(
+                    event.sender,
+                    sas.other_olm_device.id,
+                    sas.verification_flow_id,
+                )
+            )
+            message = sas.share_key()
+
+        self.store_verification_message(message)
+
+    def handle_cancel_event(
+        self,
+        sas: Sas,
+        event: Union[KeyVerificationCancel, RoomKeyVerificationCancel],
+    ):
+        logger.info(
+            "Received a key verification cancellation "
+            "from {} {}. Canceling verification {}.".format(
+                event.sender,
+                sas.other_olm_device.id,
+                sas.verification_flow_id,
+            )
+        )
+        sas = self.key_verifications.pop(get_verification_id(event))
+
+        if sas:
+            sas.cancel()
+
+    def handle_key_event(
+        self,
+        sas: Sas,
+        event: Union[RoomKeyVerificationKey, KeyVerificationKey],
+    ):
+        sas.receive_key_event(event)
+
+        outgoing_message: Optional[Union[RoomEvent, ToDeviceMessage]] = None
+
+        if sas.canceled:
+            outgoing_message = sas.get_cancellation()
+        else:
+            logger.info(
+                "Received a key verification pubkey "
+                "from {} {} {}.".format(
+                    event.sender,
+                    sas.other_olm_device.id,
+                    sas.verification_flow_id,
+                )
+            )
+
+        if not sas.we_started_it and not sas.canceled:
+            outgoing_message = sas.share_key()
+
+        if outgoing_message:
+            self.store_verification_message(outgoing_message)
+
+    def handle_mac_event(
+        self,
+        sas: Sas,
+        event: Union[KeyVerificationMac, RoomKeyVerificationMac],
+    ):
+        sas.receive_mac_event(event)
+
+        if sas.canceled:
+            cancel_message = sas.get_cancellation()
+            self.store_verification_message(cancel_message)
+
+            return
+
+        logger.info(
+            "Received a valid key verification MAC "
+            "from {} {} {}.".format(
+                event.sender,
+                sas.other_olm_device.id,
+                get_verification_id(event),
+            )
+        )
+
+        if sas.verified:
+            logger.info(
+                "Interactive key verification successful, "
+                "verifying device {} of user {} {}.".format(
+                    sas.other_olm_device.id,
+                    event.sender,
+                    get_verification_id(event),
+                )
+            )
+            device = sas.other_olm_device
+            assert device
+            self.verify_device(device)
+
     def handle_key_verification(
         self,
         event: Union[
@@ -1142,207 +1347,39 @@ class VerificationMachine:
     ):
         """Receive key verification events."""
         if isinstance(event, RoomKeyVerificationRequest):
-            logger.info(
-                f"Received a verification request from {event.sender} "
-                f"{event.from_device}"
-            )
-
-            own_user_identity = self.cross_signing_store.get(self.user_id)
-            other_user_identity = self.cross_signing_store.get(event.sender)
-
-            request = VerificationRequest.from_request_event(
-                self.user_id,
-                self.device_id,
-                self.account.identity_keys["ed25519"],
-                own_user_identity,
-                other_user_identity,
-                event,
-            )
-
-            self.verification_requests[event.sender] = request
+            self.handle_verification_request(event)
 
         elif isinstance(
             event, (RoomKeyVerificationStart, KeyVerificationStart)
         ):
-            logger.info(
-                "Received key verification start event from "
-                "{} {} {}".format(
-                    event.sender, event.from_device, event.transaction_id
-                )
-            )
-            try:
-                device = self.device_store[event.sender][event.from_device]
-            except KeyError:
-                logger.warn(
-                    "Received key verification event from unknown "
-                    "device: {} {}".format(event.sender, event.from_device)
-                )
-                self.users_for_key_query.add(event.sender)
-                return
-
-            new_sas = Sas.from_key_verification_start(
-                self.user_id,
-                self.device_id,
-                self.account.identity_keys["ed25519"],
-                device,
-                event,
-            )
-
-            if new_sas.canceled:
-                logger.warn(
-                    "Received malformed key verification event from "
-                    "{} {}".format(event.sender, event.from_device)
-                )
-                message = new_sas.get_cancellation()
-                self.store_verification_message(message)
-
-            else:
-                old_sas = self.get_active_sas(event.sender, event.from_device)
-
-                if old_sas:
-                    logger.info(
-                        "Found an active verification process for the "
-                        "same user/device combination, "
-                        "canceling the old one. "
-                        "Old Sas: {} {} {}".format(
-                            event.sender,
-                            event.from_device,
-                            old_sas.verification_flow_id,
-                        )
-                    )
-                    old_sas.cancel()
-                    cancel_message = old_sas.get_cancellation()
-
-                    self.store_verification_message(cancel_message)
-
-                logger.info(
-                    "Successfully started key verification with "
-                    "{} {} {}".format(
-                        event.sender,
-                        event.from_device,
-                        new_sas.verification_flow_id,
-                    )
-                )
-                self.key_verifications[new_sas.verification_flow_id] = new_sas
-
-                # If this was started with a verification request the
-                # verification process is already accepted by the user so send
-                # out an accept message
-
-                try:
-                    request = self.verification_requests.pop(event.sender)
-                    if (
-                        request.verification_flow_id
-                        == new_sas.verification_flow_id
-                    ):
-                        self.store_verification_message(
-                            new_sas.accept_verification()
-                        )
-                except KeyError:
-                    pass
+            self.handle_start_events(event)
 
         else:
-            if isinstance(event, KeyVerificationEvent):
-                transaction_id = event.transaction_id
-            else:
-                transaction_id = event.relates_to
-
-            sas = self.key_verifications.get(transaction_id)
+            sas = self.key_verifications.get(get_verification_id(event))
 
             if not sas:
                 logger.warn(
                     "Received key verification event with an unknown "
-                    "transaction id from {}".format(event.sender)
+                    "id from {}".format(event.sender)
                 )
                 return
 
-            if isinstance(event, KeyVerificationAccept):
-                sas.receive_accept_event(event)
+            if isinstance(
+                event, (RoomKeyVerificationAccept, KeyVerificationAccept)
+            ):
+                self.handle_accept_event(sas, event)
 
-                if sas.canceled:
-                    message = sas.get_cancellation()
-                else:
-                    logger.info(
-                        "Received a key verification accept event "
-                        "from {} {}, sharing keys {}".format(
-                            event.sender,
-                            sas.other_olm_device.id,
-                            sas.verification_flow_id,
-                        )
-                    )
-                    message = sas.share_key()
-
-                self.store_verification_message(message)
-
-            elif isinstance(event, KeyVerificationCancel):
-                logger.info(
-                    "Received a key verification cancellation "
-                    "from {} {}. Canceling verification {}.".format(
-                        event.sender,
-                        sas.other_olm_device.id,
-                        sas.verification_flow_id,
-                    )
-                )
-                sas = self.key_verifications.pop(event.transaction_id, None)
-
-                if sas:
-                    sas.cancel()
+            elif isinstance(
+                event, (RoomKeyVerificationCancel, KeyVerificationCancel)
+            ):
+                self.handle_cancel_event(sas, event)
 
             elif isinstance(
                 event, (KeyVerificationKey, RoomKeyVerificationKey)
             ):
-                sas.receive_key_event(event)
-                outgoing_message: Optional[
-                    Union[RoomEvent, ToDeviceMessage]
-                ] = None
-
-                if sas.canceled:
-                    outgoing_message = sas.get_cancellation()
-                else:
-                    logger.info(
-                        "Received a key verification pubkey "
-                        "from {} {} {}.".format(
-                            event.sender,
-                            sas.other_olm_device.id,
-                            sas.verification_flow_id,
-                        )
-                    )
-
-                if not sas.we_started_it and not sas.canceled:
-                    outgoing_message = sas.share_key()
-
-                if outgoing_message:
-                    self.store_verification_message(outgoing_message)
+                self.handle_key_event(sas, event)
 
             elif isinstance(
                 event, (KeyVerificationMac, RoomKeyVerificationMac)
             ):
-                sas.receive_mac_event(event)
-
-                if sas.canceled:
-                    cancel_message = sas.get_cancellation()
-                    self.store_verification_message(cancel_message)
-
-                    return
-
-                logger.info(
-                    "Received a valid key verification MAC "
-                    "from {} {} {}.".format(
-                        event.sender,
-                        sas.other_olm_device.id,
-                        event.transaction_id,
-                    )
-                )
-
-                if sas.verified:
-                    logger.info(
-                        "Interactive key verification successful, "
-                        "verifying device {} of user {} {}.".format(
-                            sas.other_olm_device.id,
-                            event.sender,
-                            event.transaction_id,
-                        )
-                    )
-                    device = sas.other_olm_device
-                    assert device
-                    self.verify_device(device)
+                self.handle_mac_event(sas, event)
