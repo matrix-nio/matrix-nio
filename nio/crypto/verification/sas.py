@@ -671,38 +671,6 @@ class Sas(olm.Sas):
 
         return True
 
-    def receive_start_event(self, event):
-        if not self._event_ok(event):
-            return
-
-        if (
-            self.state != SasState.ready
-            and self.state != SasState.created
-            and self.state != SasState.request
-        ):
-            self.state = SasState.canceled
-            (
-                self.cancel_code,
-                self.cancel_reason,
-            ) = Sas._unexpected_message_error
-            return
-
-        if event.method != Sas._sas_method_v1:
-            self.state = SasState.canceled
-            self.cancel_code, self.cancel_reason = self._unknonw_method_error
-            return
-
-        self.we_started_it = False
-        self.state = SasState.started
-
-        string_content = Api.to_canonical_json(event.source["content"])
-        self.commitment = olm.sha256(self.pubkey + string_content)
-        self.key_agreement_protocols = event.key_agreement_protocols
-
-        self._check_start(event)
-
-        return
-
     def receive_accept_event(
         self, event: Union[RoomKeyVerificationAccept, KeyVerificationAccept]
     ):
