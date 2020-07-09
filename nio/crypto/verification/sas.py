@@ -23,8 +23,8 @@ from uuid import uuid4, UUID
 import olm
 from future.moves.itertools import zip_longest
 
-from ..api import Api
-from ..events import (
+from ...api import Api
+from ...events import (
     KeyVerificationEvent,
     KeyVerificationStart,
     RoomKeyVerificationRequest,
@@ -40,15 +40,15 @@ from ..events import (
     KeyVerificationAccept,
     RoomKeyVerificationAccept,
 )
-from ..responses import RoomSendResponse
-from ..exceptions import LocalProtocolError
+from ...responses import RoomSendResponse
+from ...exceptions import LocalProtocolError
 
-from .sessions import OlmAccount
-from ..event_builders import ToDeviceMessage, RoomEvent
-from ..store import MatrixStore
-from .device import OlmDevice
-from . import DeviceStore, logger
-from .user_identities import UserIdentity
+from ..sessions import OlmAccount
+from ...event_builders import ToDeviceMessage, RoomEvent
+from ...store import MatrixStore
+from ..device import OlmDevice
+from .. import DeviceStore, logger
+from ..user_identities import UserIdentity
 
 
 def get_verification_id(

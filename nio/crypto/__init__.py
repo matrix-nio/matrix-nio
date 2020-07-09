@@ -49,7 +49,7 @@ if package_installed("olm"):
 
     from .olm_machine import Olm
 
-    from .sas import Sas, SasState, VerificationRequest, VerificationRequestState
+    from .verification import Sas, SasState, VerificationRequest, VerificationRequestState
 
     ENCRYPTION_ENABLED = True
 

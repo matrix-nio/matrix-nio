@@ -104,7 +104,7 @@ from ..responses import (
 from ..schemas import Schemas, validate_json
 from ..store import MatrixStore
 from .key_export import decrypt_and_read, encrypt_and_save
-from .sas import Sas, VerificationRequest, VerificationMachine
+from .verification import Sas, VerificationRequest, VerificationMachine
 from ..event_builders import (
     ToDeviceMessage,
     RoomEvent,
