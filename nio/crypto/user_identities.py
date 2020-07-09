@@ -147,14 +147,16 @@ class UserIdentity:
         ):
             return IdentityChange.NoChange
 
+        if self.master_keys != master:
+            change = IdentityChange.Master
+        else:
+            change = IdentityChange.SubKey
+
         self.master_keys = master
         self.user_signing_keys = user
         self.self_signing_keys = self_signing
 
-        if self.master_keys != master:
-            return IdentityChange.Master
-
-        return IdentityChange.SubKey
+        return change
 
     def is_device_signed(self, device: OlmDevice):
         # A user is supposed to only sign it's own devices directly with the
