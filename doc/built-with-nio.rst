@@ -10,6 +10,7 @@ Projects built with nio
 - `devops-bot <https://github.com/rdagnelie/devops-bot>`_
 - `podbot <https://github.com/interfect/podbot>`_
 - `delator <https://github.com/nogaems/delator>`_
+- `cody <https://gitlab.com/carlbordum/matrix-cody>`_
 
 Are we missing a project? Submit a pull request and we'll get you added! Just edit ``doc/built-with-nio.rst``
 
