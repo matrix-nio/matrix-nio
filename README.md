@@ -56,6 +56,9 @@ $ pip install matrix-nio
 Note that this installs nio without end-to-end encryption support. For e2ee
 support, python-olm is needed which requires the
 [libolm](https://gitlab.matrix.org/matrix-org/olm) C library (version 3.x).
+On Debian and Ubuntu one can use `apt-get` to install package `libolm-dev`.
+On Fedora one can use `dnf` to install package `libolm-devel`. 
+Make sure version 3 is installed.
 
 After libolm has been installed, the e2ee enabled version of nio can be
 installed using pip:
