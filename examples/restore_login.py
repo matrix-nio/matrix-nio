@@ -50,10 +50,13 @@ async def main() -> None:
         user_id = "@user:example.org"
         user_id = input(f"Enter your full user ID: [{user_id}] ")
 
+        device_name = "matrix-nio"
+        device_name = input(f"Choose a name for this device: [{device_name}] ")
+
         client = AsyncClient(homeserver, user_id)
         pw = getpass.getpass()
 
-        resp = await client.login(pw)
+        resp = await client.login(pw, device_name=device_name)
 
         # check that we logged in succesfully
         if (isinstance(resp, LoginResponse)):
