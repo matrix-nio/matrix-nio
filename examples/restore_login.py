@@ -27,9 +27,9 @@ def write_details_to_disk(resp: LoginResponse, homeserver) -> None:
         json.dump(
             {
                 "homeserver": homeserver,  # e.g. "https://matrix.example.org"
-                "access_token": resp.access_token,  # cryptogr. access token
+                "user_id": resp.user_id,  # e.g. "@user:example.org"
                 "device_id": resp.device_id,  # device ID, 10 uppercase letters
-                "user_id": resp.user_id  # e.g. "@user:example.org"
+                "access_token": resp.access_token  # cryptogr. access token
             },
             f
         )
