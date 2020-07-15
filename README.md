@@ -58,6 +58,7 @@ support, python-olm is needed which requires the
 [libolm](https://gitlab.matrix.org/matrix-org/olm) C library (version 3.x).
 On Debian and Ubuntu one can use `apt-get` to install package `libolm-dev`.
 On Fedora one can use `dnf` to install package `libolm-devel`. 
+On MacOS one can use [brew](https://brew.sh/) to install package `libolm`. 
 Make sure version 3 is installed.
 
 After libolm has been installed, the e2ee enabled version of nio can be
