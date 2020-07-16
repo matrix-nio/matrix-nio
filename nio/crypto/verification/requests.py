@@ -39,17 +39,15 @@ class VerificationRequest:
         own_user: str,
         own_device: str,
         own_fp_key: str,
-        own_user_identity: UserIdentity,
-        other_user_identity: UserIdentity,
+        other_user: str,
         room_id: str,
         methods: List[str] = None,
     ):
         self.own_user = own_user
         self.own_device = own_device
         self.own_fp_key = own_fp_key
+        self.other_user = other_user
         self.room_id = room_id
-        self.own_user_identity = own_user_identity
-        self.other_user_identity = other_user_identity
         self.other_device_id: Optional[str] = None
         self.verification_flow_id: Optional[str] = None
         self.methods: List[str] = methods or [Sas._sas_method_v1]
@@ -63,8 +61,6 @@ class VerificationRequest:
         own_user: str,
         own_device: str,
         own_fp_key: str,
-        own_user_identity: UserIdentity,
-        other_user_identity: UserIdentity,
         event: RoomKeyVerificationRequest,
     ):
         assert event.room_id
@@ -73,8 +69,7 @@ class VerificationRequest:
             own_user,
             own_device,
             own_fp_key,
-            own_user_identity,
-            other_user_identity,
+            event.sender,
             event.room_id,
         )
 
@@ -107,7 +102,7 @@ class VerificationRequest:
             "but your client does not support in-chat key "
             "verification. You will need to use legacy key "
             "verification to verify keys.",
-            "to": self.other_user_identity.user_id,
+            "to": self.other_user,
         }
 
         event_type = "m.room.message"
@@ -130,7 +125,7 @@ class VerificationRequest:
         content: Dict[str, Any] = {
             "from_device": self.own_device,
             "methods": [Sas._sas_method_v1],
-            "to": self.other_user_identity.user_id,
+            "to": self.other_user,
         }
 
         content["m.relates_to"] = {

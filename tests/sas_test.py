@@ -53,8 +53,7 @@ def alice_verification(alice_xsign, cross_signing_identity):
         alice_id,
         alice_device_id,
         alice_keys[f"ed25519:{alice_device_id}"],
-        alice_xsign,
-        cross_signing_identity,
+        cross_signing_identity.user_id,
         room_id=ROOM_ID,
     )
 
@@ -1147,11 +1146,9 @@ class TestClass:
         assert alice.verification_flow_id == response.event_id
 
         bob = VerificationRequest.from_request_event(
-            alice.other_user_identity.user_id,
+            alice.other_user,
             bob_device_id,
             bob_keys[f"ed25519:{bob_device_id}"],
-            alice.other_user_identity,
-            alice.own_user_identity,
             event,
         )
 
@@ -1184,11 +1181,9 @@ class TestClass:
         )
 
         bob = VerificationRequest.from_request_event(
-            alice.other_user_identity.user_id,
+            alice.other_user,
             bob_device_id,
             bob_keys[f"ed25519:{bob_device_id}"],
-            alice.other_user_identity,
-            alice.own_user_identity,
             event,
         )
 
@@ -1208,11 +1203,9 @@ class TestClass:
         alice.receive_room_send_response(response)
 
         bob = VerificationRequest.from_request_event(
-            alice.other_user_identity.user_id,
+            alice.other_user,
             bob_device_id,
             bob_keys[f"ed25519:{bob_device_id}"],
-            alice.other_user_identity,
-            alice.own_user_identity,
             event,
         )
 
@@ -1282,16 +1275,15 @@ class TestClass:
         alice = olm_machine
 
         alice_device = self.device_from_machine(alice)
-        alice.cross_signing_store[bob_id] = alice_verification.other_user_identity
-        alice.cross_signing_store[alice_id] = alice_verification.own_user_identity
+        # alice.cross_signing_store[bob_id] = alice_verification.other_user_identity
+        # alice.cross_signing_store[alice_id] = alice_verification.own_user_identity
         bob_device = alice.device_store[bob_id][bob_device_id]
 
         bob_verification = VerificationRequest(
-            alice_verification.other_user_identity.user_id,
+            alice_verification.other_user,
             bob_device_id,
             bob_device.ed25519,
-            alice_verification.other_user_identity,
-            alice_verification.own_user_identity,
+            alice_verification.own_user,
             room_id=room_id,
         )
         response = RoomSendResponse("test_id", ROOM_ID)
@@ -1317,7 +1309,6 @@ class TestClass:
         assert alice_sas.state == SasState.started
 
         _, message = alice.outgoing_room_messages.popitem()
-        print(message)
         event = self.wrap_room_message(alice_sas, message, RoomKeyVerificationAccept)
 
         bob_sas.receive_accept_event(event)

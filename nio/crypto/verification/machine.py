@@ -187,15 +187,10 @@ class VerificationMachine:
             f"{event.from_device}"
         )
 
-        own_user_identity = self.cross_signing_store.get(self.user_id)
-        other_user_identity = self.cross_signing_store.get(event.sender)
-
         request = VerificationRequest.from_request_event(
             self.user_id,
             self.device_id,
             self.account.identity_keys["ed25519"],
-            own_user_identity,
-            other_user_identity,
             event,
         )
 
