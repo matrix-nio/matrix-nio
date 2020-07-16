@@ -2413,6 +2413,8 @@ class TestClass:
 
         assert times == [0.0, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 30, 30, 30]
 
+        assert await get_time(999_999_999) == 30
+
     async def test_sync_forever(self, async_client, aioresponse, loop):
         sync_url = re.compile(
             r'^https://example\.org/_matrix/client/r0/sync\?access_token=.*'

@@ -641,7 +641,7 @@ class AsyncClient(Client):
             return 0.0
 
         return min(
-            self.config.backoff_factor * (2 ** (got_timeouts - 1)),
+            self.config.backoff_factor * (2 ** (min(got_timeouts, 1000) - 1)),
             self.config.max_timeout_retry_wait_time,
         )
 
