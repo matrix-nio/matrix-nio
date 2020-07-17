@@ -388,6 +388,10 @@ class VerificationMachine:
         ],
     ):
         """Receive key verification events."""
+        # Ignore our own events.
+        if event.sender == self.user_id:
+            return
+
         if isinstance(event, RoomKeyVerificationRequest):
             self.handle_verification_request(event)
 
