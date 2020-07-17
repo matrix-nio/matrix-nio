@@ -45,6 +45,8 @@ from ..events import (
     RoomMemberEvent,
     ToDeviceEvent,
     RoomKeyRequest,
+    RoomKeyVerificationRequest,
+    RoomKeyVerificationEvent,
     RoomKeyRequestCancellation,
     PresenceEvent,
 )
@@ -752,6 +754,12 @@ class Client:
         if isinstance(event, RoomMemberEvent):
             if room.handle_membership(event):
                 self._invalidate_session_for_member_event(room_id)
+
+        elif isinstance(event, (
+            RoomKeyVerificationRequest,
+            RoomKeyVerificationEvent
+        )) and self.olm:
+            self.olm.handle_key_verification(event)
 
         elif isinstance(event, (UnknownBadEvent, BadEvent)):
             pass
