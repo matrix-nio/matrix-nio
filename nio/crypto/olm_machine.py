@@ -1814,6 +1814,10 @@ class Olm:
         parsed_dict["sender"] = event.sender
         parsed_dict["origin_server_ts"] = event.server_timestamp
 
+        if ("m.relates_to" not in parsed_dict["content"] and
+                "m.relates_to" in event.source["content"]):
+            parsed_dict["content"]["m.relates_to"] = event.source["content"]["m.relates_to"]
+
         if event.transaction_id:
             parsed_dict["unsigned"] = {"transaction_id": event.transaction_id}
 
