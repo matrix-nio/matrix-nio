@@ -17,7 +17,7 @@ from olm import (
 
 from nio.crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
                         Olm, OlmDevice, OutboundSession, OutgoingKeyRequest,
-                        SessionStore, Session)
+                        SessionStore, Session, UserIdentity)
 from nio.events import (ForwardedRoomKeyEvent, MegolmEvent, OlmEvent,
                         RoomKeyEvent, RoomMessageText, UnknownBadEvent,
                         ToDeviceEvent, DummyEvent, RoomKeyRequest,
@@ -2090,8 +2090,8 @@ class TestClass:
         event = bob.decrypt_megolm_event(megolm_event)
         assert isinstance(event, RoomMessageText)
 
-    def test_cross_signing_signatures(self, cross_signing_identity):
-        alice = cross_signing_identity
+    def test_cross_signing_signatures(self, cross_signing_identity_and_keys):
+        _, _, _, alice = cross_signing_identity_and_keys
 
         assert alice.master_keys.verify_cross_signing_subkey(
             alice.user_signing_keys
@@ -2107,6 +2107,8 @@ class TestClass:
         )
 
     def test_keys_query_cross_signing(self, olm_account):
+        olm_account.user_id = "@example:localhost"
+
         parsed_dict = TestClass._load_response(
             "tests/data/keys_query_cross_signing.json")
         response = KeysQueryResponse.from_dict(parsed_dict)
@@ -2118,6 +2120,26 @@ class TestClass:
         example = olm_account.cross_signing_store["@example:localhost"]
 
         assert example.master_keys
+        assert example.self_signing_keys
+        assert example.user_signing_keys
+
+    def test_keys_query_cross_signing_other_user(self, olm_account):
+        olm_account.user_id = "@example:localhost"
+
+        parsed_dict = TestClass._load_response(
+            "tests/data/keys_query_cross_signing_other_user.json")
+        response = KeysQueryResponse.from_dict(parsed_dict)
+
+        assert isinstance(response, KeysQueryResponse)
+
+        olm_account.handle_response(response)
+
+        example = olm_account.cross_signing_store["@example2:localhost"]
+
+        assert isinstance(example, UserIdentity)
+        assert example.master_keys
+        assert example.self_signing_keys
+
 
     def test_cross_signing_verify_signed_device(self, cross_signing_identity_and_keys, olm_device):
         _, _, self_signing_key, alice = cross_signing_identity_and_keys

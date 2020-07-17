@@ -131,18 +131,16 @@ class UserSigningPubkeys(CrossSigningPubkeys):
 class UserIdentity:
     user_id: str = field()
     master_keys: MasterPubkeys = field()
-    user_signing_keys: UserSigningPubkeys = field()
     self_signing_keys: SelfSigningPubkeys = field()
 
     def update(
         self,
         master: MasterPubkeys,
-        user: UserSigningPubkeys,
         self_signing: SelfSigningPubkeys,
+        _: Any,
     ) -> IdentityChange:
         if (
             self.master_keys == master
-            and self.user_signing_keys == user
             and self.self_signing_keys == self_signing
         ):
             return IdentityChange.NoChange
@@ -153,7 +151,6 @@ class UserIdentity:
             change = IdentityChange.SubKey
 
         self.master_keys = master
-        self.user_signing_keys = user
         self.self_signing_keys = self_signing
 
         return change
@@ -178,9 +175,34 @@ class UserIdentity:
 
 @dataclass
 class OwnUserIdentity(UserIdentity):
+    user_signing_keys: UserSigningPubkeys = field()
     verified: bool = field(init=False, default=False)
 
     def is_identity_signed(self, identity: UserIdentity) -> bool:
         return self.user_signing_keys.verify_cross_signing_master_key(
             identity.master_keys
         )
+
+    def update(
+        self,
+        master: MasterPubkeys,
+        self_signing: SelfSigningPubkeys,
+        user_signing: UserSigningPubkeys,
+    ) -> IdentityChange:
+        if (
+            self.master_keys == master
+            and self.user_signing_keys == self_signing
+            and self.self_signing_keys == self_signing
+        ):
+            return IdentityChange.NoChange
+
+        if self.master_keys != master:
+            change = IdentityChange.Master
+        else:
+            change = IdentityChange.SubKey
+
+        self.master_keys = master
+        self.user_signing_keys = user_signing
+        self.self_signing_keys = self_signing
+
+        return change

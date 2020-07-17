@@ -383,8 +383,6 @@ class MatrixStore:
                 & (CrossSigningIdentities.user_id == user_id)
             )
 
-            if isinstance(identity, OwnUserIdentity):
-                IdentityTrustState.replace(identity=i, verified=identity.verified).execute()
 
             self.save_cross_signing_keys(
                 i,
@@ -402,13 +400,15 @@ class MatrixStore:
                 identity.self_signing_keys.usage,
             )
 
-            self.save_cross_signing_keys(
-                i,
-                CrossSigningKeyType.UserSign,
-                identity.user_signing_keys.keys,
-                identity.user_signing_keys.signatures,
-                identity.user_signing_keys.usage,
-            )
+            if isinstance(identity, OwnUserIdentity):
+                IdentityTrustState.replace(identity=i, verified=identity.verified).execute()
+                self.save_cross_signing_keys(
+                    i,
+                    CrossSigningKeyType.UserSign,
+                    identity.user_signing_keys.keys,
+                    identity.user_signing_keys.signatures,
+                    identity.user_signing_keys.usage,
+                )
 
     @use_database
     def load_cross_signing_identities(self) -> Dict[str, UserIdentity]:
@@ -480,10 +480,6 @@ class MatrixStore:
                 user_id, master_keys, master_signatures, list(master_usage),
             )
 
-            users = UserSigningPubkeys(
-                user_id, user_keys, user_signatures, list(user_usage),
-            )
-
             selfs = SelfSigningPubkeys(
                 user_id, self_keys, self_signatures, list(self_usage),
             )
@@ -494,11 +490,15 @@ class MatrixStore:
                 except IndexError:
                     verified = False
 
-                identity = OwnUserIdentity(user_id, masters, users, selfs)
+                users = UserSigningPubkeys(
+                    user_id, user_keys, user_signatures, list(user_usage),
+                )
+
+                identity = OwnUserIdentity(user_id, masters, selfs, users)
                 identity.verified = verified
                 store[user_id] = identity
             else:
-                store[user_id] = UserIdentity(user_id, masters, users, selfs)
+                store[user_id] = UserIdentity(user_id, masters, selfs)
 
         return store
 

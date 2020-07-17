@@ -60,7 +60,6 @@ class Provider(BaseProvider):
         return UserIdentity(
             identity.user_id,
             identity.master_keys,
-            identity.user_signing_keys,
             identity.self_signing_keys,
         )
         return identity
@@ -142,8 +141,8 @@ class Provider(BaseProvider):
             OwnUserIdentity(
                 user_id,
                 master_keys,
+                self_signing_keys,
                 user_signing_keys,
-                self_signing_keys
             )
         )
 

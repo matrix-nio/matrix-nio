@@ -887,9 +887,9 @@ class Olm:
                     )
 
     def _handle_cross_signing_for_user(
-        self, user_id, master_keys, user_signing_keys, self_signing_keys
+        self, user_id, master_keys, self_signing_keys, user_signing_keys,
     ) -> Optional[
-        Tuple[MasterPubkeys, UserSigningPubkeys, SelfSigningPubkeys]
+        Tuple[MasterPubkeys, SelfSigningPubkeys, Optional[UserSigningPubkeys]]
     ]:
         logger.debug(f"Received cross signing keys for {user_id}")
 
@@ -907,13 +907,6 @@ class Olm:
             self_signing_keys.get("usage", []),
         )
 
-        user_signing = UserSigningPubkeys(
-            user_id,
-            user_signing_keys.get("keys", {}),
-            user_signing_keys.get("signatures", {}),
-            user_signing_keys.get("usage", []),
-        )
-
         if not master.verify_cross_signing_subkey(self_signing):
             logger.warn(
                 f"Self signing keys of {user_id} aren't properly "
@@ -921,14 +914,24 @@ class Olm:
             )
             return None
 
-        if not master.verify_cross_signing_subkey(user_signing):
-            logger.warn(
-                f"User signing keys of {user_id} aren't properly "
-                "signed with the master key"
-            )
-            return None
+        user_signing: Optional[UserSigningPubkeys] = None
 
-        return (master, user_signing, self_signing)
+        if user_id == self.user_id:
+            user_signing = UserSigningPubkeys(
+                user_id,
+                user_signing_keys.get("keys", {}),
+                user_signing_keys.get("signatures", {}),
+                user_signing_keys.get("usage", []),
+            )
+
+            if not master.verify_cross_signing_subkey(user_signing):
+                logger.warn(
+                    f"User signing keys of {user_id} aren't properly "
+                    "signed with the master key"
+                )
+                return None
+
+        return (master, self_signing, user_signing)
 
     def _handle_cross_signing_keys(self, response: KeysQueryResponse):
         changed = {}
@@ -940,25 +943,24 @@ class Olm:
             master_keys = response.master_keys.get(user_id, {})
 
             keys = self._handle_cross_signing_for_user(
-                user_id, master_keys, user_keys, self_signing_keys
+                user_id, master_keys, self_signing_keys, user_keys
             )
 
             if not keys:
                 return
 
-            master, user_signing, self_signing = keys
+            master, self_signing, user_signing = keys
 
             try:
                 identity = self.cross_signing_store[user_id]
             except KeyError:
                 if user_id == self.user_id:
+                    assert user_signing
                     identity = OwnUserIdentity(
-                        user_id, master, user_signing, self_signing
+                        user_id, master, self_signing, user_signing
                     )
                 else:
-                    identity = UserIdentity(
-                        user_id, master, user_signing, self_signing
-                    )
+                    identity = UserIdentity(user_id, master, self_signing)
 
                 changed[user_id] = identity
 
@@ -968,9 +970,13 @@ class Olm:
                     f"Created a new identity for {user_id}, {identity}"
                 )
             else:
-                change_type = identity.update(
-                    master, user_signing, self_signing
-                )
+                if isinstance(identity, OwnUserIdentity):
+                    assert user_signing
+                    change_type = identity.update(
+                        master, self_signing, user_signing,
+                    )
+                else:
+                    change_type = identity.update(master, self_signing, None)
 
                 if change_type == IdentityChange.NoChange:
                     continue

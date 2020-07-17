@@ -766,12 +766,12 @@ class TestClass:
 
     def test_cross_signing_storing(self, sqlstore):
         identity = faker.cross_signing_identity()
-        own_id = faker.cross_signing_identity()
+        _, _, _, own_id = faker.cross_signing_identity_and_keys()
         own_id = OwnUserIdentity(
             own_id.user_id,
             own_id.master_keys,
+            own_id.self_signing_keys,
             own_id.user_signing_keys,
-            own_id.self_signing_keys
         )
         own_id.veirified = True
         own_id.user_id = sqlstore.user_id
