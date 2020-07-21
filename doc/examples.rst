@@ -63,9 +63,25 @@ up a bit.
 
 This example requires that the user running it has write permissions to the
 folder they're in. If you copied this repo to your computer, you probably have
-write permissions.
+write permissions. Now run the program `restore_login.py` twice. 
+First time around it will ask 
+you for credentials like homeserver and password. On the second run, the
+program will log in for you automatically and it will send a "Hello World" 
+message to the room you specify.
 
 .. literalinclude:: ../examples/restore_login.py
+    :language: python
+    :linenos:
+
+
+Sending an image
+----------------------------------
+Now that you have sent a first "Hello World" text message, how about
+going one step further and sending an image, like a photo from your last 
+vacation. Run the `send_image.py` program and provide a filename to 
+the photo. Voila, you have just sent your first image!
+
+.. literalinclude:: ../examples/send_image.py
     :language: python
     :linenos:
 
