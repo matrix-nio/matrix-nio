@@ -17,12 +17,7 @@ To start making a chat bot quickly, considering using `nio-template <https://git
     For E2EE support, ``python-olm`` is needed, which requires the
     `libolm <https://gitlab.matrix.org/matrix-org/olm>`_ C library
     (version 3.x). After libolm has been installed, the e2ee enabled version of
-    nio can be installed using pip:
-
-    .. code-block::
-
-        $ pip install "matrix-nio[e2e]"
-
+    nio can be installed using ``pip install "matrix-nio[e2e]"``.
 
 .. include:: built-with-nio.rst
 
