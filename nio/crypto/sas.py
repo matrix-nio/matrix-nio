@@ -671,7 +671,8 @@ class Sas(olm.Sas):
         if not self._event_ok(event):
             return
 
-        if self.state != SasState.key_received:
+        if ((self.state != SasState.key_received) or 
+                (self.chosen_mac_method == "")):
             self.state = SasState.canceled
             (
                 self.cancel_code,
