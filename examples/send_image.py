@@ -171,7 +171,7 @@ async def main() -> None:
         await send_image(client, room_id, image)
         print("Logged in using stored credentials. Sent a test message.")
 
-    # Either way we're logged in here, too
+    # Close the client connection after we are done with it.
     await client.close()
 
 asyncio.get_event_loop().run_until_complete(main())
