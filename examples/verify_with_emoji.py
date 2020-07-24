@@ -2,14 +2,14 @@
 
 """verify_with_emoji.py A sample program to demo Emoji verification.
 
-Objectives:
+# Objectives:
 - Showcase the emoji verification using matrix-nio SDK
 - This sample program tries to show the key steps involved in performing
     an emoji verification.
 - It does so only for incoming request, outgoing emoji verification request
     are similar but not shown in this sample program
 
-Prerequisites:
+# Prerequisites:
 - You must have matrix-nio and components for end-to-end encryption installed
     See: https://github.com/poljar/matrix-nio
 - You must have created a Matrix account already,
@@ -19,12 +19,12 @@ Prerequisites:
 - You are using this sample program to accept this incoming emoji verification
     and follow the protocol to successfully verify the other party's device
 
-Use Cases:
+# Use Cases:
 - Apply similar code in your Matrix bot
 - Apply similar code in your Matrix client
 - Just to learn about Matrix and the matrix-nio SDK
 
-Running the Program:
+# Running the Program:
 - Change permissions to allow execution
     `chmod 755 ./verify_with_emoji.py`
 - Optionally create a store directory, if not it will be done for you
@@ -33,7 +33,7 @@ Running the Program:
     `./verify_with_emoji.py`
 - Run it as often as you like
 
-Sample Screen Output when Running Program:
+# Sample Screen Output when Running Program:
 $ ./verify_with_emoji.py
 First time use. Did not find credential file. Asking for
 homeserver, user, and password to create credential file.
@@ -196,7 +196,7 @@ class Callbacks(object):
                     if isinstance(resp, ToDeviceError):
                         print(f"confirm_short_auth_string failed with {resp}")
             elif isinstance(event, KeyVerificationMac):  # third step
-                """ Second step is to receive KeyVerificationMac
+                """ Third step is to receive KeyVerificationMac
                 KeyVerificationMac(
                     source={'content': {
                         'mac': {'ed25519:DEVICEIDXY': 'SomeKey1',
