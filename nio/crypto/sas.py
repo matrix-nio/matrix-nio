@@ -634,7 +634,9 @@ class Sas(olm.Sas):
 
     def receive_key_event(self, event):
         """Receive a KeyVerificationKey event."""
-        if self.other_key_set:
+        if (self.other_key_set or
+                ((self.state != SasState.started) and
+                 (self.state != SasState.accepted))):
             self.state = SasState.canceled
             (
                 self.cancel_code,
@@ -671,8 +673,7 @@ class Sas(olm.Sas):
         if not self._event_ok(event):
             return
 
-        if ((self.state != SasState.key_received) or 
-                (self.chosen_mac_method == "")):
+        if self.state != SasState.key_received:
             self.state = SasState.canceled
             (
                 self.cancel_code,
