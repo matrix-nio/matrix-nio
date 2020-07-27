@@ -97,6 +97,7 @@ from ..responses import (
     DeleteDevicesAuthResponse,
     DevicesError,
     DevicesResponse,
+    DiscoveryInfoError,
     DiscoveryInfoResponse,
     DownloadError,
     DownloadResponse,
@@ -835,7 +836,9 @@ class AsyncClient(Client):
 
         return await self._send(RegisterResponse, method, path, data)
 
-    async def discovery_info(self) -> Union[LoginInfoResponse, LoginInfoError]:
+    async def discovery_info(
+        self,
+    ) -> Union[DiscoveryInfoResponse, DiscoveryInfoError]:
         """Get discovery information about current `AsyncClient.homeserver`.
 
         Returns either a `DiscoveryInfoResponse` if the request was successful
