@@ -760,7 +760,7 @@ class Api:
 
             visibility (RoomVisibility): whether to have the room published in
                 the server's room directory or not.
-                Defaults to ``RoomVisibility.Private``.
+                Defaults to ``RoomVisibility.private``.
 
             alias (str, optional): The desired canonical alias local part.
                 For example, if set to "foo" and the room is created on the
