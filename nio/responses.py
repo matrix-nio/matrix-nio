@@ -592,10 +592,11 @@ class DiscoveryInfoResponse(Response):
         cls, parsed_dict: Dict[str, Any],
     ) -> Union["DiscoveryInfoResponse", DiscoveryInfoError]:
 
-        homeserver_url = parsed_dict["m.homeserver"]["base_url"]
+        homeserver_url = parsed_dict["m.homeserver"]["base_url"].rstrip("/")
 
-        identity_server_url = \
-            parsed_dict.get("m.identity_server", {}).get("base_url", None)
+        identity_server_url = parsed_dict.get(
+            "m.identity_server", {},
+        ).get("base_url", "").rstrip("/") or None
 
         return cls(homeserver_url, identity_server_url)
 
