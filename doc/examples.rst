@@ -143,5 +143,20 @@ example script will log in (with a new session ID) and generate new keys.
 Interactive encryption key verification
 ---------------------------------------
 
-We're working on writing this!
+One way to interactively verify a device is via emojis. On popular Matrix
+clients you will find that devices are flagged as `trusted` or `untrusted`.
+If a device is `untrusted` you can verify to make it `trusted`. Most
+clients have a red symbol for `untrusted` and a green icon for `trusted`.
+One can select un untrusted device and initiate a `verify by emoji` 
+action. How would that look like in code? How can you add that to your
+application? Next we present a simple application that showcases
+emoji verification. Note, the app only accepts emoji verification. So,
+you have to start it on the other client (e.g. Element). Initiating an
+emoji verification is similar in code, consider doing it as "homework"
+if you feel up to it. But for now, let's have a look how emoji verification
+can be accepted and processed. 
+
+.. literalinclude:: ../examples/verify_with_emoji.py
+    :language: python
+    :linenos:
 
