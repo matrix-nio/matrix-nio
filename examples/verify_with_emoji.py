@@ -71,6 +71,7 @@ from nio import (
     KeyVerificationKey,
     KeyVerificationMac,
     ToDeviceError,
+    LocalProtocolError,
 )
 import traceback
 import getpass
@@ -158,10 +159,12 @@ class Callbacks(object):
                     reason='Mismatched short authentication string')
                 """
 
-                resp = await client.cancel_key_verification(
-                    event.transaction_id, reject=False)
-                if isinstance(resp, ToDeviceError):
-                    print(f"cancel_key_verification failed with {resp}")
+                # There is no need to issue a
+                # client.cancel_key_verification(tx_id, reject=False)
+                # here. The SAS flow is already cancelled.
+                # We only need to inform the user.
+                print(f"Verification has been cancelled by {event.sender} "
+                      f"for reason \"{event.reason}\".")
 
             elif isinstance(event, KeyVerificationKey):  # second step
                 """ Second step is to receive KeyVerificationKey
@@ -180,21 +183,29 @@ class Callbacks(object):
 
                 print(f"{sas.get_emoji()}")
 
-                yn = input("Do the emojis match? (Y/N) ")
+                yn = input("Do the emojis match? (Y/N) (C for Cancel) ")
                 if yn.lower() == "y":
-                    print("Match! Device will be verified "
-                          "by accepting verification.")
+                    print("Match! The verification for this "
+                          "device will be accepted.")
                     resp = await client.confirm_short_auth_string(
                         event.transaction_id)
                     if isinstance(resp, ToDeviceError):
                         print(f"confirm_short_auth_string failed with {resp}")
-                else:  # no, don't match, reject
+                elif yn.lower() == "n":  # no, don't match, reject
                     print("No match! Device will NOT be verified "
                           "by rejecting verification.")
                     resp = await client.cancel_key_verification(
                         event.transaction_id, reject=True)
                     if isinstance(resp, ToDeviceError):
                         print(f"confirm_short_auth_string failed with {resp}")
+                else:  # C or anything for cancel
+                    print("Cancelled by user! Verification will be "
+                          "cancelled.")
+                    resp = await client.cancel_key_verification(
+                        event.transaction_id, reject=False)
+                    if isinstance(resp, ToDeviceError):
+                        print(f"confirm_short_auth_string failed with {resp}")
+
             elif isinstance(event, KeyVerificationMac):  # third step
                 """ Third step is to receive KeyVerificationMac
                 KeyVerificationMac(
@@ -212,20 +223,27 @@ class Callbacks(object):
                     keys='SomeCryptoKey4')
                 """
                 sas = client.key_verifications[event.transaction_id]
-                todevice_msg = sas.get_mac()
-                resp = await client.to_device(todevice_msg)
-                if isinstance(resp, ToDeviceError):
-                    print(f"to_device failed with {resp}")
-                print(f"sas.we_started_it = {sas.we_started_it}\n"
-                      f"sas.sas_accepted = {sas.sas_accepted}\n"
-                      f"sas.canceled = {sas.canceled}\n"
-                      f"sas.timed_out = {sas.timed_out}\n"
-                      f"sas.verified = {sas.verified}\n"
-                      f"sas.verified_devices = {sas.verified_devices}\n")
-                print("Emoji verification was successful.\n"
-                      "Hit Control-C to stop the program or "
-                      "initiate another Emoji verification from "
-                      "another device or room.")
+                try:
+                    todevice_msg = sas.get_mac()
+                except LocalProtocolError as e:
+                    # e.g. it might have been cancelled by ourselves
+                    print(f"Cancelled or protocol error: Reason: {e}.\n"
+                          f"Verification with {event.sender} not concluded. "
+                          "Try again?")
+                else:
+                    resp = await client.to_device(todevice_msg)
+                    if isinstance(resp, ToDeviceError):
+                        print(f"to_device failed with {resp}")
+                    print(f"sas.we_started_it = {sas.we_started_it}\n"
+                          f"sas.sas_accepted = {sas.sas_accepted}\n"
+                          f"sas.canceled = {sas.canceled}\n"
+                          f"sas.timed_out = {sas.timed_out}\n"
+                          f"sas.verified = {sas.verified}\n"
+                          f"sas.verified_devices = {sas.verified_devices}\n")
+                    print("Emoji verification was successful!\n"
+                          "Hit Control-C to stop the program or "
+                          "initiate another Emoji verification from "
+                          "another device or room.")
             else:
                 print(f"Received unexpected event type {type(event)}. "
                       f"Event is {event}. Event will be ignored.")
