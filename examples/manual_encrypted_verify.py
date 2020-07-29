@@ -28,7 +28,7 @@ STORE_FOLDER = "nio_store/"
 # This file is for restoring login details after closing the program, so you
 # can preserve your device ID. If @alice logged in every time instead, @bob
 # would have to re-verify. See the restoring login example for more into.
-SESSION_DETAILS_FILE = STORE_FOLDER + "/manual_encrypted_verify.json"
+SESSION_DETAILS_FILE = "credentials.json"
 
 # Only needed for this example, this is who @alice will securely
 # communicate with. We need all the device IDs of this user so we can consider
