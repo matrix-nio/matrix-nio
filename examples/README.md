@@ -1,10 +1,10 @@
 # Matrix-nio Examples
 
-You can find the examples documented on the `matrix-nio` documentation 
+You can find the examples documented on the `matrix-nio` documentation
 page: https://matrix-nio.readthedocs.io/en/latest/examples.html
 
 It is recommended that you work through the examples *in a specific order*:
-1. [`basic_client.py`](basic_client.py): 
+1. [`basic_client.py`](basic_client.py):
    first introduction to matrix-nio, Hello World example
 2. [`restore_login.py`](restore_login.py):
    store credentials and send text message
@@ -15,5 +15,5 @@ It is recommended that you work through the examples *in a specific order*:
 5. [`verify_with_emoji.py`](verify_with_emoji.py):
    verify interactively with emojis
 
-Download the examples today and start playing with them in only a couple of minutes! 
+Download the examples today and start playing with them in only a couple of minutes!
 Enjoy! Find more in the [matrix-nio documentaion](https://matrix-nio.readthedocs.io/en/latest/index.html).
