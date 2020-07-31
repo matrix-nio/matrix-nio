@@ -925,10 +925,10 @@ class Api:
         access_token:   str,
         room_id:        str,
         start:          str,
-        end:            Optional[str]    = None,
-        direction:      MessageDirection = MessageDirection.back,
-        limit:          int              = 10,
-        message_filter: _FilterT         = None,
+        end:            Optional[str]            = None,
+        direction:      MessageDirection         = MessageDirection.back,
+        limit:          int                      = 10,
+        message_filter: Optional[Dict[Any, Any]] = None,
     ):
         # type (...) -> Tuple[str, str]
         """Get room messages.
@@ -943,8 +943,8 @@ class Api:
             end (str): The token to stop returning events at.
             direction (MessageDirection): The direction to return events from.
             limit (int): The maximum number of events to return.
-            message_filter (Union[None, str, Dict[Any, Any]]):
-                A filter ID or dict that should be used for this room messages
+            message_filter (Optional[Dict[Any, Any]]):
+                A filter dict that should be used for this room messages
                 request.
 
         """
@@ -973,8 +973,6 @@ class Api:
         if isinstance(message_filter, dict):
             filter_json = json.dumps(message_filter, separators=(",", ":"))
             query_parameters["filter"] = filter_json
-        elif isinstance(message_filter, str):
-            query_parameters["filter"] = message_filter
 
         path = "rooms/{room}/messages".format(room=room_id)
 

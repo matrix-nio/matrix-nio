@@ -1402,18 +1402,6 @@ class TestClass:
         resp = await async_client.room_messages(TEST_ROOM_ID, "start_token")
         assert isinstance(resp, RoomMessagesResponse)
 
-        # ID filter
-
-        aioresponse.get(
-            f"{url}&filter=test_id",
-            status=200,
-            payload=self.messages_response,
-        )
-        resp = await async_client.room_messages(
-            TEST_ROOM_ID, "start_token", message_filter="test_id",
-        )
-        assert isinstance(resp, RoomMessagesResponse)
-
         # Dict filter
 
         aioresponse.get(

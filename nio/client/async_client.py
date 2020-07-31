@@ -2187,7 +2187,7 @@ class AsyncClient(Client):
         end: Optional[str] = None,
         direction: MessageDirection = MessageDirection.back,
         limit: int = 10,
-        message_filter: _FilterT = None,
+        message_filter: Optional[Dict[Any, Any]] = None,
     ) -> Union[RoomMessagesResponse, RoomMessagesError]:
         """Fetch a list of message and state events for a room.
 
@@ -2213,10 +2213,8 @@ class AsyncClient(Client):
                 events from. Defaults to MessageDirection.back.
             limit (int, optional): The maximum number of events to return.
                 Defaults to 10.
-            message_filter (Union[None, str, Dict[Any, Any]]):
-                A filter ID that can be obtained from
-                ``AsyncClient.upload_filter()`` (preferred),
-                or filter dict that should be used for this room messages
+            message_filter (Optional[Dict[Any, Any]]):
+                A filter dict that should be used for this room messages
                 request.
 
         Example:
