@@ -58,6 +58,7 @@ from .base_client import logged_in, store_loaded
 from ..api import (
     _FilterT,
     Api,
+    EventFormat,
     MessageDirection,
     ResizingMethod,
     RoomVisibility,
@@ -182,6 +183,8 @@ from ..responses import (
     UpdateDeviceResponse,
     UpdateDeviceError,
     UpdateReceiptMarkerResponse,
+    UploadFilterError,
+    UploadFilterResponse,
 )
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
@@ -917,7 +920,9 @@ class AsyncClient(Client):
                 15 seconds of expected timeout,
                 the client will timeout by itself.
             sync_filter (Union[None, str, Dict[Any, Any]):
-                A filter ID or dict that should be used for this sync request.
+                A filter ID that can be obtained from
+                ``AsyncClient.upload_filter()`` (preferred),
+                or filter dict that should be used for this sync request.
             full_state (bool, optional): Controls whether to include the full
                 state for all rooms the user is a member of. If this is set to
                 true, then all state events will be returned, even if since is
@@ -1024,7 +1029,9 @@ class AsyncClient(Client):
                 the client will timeout by itself.
 
             sync_filter (Union[None, str, Dict[Any, Any]):
-                A filter ID or dict that should be used for sync requests.
+                A filter ID that can be obtained from
+                ``AsyncClient.upload_filter()`` (preferred),
+                or filter dict that should be used for sync requests.
 
             full_state (bool, optional): Controls whether to include the full
                 state for all rooms the user is a member of. If this is set to
@@ -1043,7 +1050,9 @@ class AsyncClient(Client):
                 successful sync loop iterations in milliseconds.
 
             first_sync_filter (Union[None, str, Dict[Any, Any]):
-                A filter ID or dict to use for the first sync request only.
+                A filter ID that can be obtained from
+                ``AsyncClient.upload_filter()`` (preferred),
+                or filter dict to use for the first sync request only.
                 If `None` (default), the `sync_filter` parameter's value
                 is used.
                 To have no filtering for the first sync regardless of
@@ -2205,7 +2214,9 @@ class AsyncClient(Client):
             limit (int, optional): The maximum number of events to return.
                 Defaults to 10.
             message_filter (Union[None, str, Dict[Any, Any]]):
-                A filter ID or dict that should be used for this room messages
+                A filter ID that can be obtained from
+                ``AsyncClient.upload_filter()`` (preferred),
+                or filter dict that should be used for this room messages
                 request.
 
         Example:
@@ -2810,3 +2821,60 @@ class AsyncClient(Client):
         )
 
         return await self._send(ProfileSetAvatarResponse, method, path, data,)
+
+    @logged_in
+    async def upload_filter(
+        self,
+        user_id: Optional[str] = None,
+        event_fields: Optional[List[str]] = None,
+        event_format: EventFormat = EventFormat.client,
+        presence: Optional[Dict[str, Any]] = None,
+        account_data: Optional[Dict[str, Any]] = None,
+        room: Optional[Dict[str, Any]] = None,
+    ) -> Union[UploadFilterResponse, UploadFilterError]:
+        """Upload a new filter definition to the homeserver.
+
+        Returns either a `UploadFilterResponse` if the request was
+        successful or a `UploadFilterError` if there was an error
+        with the request.
+
+        The filter ID from the successful responses can be used for
+        the ``AsyncClient.sync()``, ``AsyncClient.sync_forever()`` and
+        ``AsyncClient.room_messages()`` methods.
+
+        Args:
+            user_id (Optional[str]):  ID of the user uploading the filter.
+                If not provider, the current logged in user's ID is used.
+
+            event_fields (Optional[List[str]]): List of event fields to
+                include. If this list is absent then all fields are included.
+                The entries may include '.' characters to indicate sub-fields.
+                A literal '.' character in a field name may be escaped
+                using a '\'.
+
+            event_format (EventFormat): The format to use for events.
+
+            presence (Dict[str, Any]): The presence updates to include.
+                The dict corresponds to the `EventFilter` type described
+                in https://matrix.org/docs/spec/client_server/latest#id240
+
+            account_data (Dict[str, Any]): The user account data that isn't
+                associated with rooms to include.
+                The dict corresponds to the `EventFilter` type described
+                in https://matrix.org/docs/spec/client_server/latest#id240
+
+            room (Dict[str, Any]): Filters to be applied to room data.
+                The dict corresponds to the `RoomFilter` type described
+                in https://matrix.org/docs/spec/client_server/latest#id240
+        """
+        method, path, data = Api.upload_filter(
+            self.access_token,
+            user_id or self.user_id,
+            event_fields,
+            event_format,
+            presence,
+            account_data,
+            room,
+        )
+
+        return await self._send(UploadFilterResponse, method, path, data)

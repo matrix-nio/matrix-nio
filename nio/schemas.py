@@ -1785,3 +1785,9 @@ class Schemas:
     }
 
     empty = {"type": "object", "properties": {}, "additionalProperties": False}
+
+    upload_filter = {
+        "type": "object",
+        "properties": {"filter_id": {"type": "string"}},
+        "required": ["filter_id"],
+    }

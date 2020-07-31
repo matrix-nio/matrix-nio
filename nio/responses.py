@@ -143,6 +143,8 @@ __all__ = [
     "ToDeviceError",
     "RoomContextResponse",
     "RoomContextError",
+    "UploadFilterError",
+    "UploadFilterResponse",
     "UpdateReceiptMarkerError",
     "UpdateReceiptMarkerResponse",
 ]
@@ -1713,3 +1715,26 @@ class SyncResponse(Response):
             to_device,
             presence_events
         )
+
+
+class UploadFilterError(ErrorResponse):
+    pass
+
+
+@dataclass
+class UploadFilterResponse(Response):
+    """Response representing a successful filter upload request.
+
+    Attributes:
+        filter_id (str): A filter ID that may be used in
+            future requests to restrict which events are returned to the
+            client.
+    """
+    filter_id: str = field()
+
+    @classmethod
+    @verify(Schemas.upload_filter, UploadFilterError)
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any],
+    ) -> Union["UploadFilterResponse", UploadFilterError]:
+        return cls(parsed_dict["filter_id"])
