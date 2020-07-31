@@ -160,3 +160,25 @@ can be accepted and processed.
     :language: python
     :linenos:
 
+
+Further reading and exploration
+---------------------------------------
+
+In an external repo, not maintained by us, is a simple Matix client
+that includes sending, receiving and verification. It gives an example
+of 
+
+- how to send text, images, audio, video, other text files
+- listen to messages forever
+- get just the newest unread messages
+- get the last N messages
+- perform emoji verification
+- etc.
+
+So, if you want more example code and want to explore further have a 
+look at this external repo called
+`matrix-commander <https://github.com/8go/matrix-commander>`_.
+And of course, you should check out all the other projects built
+with `matrix-nio`. To do so, check out our 
+`built-with-marix-nio list <https://github.com/poljar/matrix-nio/blob/master/doc/built-with-nio.rst>`_.
+
