@@ -50,6 +50,8 @@ __all__ = [
     "DevicesResponse",
     "DevicesError",
     "DeviceOneTimeKeyCount",
+    "DiscoveryInfoError",
+    "DiscoveryInfoResponse",
     "DownloadResponse",
     "DownloadError",
     "ErrorResponse",
@@ -563,6 +565,41 @@ class PresenceSetError(ErrorResponse):
 
 class ProfileSetAvatarError(ErrorResponse):
     pass
+
+@dataclass
+class DiscoveryInfoError(ErrorResponse):
+    pass
+
+
+@dataclass
+class DiscoveryInfoResponse(Response):
+    """A response for a successful discovery info request.
+
+    Attributes:
+        homeserver_url (str): The base URL of the homeserver corresponding to
+            the requested domain.
+
+        identity_server_url (str, optional): The base URL of the identity
+            server corresponding to the requested domain, if any.
+    """
+
+    homeserver_url: str = field()
+    identity_server_url: Optional[str] = None
+
+    @classmethod
+    @verify(Schemas.discovery_info, DiscoveryInfoError)
+    def from_dict(
+        cls, parsed_dict: Dict[str, Any],
+    ) -> Union["DiscoveryInfoResponse", DiscoveryInfoError]:
+
+        homeserver_url = parsed_dict["m.homeserver"]["base_url"].rstrip("/")
+
+        identity_server_url = parsed_dict.get(
+            "m.identity_server", {},
+        ).get("base_url", "").rstrip("/") or None
+
+        return cls(homeserver_url, identity_server_url)
+
 
 
 @dataclass

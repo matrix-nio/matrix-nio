@@ -234,6 +234,16 @@ class Api:
         return path
 
     @staticmethod
+    def discovery_info() -> Tuple[str, str]:
+        """Get discovery information about a domain.
+
+        Returns the HTTP method and HTTP path for the request.
+        """
+        path = Api._build_path(path=".well-known/matrix/client", api_path="")
+        return ("GET", path)
+
+
+    @staticmethod
     def login_info() -> Tuple[str, str]:
         """Get the homeserver's supported login types
 

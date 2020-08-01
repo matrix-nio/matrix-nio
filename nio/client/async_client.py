@@ -19,6 +19,7 @@ import asyncio
 from aiofiles.threadpool.binary import AsyncBufferedReader
 from aiofiles.threadpool.text import AsyncTextIOWrapper
 import io
+import json
 import warnings
 from asyncio import Event as AsyncioEvent
 from functools import partial, wraps
@@ -96,6 +97,8 @@ from ..responses import (
     DeleteDevicesAuthResponse,
     DevicesError,
     DevicesResponse,
+    DiscoveryInfoError,
+    DiscoveryInfoResponse,
     DownloadError,
     DownloadResponse,
     ErrorResponse,
@@ -431,6 +434,13 @@ class AsyncClient(Client):
         try:
             return await transport_response.json()
         except (JSONDecodeError, ContentTypeError):
+            try:
+                # matrix.org return an incorrect content-type for .well-known
+                # API requests, which leads to .text() working but not .json()
+                return json.loads(await transport_response.text())
+            except (JSONDecodeError, ContentTypeError):
+                pass
+
             return {}
 
     async def create_matrix_response(
@@ -825,6 +835,32 @@ class AsyncClient(Client):
         )
 
         return await self._send(RegisterResponse, method, path, data)
+
+    async def discovery_info(
+        self,
+    ) -> Union[DiscoveryInfoResponse, DiscoveryInfoError]:
+        """Get discovery information about current `AsyncClient.homeserver`.
+
+        Returns either a `DiscoveryInfoResponse` if the request was successful
+        or a `DiscoveryInfoError` if there was an error with the request.
+
+        Some homeservers do not redirect requests to their main domain and
+        instead require clients to use a specific URL for communication.
+
+        If the domain specified by the `AsyncClient.homeserver` URL
+        implements the
+        [.well-known](https://matrix.org/docs/spec/client_server/latest#id178),
+        discovery mechanism, this method can be used to retrieve the
+        actual homeserver URL from it.
+
+        Example:
+            >>> client = AsyncClient(homeserver="https://example.org")
+            >>> response = await client.discovery_info()
+            >>> if isinstance(response, DiscoveryInfoResponse):
+            >>>     client.homeserver = response.homeserver_url
+        """
+        method, path = Api.discovery_info()
+        return await self._send(DiscoveryInfoResponse, method, path)
 
     async def login_info(self) -> Union[LoginInfoResponse, LoginInfoError]:
         """Get the available login methods from the server

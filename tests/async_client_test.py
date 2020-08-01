@@ -20,11 +20,13 @@ from nio import (ContentRepositoryConfigResponse,
                  DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  DevicesResponse, DeleteDevicesAuthResponse,
                  DeleteDevicesResponse,
+                 DiscoveryInfoError, DiscoveryInfoResponse,
                  DownloadResponse, ErrorResponse,
                  GroupEncryptionError,
                  JoinResponse, JoinedRoomsResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
-                 KeysUploadResponse, LocalProtocolError, LoginError, LoginInfoResponse,
+                 KeysUploadResponse, LocalProtocolError,
+                 LoginError, LoginInfoResponse,
                  LoginResponse, LogoutError, LogoutResponse,
                  MegolmEvent, MembersSyncError, OlmTrustError,
                  RegisterResponse,
@@ -384,6 +386,64 @@ class TestClass:
 
         assert isinstance(resp, RegisterResponse)
         assert async_client.access_token
+
+    async def test_discovery_info(self, async_client, aioresponse):
+        aioresponse.get(
+            "https://example.org/.well-known/matrix/client",
+            status=200,
+            payload={
+                "m.homeserver": {"base_url": "https://an.example.org"},
+                "m.identity_server": {"base_url": "https://foo.bar"},
+            },
+        )
+
+        resp = await async_client.discovery_info()
+        assert isinstance(resp, DiscoveryInfoResponse)
+        assert resp.homeserver_url == "https://an.example.org"
+        assert resp.identity_server_url == "https://foo.bar"
+
+    async def test_discovery_info_trailing_slashes(
+        self, async_client, aioresponse,
+    ):
+        aioresponse.get(
+            "https://example.org/.well-known/matrix/client",
+            status=200,
+            payload={
+                "m.homeserver": {"base_url": "https://an.example.org/"},
+                "m.identity_server": {"base_url": "https://foo.bar/"},
+            },
+        )
+
+        resp = await async_client.discovery_info()
+        assert isinstance(resp, DiscoveryInfoResponse)
+        assert resp.homeserver_url == "https://an.example.org"
+        assert resp.identity_server_url == "https://foo.bar"
+
+    async def test_discovery_info_invalid_content_type(  # matrix.org does this
+        self, async_client, aioresponse,
+    ):
+        aioresponse.get(
+            "https://example.org/.well-known/matrix/client",
+            status=200,
+            payload={"m.homeserver": {"base_url": "https://an.example.org"}},
+            content_type="",
+        )
+
+        resp = await async_client.discovery_info()
+        assert isinstance(resp, DiscoveryInfoResponse)
+        assert resp.homeserver_url == "https://an.example.org"
+        assert resp.identity_server_url is None
+
+    async def test_discovery_info_bad_url(self, async_client, aioresponse):
+        aioresponse.get(
+            "https://example.org/.well-known/matrix/client",
+            status=200,
+            payload={"m.homeserver": {"base_url": "invalid://example.org"}},
+        )
+
+        resp2 = await async_client.discovery_info()
+        assert isinstance(resp2, DiscoveryInfoError)
+
 
     async def test_login_info(self, async_client, aioresponse):
         """Test that we can get login info"""
