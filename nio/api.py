@@ -101,6 +101,18 @@ class RoomPreset(Enum):
     public_chat = "public_chat"
 
 
+@unique
+class EventFormat(Enum):
+    """Available formats in which a filter can make the server return events.
+
+     "client" will return the events in a format suitable for clients.
+     "federation" will return the raw event as received over federation.
+     """
+
+    client = "client"
+    federation = "federation"
+
+
 class Api:
     """Matrix API class.
 
@@ -923,10 +935,10 @@ class Api:
         access_token:   str,
         room_id:        str,
         start:          str,
-        end:            Optional[str]    = None,
-        direction:      MessageDirection = MessageDirection.back,
-        limit:          int              = 10,
-        message_filter: _FilterT         = None,
+        end:            Optional[str]            = None,
+        direction:      MessageDirection         = MessageDirection.back,
+        limit:          int                      = 10,
+        message_filter: Optional[Dict[Any, Any]] = None,
     ):
         # type (...) -> Tuple[str, str]
         """Get room messages.
@@ -941,8 +953,8 @@ class Api:
             end (str): The token to stop returning events at.
             direction (MessageDirection): The direction to return events from.
             limit (int): The maximum number of events to return.
-            message_filter (Union[None, str, Dict[Any, Any]]):
-                A filter ID or dict that should be used for this room messages
+            message_filter (Optional[Dict[Any, Any]]):
+                A filter dict that should be used for this room messages
                 request.
 
         """
@@ -971,8 +983,6 @@ class Api:
         if isinstance(message_filter, dict):
             filter_json = json.dumps(message_filter, separators=(",", ":"))
             query_parameters["filter"] = filter_json
-        elif isinstance(message_filter, str):
-            query_parameters["filter"] = message_filter
 
         path = "rooms/{room}/messages".format(room=room_id)
 
@@ -1611,3 +1621,60 @@ class Api:
         )
 
         return "GET", Api._build_path(path, query_parameters)
+
+    @staticmethod
+    def upload_filter(
+        access_token: str,
+        user_id: str,
+        event_fields: Optional[List[str]] = None,
+        event_format: EventFormat = EventFormat.client,
+        presence: Optional[Dict[str, Any]] = None,
+        account_data: Optional[Dict[str, Any]] = None,
+        room: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[str, str, str]:
+        """Upload a new filter definition to the homeserver.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+
+            user_id (str):  ID of the user uploading the filter.
+
+            event_fields (Optional[List[str]]): List of event fields to
+                include. If this list is absent then all fields are included.
+                The entries may include '.' characters to indicate sub-fields.
+                A literal '.' character in a field name may be escaped
+                using a '\'.
+
+            event_format (EventFormat): The format to use for events.
+
+            presence (Dict[str, Any]): The presence updates to include.
+                The dict corresponds to the `EventFilter` type described
+                in https://matrix.org/docs/spec/client_server/latest#id240
+
+            account_data (Dict[str, Any]): The user account data that isn't
+                associated with rooms to include.
+                The dict corresponds to the `EventFilter` type described
+                in https://matrix.org/docs/spec/client_server/latest#id240
+
+            room (Dict[str, Any]): Filters to be applied to room data.
+                The dict corresponds to the `RoomFilter` type described
+                in https://matrix.org/docs/spec/client_server/latest#id240
+        """
+        path = f"user/{user_id}/filter"
+        query_parameters = {"access_token": access_token}
+        content = {
+            "event_fields": event_fields,
+            "event_format": event_format.value,
+            "presence": presence,
+            "account_data": account_data,
+            "room": room,
+        }
+        content = {k: v for k, v in content.items() if v is not None}
+
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content),
+        )

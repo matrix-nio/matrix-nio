@@ -52,9 +52,10 @@ from nio import (ContentRepositoryConfigResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
                  Timeline, TransferMonitor, TransferCancelledError,
                  UploadResponse, UpdateDeviceResponse,
+                 UploadFilterResponse,
                  UpdateReceiptMarkerResponse,
                  RoomMessageText, RoomKeyRequest)
-from nio.api import ResizingMethod, RoomPreset, RoomVisibility
+from nio.api import EventFormat, ResizingMethod, RoomPreset, RoomVisibility
 from nio.crypto import OlmDevice, Session, decrypt_attachment
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
 
@@ -1459,18 +1460,6 @@ class TestClass:
         )
         aioresponse.get(url, status=200, payload=self.messages_response)
         resp = await async_client.room_messages(TEST_ROOM_ID, "start_token")
-        assert isinstance(resp, RoomMessagesResponse)
-
-        # ID filter
-
-        aioresponse.get(
-            f"{url}&filter=test_id",
-            status=200,
-            payload=self.messages_response,
-        )
-        resp = await async_client.room_messages(
-            TEST_ROOM_ID, "start_token", message_filter="test_id",
-        )
         assert isinstance(resp, RoomMessagesResponse)
 
         # Dict filter
@@ -4009,3 +3998,24 @@ class TestClass:
         # "AttributeError: _low_water", but the set... method works?
         ssl_transport = conn.transport._ssl_protocol._transport
         assert ssl_transport.get_write_buffer_limits()[1] == 16 * 1024
+
+    async def test_upload_filter(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            f"https://example.org/_matrix/client/r0/user/"
+            f"{async_client.user_id}/filter?access_token=abc123",
+            status=200,
+            payload={"filter_id": "abc123"},
+        )
+
+        resp = await async_client.upload_filter(
+            event_fields = ["content.body"],
+            event_format = EventFormat.federation,
+            room = {"timeline": { "limit": 1 }},
+        )
+        assert isinstance(resp, UploadFilterResponse)
+        assert resp.filter_id == "abc123"
