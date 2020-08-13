@@ -14,6 +14,7 @@ Projects built with nio
 - `matrix-nio-send <https://github.com/8go/matrix-nio-send>`_
 - `Mirage <https://github.com/mirukana/mirage/>`_
 - `matrix-commander <https://github.com/8go/matrix-commander>`_
+- `matrix-archive <https://github.com/russelldavies/matrix-archive>`_
 
 Are we missing a project? Submit a pull request and we'll get you added! Just edit ``doc/built-with-nio.rst``
 
