@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.15.0 - 2020-08-21
+
+### Added
+
+- [[#194]] Add server discovery info (.well-known API) support to AsyncClient
+- [[#206]] Add support for uploading sync filters to AsyncClient
+- New [examples] and documentation improvements
+
+### Fixed
+
+- [[#206]] Fix `AsyncClient.room_messages()` to not accept filter IDs, using 
+  one results in a server error
+- [[4b6ea92]] Fix the `SqliteMemoryStore` constructor
+- [[4654c7a]] Wait for current session sharing operation to finish before
+  starting a new one
+- [[fc9f5e3]] Fix `OverflowError` occuring in 
+  `AsyncClient.get_timeout_retry_wait_time()` after a thousand retries
+
+[#194]: https://github.com/poljar/matrix-nio/pull/194
+[#206]: https://github.com/poljar/matrix-nio/pull/206
+[4b6ea92]: https://github.com/poljar/matrix-nio/commit/4b6ea92cb69e445bb39bbfd83948b40adb8a23a5
+[4654c7a]: https://github.com/poljar/matrix-nio/commit/4654c7a1a7e39b496b107337977421aeb5953974
+[fc9f5e3]: https://github.com/poljar/matrix-nio/commit/fc9f5e3eda25ad65936aeb95412a26af73cedf6a
+[examples]: https://matrix-nio.readthedocs.io/en/latest/examples.html
+
 ## 0.14.1 - 2020-06-26
 
 ### Fixed
