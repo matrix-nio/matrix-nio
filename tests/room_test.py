@@ -41,11 +41,9 @@ class TestClass:
         room.summary.heroes.append(mx_id)
         room.summary.joined_member_count += 1
         assert room.users
-        assert room.members_synced
         assert room.member_count == 1
 
         room.summary = None
-        assert room.members_synced
         assert room.member_count == 1
 
         member = list(room.users.values())[0]
@@ -351,7 +349,7 @@ class TestClass:
         assert room.read_receipts == {
             BOB_ID: r2
         }
-    
+
     def test_non_read_receipt_event(self):
         """Verify that non-m.read receipts don't leak into a room's read_receipt
         dict.

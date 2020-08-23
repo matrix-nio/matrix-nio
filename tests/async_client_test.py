@@ -3893,6 +3893,20 @@ class TestClass:
             room_event_for_alice = json.loads(data)
             return CallbackResult(status=200, payload={})
 
+        aioresponse.get(
+            f"https://example.org/_matrix/client/r0/rooms/{TEST_ROOM_ID}/"
+            f"joined_members?access_token=bob_1234",
+            status=200,
+            payload=self.joined_members_response
+        )
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/query?"
+            "access_token=bob_1234",
+            status=200,
+            payload=self.keys_query_response
+        )
+
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
             status=200,

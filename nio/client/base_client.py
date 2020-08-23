@@ -994,6 +994,8 @@ class Client:
                 member.user_id, member.display_name, member.avatar_url
             )
 
+        room.members_synced = True
+
         if room.encrypted and self.olm is not None:
             self.olm.update_tracked_users(room)
 
