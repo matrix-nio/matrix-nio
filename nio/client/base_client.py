@@ -983,6 +983,12 @@ class Client:
 
         room = self.rooms[response.room_id]
 
+        joined_user_ids = {m.user_id for m in response.members}
+
+        for user_id in tuple(room.users):
+            if user_id not in joined_user_ids:
+                room.remove_member(user_id)
+
         for member in response.members:
             room.add_member(
                 member.user_id, member.display_name, member.avatar_url
