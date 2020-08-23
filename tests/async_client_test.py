@@ -67,6 +67,8 @@ ALICE_ID = "@alice:example.org"
 ALICE_DEVICE_ID = "JLAFKJWSCS"
 
 CAROL_ID = "@carol:example.org"
+DAVE_ID = "@dave:example.org"
+EIRIN_ID = "@eirin:example.org"
 
 if sys.version_info >= (3, 5):
     import asyncio
@@ -142,10 +144,6 @@ class TestClass:
     def joined_members_response(self):
         return {
             "joined": {  # joined
-                "@bar:example.com": {
-                    "avatar_url": None,
-                    "display_name": "Bar"
-                },
                 ALICE_ID: {  # joined
                     "avatar_url": None,
                     "display_name": "Alice"
@@ -153,6 +151,10 @@ class TestClass:
                 CAROL_ID: {  # invited
                     "avatar_url": None,
                     "display_name": "Carol"
+                },
+                EIRIN_ID: {
+                    "avatar_url": None,
+                    "display_name": "Eirin"
                 },
             }}
 
@@ -1147,7 +1149,24 @@ class TestClass:
         )
         assert async_client.logged_in
 
-        await async_client.receive_response(self.encryption_sync_response)
+        resp = self.encryption_sync_response
+
+        # Mimic an outdated initial sync (synapse bug?) with a member that
+        # was present before, but already left and is absent from
+        # joined_members_response.
+        resp.rooms.join[TEST_ROOM_ID].timeline.events.append(
+            RoomMemberEvent(
+                {"event_id": "event_id_4",
+                 "sender": DAVE_ID,
+                 "origin_server_ts": 1516809890699},
+                DAVE_ID,
+                "join",
+                None,
+                {"membership": "join"}
+            ),
+        )
+        await async_client.receive_response(resp)
+
         aioresponse.get(
             "https://example.org/_matrix/client/r0/rooms/{}/"
             "joined_members?access_token=abc123".format(TEST_ROOM_ID),
@@ -1157,11 +1176,13 @@ class TestClass:
 
         room = async_client.rooms[TEST_ROOM_ID]
         assert not room.members_synced
+        assert tuple(room.users) == (ALICE_ID, CAROL_ID, DAVE_ID)
 
         response = await async_client.joined_members(TEST_ROOM_ID)
 
         assert isinstance(response, JoinedMembersResponse)
         assert room.members_synced
+        assert tuple(room.users) == (ALICE_ID, CAROL_ID, EIRIN_ID)
 
     async def test_joined_rooms(self, async_client, aioresponse):
         await async_client.receive_response(
