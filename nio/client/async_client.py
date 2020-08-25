@@ -483,6 +483,12 @@ class AsyncClient(Client):
         elif issubclass(response_class, FileResponse):
             body = await transport_response.read()
             resp = response_class.from_data(body, content_type, name)
+        elif (
+            issubclass(response_class, RoomGetStateEventResponse) and
+            transport_response.status == 404
+        ):
+            parsed_dict = await self.parse_body(transport_response)
+            resp = response_class.create_error(parsed_dict, data[-1])
 
         elif (
             transport_response.status == 401
