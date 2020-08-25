@@ -402,7 +402,8 @@ class Client:
         self.user_id = user_id
         self.device_id = device_id
         self.access_token = access_token
-        self.load_store()
+        if ENCRYPTION_ENABLED:
+            self.load_store()
 
     def room_contains_unverified(self, room_id: str) -> bool:
         """Check if a room contains unverified devices.
