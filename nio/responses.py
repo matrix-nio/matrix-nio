@@ -896,7 +896,7 @@ class RoomGetStateEventResponse(Response):
         event_type: str,
         state_key: str,
         room_id: str,
-    ) -> Union["RoomGetStateEventResponse", RoomGetStateEventError] :
+    ) -> Union["RoomGetStateEventResponse", RoomGetStateEventError]:
         return cls(parsed_dict, event_type, state_key, room_id)
 
 
