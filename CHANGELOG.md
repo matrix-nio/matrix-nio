@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.15.1 - 2020-08-28
+
+### Fixed
+
+- [[#216]] `AsyncClient.room_get_state_event()`: return a 
+  `RoomGetStateEventError` if the server returns a 404 error for the request
+- [[ffc4228]] When fetching the full list of room members, discard the members
+  we previously had that are absent from the full list
+- [[c123e24]] `MatrixRoom.members_synced`: instead of depending on the 
+  potentially outdated room summary member count, become `True` when the 
+  full member list has been fetched for the room.
+
+[#216]: https://github.com/poljar/matrix-nio/pull/216
+[[ffc4228]]: https://github.com/poljar/matrix-nio/commit/ffc42287c22a1179a9be7d4e47555693417f715d
+[[c123e24]]: https://github.com/poljar/matrix-nio/commit/c123e24c8df81c55d40973470b825e78fd2f92a2
+
 ## 0.15.0 - 2020-08-21
 
 ### Added
