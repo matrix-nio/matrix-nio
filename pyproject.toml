@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "matrix-nio"
-version = "0.15.0"
+version = "0.15.1"
 description = "A Python Matrix client library, designed according to sans I/O principles."
 authors = ["Damir Jelić <poljar@termina.org.uk>"]
 license = "ISC"
