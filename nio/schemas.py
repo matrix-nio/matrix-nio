@@ -1554,6 +1554,67 @@ class Schemas:
         ],
     }
 
+    push_rules = {
+        "type": "object",
+        "properties": {
+            "type": {
+                "type": "string",
+                "const": "m.push_rules",
+            },
+            "content": {
+                "type": "object",
+                "properties": {
+                    "global": {"type": "object"},
+                    "device": {"type": "object"},
+                },
+                "required": ["global"],
+            },
+        },
+        "required": ["type", "content"],
+    }
+
+    push_ruleset = {
+        "type": "object",
+        "properties": {
+            "override": {"type": "array", "items": {"type": "object"}},
+            "content": {"type": "array", "items": {"type": "object"}},
+            "room": {"type": "array", "items": {"type": "object"}},
+            "sender": {"type": "array", "items": {"type": "object"}},
+            "underride": {"type": "array", "items": {"type": "object"}},
+        },
+    }
+
+    push_rule = {
+        "type": "object",
+        "properties": {
+            "rule_id": {"type": "string"},
+            "default": {"type": "boolean"},
+            "enabled": {"type": "boolean"},
+            "pattern": {"type": "string"},
+            "conditions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "kind": {"type": "string"},
+                        "key": {"type": "string"},
+                        "pattern": {"type": "string"},
+                        "is": {
+                            "type": "string",
+                            "pattern": r"(==|<=|>=|<|>)?[0-9.-]+",
+                        },
+                    },
+                    "required": ["kind"],
+                },
+            },
+            "actions": {
+                "type": "array",
+                "items": {"type": ["string", "object"]},
+            },
+        },
+        "required": ["rule_id", "default", "enabled", "actions"],
+    }
+
     upload = {
         "type": "object",
         "properties": {"content_uri": {"type": "string"}},

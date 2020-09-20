@@ -37,6 +37,19 @@ from nio import (ContentRepositoryConfigResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
                  PresenceGetResponse, PresenceSetResponse,
                  PresenceEvent,
+                 PushCoalesce,
+                 PushContainsDisplayName,
+                 PushDontNotify,
+                 PushEventMatch,
+                 PushNotify,
+                 PushRoomMemberCount,
+                 PushRule,
+                 PushRulesEvent,
+                 PushRuleset,
+                 PushSenderNotificationPermission,
+                 PushSetTweak,
+                 PushUnknownAction,
+                 PushUnknownCondition,
                  RoomBanResponse,
                  RoomTypingResponse, RoomCreateResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
@@ -795,6 +808,96 @@ class TestClass:
         room = async_client.rooms["!SVkFJHzfwvuaIEawgC:localhost"]
         assert room.unread_notifications == 11
         assert room.unread_highlights == 1
+
+    async def test_sync_push_rules(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/sync?access_token=abc123",
+            status=200,
+            payload=self.sync_response,
+        )
+
+        resp = await async_client.sync()
+        assert isinstance(resp, SyncResponse)
+
+        rules = resp.account_data_events[0]
+        assert isinstance(rules, PushRulesEvent)
+        assert isinstance(rules.global_rules, PushRuleset)
+        assert isinstance(rules.device_rules, PushRuleset)
+
+        # Test __bool__ implementations
+        assert bool(rules) is True
+        assert bool(rules.device_rules) is False
+
+        assert rules.global_rules.override == [
+            PushRule(
+                id = ".m.rule.suppress_notices",
+                default = True,
+                enabled = False,
+                actions = [PushDontNotify()],
+                conditions = [PushEventMatch("content.msgtype", "m.notice")],
+            ),
+        ]
+
+        assert rules.global_rules.content == [
+            PushRule(
+                id = ".m.rule.contains_user_name",
+                default = True,
+                pattern = "alice",
+                actions = [
+                    PushNotify(),
+                    PushUnknownAction("do_special_thing"),
+                    PushSetTweak("sound", "default"),
+                    PushSetTweak("highlight", True),
+                ],
+            ),
+        ]
+
+        assert not rules.global_rules.room
+        assert not rules.global_rules.sender
+
+        assert rules.global_rules.underride == [
+            PushRule(
+                id = ".m.rule.special_call",
+                default = True,
+                conditions = [
+                    PushUnknownCondition({"kind": "special_kind"}),
+                    PushEventMatch("type", "m.call.invite"),
+                ],
+                actions = [
+                    PushCoalesce(),
+                    PushSetTweak("sound", "ring"),
+                    PushSetTweak("highlight", False),
+                ],
+            ),
+            PushRule(
+                id = ".m.rule.room_less_than_10_room_perm",
+                default = True,
+                conditions = [
+                    PushSenderNotificationPermission("room"),
+                    PushRoomMemberCount(10, "<"),
+                    PushEventMatch("type", "m.room.message"),
+                ],
+                actions = [PushNotify()],
+            ),
+            PushRule(
+                id = ".m.rule.room_one_to_one",
+                default = True,
+                conditions = [
+                    PushRoomMemberCount(2, "=="),
+                    PushEventMatch("type", "m.room.message"),
+                ],
+                actions = [
+                    PushNotify(),
+                    PushSetTweak("sound", "default"),
+                    PushSetTweak("highlight", False),
+                ],
+            ),
+        ]
 
     def test_keys_upload(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
