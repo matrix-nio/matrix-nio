@@ -21,7 +21,7 @@ from builtins import str
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
@@ -1548,6 +1548,7 @@ class SyncResponse(Response):
     device_list: DeviceList = field()
     to_device_events: List[ToDeviceEvent] = field()
     presence_events: List[PresenceEvent] = field()
+    account_data_events: List[AccountDataEvent] = field(default_factory=list)
 
     def __str__(self) -> str:
         result = []
@@ -1720,6 +1721,13 @@ class SyncResponse(Response):
 
         return presence_events
 
+    @staticmethod
+    def _get_account_data(
+        parsed_dict: Dict[str, Any],
+    ) -> Generator[AccountDataEvent, None, None]:
+        for ev_dict in parsed_dict.get("account_data", {}).get("events", []):
+            yield AccountDataEvent.parse_event(ev_dict)
+
     @classmethod
     @verify(Schemas.sync, SyncError, False)
     def from_dict(
@@ -1750,7 +1758,8 @@ class SyncResponse(Response):
             key_count,
             devices,
             to_device,
-            presence_events
+            presence_events,
+            list(SyncResponse._get_account_data(parsed_dict)),
         )
 
 
