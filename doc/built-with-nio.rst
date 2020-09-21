@@ -1,7 +1,6 @@
 Projects built with nio
 -----------------------
 
-- `mautrix-telegram <https://github.com/tulir/mautrix-telegram>`_
 - `pantalaimon <https://github.com/matrix-org/pantalaimon>`_
 - `nio-template <https://github.com/anoadragon453/nio-template>`_
 - `matrix-tweetalong-bot <https://github.com/babolivier/matrix-tweetalong-bot>`_
