@@ -15,6 +15,7 @@ Projects built with nio
 - `Mirage <https://github.com/mirukana/mirage/>`_
 - `matrix-commander <https://github.com/8go/matrix-commander>`_
 - `matrix-archive <https://github.com/russelldavies/matrix-archive>`_
+- `matrix-eno-bot <https://github.com/8go/matrix-eno-bot>`_
 
 Are we missing a project? Submit a pull request and we'll get you added! Just edit ``doc/built-with-nio.rst``
 
