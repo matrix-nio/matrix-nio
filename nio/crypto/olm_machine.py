@@ -1587,6 +1587,13 @@ class Olm:
             return bad
 
         parsed_dict["event_id"] = event.event_id
+
+        if "m.relates_to" not in parsed_dict["content"]:
+            try:
+                parsed_dict["content"]["m.relates_to"] = event.source["content"]["m.relates_to"]
+            except KeyError:
+                pass
+
         parsed_dict["sender"] = event.sender
         parsed_dict["origin_server_ts"] = event.server_timestamp
 
