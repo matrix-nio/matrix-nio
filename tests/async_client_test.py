@@ -4232,3 +4232,26 @@ class TestClass:
         )
         assert isinstance(resp, UploadFilterResponse)
         assert resp.filter_id == "abc123"
+
+    async def test_global_account_data_cb(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        class CallbackCalled(Exception):
+            pass
+
+        async def cb(_event):
+            raise CallbackCalled()
+
+        async_client.add_global_account_data_callback(cb, PushRulesEvent)
+
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/sync?access_token=abc123",
+            status=200,
+            payload=self.sync_response,
+        )
+
+        with pytest.raises(CallbackCalled):
+            await async_client.sync()

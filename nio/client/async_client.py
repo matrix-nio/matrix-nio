@@ -607,6 +607,14 @@ class AsyncClient(Client):
                 if cb.filter is None or isinstance(event, cb.filter):
                     await asyncio.coroutine(cb.func)(event)
 
+    async def _handle_global_account_data_events(  # type: ignore
+        self, response: SyncResponse,
+    ) -> None:
+        for event in response.account_data_events:
+            for cb in self.global_account_data_callbacks:
+                if cb.filter is None or isinstance(event, cb.filter):
+                    await asyncio.coroutine(cb.func)(event)
+
     async def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()
 
@@ -632,6 +640,8 @@ class AsyncClient(Client):
         await self._handle_joined_rooms(response)
 
         await self._handle_presence_events(response)
+
+        await self._handle_global_account_data_events(response)
 
         if self.olm:
             await self._handle_expired_verifications()
