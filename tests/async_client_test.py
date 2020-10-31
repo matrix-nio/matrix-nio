@@ -46,6 +46,7 @@ from nio import (ContentRepositoryConfigResponse,
                  PushRule,
                  PushRulesEvent,
                  PushRuleset,
+                 PushRuleKind,
                  PushSenderNotificationPermission,
                  PushSetTweak,
                  PushUnknownAction,
@@ -62,6 +63,7 @@ from nio import (ContentRepositoryConfigResponse,
                  RoomRedactResponse, RoomResolveAliasResponse,
                  RoomSendResponse, RoomSummary,
                  RoomUnbanResponse,
+                 SetPushRuleResponse,
                  ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
                  Timeline, TransferMonitor, TransferCancelledError,
@@ -4255,3 +4257,67 @@ class TestClass:
 
         with pytest.raises(CallbackCalled):
             await async_client.sync()
+
+    async def test_set_pushrule(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        override = ("global", PushRuleKind.override, "foo")
+        content = ("global", PushRuleKind.content, "bar")
+
+        # Ensure before and after can't be specified together
+        with pytest.raises(TypeError):
+            await async_client.set_pushrule(*override, before="x", after="y")
+
+        # Test before + override with condition
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo?access_token=abc123&before=ov1",
+            body={
+                "actions": [],
+                "conditions": [{"kind": "contains_display_name"}],
+            },
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.set_pushrule(
+            *override, before="ov1", conditions=[PushContainsDisplayName()],
+        )
+        assert isinstance(resp, SetPushRuleResponse)
+
+        # Test after + override with action
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo?access_token=abc123&after=ov1",
+            body={"actions": ["notify"], "conditions": []},
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.set_pushrule(
+            *override, after="ov1", actions=[PushNotify()], conditions=[],
+        )
+        assert isinstance(resp, SetPushRuleResponse)
+
+        # Ensure conditions can't be specified with non-override/underride rule
+        with pytest.raises(TypeError):
+            await async_client.set_pushrule(*content, conditions=())
+
+        # Ensure pattern can't be specified with non-content rule
+        with pytest.raises(TypeError):
+            await async_client.set_pushrule(*override, pattern="notContent!")
+
+        # Test content pattern rule
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/content/bar?access_token=abc123",
+            body={"actions": [], "pattern": "foo*bar"},
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.set_pushrule(*content, pattern="foo*bar")
+        assert isinstance(resp, SetPushRuleResponse)

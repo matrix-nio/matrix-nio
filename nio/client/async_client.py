@@ -64,6 +64,7 @@ from ..api import (
     ResizingMethod,
     RoomVisibility,
     RoomPreset,
+    PushRuleKind,
 )
 from ..crypto import (
     OlmDevice,
@@ -85,6 +86,8 @@ from ..events import (
     RoomKeyRequestCancellation,
     ToDeviceEvent,
     MegolmEvent,
+    PushAction,
+    PushCondition,
 )
 from ..event_builders import ToDeviceMessage
 from ..monitors import TransferMonitor
@@ -173,6 +176,8 @@ from ..responses import (
     RoomReadMarkersError,
     RoomUnbanError,
     RoomUnbanResponse,
+    SetPushRuleResponse,
+    SetPushRuleError,
     ShareGroupSessionError,
     ShareGroupSessionResponse,
     SyncError,
@@ -2944,3 +2949,60 @@ class AsyncClient(Client):
 
         method, path = Api.whoami(self.access_token)
         return await self._send(WhoamiResponse, method, path)
+
+    @logged_in
+    async def set_pushrule(
+        self,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
+        before: Optional[str] = None,
+        after: Optional[str] = None,
+        actions: Sequence[PushAction] = (),
+        conditions: Optional[Sequence[PushCondition]] = None,
+        pattern: Optional[str] = None,
+    ) -> Union[SetPushRuleResponse, SetPushRuleError]:
+        """Create or modify an existing push rule.
+
+        Returns either a `SetPushRuleResponse` if the request was
+        successful or a `SetPushRuleError` if there was an error
+        with the request.
+
+        Args:
+            scope (str): The scope of this rule, e.g. ``"global"``.
+
+            kind (PushRuleKind): The kind of rule.
+
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+
+            before (Optional[str]): Position this rule before the one matching
+                the given rule ID.
+                The rule ID cannot belong to a predefined server rule.
+                ``before`` and ``after`` cannot be both specified.
+
+            after (Optional[str]): Position this rule after the one matching
+                the given rule ID.
+                The rule ID cannot belong to a predefined server rule.
+                ``before`` and ``after`` cannot be both specified.
+
+            actions (Sequence[PushAction]): Actions to perform when the
+                conditions for this rule are met. The given actions replace
+                the existing ones.
+
+            conditions (Sequence[PushCondition]): Event conditions that must
+                hold true for the rule to apply to that event.
+                A rule with no conditions always hold true.
+                Only applicable to ``underride`` and ``override`` rules.
+
+            pattern (Optional[str]): Glob-style pattern to match against
+                for the event's content.
+                Only applicable to ``content`` rules.
+        """
+
+        method, path, data = Api.set_pushrule(
+            self.access_token,
+            scope, kind, rule_id, before, after, actions, conditions, pattern,
+        )
+
+        return await self._send(SetPushRuleResponse, method, path, data)

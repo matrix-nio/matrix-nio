@@ -29,9 +29,12 @@ from __future__ import unicode_literals
 import json
 from collections import defaultdict
 from enum import Enum, unique
-from typing import (Any, DefaultDict, Dict, Iterable, List,
-                    Optional, Set, Sequence, Tuple, Union)
+from typing import (
+    Any, DefaultDict, Dict, Iterable, List, Optional, Sequence, Set, Tuple,
+    Union,
+)
 
+from .events.account_data import PushAction, PushCondition
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest
 
@@ -111,6 +114,17 @@ class EventFormat(Enum):
 
     client = "client"
     federation = "federation"
+
+
+@unique
+class PushRuleKind(Enum):
+    """Enum representing the push rule kinds defined by the Matrix spec."""
+
+    override = "override"
+    content = "content"
+    room = "room"
+    sender = "sender"
+    underride = "underride"
 
 
 class Api:
@@ -1689,6 +1703,87 @@ class Api:
 
         return (
             "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content),
+        )
+
+    @staticmethod
+    def set_pushrule(
+        access_token: str,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
+        before: Optional[str] = None,
+        after: Optional[str] = None,
+        actions: Sequence[PushAction] = (),
+        conditions: Optional[Sequence[PushCondition]] = None,
+        pattern: Optional[str] = None,
+    ) -> Tuple[str, str, str]:
+        """Create or modify an existing push rule.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+
+            scope (str): The scope of this rule, e.g. ``"global"``.
+
+            kind (PushRuleKind): The kind of rule.
+
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+
+            before (Optional[str]): Position this rule before the one matching
+                the given rule ID.
+                The rule ID cannot belong to a predefined server rule.
+                ``before`` and ``after`` cannot be both specified.
+
+            after (Optional[str]): Position this rule after the one matching
+                the given rule ID.
+                The rule ID cannot belong to a predefined server rule.
+                ``before`` and ``after`` cannot be both specified.
+
+            actions (Sequence[PushAction]): Actions to perform when the
+                conditions for this rule are met. The given actions replace
+                the existing ones.
+
+            conditions (Sequence[PushCondition]): Event conditions that must
+                hold true for the rule to apply to that event.
+                A rule with no conditions always hold true.
+                Only applicable to ``underride`` and ``override`` rules.
+
+            pattern (Optional[str]): Glob-style pattern to match against
+                for the event's content.
+                Only applicable to ``content`` rules.
+        """
+
+        path = ["pushrules", scope, kind.value, rule_id]
+        query_parameters = {"access_token": access_token}
+        content: Dict[str, Any] = {"actions": [a.as_value for a in actions]}
+
+        if before is not None and after is not None:
+            raise TypeError("before and after cannot be both specified")
+        elif before is not None:
+            query_parameters["before"] = before
+        elif after is not None:
+            query_parameters["after"] = after
+
+        if pattern is not None:
+            if kind != PushRuleKind.content:
+                raise TypeError("pattern can only be set for content rules")
+
+            content["pattern"] = pattern
+
+        if conditions is not None:
+            if kind not in (PushRuleKind.override, PushRuleKind.underride):
+                raise TypeError(
+                    "conditions can only be set for override/underride rules",
+                )
+
+            content["conditions"] = [c.as_value for c in conditions],
+
+        return (
+            "PUT",
             Api._build_path(path, query_parameters),
             Api.to_json(content),
         )
