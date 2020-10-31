@@ -99,6 +99,8 @@ from ..responses import (
     DeleteDevicesError,
     DeleteDevicesResponse,
     DeleteDevicesAuthResponse,
+    DeletePushRuleError,
+    DeletePushRuleResponse,
     DevicesError,
     DevicesResponse,
     DiscoveryInfoError,
@@ -3006,3 +3008,26 @@ class AsyncClient(Client):
         )
 
         return await self._send(SetPushRuleResponse, method, path, data)
+
+    @logged_in
+    async def delete_pushrule(
+        self, scope: str, kind: PushRuleKind, rule_id: str,
+    ) -> Union[DeletePushRuleResponse, DeletePushRuleError]:
+        """Delete an existing push rule.
+
+        Returns either a `DeletePushRuleResponse` if the request was
+        successful or a `DeletePushRuleError` if there was an error
+        with the request.
+
+        Args:
+            scope (str): The scope of this rule, e.g. ``"global"``.
+            kind (PushRuleKind): The kind of rule.
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+        """
+
+        method, path = Api.delete_pushrule(
+            self.access_token, scope, kind, rule_id,
+        )
+
+        return await self._send(DeletePushRuleResponse, method, path)

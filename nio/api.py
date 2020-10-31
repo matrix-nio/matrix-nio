@@ -1787,3 +1787,24 @@ class Api:
             Api._build_path(path, query_parameters),
             Api.to_json(content),
         )
+
+    @staticmethod
+    def delete_pushrule(
+        access_token: str, scope: str, kind: PushRuleKind, rule_id: str,
+    ) -> Tuple[str, str]:
+        """Delete an existing push rule.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            scope (str): The scope of this rule, e.g. ``"global"``.
+            kind (PushRuleKind): The kind of rule.
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+        """
+
+        path = ["pushrules", scope, kind.value, rule_id]
+        query_parameters = {"access_token": access_token}
+
+        return ("DELETE", Api._build_path(path, query_parameters))

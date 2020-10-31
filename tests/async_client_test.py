@@ -20,6 +20,7 @@ from nio import (ContentRepositoryConfigResponse,
                  DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  DevicesResponse, DeleteDevicesAuthResponse,
                  DeleteDevicesResponse,
+                 DeletePushRuleResponse,
                  DiscoveryInfoError, DiscoveryInfoResponse,
                  DownloadResponse, ErrorResponse,
                  FullyReadEvent,
@@ -4321,3 +4322,21 @@ class TestClass:
 
         resp = await async_client.set_pushrule(*content, pattern="foo*bar")
         assert isinstance(resp, SetPushRuleResponse)
+
+    async def test_delete_pushrule(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        aioresponse.delete(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo?access_token=abc123",
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.delete_pushrule(
+            "global", PushRuleKind.override, "foo",
+        )
+        assert isinstance(resp, DeletePushRuleResponse)
