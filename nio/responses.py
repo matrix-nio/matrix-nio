@@ -56,6 +56,8 @@ __all__ = [
     "DiscoveryInfoResponse",
     "DownloadResponse",
     "DownloadError",
+    "EnablePushRuleResponse",
+    "EnablePushRuleError",
     "ErrorResponse",
     "InviteInfo",
     "JoinResponse",
@@ -1826,4 +1828,15 @@ class DeletePushRuleResponse(EmptyResponse):
 
 
 class DeletePushRuleError(ErrorResponse):
+    pass
+
+
+@dataclass
+class EnablePushRuleResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return EnablePushRuleError.from_dict(parsed_dict)
+
+
+class EnablePushRuleError(ErrorResponse):
     pass

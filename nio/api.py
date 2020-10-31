@@ -1808,3 +1808,34 @@ class Api:
         query_parameters = {"access_token": access_token}
 
         return ("DELETE", Api._build_path(path, query_parameters))
+
+    @staticmethod
+    def enable_pushrule(
+        access_token: str,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
+        enable: bool,
+    ) -> Tuple[str, str, str]:
+        """Enable or disable an existing push rule.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            scope (str): The scope of this rule, e.g. ``"global"``.
+            kind (PushRuleKind): The kind of rule.
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+            enable (bool): Whether to enable or disable the rule.
+        """
+
+        path = ["pushrules", scope, kind.value, rule_id, "enabled"]
+        query_parameters = {"access_token": access_token}
+        content = {"enabled": enable}
+
+        return (
+            "PUT",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content),
+        )

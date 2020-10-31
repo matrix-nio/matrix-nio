@@ -107,6 +107,8 @@ from ..responses import (
     DiscoveryInfoResponse,
     DownloadError,
     DownloadResponse,
+    EnablePushRuleError,
+    EnablePushRuleResponse,
     ErrorResponse,
     FileResponse,
     JoinResponse,
@@ -3031,3 +3033,31 @@ class AsyncClient(Client):
         )
 
         return await self._send(DeletePushRuleResponse, method, path)
+
+    @logged_in
+    async def enable_pushrule(
+        self,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
+        enable: bool,
+    ) -> Union[EnablePushRuleResponse, EnablePushRuleError]:
+        """Enable or disable an existing push rule.
+
+        Returns either a `EnablePushRuleResponse` if the request was
+        successful or a `EnablePushRuleError` if there was an error
+        with the request.
+
+        Args:
+            scope (str): The scope of this rule, e.g. ``"global"``.
+            kind (PushRuleKind): The kind of rule.
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+            enable (bool): Whether to enable or disable this rule.
+        """
+
+        method, path, data = Api.enable_pushrule(
+            self.access_token, scope, kind, rule_id, enable,
+        )
+
+        return await self._send(EnablePushRuleResponse, method, path, data)
