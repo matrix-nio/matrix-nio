@@ -116,7 +116,7 @@ class PushCondition:
     """A condition for a push rule to match an event."""
 
     @classmethod
-    def from_dict(cls, condition: dict) -> "PushCondition":
+    def from_dict(cls, condition: Dict[str, Any]) -> "PushCondition":
         cnd = condition
 
         if cnd["kind"] == "event_match" and "key" in cnd and "pattern" in cnd:
@@ -132,6 +132,10 @@ class PushCondition:
             return PushSenderNotificationPermission(cnd["key"])
 
         return PushUnknownCondition(cnd)
+
+    @property
+    def as_value(self) -> Dict[str, Any]:
+        raise NotImplementedError()
 
 
 @dataclass
@@ -150,6 +154,12 @@ class PushEventMatch(PushCondition):
     key: str = field()
     pattern: str = field()
 
+    @property
+    def as_value(self) -> Dict[str, Any]:
+        return {
+            "kind": "event_match", "key": self.key, "pattern": self.pattern,
+        }
+
 
 @dataclass
 class PushContainsDisplayName(PushCondition):
@@ -157,6 +167,10 @@ class PushContainsDisplayName(PushCondition):
 
     This rule can only match unencrypted messages.
     """
+
+    @property
+    def as_value(self) -> Dict[str, Any]:
+        return {"kind": "contains_display_name"}
 
 
 @dataclass
@@ -175,9 +189,14 @@ class PushRoomMemberCount(PushCondition):
     operator: str = "=="
 
     @classmethod
-    def from_dict(cls, condition: dict) -> "PushRoomMemberCount":
+    def from_dict(cls, condition: Dict[str, Any]) -> "PushRoomMemberCount":
         op, num = re.findall(r"(==|<|>|<=|>=)?([0-9.-]+)", condition["is"])[0]
         return cls(int(num), op or "==")
+
+    @property
+    def as_value(self) -> Dict[str, Any]:
+        operator = "" if self.operator == "==" else self.operator
+        return {"kind": "room_member_count", "is": f"{operator}{self.count}"}
 
 
 @dataclass
@@ -194,15 +213,26 @@ class PushSenderNotificationPermission(PushCondition):
 
     key: str = field()
 
+    @property
+    def as_value(self) -> Dict[str, Any]:
+        return {
+            "kind": "sender_notification_permission", "key": self.key,
+        }
+
 
 @dataclass
 class PushUnknownCondition(PushCondition):
     """An unknown kind of push rule condition.
 
     Attributes:
-        condition (dict): The condition as a dict from the source event.
+        condition (Dict[str, Any]): The condition as a dict from the
+            source event.
     """
-    condition: dict = field()
+    condition: Dict[str, Any] = field()
+
+    @property
+    def as_value(self) -> Dict[str, Any]:
+        return self.condition
 
 
 @dataclass
@@ -210,7 +240,7 @@ class PushAction:
     """An action to apply for a push rule when matching."""
 
     @classmethod
-    def from_dict(cls, action: Union[str, dict]) -> "PushAction":
+    def from_dict(cls, action: Union[str, Dict[str, Any]]) -> "PushAction":
         # isinstance() to make mypy happy
 
         if isinstance(action, str) and action == "notify":
@@ -235,15 +265,27 @@ class PushAction:
 
         return PushUnknownAction(action)
 
+    @property
+    def as_value(self) -> Union[str, Dict[str, Any]]:
+        raise NotImplementedError()
+
 
 @dataclass
 class PushNotify(PushAction):
     """Cause the matching event to generate a notification."""
 
+    @property
+    def as_value(self) -> str:
+        return "notify"
+
 
 @dataclass
 class PushDontNotify(PushAction):
     """Prevents the matching event from generating a notification."""
+
+    @property
+    def as_value(self) -> str:
+        return "dont_notify"
 
 
 @dataclass
@@ -253,6 +295,10 @@ class PushCoalesce(PushAction):
     The behavior is homeserver-dependent. Homeservers not supporting this
     action should treat it as a ``PushNotify`` action.
     """
+
+    @property
+    def as_value(self) -> str:
+        return "coalesce"
 
 
 @dataclass
@@ -280,16 +326,24 @@ class PushSetTweak(PushAction):
     tweak: str = field()
     value: Any = None
 
+    @property
+    def as_value(self) -> Dict[str, Any]:
+        return {"set_tweak": self.tweak, "value": self.value}
+
 
 @dataclass
 class PushUnknownAction(PushAction):
     """An unknown kind of push rule action.
 
     Attributes:
-        action (Union[str, dict]): The action as a string or dict from the
-            source event.
+        action (Union[str, Dict[str, Any]]): The action as a string or dict
+            from the source event.
     """
-    action: Union[str, dict] = field()
+    action: Union[str, Dict[str, Any]] = field()
+
+    @property
+    def as_value(self) -> Union[str, Dict[str, Any]]:
+        return self.action
 
 
 @dataclass

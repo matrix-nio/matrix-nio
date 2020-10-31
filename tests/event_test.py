@@ -57,6 +57,7 @@ from nio.events import (
     DummyEvent,
     RoomKeyRequest,
     RoomKeyRequestCancellation,
+    PushRulesEvent,
 )
 
 
@@ -485,3 +486,20 @@ class TestClass:
         assert event.thumbnail_key
         assert event.thumbnail_hashes
         assert event.thumbnail_iv
+
+    def test_pushrules_parsing(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/push_rules.json",
+        )
+        parsed_rule = parsed_dict["content"]["global"]["override"][0]
+
+        event = PushRulesEvent.from_dict(parsed_dict)
+        assert isinstance(event, PushRulesEvent)
+        assert bool(event) is True
+        rule = event.global_rules.override[0]
+
+        for i, action in enumerate(rule.actions):
+            assert action.as_value == parsed_rule["actions"][i]
+
+        for i, condition in enumerate(rule.conditions):
+            assert condition.as_value == parsed_rule["conditions"][i]
