@@ -66,6 +66,7 @@ from nio import (ContentRepositoryConfigResponse,
                  RoomSendResponse, RoomSummary,
                  RoomUnbanResponse,
                  SetPushRuleResponse,
+                 SetPushRuleActionsResponse,
                  ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
                  Timeline, TransferMonitor, TransferCancelledError,
@@ -4360,3 +4361,23 @@ class TestClass:
             "global", PushRuleKind.override, "foo", enable=True,
         )
         assert isinstance(resp, EnablePushRuleResponse)
+
+    async def test_set_pushrule_actions(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo/actions?access_token=abc123",
+            body={"actions": [{"set_tweak": "highlight", "value": True}]},
+            status=200,
+            payload={},
+        )
+
+        tweak = PushSetTweak("highlight", True)
+        resp = await async_client.set_pushrule_actions(
+            "global", PushRuleKind.override, "foo", [tweak],
+        )
+        assert isinstance(resp, SetPushRuleActionsResponse)

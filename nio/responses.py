@@ -116,6 +116,8 @@ __all__ = [
     "Rooms",
     "SetPushRuleError",
     "SetPushRuleResponse",
+    "SetPushRuleActionsError",
+    "SetPushRuleActionsResponse",
     "ShareGroupSessionResponse",
     "ShareGroupSessionError",
     "SyncResponse",
@@ -1839,4 +1841,15 @@ class EnablePushRuleResponse(EmptyResponse):
 
 
 class EnablePushRuleError(ErrorResponse):
+    pass
+
+
+@dataclass
+class SetPushRuleActionsResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return SetPushRuleActionsError.from_dict(parsed_dict)
+
+
+class SetPushRuleActionsError(ErrorResponse):
     pass

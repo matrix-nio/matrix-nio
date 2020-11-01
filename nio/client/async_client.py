@@ -182,6 +182,8 @@ from ..responses import (
     RoomUnbanResponse,
     SetPushRuleResponse,
     SetPushRuleError,
+    SetPushRuleActionsResponse,
+    SetPushRuleActionsError,
     ShareGroupSessionError,
     ShareGroupSessionResponse,
     SyncError,
@@ -3061,3 +3063,39 @@ class AsyncClient(Client):
         )
 
         return await self._send(EnablePushRuleResponse, method, path, data)
+
+    @logged_in
+    async def set_pushrule_actions(
+        self,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
+        actions: Sequence[PushAction],
+    ) -> Union[SetPushRuleActionsResponse, SetPushRuleActionsError]:
+        """Set the actions for an existing built-in or user-created push rule.
+
+        Unlike ``set_pushrule``, this method can edit built-in server rules.
+
+        Returns the HTTP method, HTTP path and data for the request.
+        Returns either a `SetPushRuleActionsResponse` if the request was
+        successful or a `SetPushRuleActionsError` if there was an error
+        with the request.
+
+        Args:
+            scope (str): The scope of this rule, e.g. ``"global"``.
+
+            kind (PushRuleKind): The kind of rule.
+
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+
+            actions (Sequence[PushAction]): Actions to perform when the
+                conditions for this rule are met. The given actions replace
+                the existing ones.
+        """
+
+        method, path, data = Api.set_pushrule_actions(
+            self.access_token, scope, kind, rule_id, actions,
+        )
+
+        return await self._send(SetPushRuleActionsResponse, method, path, data)

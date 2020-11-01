@@ -1719,7 +1719,7 @@ class Api:
         conditions: Optional[Sequence[PushCondition]] = None,
         pattern: Optional[str] = None,
     ) -> Tuple[str, str, str]:
-        """Create or modify an existing push rule.
+        """Create or modify an existing user-created push rule.
 
         Returns the HTTP method, HTTP path and data for the request.
 
@@ -1792,7 +1792,7 @@ class Api:
     def delete_pushrule(
         access_token: str, scope: str, kind: PushRuleKind, rule_id: str,
     ) -> Tuple[str, str]:
-        """Delete an existing push rule.
+        """Delete an existing user-created push rule.
 
         Returns the HTTP method and HTTP path for the request.
 
@@ -1817,7 +1817,7 @@ class Api:
         rule_id: str,
         enable: bool,
     ) -> Tuple[str, str, str]:
-        """Enable or disable an existing push rule.
+        """Enable or disable an existing built-in or user-created push rule.
 
         Returns the HTTP method, HTTP path and data for the request.
 
@@ -1833,6 +1833,45 @@ class Api:
         path = ["pushrules", scope, kind.value, rule_id, "enabled"]
         query_parameters = {"access_token": access_token}
         content = {"enabled": enable}
+
+        return (
+            "PUT",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content),
+        )
+
+    @staticmethod
+    def set_pushrule_actions(
+        access_token: str,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
+        actions: Sequence[PushAction],
+    ) -> Tuple[str, str, str]:
+        """Set the actions for an existing built-in or user-created push rule.
+
+        Unlike ``set_pushrule``, this method can edit built-in server rules.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+
+            scope (str): The scope of this rule, e.g. ``"global"``.
+
+            kind (PushRuleKind): The kind of rule.
+
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+
+            actions (Sequence[PushAction]): Actions to perform when the
+                conditions for this rule are met. The given actions replace
+                the existing ones.
+        """
+
+        path = ["pushrules", scope, kind.value, rule_id, "actions"]
+        query_parameters = {"access_token": access_token}
+        content = {"actions": [a.as_value for a in actions]}
 
         return (
             "PUT",
