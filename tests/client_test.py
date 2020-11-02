@@ -615,6 +615,8 @@ class TestClass:
         assert room.encrypted
         assert room.summary
         assert len(room.users) == 2
+        assert room.invited_count == 1
+        assert room.joined_count == 2
         assert room.member_count == 3
         assert room.summary.invited_member_count == 1
         assert room.summary.joined_member_count == 2
