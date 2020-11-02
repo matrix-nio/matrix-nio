@@ -73,6 +73,33 @@ class Event:
         self.sender = self.source["sender"]
         self.server_timestamp = self.source["origin_server_ts"]
 
+    def flattened(
+        self,
+        _prefix: str = "",
+        _source: Optional[Dict[str, Any]] = None,
+        _flat: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Return a flattened version of the ``source`` dict with dotted keys.
+
+        Example:
+            >>> event.source
+            {"content": {"body": "foo"}, "m.test": {"key": "bar"}}
+            >>> event.source.flattened()
+            {"content.body": "foo", "m.test.key": "bar"}
+
+        """
+
+        source = self.source if _source is None else _source
+        flat = {} if _flat is None else _flat
+
+        for key, value in source.items():
+            if isinstance(value, dict):
+                self.flattened(f"{_prefix}{key}.", value, flat)
+            else:
+                flat[f"{_prefix}{key}"] = value
+
+        return flat
+
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[Event, BadEventType]

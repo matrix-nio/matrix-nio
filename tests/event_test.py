@@ -492,6 +492,21 @@ class TestClass:
         assert event.thumbnail_hashes
         assert event.thumbnail_iv
 
+    def test_event_flattening(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/to_flatten.json",
+        )
+
+        event = Event.from_dict(parsed_dict)
+        assert event.flattened() == {
+            "content.body": "foo",
+            "content.m.dotted.key": "bar",
+            "event_id": "!test:example.org",
+            "origin_server_ts": 0,
+            "sender": "@alice:example.org",
+            "type": "m.flatten_test",
+        }
+
     def test_pushrules_parsing(self):
         parsed_dict = TestClass._load_response(
             "tests/data/events/push_rules.json",
