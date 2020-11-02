@@ -31,12 +31,14 @@ from collections import defaultdict
 from enum import Enum, unique
 from typing import (
     Any, DefaultDict, Dict, Iterable, List, Optional, Sequence, Set, Tuple,
-    Union,
+    Union, TYPE_CHECKING,
 )
 
-from .events.account_data import PushAction, PushCondition
 from .exceptions import LocalProtocolError
 from .http import Http2Request, HttpRequest, TransportRequest
+
+if TYPE_CHECKING:
+    from .events.account_data import PushAction, PushCondition
 
 if False:
     from uuid import UUID
@@ -118,7 +120,7 @@ class EventFormat(Enum):
 
 @unique
 class PushRuleKind(Enum):
-    """Enum representing the push rule kinds defined by the Matrix spec."""
+    """Push rule kinds defined by the Matrix spec, ordered by priority."""
 
     override = "override"
     content = "content"
@@ -1715,8 +1717,8 @@ class Api:
         rule_id: str,
         before: Optional[str] = None,
         after: Optional[str] = None,
-        actions: Sequence[PushAction] = (),
-        conditions: Optional[Sequence[PushCondition]] = None,
+        actions: Sequence["PushAction"] = (),
+        conditions: Optional[Sequence["PushCondition"]] = None,
         pattern: Optional[str] = None,
     ) -> Tuple[str, str, str]:
         """Create or modify an existing user-created push rule.
@@ -1846,7 +1848,7 @@ class Api:
         scope: str,
         kind: PushRuleKind,
         rule_id: str,
-        actions: Sequence[PushAction],
+        actions: Sequence["PushAction"],
     ) -> Tuple[str, str, str]:
         """Set the actions for an existing built-in or user-created push rule.
 

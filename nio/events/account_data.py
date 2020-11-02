@@ -27,12 +27,18 @@ from __future__ import unicode_literals
 
 import re
 
-from typing import Any, Dict, List, Optional, Union
+from fnmatch import fnmatchcase
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 
 from dataclasses import dataclass, field
 
+from ..api import PushRuleKind
 from ..schemas import Schemas
 from .misc import verify, verify_or_none
+from .room_events import Event
+
+if TYPE_CHECKING:
+    from ..rooms import MatrixRoom
 
 
 @dataclass
@@ -137,6 +143,18 @@ class PushCondition:
     def as_value(self) -> Dict[str, Any]:
         raise NotImplementedError()
 
+    def matches(
+        self, event: Event, room: "MatrixRoom", display_name: str,
+    ) -> bool:
+        """Return whether this condition holds true for a room event.
+
+        Args:
+            event (Event): The room event to check the condition for.
+            room (MatrixRoom): The room that this event is part of.
+            display_name (str): The display name of our own user in the room.
+        """
+        return False
+
 
 @dataclass
 class PushEventMatch(PushCondition):
@@ -160,6 +178,20 @@ class PushEventMatch(PushCondition):
             "kind": "event_match", "key": self.key, "pattern": self.pattern,
         }
 
+    def matches(
+        self, event: Event, room: "MatrixRoom", display_name: str,
+    ) -> bool:
+        value = event.flattened().get(self.key)
+
+        if not isinstance(value, str):
+            return False
+
+        if self.key == "content.body":
+            pattern = f"*[!a-z0-9]{self.pattern.lower()}[!a-z0-9]*"
+            return fnmatchcase(f" {value.lower()} ", pattern)
+
+        return fnmatchcase(value.lower(), self.pattern.lower())
+
 
 @dataclass
 class PushContainsDisplayName(PushCondition):
@@ -171,6 +203,17 @@ class PushContainsDisplayName(PushCondition):
     @property
     def as_value(self) -> Dict[str, Any]:
         return {"kind": "contains_display_name"}
+
+    def matches(
+        self, event: Event, room: "MatrixRoom", display_name: str,
+    ) -> bool:
+        body = event.source.get("content", {}).get("body")
+
+        if not isinstance(body, str):
+            return False
+
+        pattern = rf"(^|\W){re.escape(display_name)}(\W|$)"
+        return bool(re.match(pattern, body, re.IGNORECASE))
 
 
 @dataclass
@@ -198,6 +241,19 @@ class PushRoomMemberCount(PushCondition):
         operator = "" if self.operator == "==" else self.operator
         return {"kind": "room_member_count", "is": f"{operator}{self.count}"}
 
+    def matches(
+        self, event: Event, room: "MatrixRoom", display_name: str,
+    ) -> bool:
+        if self.operator == "==":
+            return room.joined_count == self.count
+        elif self.operator == "<":
+            return room.joined_count < self.count
+        elif self.operator == ">":
+            return room.joined_count > self.count
+        elif self.operator == "<=":
+            return room.joined_count <= self.count
+        else:
+            return room.joined_count >= self.count
 
 @dataclass
 class PushSenderNotificationPermission(PushCondition):
@@ -218,6 +274,11 @@ class PushSenderNotificationPermission(PushCondition):
         return {
             "kind": "sender_notification_permission", "key": self.key,
         }
+
+    def matches(
+        self, event: Event, room: "MatrixRoom", display_name: str,
+    ) -> bool:
+        return room.power_levels.can_user_notify(event.sender, self.key)
 
 
 @dataclass
@@ -351,8 +412,12 @@ class PushRule:
     """Rule stating how to notify the user for events matching some conditions.
 
     Attributes:
+        kind (PushRuleKind): The kind of rule this is.
+
         id (str): A unique (within its ruleset) string identifying this rule.
             The ``id`` for default rules set by the server starts with a ``.``.
+            For rules of ``room`` kind, this will be the room ID to match for.
+            For rules of ``sender`` kind, this will be the user ID to match.
 
         default (bool): Whether this is a default rule set by the server,
             or one that the user created explicitely.
@@ -373,6 +438,7 @@ class PushRule:
             The actions to perform when this rule matches.
     """
 
+    kind: PushRuleKind = field()
     id: str = field()
     default: bool = field()
     enabled: bool = True
@@ -380,10 +446,36 @@ class PushRule:
     conditions: List[PushCondition] = field(default_factory=list)
     actions: List[PushAction] = field(default_factory=list)
 
+    def matches(
+        self, event: Event, room: "MatrixRoom", display_name: str,
+    ) -> bool:
+        """Return whether this push rule matches a room event.
+
+        Args:
+            event (Event): The room event to match.
+            room (MatrixRoom): The room that this event is part of.
+            display_name (str): The display name of our own user in the room.
+        """
+
+        if not self.enabled:
+            return False
+
+        conditions = self.conditions
+
+        if self.kind == PushRuleKind.content:
+            conditions = [PushEventMatch("content.body", self.pattern)]
+        elif self.kind == PushRuleKind.room:
+            conditions = [PushEventMatch("room_id", self.id)]
+        elif self.kind == PushRuleKind.sender:
+            conditions = [PushEventMatch("sender", self.id)]
+
+        return all(c.matches(event, room, display_name) for c in conditions)
+
     @classmethod
     @verify_or_none(Schemas.push_rule)
-    def from_dict(cls, rule: Dict[str, Any]) -> "PushRule":
+    def from_dict(cls, rule: Dict[str, Any], kind: PushRuleKind) -> "PushRule":
         return cls(
+            kind,
             rule["rule_id"],
             rule["default"],
             rule["enabled"],
@@ -395,7 +487,7 @@ class PushRule:
 
 @dataclass
 class PushRuleset:
-    """A set of push rules scoped according to some criteria.
+    """A set of different kinds of push rules under a same scope.
 
     Attributes:
         override (List[PushRule]): Highest priority rules
@@ -419,17 +511,38 @@ class PushRuleset:
     sender: List[PushRule] = field(default_factory=list)
     underride: List[PushRule] = field(default_factory=list)
 
+    def matching_rule(
+        self, event: Event, room: "MatrixRoom", display_name: str,
+    ) -> Optional[PushRule]:
+        """Return the push rule in this set that matches a room event, if any.
+
+        Args:
+            event (Event): The room event to match.
+            room (MatrixRoom): The room that this event is part of.
+            display_name (str): The display name of our own user in the room.
+        """
+
+        for kind in PushRuleKind:
+            for rule in getattr(self, kind.value):
+                if rule.matches(event, room, display_name):
+                    return rule
+
+        return None
+
     @classmethod
     @verify_or_none(Schemas.push_ruleset)
     def from_dict(cls, ruleset: Dict[str, Any]) -> "PushRuleset":
-        def make(key: str) -> List[PushRule]:
-            rules = [PushRule.from_dict(r) for r in ruleset.get(key, [])]
-            return [r for r in rules if r]
+        kwargs = {}
 
-        return cls(
-            make("override"), make("content"), make("room"), make("sender"),
-            make("underride"),
-        )
+        for kind in PushRuleKind:
+            rules = [
+                PushRule.from_dict(rule_dict, kind)
+                for rule_dict in ruleset.get(kind.value, [])
+            ]
+            # PushRule.from_dict returns None if the schema verification fails
+            kwargs[kind.value] = [r for r in rules if r]
+
+        return cls(**kwargs)
 
     def __bool__(self) -> bool:
         return bool(
@@ -440,7 +553,7 @@ class PushRuleset:
 
 @dataclass
 class PushRulesEvent(AccountDataEvent):
-    """Event representing the account's configured push rules.
+    """Configured push rule sets for an account. Each set belongs to a scope.
 
     Attributes:
         global_rules (PushRuleset): Rulesets applying to all devices
