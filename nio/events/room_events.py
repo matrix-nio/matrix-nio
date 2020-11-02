@@ -1132,7 +1132,9 @@ class DefaultLevels:
             can be overridden by the events power level mapping.
         users_default (int): The default power level for every user in the
             room. This can be overridden by the users power level mapping.
-
+        notifications (Dict[str, int]): The level required to send different
+            kinds of notifications. Used for ``sender_notification_permission``
+            conditions in push rules.
     """
 
     ban: int = 50
@@ -1142,7 +1144,7 @@ class DefaultLevels:
     state_default: int = 0
     events_default: int = 0
     users_default: int = 0
-    # TODO: notifications
+    notifications: Dict[str, int] = field(default_factory=lambda: {"room": 50})
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -1163,7 +1165,8 @@ class DefaultLevels:
             content["redact"],
             content["state_default"],
             content["events_default"],
-            content["users_default"]
+            content["users_default"],
+            content["notifications"],
         )
 
 
@@ -1207,6 +1210,17 @@ class PowerLevels:
                 required level for, e.g. `m.room.message`.
         """
         return self.events.get(event_type, self.defaults.events_default)
+
+    def get_notification_required_level(self, notification_type: str) -> int:
+        """Get required power level to send a certain type of notification.
+
+        Returns an integer representing the required power level.
+
+        Args:
+            notification_type (str): The type of notification to get the
+                required level for, e.g. ``"room"``.
+        """
+        return self.defaults.notifications.get(notification_type, 50)
 
     def get_user_level(self, user_id):
         # type: (str) -> int
@@ -1282,11 +1296,16 @@ class PowerLevels:
 
         return can_ban_lower and level > self.get_user_level(target_user_id)
 
-    def can_user_redact(self, user_id):
-        # type: (str) -> bool
+    def can_user_redact(self, user_id: str):
         """Return whether a user has enough power to react other user's events.
         """
         return self.get_user_level(user_id) >= self.defaults.redact
+
+    def can_user_notify(self, user_id: str, notification_type: str):
+        """Return whether user has enough power to send a type of notification.
+        """
+        required = self.get_notification_required_level(notification_type)
+        return self.get_user_level(user_id) >= required
 
     def update(self, new_levels):
         """Update the power levels object with new levels.

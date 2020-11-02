@@ -162,6 +162,8 @@ class TestClass:
         assert levels.get_state_event_required_level("m.room.undefined") == 50
         assert levels.get_message_event_required_level("m.room.message") == 25
         assert levels.get_message_event_required_level("m.room.undefined") == 0
+        assert levels.get_notification_required_level("room") == 60
+        assert levels.get_notification_required_level("non_existant") == 50
 
         assert levels.get_user_level(admin) == 100
         assert levels.get_user_level(user) == 0
@@ -192,6 +194,9 @@ class TestClass:
 
         assert levels.can_user_redact(admin) is True
         assert levels.can_user_redact(user) is False
+
+        assert levels.can_user_notify(admin, "room") is True
+        assert levels.can_user_notify(mod, "room") is False
 
     def test_membership(self):
         parsed_dict = TestClass._load_response("tests/data/events/member.json")
