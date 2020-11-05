@@ -144,13 +144,9 @@ class TestClass:
     def joined_members_response(self):
         return {
             "joined": {  # joined
-                ALICE_ID: {  # joined
+                ALICE_ID: {
                     "avatar_url": None,
                     "display_name": "Alice"
-                },
-                CAROL_ID: {  # invited
-                    "avatar_url": None,
-                    "display_name": "Carol"
                 },
                 EIRIN_ID: {
                     "avatar_url": None,
@@ -1177,12 +1173,14 @@ class TestClass:
         room = async_client.rooms[TEST_ROOM_ID]
         assert not room.members_synced
         assert tuple(room.users) == (ALICE_ID, CAROL_ID, DAVE_ID)
+        assert tuple(room.invited_users) == (CAROL_ID,)
 
         response = await async_client.joined_members(TEST_ROOM_ID)
 
         assert isinstance(response, JoinedMembersResponse)
         assert room.members_synced
         assert tuple(room.users) == (ALICE_ID, CAROL_ID, EIRIN_ID)
+        assert tuple(room.invited_users) == (CAROL_ID,)
 
     async def test_joined_rooms(self, async_client, aioresponse):
         await async_client.receive_response(

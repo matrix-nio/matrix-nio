@@ -987,7 +987,9 @@ class Client:
         joined_user_ids = {m.user_id for m in response.members}
 
         for user_id in tuple(room.users):
-            if user_id not in joined_user_ids:
+            invited = room.users[user_id].invited
+
+            if not invited and user_id not in joined_user_ids:
                 room.remove_member(user_id)
 
         for member in response.members:
