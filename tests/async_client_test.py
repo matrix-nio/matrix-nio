@@ -735,7 +735,7 @@ class TestClass:
         # Test with filter ID
 
         aioresponse.get(
-            re.compile(fr"{url}&filter=test_id&since=.*"),
+            re.compile(fr"{url}&filter=test_id&since=[\w\d_]*"),
             status=200,
             payload=self.sync_response
         )
@@ -745,7 +745,7 @@ class TestClass:
         # Test with filter dict
 
         aioresponse.get(
-            re.compile(url + r"&filter=" + quote("{}") + "&since=.*"),
+            re.compile(fr"{url}&filter=[\w\d%]*&since=[\w\d_]*"),
             status=200,
             payload=self.sync_response,
         )
@@ -1793,7 +1793,7 @@ class TestClass:
 
         session = ClientSession()
         context = Context()
-        params  = TraceRequestChunkSentParams(chunk=b"x")
+        params = TraceRequestChunkSentParams(method="POST", url="test", chunk=b"x")
 
         await on_request_chunk_sent(session, context, params)
         assert monitor.transferred == 1
