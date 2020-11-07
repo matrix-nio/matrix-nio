@@ -18,7 +18,10 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Install Tox and any other packages
         run: |
-            sudo apt-get install libolm libolm-dev
+            wget https://gitlab.matrix.org/matrix-org/olm/-/archive/master/olm-master.tar.bz2
+            tar -xvf olm-master.tar.bz2
+            pushd olm-master && make && sudo make PREFIX="/usr" install && popd
+            rm -r olm-master
             pip install tox
       - name: Run Tox
         # Run tox using the version of Python in `PATH`
