@@ -18,7 +18,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Install Tox and any other packages
         run: |
-            apt-get install libolm libolm-dev
+            sudo apt-get install libolm libolm-dev
             pip install tox
       - name: Run Tox
         # Run tox using the version of Python in `PATH`
