@@ -253,26 +253,26 @@ class Api:
         Returns:
             str: [description]
         """
-        quoted_path: str = None
+        quoted_path = ""
 
         if isinstance(path, str):
             quoted_path = quote(path, safe="")
         elif isinstance(path, List):
             quoted_path='/'.join([quote(str(part), safe="") for part in path])
         else:
-            quoted_path = path
+            raise AssertionError(f"'path' must be of type List[str] or str, got {type(path)}")
 
-        path = "{base}/{path}".format(
+        built_path = "{base}/{path}".format(
             base=base_path,
             path=quoted_path
         )
 
-        path = path.rstrip("/")
+        built_path = built_path.rstrip("/")
 
         if query_parameters:
-            path += "?{}".format(urlencode(query_parameters))
+            built_path += "?{}".format(urlencode(query_parameters))
 
-        return path
+        return built_path
 
     @staticmethod
     def discovery_info() -> Tuple[str, str]:
@@ -314,7 +314,7 @@ class Api:
                 correspond to a known client device, a new device will be
                 created.
         """
-        path = Api._build_path("register")
+        path = Api._build_path(["register"])
 
         content_dict = {
             "auth": {"type": "m.login.dummy"},
@@ -521,7 +521,7 @@ class Api:
         """
         query_parameters = {"access_token": access_token}
 
-        path = ["rooms", room_id, "send", event_type, tx_id]
+        path = ["rooms", room_id, "send", event_type, str(tx_id)]
 
         return (
             "PUT",
@@ -659,7 +659,7 @@ class Api:
         if reason:
             body["reason"] = reason
 
-        path = ["rooms", room_id, "redact", event_id, tx_id]
+        path = ["rooms", room_id, "redact", event_id, str(tx_id)]
 
         return (
             "PUT",
@@ -1114,7 +1114,7 @@ class Api:
             tx_id (str): The transaction ID for this event.
         """
         query_parameters = {"access_token": access_token}
-        path = ["sendToDevice", event_type, tx_id]
+        path = ["sendToDevice", event_type, str(tx_id)]
 
         return (
             "PUT",
