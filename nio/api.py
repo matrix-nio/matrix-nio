@@ -267,9 +267,7 @@ class Api:
             path=quoted_path
         )
 
-        # remove trailing /
-        if path[-1] == "/":
-            path = path.rstrip("/")
+        path = path.rstrip("/")
 
         if query_parameters:
             path += "?{}".format(urlencode(query_parameters))
