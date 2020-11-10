@@ -999,11 +999,13 @@ class TestClass:
         )
         assert response.content_type == "image/png"
 
-    def test_http_client_get_profile(self, http_client):
+    def test_http_client_get_profile(self, http_client: HttpClient):
         http_client.connect(TransportType.HTTP2)
 
         name = faker.name()
         avatar = faker.avatar_url().replace("#auto", "")
+
+        http_client.user_id = ALICE_ID
 
         _, _ = http_client.get_profile()
         http_client.receive(self.get_profile_byte_response(name, avatar, 1))

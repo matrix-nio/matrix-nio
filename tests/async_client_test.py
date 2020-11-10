@@ -706,7 +706,7 @@ class TestClass:
         assert async_client.access_token
         assert async_client.logged_in
 
-    async def test_sync(self, async_client, aioresponse):
+    async def test_sync(self, async_client: AsyncClient, aioresponse: aioresponses):
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
@@ -951,7 +951,7 @@ class TestClass:
 
         assert isinstance(resp, RoomGetEventError)
 
-    async def test_room_put_state(self, async_client, aioresponse):
+    async def test_room_put_state(self, async_client, aioresponse: aioresponses):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
@@ -959,12 +959,14 @@ class TestClass:
 
         base_url = "https://example.org/_matrix/client/r0"
 
+        # Test when key is set
+        state_key = "a-state-key"
         aioresponse.put(
             "{base}/rooms/{room}/state/{event}/{key}?{query}".format(
                 base = base_url,
                 room = TEST_ROOM_ID,
                 event = "org.example.event_type",
-                key = "",
+                key = state_key,
                 query = "access_token=abc123"
             ),
             status = 200,
@@ -972,9 +974,32 @@ class TestClass:
         )
 
         resp = await async_client.room_put_state(
-                TEST_ROOM_ID,
-                "org.example.event_type",
-                {}
+            room_id = TEST_ROOM_ID,
+            event_type = "org.example.event_type",
+            content = {},
+            state_key = state_key
+        )
+
+        assert isinstance(resp, RoomPutStateResponse)
+
+
+        # Test when key is empty (and slash is optional)
+        aioresponse.put(
+            "{base}/rooms/{room}/state/{event}?{query}".format(
+                base = base_url,
+                room = TEST_ROOM_ID,
+                event = "org.example.event_type",
+                query = "access_token=abc123"
+            ),
+            status = 200,
+            payload={"event_id": "$1337stateeventid2342:example.org"}
+        )
+
+        resp = await async_client.room_put_state(
+            room_id=TEST_ROOM_ID,
+            event_type = "org.example.event_type",
+            content={},
+            state_key=""
         )
 
         assert isinstance(resp, RoomPutStateResponse)
@@ -987,27 +1012,47 @@ class TestClass:
         assert async_client.logged_in
 
         base_url = "https://example.org/_matrix/client/r0"
-        path = "{base}/rooms/{room}/state/{event}/{key}?{query}".format(
-            base = base_url,
-            room = TEST_ROOM_ID,
-            event = "m.room.name",
-            key = "",
-            query = "access_token=abc123"
+
+        # Test when state key is set
+        state_key = "a-state-key"
+        aioresponse.get(
+            "{base}/rooms/{room}/state/{event}/{key}?{query}".format(
+                base = base_url,
+                room = TEST_ROOM_ID,
+                event = "m.room.name",
+                key = state_key,
+                query = "access_token=abc123"
+            ),
+            status = 200,
+            payload={"name": "Test Room"}
+        )
+        resp = await async_client.room_get_state_event(
+            room_id = TEST_ROOM_ID,
+            event_type = "m.room.name",
+            state_key = state_key
         )
 
+        assert isinstance(resp, RoomGetStateEventResponse)
+
+        # without state key
         aioresponse.get(
-            path,
+            "{base}/rooms/{room}/state/{event}?{query}".format(
+                base = base_url,
+                room = TEST_ROOM_ID,
+                event = "m.room.name",
+                query = "access_token=abc123"
+            ),
             status = 200,
             payload={"name": "Test Room"}
         )
 
         resp = await async_client.room_get_state_event(
-                TEST_ROOM_ID,
-                "m.room.name"
+            room_id = TEST_ROOM_ID,
+            event_type = "m.room.name",
+            state_key = ""
         )
 
         assert isinstance(resp, RoomGetStateEventResponse)
-
 
     async def test_room_get_state(self, async_client, aioresponse):
         await async_client.receive_response(
@@ -2000,7 +2045,7 @@ class TestClass:
             "?allow_remote=true".format(
                 server_name,
                 media_id,
-                quote(filename),
+                filename,
             ),
             status=200,
             content_type="image/png",
@@ -2098,10 +2143,11 @@ class TestClass:
         with pytest.raises(CallbackException):
             await async_client.receive_response(self.encryption_sync_response)
 
-    async def test_get_profile(self, async_client, aioresponse):
+    async def test_get_profile(self, async_client: AsyncClient, aioresponse: aioresponses):
         base_url = "https://example.org/_matrix/client/r0"
         name = faker.name()
         avatar = faker.avatar_url().replace("#auto", "")
+        async_client.user_id = ALICE_ID
 
         aioresponse.get(
             "{}/profile/{}".format(base_url, async_client.user_id),

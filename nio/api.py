@@ -234,16 +234,45 @@ class Api:
         return plumb_url
 
     @staticmethod
-    def _build_path(path, query_parameters=None, api_path=MATRIX_API_PATH):
-        # type: (str, dict, str) -> str
-        path = ("{api}/{path}").format(api=api_path, path=path)
+    def _build_path(
+        path: List[str],
+        query_parameters: Dict = None,
+        base_path: str = MATRIX_API_PATH
+    ) -> str:
+        """Builds a percent-encoded path from a list of strings.
 
-        path = quote(path)
+        For example, turns ["hello", "wo/rld"] into "/hello/wo%2Frld".
+        All special characters are percent encoded,
+        including the forward slash (/).
+
+        Args:
+            path (List[str]): the list of path elements.
+            query_parameters (Dict, optional): [description]. Defaults to None.
+            base_path (str, optional): A base path to be prepended to path. Defaults to MATRIX_API_PATH.
+
+        Returns:
+            str: [description]
+        """
+        quoted_path = ""
+
+        if isinstance(path, str):
+            quoted_path = quote(path, safe="")
+        elif isinstance(path, List):
+            quoted_path='/'.join([quote(str(part), safe="") for part in path])
+        else:
+            raise AssertionError(f"'path' must be of type List[str] or str, got {type(path)}")
+
+        built_path = "{base}/{path}".format(
+            base=base_path,
+            path=quoted_path
+        )
+
+        built_path = built_path.rstrip("/")
 
         if query_parameters:
-            path += "?{}".format(urlencode(query_parameters))
+            built_path += "?{}".format(urlencode(query_parameters))
 
-        return path
+        return built_path
 
     @staticmethod
     def discovery_info() -> Tuple[str, str]:
@@ -251,7 +280,7 @@ class Api:
 
         Returns the HTTP method and HTTP path for the request.
         """
-        path = Api._build_path(path=".well-known/matrix/client", api_path="")
+        path = Api._build_path(path=[".well-known", "matrix", "client"], base_path="")
         return ("GET", path)
 
 
@@ -262,7 +291,7 @@ class Api:
         Returns the HTTP method and HTTP path for the request.
 
         """
-        path = Api._build_path("login")
+        path = Api._build_path(path=["login"])
 
         return "GET", path
 
@@ -285,7 +314,7 @@ class Api:
                 correspond to a known client device, a new device will be
                 created.
         """
-        path = Api._build_path("register")
+        path = Api._build_path(["register"])
 
         content_dict = {
             "auth": {"type": "m.login.dummy"},
@@ -324,7 +353,7 @@ class Api:
                 correspond to a known client device, a new device will be
                 created.
         """
-        path = Api._build_path("login")
+        path = Api._build_path(path=["login"])
 
         if password is not None:
             content_dict = {
@@ -379,7 +408,7 @@ class Api:
         if auth_dict is None or auth_dict == {}:
             raise ValueError("Auth dictionary shall not be empty")
 
-        path = Api._build_path("login")
+        path = Api._build_path(path=["login"])
 
         return "POST", path, Api.to_json(auth_dict)
 
@@ -400,9 +429,9 @@ class Api:
         query_parameters = {"access_token": access_token}
 
         if all_devices:
-            api_path = "logout/all"
+            api_path = ["logout", "all"]
         else:
-            api_path = "logout"
+            api_path = ["logout"]
 
         content_dict = {}  # type: Dict
         return (
@@ -466,7 +495,7 @@ class Api:
         elif isinstance(filter, str):
             query_parameters["filter"] = filter
 
-        return "GET", Api._build_path("sync", query_parameters)
+        return "GET", Api._build_path(["sync"], query_parameters)
 
     @staticmethod
     def room_send(
@@ -492,9 +521,7 @@ class Api:
         """
         query_parameters = {"access_token": access_token}
 
-        path = "rooms/{room}/send/{msg_type}/{tx_id}".format(
-            room=room_id, msg_type=event_type, tx_id=tx_id
-        )
+        path = ["rooms", room_id, "send", event_type, str(tx_id)]
 
         return (
             "PUT",
@@ -519,9 +546,7 @@ class Api:
         """
         query_parameters = {"access_token": access_token}
 
-        path = "rooms/{room}/event/{event_id}".format(
-            room=room_id, event_id=event_id
-        )
+        path = ["rooms", room_id, "event", event_id]
 
         return (
             "GET",
@@ -553,9 +578,7 @@ class Api:
         """
         query_parameters = {"access_token": access_token}
 
-        path = "rooms/{room}/state/{event_type}/{state_key}".format(
-            room=room_id, event_type=event_type, state_key=state_key
-        )
+        path = ["rooms", room_id, "state", event_type, state_key]
 
         return (
             "PUT",
@@ -580,9 +603,7 @@ class Api:
         """
         query_parameters = {"access_token": access_token}
 
-        path = "rooms/{room}/state/{event_type}/{state_key}".format(
-            room=room_id, event_type=event_type, state_key=state_key
-        )
+        path = ["rooms", room_id, "state", event_type, state_key]
 
         return (
             "GET",
@@ -603,7 +624,7 @@ class Api:
         """
         query_parameters = {"access_token": access_token}
 
-        path = "rooms/{room}/state".format(room=room_id)
+        path = ["rooms", room_id, "state"]
 
         return (
             "GET",
@@ -638,9 +659,7 @@ class Api:
         if reason:
             body["reason"] = reason
 
-        path = "rooms/{room}/redact/{event_id}/{tx_id}".format(
-            room=room_id, event_id=event_id, tx_id=tx_id
-        )
+        path = ["rooms", room_id, "redact", event_id, str(tx_id)]
 
         return (
             "PUT",
@@ -669,7 +688,7 @@ class Api:
         if reason:
             body["reason"] = reason
 
-        path = "rooms/{room}/kick".format(room=room_id)
+        path = ["rooms", room_id, "kick"]
 
         return (
             "POST",
@@ -696,7 +715,7 @@ class Api:
             reason (str, optional): A reason for which the user is banned.
         """
 
-        path = f"rooms/{room_id}/ban"
+        path = ["rooms", room_id, "ban"]
         query_parameters = {"access_token": access_token}
         body = {"user_id": user_id}
 
@@ -724,7 +743,7 @@ class Api:
             user_id (str): The user_id of the user that should be unbanned.
         """
 
-        path = f"rooms/{room_id}/unban"
+        path = ["rooms", room_id, "unban"]
         query_parameters = {"access_token": access_token}
         body = {"user_id": user_id}
 
@@ -747,9 +766,9 @@ class Api:
                 invited to.
             user_id (str): The user id of the user that should be invited.
         """
+        path = ["rooms", room_id, "invite"]
         query_parameters = {"access_token": access_token}
         body = {"user_id": user_id}
-        path = "rooms/{room}/invite".format(room=room_id)
 
         return (
             "POST",
@@ -828,7 +847,7 @@ class Api:
                 The dict will be applied on top of the generated
                 ``m.room.power_levels`` event before it is sent to the room.
         """
-        path = "createRoom"
+        path = ["createRoom"]
         query_parameters = {"access_token": access_token}
 
         body = {
@@ -878,9 +897,9 @@ class Api:
             access_token (str): The access token to be used with the request.
             room_id (str): The room identifier or alias to join.
         """
+        path = ["join", room_id]
         query_parameters = {"access_token": access_token}
         body = {}
-        path = "join/{room}".format(room=room_id)
 
         return (
             "POST",
@@ -899,9 +918,9 @@ class Api:
             access_token (str): The access token to be used with the request.
             room_id (str): The room id of the room that will be left.
         """
+        path = ["rooms", room_id, "leave"]
         query_parameters = {"access_token": access_token}
         body = {}
-        path = "rooms/{room}/leave".format(room=room_id)
 
         return (
             "POST",
@@ -920,9 +939,9 @@ class Api:
             access_token (str): The access token to be used with the request.
             room_id (str): The room id of the room that will be forgotten.
         """
+        path = ["rooms", room_id, "forget"]
         query_parameters = {"access_token": access_token}
         body = {}
-        path = "rooms/{room}/forget".format(room=room_id)
 
         return (
             "POST",
@@ -984,7 +1003,7 @@ class Api:
             filter_json = json.dumps(message_filter, separators=(",", ":"))
             query_parameters["filter"] = filter_json
 
-        path = "rooms/{room}/messages".format(room=room_id)
+        path = ["rooms", room_id, "messages"]
 
         return "GET", Api._build_path(path, query_parameters)
 
@@ -1002,7 +1021,7 @@ class Api:
         """
         query_parameters = {"access_token": access_token}
         body = key_dict
-        path = "keys/upload"
+        path = ["keys", "upload"]
 
         return (
             "POST",
@@ -1027,7 +1046,7 @@ class Api:
                 token.
         """
         query_parameters = {"access_token": access_token}
-        path = "keys/query"
+        path = ["keys", "query"]
 
         content = {
             "device_keys": {user: [] for user in user_set}
@@ -1056,7 +1075,7 @@ class Api:
                 list of device IDs.
         """
         query_parameters = {"access_token": access_token}
-        path = "keys/claim"
+        path = ["keys", "claim"]
 
         payload = defaultdict(dict)  # type: DefaultDict[str, Dict[str, str]]
 
@@ -1095,10 +1114,7 @@ class Api:
             tx_id (str): The transaction ID for this event.
         """
         query_parameters = {"access_token": access_token}
-        path = "sendToDevice/{event_type}/{tx_id}".format(
-            event_type=event_type,
-            tx_id=tx_id
-        )
+        path = ["sendToDevice", event_type, str(tx_id)]
 
         return (
             "PUT",
@@ -1117,7 +1133,7 @@ class Api:
             access_token (str): The access token to be used with the request.
         """
         query_parameters = {"access_token": access_token}
-        path = "devices"
+        path = ["devices"]
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
@@ -1133,7 +1149,7 @@ class Api:
                 updated for the device.
         """
         query_parameters = {"access_token": access_token}
-        path = "devices/{}".format(quote(device_id))
+        path = ["devices", device_id]
 
         return (
             "PUT",
@@ -1166,7 +1182,7 @@ class Api:
                 the user-interactive authentication API.
         """
         query_parameters = {"access_token": access_token}
-        path = "delete_devices"
+        path = ["delete_devices"]
 
         content = {
             "devices": devices
@@ -1193,7 +1209,7 @@ class Api:
             room_id (str): Room id of the room where the user is typing.
         """
         query_parameters = {"access_token": access_token}
-        path = "rooms/{}/joined_members".format(room_id)
+        path = ["rooms", room_id, "joined_members"]
 
         return "GET", Api._build_path(path, query_parameters)
 
@@ -1208,7 +1224,7 @@ class Api:
             access_token (str): The access token to be used with the request.
         """
         query_parameters = {"access_token": access_token}
-        path = "joined_rooms"
+        path = ["joined_rooms"]
 
         return "GET", Api._build_path(path, query_parameters)
 
@@ -1222,7 +1238,7 @@ class Api:
         Args:
             room_alias (str): The alias to resolve
         """
-        path = "directory/room/{}".format(room_alias)
+        path = ["directory", "room", room_alias]
 
         return "GET", Api._build_path(path)
 
@@ -1252,7 +1268,7 @@ class Api:
                 valid for in milliseconds.
         """
         query_parameters = {"access_token": access_token}
-        path = "rooms/{}/typing/{}".format(room_id, user_id)
+        path = ["rooms", room_id, "typing", user_id]
 
         content = {
             "typing": typing_state
@@ -1287,7 +1303,7 @@ class Api:
                 `m.read` is supported by the Matrix specification.
         """
         query_parameters = {"access_token": access_token}
-        path = f"rooms/{room_id}/receipt/{receipt_type}/{event_id}"
+        path = ["rooms", room_id, "receipt", receipt_type, event_id]
 
         return ("POST", Api._build_path(path, query_parameters))
 
@@ -1316,7 +1332,7 @@ class Api:
                 location at.
         """
         query_parameters = {"access_token": access_token}
-        path = "rooms/{}/read_markers".format(room_id)
+        path = ["rooms", room_id, "read_markers"]
 
         content = {
             "m.fully_read": fully_read_event
@@ -1341,7 +1357,7 @@ class Api:
             access_token (str): The access token to be used with the request.
         """
         query_parameters = {"access_token": access_token}
-        path             = "config"
+        path = ["config"]
 
         return (
             "GET",
@@ -1367,7 +1383,7 @@ class Api:
             filename (str): The name of the file being uploaded
         """
         query_parameters = {"access_token": access_token}
-        path = "upload"
+        path = ["upload"]
 
         if filename:
             query_parameters["filename"] = filename
@@ -1404,8 +1420,10 @@ class Api:
         query_parameters = {
             "allow_remote": "true" if allow_remote else "false",
         }
-        end = "/{}".format(filename) if filename else ""
-        path = "download/{}/{}{}".format(server_name, media_id, end)
+        end = ""
+        if filename:
+            end = filename
+        path = ["download", server_name, media_id, end]
 
         return (
             "GET",
@@ -1445,7 +1463,7 @@ class Api:
             "method": method.value,
             "allow_remote": "true" if allow_remote else "false",
         }
-        path = "thumbnail/{}/{}".format(server_name, media_id)
+        path = ["thumbnail", server_name, media_id]
 
         return (
             "GET",
@@ -1453,8 +1471,7 @@ class Api:
         )
 
     @staticmethod
-    def profile_get(user_id):
-        # type (str, str) -> Tuple[str, str]
+    def profile_get(user_id: str) -> Tuple[str, str]:
         """Get the combined profile information for a user.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1462,9 +1479,8 @@ class Api:
         Args:
             user_id (str): User id to get the profile for.
         """
-        path = "profile/{user}".format(user=user_id)
-
-        return "GET", Api._build_path(path)
+        assert user_id
+        return "GET", Api._build_path(path=["profile", user_id])
 
     @staticmethod
     def profile_get_displayname(user_id):
@@ -1476,7 +1492,7 @@ class Api:
         Args:
             user_id (str): User id to get display name for.
         """
-        path = "profile/{user}/displayname".format(user=user_id)
+        path = ["profile", user_id, "displayname"]
 
         return "GET", Api._build_path(path)
 
@@ -1494,7 +1510,7 @@ class Api:
         """
         query_parameters = {"access_token": access_token}
         content = {"displayname": display_name}
-        path = "profile/{user}/displayname".format(user=user_id)
+        path = ["profile", user_id, "displayname"]
 
         return (
             "PUT",
@@ -1512,7 +1528,7 @@ class Api:
         Args:
             user_id (str): User id to get avatar for.
         """
-        path = "profile/{user}/avatar_url".format(user=user_id)
+        path = ["profile", user_id, "avatar_url"]
 
         return "GET", Api._build_path(path)
 
@@ -1530,7 +1546,7 @@ class Api:
         """
         query_parameters = {"access_token": access_token}
         content = {"avatar_url": avatar_url}
-        path = "profile/{user}/avatar_url".format(user=user_id)
+        path = ["profile", user_id, "avatar_url"]
 
         return (
             "PUT",
@@ -1549,7 +1565,7 @@ class Api:
             user_id (str): User id whose presence state to get.
         """
         query_parameters = {"access_token": access_token}
-        path = "presence/{user_id}/status".format(user_id=user_id)
+        path = ["presence", user_id, "status"]
 
         return (
             "GET",
@@ -1572,7 +1588,7 @@ class Api:
         content = {"presence": presence}
         if status_msg:
             content["status_msg"] = status_msg
-        path = "presence/{user_id}/status".format(user_id=user_id)
+        path = ["presence", user_id, "status"]
 
         return (
             "PUT",
@@ -1591,7 +1607,7 @@ class Api:
             access_token (str): The access token to be used with the request.
         """
         query_parameters = {"access_token": access_token}
-        path = "account/whoami"
+        path = ["account", "whoami"]
 
         return "GET", Api._build_path(path, query_parameters)
 
@@ -1616,9 +1632,7 @@ class Api:
         if limit:
             query_parameters["limit"] = limit
 
-        path = "rooms/{room}/context/{event_id}".format(
-            room=room_id, event_id=event_id
-        )
+        path = ["rooms", room_id, "context", event_id]
 
         return "GET", Api._build_path(path, query_parameters)
 
@@ -1662,7 +1676,7 @@ class Api:
                 The dict corresponds to the `RoomFilter` type described
                 in https://matrix.org/docs/spec/client_server/latest#id240
         """
-        path = f"user/{user_id}/filter"
+        path = ["user", user_id, "filter"]
         query_parameters = {"access_token": access_token}
         content = {
             "event_fields": event_fields,
