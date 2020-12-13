@@ -575,6 +575,13 @@ class AsyncClient(Client):
                     if cb.filter is None or isinstance(event, cb.filter):
                         await asyncio.coroutine(cb.func)(room, event)
 
+            for event in join_info.account_data:
+                room.handle_account_data(event)
+
+                for cb in self.room_account_data_callbacks:
+                    if cb.filter is None or isinstance(event, cb.filter):
+                        await asyncio.coroutine(cb.func)(room, event)
+
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)
 

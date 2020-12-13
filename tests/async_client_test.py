@@ -22,6 +22,7 @@ from nio import (ContentRepositoryConfigResponse,
                  DeleteDevicesResponse,
                  DiscoveryInfoError, DiscoveryInfoResponse,
                  DownloadResponse, ErrorResponse,
+                 FullyReadEvent,
                  GroupEncryptionError,
                  JoinResponse, JoinedRoomsResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
@@ -2142,6 +2143,36 @@ class TestClass:
 
         with pytest.raises(CallbackException):
             await async_client.receive_response(self.encryption_sync_response)
+
+    async def test_room_account_data_cb(self, async_client):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+
+        class CallbackException(Exception):
+            pass
+
+        async def cb(_, event):
+            raise CallbackException()
+
+        async_client.add_room_account_data_callback(cb, FullyReadEvent)
+
+        with pytest.raises(CallbackException):
+            await async_client.receive_response(
+                SyncResponse.from_dict(self.sync_response)
+            )
+
+    async def test_handle_account_data(self, async_client):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        await async_client.receive_response(
+            SyncResponse.from_dict(self.sync_response)
+        )
+
+        room = async_client.rooms['!SVkFJHzfwvuaIEawgC:localhost']
+        assert room.fully_read_marker == "event_id_2"
+        assert room.tags == {"u.test": {"order": 1}}
 
     async def test_get_profile(self, async_client: AsyncClient, aioresponse: aioresponses):
         base_url = "https://example.org/_matrix/client/r0"

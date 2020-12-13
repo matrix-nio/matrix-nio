@@ -13,7 +13,24 @@
         "join": {
             "!SVkFJHzfwvuaIEawgC:localhost": {
                 "account_data": {
-                    "events": []
+                    "events": [
+                        {
+                            "type": "m.fully_read",
+                            "content": {
+                                "event_id": "event_id_2"
+                            }
+                        },
+                        {
+                            "type": "m.tag",
+                            "content": {
+                                "tags": {
+                                    "u.test": {
+                                        "order": 1
+                                    }
+                                }
+                            }
+                        }
+                    ]
                 },
                 "ephemeral": {
                     "events": [
