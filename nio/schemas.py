@@ -460,7 +460,6 @@ class Schemas:
         "required": [
             "next_batch",
             "device_one_time_keys_count",
-            "device_lists",
             "rooms",
             "to_device",
         ],

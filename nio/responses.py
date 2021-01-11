@@ -1736,8 +1736,8 @@ class SyncResponse(Response):
         )
 
         devices = DeviceList(
-            parsed_dict["device_lists"]["changed"],
-            parsed_dict["device_lists"]["left"],
+            parsed_dict.get("device_lists", {}).get("changed", []),
+            parsed_dict.get("device_lists", {}).get("left", []),
         )
 
         presence_events = SyncResponse._get_presence(parsed_dict)
