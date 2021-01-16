@@ -1819,3 +1819,9 @@ class Schemas:
         "properties": {"filter_id": {"type": "string"}},
         "required": ["filter_id"],
     }
+
+    whoami = {
+        "type": "object",
+        "user_id": "string",
+        "required": ["user_id"],
+    }

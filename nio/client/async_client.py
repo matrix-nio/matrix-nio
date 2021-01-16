@@ -188,6 +188,8 @@ from ..responses import (
     UpdateReceiptMarkerResponse,
     UploadFilterError,
     UploadFilterResponse,
+    WhoamiResponse,
+    WhoamiError
 )
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
@@ -2925,3 +2927,10 @@ class AsyncClient(Client):
         )
 
         return await self._send(UploadFilterResponse, method, path, data)
+
+    async def whoami(self):
+        if self.access_token is None:
+            raise ValueError("No access_token is set.")
+
+        method, path = Api.whoami(self.access_token)
+        return await self._send(WhoamiResponse, method, path)

@@ -1775,3 +1775,20 @@ class UploadFilterResponse(Response):
         cls, parsed_dict: Dict[Any, Any],
     ) -> Union["UploadFilterResponse", UploadFilterError]:
         return cls(parsed_dict["filter_id"])
+
+
+class WhoamiError(ErrorResponse):
+    pass
+
+
+@dataclass
+class WhoamiResponse(Response):
+
+    user_id: str = field()
+
+    @classmethod
+    @verify(Schemas.whoami, WhoamiError)
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any],
+    ) -> Union["WhoamiResponse", WhoamiError]:
+        return cls(parsed_dict["user_id"])
