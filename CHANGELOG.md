@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.16.0 - 2021-01-18
+
+- [[#235]] Expose the whoami API endpoint in the AsyncClient.
+- [[#233]] Treat device lists as optional in the Sync response class.
+- [[#228]] Add support for account data in the AsyncClient.
+- [[#223]] Percent encode user IDs when they appear in an URL.
+
+[#235]: https://github.com/poljar/matrix-nio/pull/235
+[#233]: https://github.com/poljar/matrix-nio/pull/233
+[#228]: https://github.com/poljar/matrix-nio/pull/228
+[#223]: https://github.com/poljar/matrix-nio/pull/223
+
 ## 0.15.2 - 2020-10-29
 
 ### Fixed
