@@ -1729,11 +1729,16 @@ class Api:
             access_token (str): The access token to be used with the request.
 
             scope (str): The scope of this rule, e.g. ``"global"``.
+                Homeservers currently only process ``global`` rules for
+                event matching, while ``device`` rules are a planned feature.
+                It is up to clients to interpret any other scope name.
 
             kind (PushRuleKind): The kind of rule.
 
             rule_id (str): The identifier of the rule. Must be unique
                 within its scope and kind.
+                For rules of ``room`` kind, this is the room ID to match for.
+                For rules of ``sender`` kind, this is the user ID to match.
 
             before (Optional[str]): Position this rule before the one matching
                 the given rule ID.

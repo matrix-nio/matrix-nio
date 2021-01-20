@@ -2976,11 +2976,16 @@ class AsyncClient(Client):
 
         Args:
             scope (str): The scope of this rule, e.g. ``"global"``.
+                Homeservers currently only process ``global`` rules for
+                event matching, while ``device`` rules are a planned feature.
+                It is up to clients to interpret any other scope name.
 
             kind (PushRuleKind): The kind of rule.
 
             rule_id (str): The identifier of the rule. Must be unique
                 within its scope and kind.
+                For rules of ``room`` kind, this is the room ID to match for.
+                For rules of ``sender`` kind, this is the user ID to match.
 
             before (Optional[str]): Position this rule before the one matching
                 the given rule ID.
@@ -3004,6 +3009,31 @@ class AsyncClient(Client):
             pattern (Optional[str]): Glob-style pattern to match against
                 for the event's content.
                 Only applicable to ``content`` rules.
+
+        Example:
+            >>> client.set_pushrule(
+            ...     scope = "global",
+            ...     kind = PushRuleKind.room,
+            ...     rule_id = "!foo123:example.org",
+            ...     actions = [PushNotify(), PushSetTweak("sound", "default")],
+            ... )
+            ...
+            ... client.set_pushrule(
+            ...     scope = "global",
+            ...     kind = PushRuleKind.override,
+            ...     rule_id = "silence_large_rooms",
+            ...     actions = [],
+            ...     conditions = [PushRoomMemberCount(10, ">")],
+            ... )
+            ...
+            ... client.set_pushrule(
+            ...     scope = "global",
+            ...     kind = PushRuleKind.content,
+            ...     rule_id = "highlight_messages_containing_nio_word",
+            ...     actions = [PushNotify(), PushSetTweak("highlight", True)],
+            ...     pattern = "nio"
+            ... )
+
         """
 
         method, path, data = Api.set_pushrule(
@@ -3025,7 +3055,12 @@ class AsyncClient(Client):
 
         Args:
             scope (str): The scope of this rule, e.g. ``"global"``.
+                Homeservers currently only process ``global`` rules for
+                event matching, while ``device`` rules are a planned feature.
+                It is up to clients to interpret any other scope name.
+
             kind (PushRuleKind): The kind of rule.
+
             rule_id (str): The identifier of the rule. Must be unique
                 within its scope and kind.
         """
@@ -3052,9 +3087,15 @@ class AsyncClient(Client):
 
         Args:
             scope (str): The scope of this rule, e.g. ``"global"``.
+                Homeservers currently only process ``global`` rules for
+                event matching, while ``device`` rules are a planned feature.
+                It is up to clients to interpret any other scope name.
+
             kind (PushRuleKind): The kind of rule.
+
             rule_id (str): The identifier of the rule. Must be unique
                 within its scope and kind.
+
             enable (bool): Whether to enable or disable this rule.
         """
 
@@ -3083,6 +3124,9 @@ class AsyncClient(Client):
 
         Args:
             scope (str): The scope of this rule, e.g. ``"global"``.
+                Homeservers currently only process ``global`` rules for
+                event matching, while ``device`` rules are a planned feature.
+                It is up to clients to interpret any other scope name.
 
             kind (PushRuleKind): The kind of rule.
 
