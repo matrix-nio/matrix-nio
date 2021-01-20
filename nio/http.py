@@ -406,6 +406,7 @@ class Http2Connection(Connection):
             client_side=True, validate_inbound_headers=False
         )
         self._connection = h2.connection.H2Connection(config=config)
+        self._connection.max_inbound_frame_size = 64 * 1024
         self._responses = OrderedDict()  \
             # type: OrderedDict[int, Http2Response]
         self._data_to_send = OrderedDict() \

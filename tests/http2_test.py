@@ -94,6 +94,7 @@ class TestClass:
         conf = h2.config.H2Configuration(client_side=True)
 
         server = h2.connection.H2Connection(conf)
+        server.max_inbound_frame_size = 64 * 1024
         server.initiate_connection()
         server.receive_data(frame_factory.preamble())
 
