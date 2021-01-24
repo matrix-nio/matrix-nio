@@ -21,7 +21,7 @@ from builtins import str
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
@@ -45,6 +45,8 @@ __all__ = [
     "DeleteDevicesAuthResponse",
     "DeleteDevicesResponse",
     "DeleteDevicesError",
+    "DeletePushRuleError",
+    "DeletePushRuleResponse",
     "Device",
     "DeviceList",
     "DevicesResponse",
@@ -54,6 +56,8 @@ __all__ = [
     "DiscoveryInfoResponse",
     "DownloadResponse",
     "DownloadError",
+    "EnablePushRuleResponse",
+    "EnablePushRuleError",
     "ErrorResponse",
     "InviteInfo",
     "JoinResponse",
@@ -110,6 +114,10 @@ __all__ = [
     "RoomUnbanResponse",
     "RoomUnbanError",
     "Rooms",
+    "SetPushRuleError",
+    "SetPushRuleResponse",
+    "SetPushRuleActionsError",
+    "SetPushRuleActionsResponse",
     "ShareGroupSessionResponse",
     "ShareGroupSessionError",
     "SyncResponse",
@@ -1548,6 +1556,7 @@ class SyncResponse(Response):
     device_list: DeviceList = field()
     to_device_events: List[ToDeviceEvent] = field()
     presence_events: List[PresenceEvent] = field()
+    account_data_events: List[AccountDataEvent] = field(default_factory=list)
 
     def __str__(self) -> str:
         result = []
@@ -1720,6 +1729,13 @@ class SyncResponse(Response):
 
         return presence_events
 
+    @staticmethod
+    def _get_account_data(
+        parsed_dict: Dict[str, Any],
+    ) -> Generator[AccountDataEvent, None, None]:
+        for ev_dict in parsed_dict.get("account_data", {}).get("events", []):
+            yield AccountDataEvent.parse_event(ev_dict)
+
     @classmethod
     @verify(Schemas.sync, SyncError, False)
     def from_dict(
@@ -1750,7 +1766,8 @@ class SyncResponse(Response):
             key_count,
             devices,
             to_device,
-            presence_events
+            presence_events,
+            list(SyncResponse._get_account_data(parsed_dict)),
         )
 
 
@@ -1792,3 +1809,47 @@ class WhoamiResponse(Response):
         cls, parsed_dict: Dict[Any, Any],
     ) -> Union["WhoamiResponse", WhoamiError]:
         return cls(parsed_dict["user_id"])
+
+
+@dataclass
+class SetPushRuleResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return SetPushRuleError.from_dict(parsed_dict)
+
+
+class SetPushRuleError(ErrorResponse):
+    pass
+
+
+@dataclass
+class DeletePushRuleResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return DeletePushRuleError.from_dict(parsed_dict)
+
+
+class DeletePushRuleError(ErrorResponse):
+    pass
+
+
+@dataclass
+class EnablePushRuleResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return EnablePushRuleError.from_dict(parsed_dict)
+
+
+class EnablePushRuleError(ErrorResponse):
+    pass
+
+
+@dataclass
+class SetPushRuleActionsResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return SetPushRuleActionsError.from_dict(parsed_dict)
+
+
+class SetPushRuleActionsError(ErrorResponse):
+    pass

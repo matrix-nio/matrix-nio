@@ -436,6 +436,20 @@ class MatrixRoom:
         )
 
     @property
+    def joined_count(self) -> int:
+        try:
+            return self._summary_details()[1]
+        except ValueError:
+            return len(tuple(u for u in self.users.values() if not u.invited))
+
+    @property
+    def invited_count(self) -> int:
+        try:
+            return self._summary_details()[2]
+        except ValueError:
+            return len(tuple(u for u in self.users.values() if u.invited))
+
+    @property
     def member_count(self) -> int:
         try:
             _, joined, invited = self._summary_details()

@@ -64,6 +64,7 @@ from ..api import (
     ResizingMethod,
     RoomVisibility,
     RoomPreset,
+    PushRuleKind,
 )
 from ..crypto import (
     OlmDevice,
@@ -85,6 +86,8 @@ from ..events import (
     RoomKeyRequestCancellation,
     ToDeviceEvent,
     MegolmEvent,
+    PushAction,
+    PushCondition,
 )
 from ..event_builders import ToDeviceMessage
 from ..monitors import TransferMonitor
@@ -96,12 +99,16 @@ from ..responses import (
     DeleteDevicesError,
     DeleteDevicesResponse,
     DeleteDevicesAuthResponse,
+    DeletePushRuleError,
+    DeletePushRuleResponse,
     DevicesError,
     DevicesResponse,
     DiscoveryInfoError,
     DiscoveryInfoResponse,
     DownloadError,
     DownloadResponse,
+    EnablePushRuleError,
+    EnablePushRuleResponse,
     ErrorResponse,
     FileResponse,
     JoinResponse,
@@ -173,6 +180,10 @@ from ..responses import (
     RoomReadMarkersError,
     RoomUnbanError,
     RoomUnbanResponse,
+    SetPushRuleResponse,
+    SetPushRuleError,
+    SetPushRuleActionsResponse,
+    SetPushRuleActionsError,
     ShareGroupSessionError,
     ShareGroupSessionResponse,
     SyncError,
@@ -607,6 +618,14 @@ class AsyncClient(Client):
                 if cb.filter is None or isinstance(event, cb.filter):
                     await asyncio.coroutine(cb.func)(event)
 
+    async def _handle_global_account_data_events(  # type: ignore
+        self, response: SyncResponse,
+    ) -> None:
+        for event in response.account_data_events:
+            for cb in self.global_account_data_callbacks:
+                if cb.filter is None or isinstance(event, cb.filter):
+                    await asyncio.coroutine(cb.func)(event)
+
     async def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()
 
@@ -632,6 +651,8 @@ class AsyncClient(Client):
         await self._handle_joined_rooms(response)
 
         await self._handle_presence_events(response)
+
+        await self._handle_global_account_data_events(response)
 
         if self.olm:
             await self._handle_expired_verifications()
@@ -2934,3 +2955,191 @@ class AsyncClient(Client):
 
         method, path = Api.whoami(self.access_token)
         return await self._send(WhoamiResponse, method, path)
+
+    @logged_in
+    async def set_pushrule(
+        self,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
+        before: Optional[str] = None,
+        after: Optional[str] = None,
+        actions: Sequence[PushAction] = (),
+        conditions: Optional[Sequence[PushCondition]] = None,
+        pattern: Optional[str] = None,
+    ) -> Union[SetPushRuleResponse, SetPushRuleError]:
+        """Create or modify an existing push rule.
+
+        Returns either a `SetPushRuleResponse` if the request was
+        successful or a `SetPushRuleError` if there was an error
+        with the request.
+
+        Args:
+            scope (str): The scope of this rule, e.g. ``"global"``.
+                Homeservers currently only process ``global`` rules for
+                event matching, while ``device`` rules are a planned feature.
+                It is up to clients to interpret any other scope name.
+
+            kind (PushRuleKind): The kind of rule.
+
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+                For rules of ``room`` kind, this is the room ID to match for.
+                For rules of ``sender`` kind, this is the user ID to match.
+
+            before (Optional[str]): Position this rule before the one matching
+                the given rule ID.
+                The rule ID cannot belong to a predefined server rule.
+                ``before`` and ``after`` cannot be both specified.
+
+            after (Optional[str]): Position this rule after the one matching
+                the given rule ID.
+                The rule ID cannot belong to a predefined server rule.
+                ``before`` and ``after`` cannot be both specified.
+
+            actions (Sequence[PushAction]): Actions to perform when the
+                conditions for this rule are met. The given actions replace
+                the existing ones.
+
+            conditions (Sequence[PushCondition]): Event conditions that must
+                hold true for the rule to apply to that event.
+                A rule with no conditions always hold true.
+                Only applicable to ``underride`` and ``override`` rules.
+
+            pattern (Optional[str]): Glob-style pattern to match against
+                for the event's content.
+                Only applicable to ``content`` rules.
+
+        Example:
+            >>> client.set_pushrule(
+            ...     scope = "global",
+            ...     kind = PushRuleKind.room,
+            ...     rule_id = "!foo123:example.org",
+            ...     actions = [PushNotify(), PushSetTweak("sound", "default")],
+            ... )
+            ...
+            ... client.set_pushrule(
+            ...     scope = "global",
+            ...     kind = PushRuleKind.override,
+            ...     rule_id = "silence_large_rooms",
+            ...     actions = [],
+            ...     conditions = [PushRoomMemberCount(10, ">")],
+            ... )
+            ...
+            ... client.set_pushrule(
+            ...     scope = "global",
+            ...     kind = PushRuleKind.content,
+            ...     rule_id = "highlight_messages_containing_nio_word",
+            ...     actions = [PushNotify(), PushSetTweak("highlight", True)],
+            ...     pattern = "nio"
+            ... )
+
+        """
+
+        method, path, data = Api.set_pushrule(
+            self.access_token,
+            scope, kind, rule_id, before, after, actions, conditions, pattern,
+        )
+
+        return await self._send(SetPushRuleResponse, method, path, data)
+
+    @logged_in
+    async def delete_pushrule(
+        self, scope: str, kind: PushRuleKind, rule_id: str,
+    ) -> Union[DeletePushRuleResponse, DeletePushRuleError]:
+        """Delete an existing push rule.
+
+        Returns either a `DeletePushRuleResponse` if the request was
+        successful or a `DeletePushRuleError` if there was an error
+        with the request.
+
+        Args:
+            scope (str): The scope of this rule, e.g. ``"global"``.
+                Homeservers currently only process ``global`` rules for
+                event matching, while ``device`` rules are a planned feature.
+                It is up to clients to interpret any other scope name.
+
+            kind (PushRuleKind): The kind of rule.
+
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+        """
+
+        method, path = Api.delete_pushrule(
+            self.access_token, scope, kind, rule_id,
+        )
+
+        return await self._send(DeletePushRuleResponse, method, path)
+
+    @logged_in
+    async def enable_pushrule(
+        self,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
+        enable: bool,
+    ) -> Union[EnablePushRuleResponse, EnablePushRuleError]:
+        """Enable or disable an existing push rule.
+
+        Returns either a `EnablePushRuleResponse` if the request was
+        successful or a `EnablePushRuleError` if there was an error
+        with the request.
+
+        Args:
+            scope (str): The scope of this rule, e.g. ``"global"``.
+                Homeservers currently only process ``global`` rules for
+                event matching, while ``device`` rules are a planned feature.
+                It is up to clients to interpret any other scope name.
+
+            kind (PushRuleKind): The kind of rule.
+
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+
+            enable (bool): Whether to enable or disable this rule.
+        """
+
+        method, path, data = Api.enable_pushrule(
+            self.access_token, scope, kind, rule_id, enable,
+        )
+
+        return await self._send(EnablePushRuleResponse, method, path, data)
+
+    @logged_in
+    async def set_pushrule_actions(
+        self,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
+        actions: Sequence[PushAction],
+    ) -> Union[SetPushRuleActionsResponse, SetPushRuleActionsError]:
+        """Set the actions for an existing built-in or user-created push rule.
+
+        Unlike ``set_pushrule``, this method can edit built-in server rules.
+
+        Returns the HTTP method, HTTP path and data for the request.
+        Returns either a `SetPushRuleActionsResponse` if the request was
+        successful or a `SetPushRuleActionsError` if there was an error
+        with the request.
+
+        Args:
+            scope (str): The scope of this rule, e.g. ``"global"``.
+                Homeservers currently only process ``global`` rules for
+                event matching, while ``device`` rules are a planned feature.
+                It is up to clients to interpret any other scope name.
+
+            kind (PushRuleKind): The kind of rule.
+
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+
+            actions (Sequence[PushAction]): Actions to perform when the
+                conditions for this rule are met. The given actions replace
+                the existing ones.
+        """
+
+        method, path, data = Api.set_pushrule_actions(
+            self.access_token, scope, kind, rule_id, actions,
+        )
+
+        return await self._send(SetPushRuleActionsResponse, method, path, data)

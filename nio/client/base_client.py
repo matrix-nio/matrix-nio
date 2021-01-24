@@ -218,6 +218,7 @@ class Client:
         self.ephemeral_callbacks: List[ClientCallback] = []
         self.to_device_callbacks: List[ClientCallback] = []
         self.presence_callbacks: List[ClientCallback] = []
+        self.global_account_data_callbacks: List[ClientCallback] = []
         self.room_account_data_callbacks: List[ClientCallback] = []
 
     @property
@@ -825,6 +826,14 @@ class Client:
                 if cb.filter is None or isinstance(event, cb.filter):
                     cb.func(event)
 
+    def _handle_global_account_data_events(
+        self, response: SyncResponse,
+    ) -> None:
+        for event in response.account_data_events:
+            for cb in self.global_account_data_callbacks:
+                if cb.filter is None or isinstance(event, cb.filter):
+                    cb.func(event)
+
     def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()
 
@@ -878,6 +887,8 @@ class Client:
         self._handle_joined_rooms(response)
 
         self._handle_presence_events(response)
+
+        self._handle_global_account_data_events(response)
 
         if self.olm:
             self._handle_expired_verifications()
@@ -1258,6 +1269,32 @@ class Client:
         cb = ClientCallback(callback, filter)
         self.ephemeral_callbacks.append(cb)
 
+    def add_global_account_data_callback(
+        self,
+        callback: Callable[[AccountDataEvent], None],
+        filter: Union[
+            Type[AccountDataEvent],
+            Tuple[Type[AccountDataEvent], ...],
+        ],
+    ) -> None:
+        """Add a callback that will be executed on global account data events.
+
+        Args:
+            callback (Callable[[AccountDataEvent], None]):
+                A function that will be
+                called if the event type in the filter argument is found in
+                the account data event list.
+
+            filter
+            (Union[Type[AccountDataEvent], Tuple[Type[AccountDataEvent, ...]]):
+                The event type or a tuple
+                containing multiple types for which the function
+                will be called.
+
+        """
+        cb = ClientCallback(callback, filter)
+        self.global_account_data_callbacks.append(cb)
+
     def add_room_account_data_callback(
         self,
         callback: Callable[[MatrixRoom, AccountDataEvent], None],
@@ -1269,7 +1306,7 @@ class Client:
         """Add a callback that will be executed on room account data events.
 
         Args:
-            callback (Callable[[MatrixRoom, ToDeviceEvent], None]):
+            callback (Callable[[MatrixRoom, AccountDataEvent], None]):
                 A function that will be
                 called if the event type in the filter argument is found in
                 the room account data event list.

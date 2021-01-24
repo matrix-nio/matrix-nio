@@ -20,9 +20,11 @@ from nio import (ContentRepositoryConfigResponse,
                  DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  DevicesResponse, DeleteDevicesAuthResponse,
                  DeleteDevicesResponse,
+                 DeletePushRuleResponse,
                  DiscoveryInfoError, DiscoveryInfoResponse,
                  DownloadResponse, ErrorResponse,
                  FullyReadEvent,
+                 EnablePushRuleResponse,
                  GroupEncryptionError,
                  JoinResponse, JoinedRoomsResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
@@ -37,6 +39,20 @@ from nio import (ContentRepositoryConfigResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
                  PresenceGetResponse, PresenceSetResponse,
                  PresenceEvent,
+                 PushCoalesce,
+                 PushContainsDisplayName,
+                 PushDontNotify,
+                 PushEventMatch,
+                 PushNotify,
+                 PushRoomMemberCount,
+                 PushRule,
+                 PushRulesEvent,
+                 PushRuleset,
+                 PushRuleKind,
+                 PushSenderNotificationPermission,
+                 PushSetTweak,
+                 PushUnknownAction,
+                 PushUnknownCondition,
                  RoomBanResponse,
                  RoomTypingResponse, RoomCreateResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
@@ -49,6 +65,8 @@ from nio import (ContentRepositoryConfigResponse,
                  RoomRedactResponse, RoomResolveAliasResponse,
                  RoomSendResponse, RoomSummary,
                  RoomUnbanResponse,
+                 SetPushRuleResponse,
+                 SetPushRuleActionsResponse,
                  ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
                  Timeline, TransferMonitor, TransferCancelledError,
@@ -795,6 +813,101 @@ class TestClass:
         room = async_client.rooms["!SVkFJHzfwvuaIEawgC:localhost"]
         assert room.unread_notifications == 11
         assert room.unread_highlights == 1
+
+    async def test_sync_push_rules(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/sync?access_token=abc123",
+            status=200,
+            payload=self.sync_response,
+        )
+
+        resp = await async_client.sync()
+        assert isinstance(resp, SyncResponse)
+
+        rules = resp.account_data_events[0]
+        assert isinstance(rules, PushRulesEvent)
+        assert isinstance(rules.global_rules, PushRuleset)
+        assert isinstance(rules.device_rules, PushRuleset)
+
+        # Test __bool__ implementations
+        assert bool(rules) is True
+        assert bool(rules.device_rules) is False
+
+        assert rules.global_rules.override == [
+            PushRule(
+                kind = PushRuleKind.override,
+                id = ".m.rule.suppress_notices",
+                default = True,
+                enabled = False,
+                actions = [PushDontNotify()],
+                conditions = [PushEventMatch("content.msgtype", "m.notice")],
+            ),
+        ]
+
+        assert rules.global_rules.content == [
+            PushRule(
+                kind = PushRuleKind.content,
+                id = ".m.rule.contains_user_name",
+                default = True,
+                pattern = "alice",
+                actions = [
+                    PushNotify(),
+                    PushUnknownAction("do_special_thing"),
+                    PushSetTweak("sound", "default"),
+                    PushSetTweak("highlight", True),
+                ],
+            ),
+        ]
+
+        assert not rules.global_rules.room
+        assert not rules.global_rules.sender
+
+        assert rules.global_rules.underride == [
+            PushRule(
+                kind = PushRuleKind.underride,
+                id = ".m.rule.special_call",
+                default = True,
+                conditions = [
+                    PushUnknownCondition({"kind": "special_kind"}),
+                    PushEventMatch("type", "m.call.invite"),
+                ],
+                actions = [
+                    PushCoalesce(),
+                    PushSetTweak("sound", "ring"),
+                    PushSetTweak("highlight", False),
+                ],
+            ),
+            PushRule(
+                kind = PushRuleKind.underride,
+                id = ".m.rule.room_less_than_10_room_perm",
+                default = True,
+                conditions = [
+                    PushSenderNotificationPermission("room"),
+                    PushRoomMemberCount(10, "<"),
+                    PushEventMatch("type", "m.room.message"),
+                ],
+                actions = [PushNotify()],
+            ),
+            PushRule(
+                kind = PushRuleKind.underride,
+                id = ".m.rule.room_one_to_one",
+                default = True,
+                conditions = [
+                    PushRoomMemberCount(2, "=="),
+                    PushEventMatch("type", "m.room.message"),
+                ],
+                actions = [
+                    PushNotify(),
+                    PushSetTweak("sound", "default"),
+                    PushSetTweak("highlight", False),
+                ],
+            ),
+        ]
 
     def test_keys_upload(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
@@ -4129,3 +4242,147 @@ class TestClass:
         )
         assert isinstance(resp, UploadFilterResponse)
         assert resp.filter_id == "abc123"
+
+    async def test_global_account_data_cb(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        class CallbackCalled(Exception):
+            pass
+
+        async def cb(_event):
+            raise CallbackCalled()
+
+        async_client.add_global_account_data_callback(cb, PushRulesEvent)
+
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/sync?access_token=abc123",
+            status=200,
+            payload=self.sync_response,
+        )
+
+        with pytest.raises(CallbackCalled):
+            await async_client.sync()
+
+    async def test_set_pushrule(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        override = ("global", PushRuleKind.override, "foo")
+        content = ("global", PushRuleKind.content, "bar")
+
+        # Ensure before and after can't be specified together
+        with pytest.raises(TypeError):
+            await async_client.set_pushrule(*override, before="x", after="y")
+
+        # Test before + override with condition
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo?access_token=abc123&before=ov1",
+            body={
+                "actions": [],
+                "conditions": [{"kind": "contains_display_name"}],
+            },
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.set_pushrule(
+            *override, before="ov1", conditions=[PushContainsDisplayName()],
+        )
+        assert isinstance(resp, SetPushRuleResponse)
+
+        # Test after + override with action
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo?access_token=abc123&after=ov1",
+            body={"actions": ["notify"], "conditions": []},
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.set_pushrule(
+            *override, after="ov1", actions=[PushNotify()], conditions=[],
+        )
+        assert isinstance(resp, SetPushRuleResponse)
+
+        # Ensure conditions can't be specified with non-override/underride rule
+        with pytest.raises(TypeError):
+            await async_client.set_pushrule(*content, conditions=())
+
+        # Ensure pattern can't be specified with non-content rule
+        with pytest.raises(TypeError):
+            await async_client.set_pushrule(*override, pattern="notContent!")
+
+        # Test content pattern rule
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/content/bar?access_token=abc123",
+            body={"actions": [], "pattern": "foo*bar"},
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.set_pushrule(*content, pattern="foo*bar")
+        assert isinstance(resp, SetPushRuleResponse)
+
+    async def test_delete_pushrule(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        aioresponse.delete(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo?access_token=abc123",
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.delete_pushrule(
+            "global", PushRuleKind.override, "foo",
+        )
+        assert isinstance(resp, DeletePushRuleResponse)
+
+    async def test_enable_pushrule(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo/enabled?access_token=abc123",
+            body={"enabled": True},
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.enable_pushrule(
+            "global", PushRuleKind.override, "foo", enable=True,
+        )
+        assert isinstance(resp, EnablePushRuleResponse)
+
+    async def test_set_pushrule_actions(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo/actions?access_token=abc123",
+            body={"actions": [{"set_tweak": "highlight", "value": True}]},
+            status=200,
+            payload={},
+        )
+
+        tweak = PushSetTweak("highlight", True)
+        resp = await async_client.set_pushrule_actions(
+            "global", PushRuleKind.override, "foo", [tweak],
+        )
+        assert isinstance(resp, SetPushRuleActionsResponse)

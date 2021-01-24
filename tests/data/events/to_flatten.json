@@ -1,0 +1,12 @@
+{
+    "content": {
+        "body": "foo",
+        "m.dotted": {
+            "key": "bar"
+        }
+    },
+    "event_id": "!test:example.org",
+    "origin_server_ts": 0,
+    "sender": "@alice:example.org",
+    "type": "m.flatten_test"
+}

@@ -20,7 +20,8 @@
             "@carol:localhost": 25,
             "@bob:localhost": 0
         },
-        "users_default": 0
+        "users_default": 0,
+        "notifications": {"room": 60}
     },
     "event_id": "$15139375512JaHAW:localhost",
     "origin_server_ts": 1513937551359,
