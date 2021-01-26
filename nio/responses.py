@@ -328,7 +328,7 @@ class FileResponse(Response):
 @dataclass
 class ErrorResponse(Response):
     message: str = field()
-    status_code: Optional[int] = None
+    status_code: Optional[str] = None
     retry_after_ms: Optional[int] = None
     soft_logout: bool = False
 
