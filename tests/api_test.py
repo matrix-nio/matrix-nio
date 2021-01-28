@@ -24,3 +24,15 @@ class TestClass:
             expected_path = f"/_matrix/client/r0/profile/{encoded}"
             (method, actual_path) = api.profile_get(unencoded)
             assert actual_path == expected_path
+
+    def test_profile_get_authed(self) -> None:
+        """Test that profile_get sets access_token in query param"""
+        api = Api()
+        user_id = "@bob:example.com"
+        encoded = "%40bob%3Aexample.com"
+        token = "SECRET_TOKEN"
+
+        expected = f"/_matrix/client/r0/profile/{encoded}?access_token={token}"
+        resp = api.profile_get(user_id, token)
+
+        assert resp == ('GET', expected)

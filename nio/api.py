@@ -1487,19 +1487,28 @@ class Api:
         )
 
     @staticmethod
-    def profile_get(user_id: str) -> Tuple[str, str]:
+    def profile_get(user_id: str, access_token: str = None) -> Tuple[str, str]:
         """Get the combined profile information for a user.
 
         Returns the HTTP method and HTTP path for the request.
 
         Args:
             user_id (str): User id to get the profile for.
+            access_token (str): The access token to be used with the request. If
+                                omitted, an unauthenticated request is perfomed.
         """
         assert user_id
-        return "GET", Api._build_path(path=["profile", user_id])
+
+        query_parameters = {}
+        if access_token is not None:
+            query_parameters["access_token"] = access_token
+
+        path = ["profile", user_id]
+
+        return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def profile_get_displayname(user_id):
+    def profile_get_displayname(user_id, access_token: str = None):
         # type (str, str) -> Tuple[str, str]
         """Get display name.
 
@@ -1507,10 +1516,16 @@ class Api:
 
         Args:
             user_id (str): User id to get display name for.
+            access_token (str): The access token to be used with the request. If
+                                omitted, an unauthenticated request is perfomed.
         """
+        query_parameters = {}
+        if access_token is not None:
+            query_parameters["access_token"] = access_token
+
         path = ["profile", user_id, "displayname"]
 
-        return "GET", Api._build_path(path)
+        return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
     def profile_set_displayname(access_token, user_id, display_name):
@@ -1535,7 +1550,7 @@ class Api:
         )
 
     @staticmethod
-    def profile_get_avatar(user_id):
+    def profile_get_avatar(user_id, access_token: str = None):
         # type (str, str) -> Tuple[str, str]
         """Get avatar URL.
 
@@ -1543,10 +1558,15 @@ class Api:
 
         Args:
             user_id (str): User id to get avatar for.
+            access_token (str): The access token to be used with the request. If
+                                omitted, an unauthenticated request is perfomed.
         """
+        query_parameters = {}
+        if access_token is not None:
+            query_parameters["access_token"] = access_token
         path = ["profile", user_id, "avatar_url"]
 
-        return "GET", Api._build_path(path)
+        return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
     def profile_set_avatar(access_token, user_id, avatar_url):
