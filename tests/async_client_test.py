@@ -35,7 +35,8 @@ from nio import (ContentRepositoryConfigResponse,
                  RegisterResponse,
                  RoomContextResponse, RoomForgetResponse,
                  ProfileGetAvatarResponse,
-                 ProfileGetDisplayNameResponse, ProfileGetResponse,
+                 ProfileGetDisplayNameResponse,
+                 ProfileGetError, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
                  PresenceGetResponse, PresenceSetResponse,
                  PresenceEvent,
@@ -362,6 +363,10 @@ class TestClass:
     @staticmethod
     def get_profile_response(displayname, avatar_url):
         return {"displayname": displayname, "avatar_url": avatar_url}
+
+    @staticmethod
+    def get_profile_unauth_error_response():
+        return {"errcode": "M_MISSING_TOKEN", "error": "Missing access token"}
 
     @staticmethod
     def get_displayname_response(displayname):
@@ -2303,6 +2308,40 @@ class TestClass:
         assert resp.displayname == name
         assert resp.avatar_url.replace("#auto", "") == avatar
 
+    async def test_get_profile_auth_required(self,
+                                             async_client: AsyncClient,
+                                             aioresponse: aioresponses):
+        login = self.login_response
+        token = login['access_token']
+        user_id = login['user_id']
+
+        name = faker.name()
+        avatar = faker.avatar_url().replace("#auto", "")
+
+        base_url = "https://example.org/_matrix/client/r0"
+        url = "{}/profile/{}".format(base_url, user_id)
+
+        aioresponse.get(
+            url,
+            status=401,
+            payload=self.get_profile_unauth_error_response()
+        )
+
+        aioresponse.get(
+            '{}?access_token={}'.format(url, token),
+            status=200,
+            payload=self.get_profile_response(name, avatar)
+        )
+
+        resp = await async_client.get_profile(user_id)
+        assert isinstance(resp, ProfileGetError)
+
+        await async_client.receive_response(LoginResponse.from_dict(login))
+        assert async_client.logged_in
+
+        resp = await async_client.get_profile()
+        assert isinstance(resp, ProfileGetResponse)
+
     async def test_get_presence(self, async_client, aioresponse):
         """Test if we can get the presence state of a user
         """
@@ -2486,9 +2525,11 @@ class TestClass:
         assert async_client.logged_in
 
         base_url = "https://example.org/_matrix/client/r0"
-
+        url = "{}/profile/{}/displayname?access_token={}".format(
+            base_url, async_client.user_id, async_client.access_token
+        )
         aioresponse.get(
-            "{}/profile/{}/displayname".format(base_url, async_client.user_id),
+            url,
             status=200,
             payload=self.get_displayname_response(None)
         )
@@ -2497,9 +2538,7 @@ class TestClass:
         assert not resp.displayname
 
         aioresponse.put(
-            "{}/profile/{}/displayname?access_token={}".format(
-                base_url, async_client.user_id, async_client.access_token
-            ),
+            url,
             status=200,
             payload={}
         )
@@ -2508,7 +2547,7 @@ class TestClass:
         assert isinstance(resp2, ProfileSetDisplayNameResponse)
 
         aioresponse.get(
-            "{}/profile/{}/displayname".format(base_url, async_client.user_id),
+            url,
             status=200,
             payload=self.get_displayname_response(new_name)
         )
@@ -2523,9 +2562,12 @@ class TestClass:
         assert async_client.logged_in
 
         base_url = "https://example.org/_matrix/client/r0"
+        url = "{}/profile/{}/avatar_url?access_token={}".format(
+            base_url, async_client.user_id, async_client.access_token
+        )
 
         aioresponse.get(
-            "{}/profile/{}/avatar_url".format(base_url, async_client.user_id),
+            url,
             status=200,
             payload=self.get_avatar_response(None)
         )
@@ -2534,9 +2576,7 @@ class TestClass:
         assert not resp.avatar_url
 
         aioresponse.put(
-            "{}/profile/{}/avatar_url?access_token={}".format(
-                base_url, async_client.user_id, async_client.access_token
-            ),
+            url,
             status=200,
             payload={}
         )
@@ -2545,7 +2585,7 @@ class TestClass:
         assert isinstance(resp2, ProfileSetAvatarResponse)
 
         aioresponse.get(
-            "{}/profile/{}/avatar_url".format(base_url, async_client.user_id),
+            url,
             status=200,
             payload=self.get_avatar_response(new_avatar)
         )

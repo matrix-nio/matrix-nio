@@ -2732,7 +2732,10 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the profile for.
         """
-        method, path = Api.profile_get(user_id or self.user_id)
+        method, path = Api.profile_get(
+            user_id or self.user_id,
+            access_token=self.access_token or None
+        )
 
         return await self._send(ProfileGetResponse, method, path,)
 
@@ -2816,7 +2819,10 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the display name for.
         """
-        method, path = Api.profile_get_displayname(user_id or self.user_id)
+        method, path = Api.profile_get_displayname(
+            user_id or self.user_id,
+            access_token=self.access_token or None
+        )
 
         return await self._send(ProfileGetDisplayNameResponse, method, path,)
 
@@ -2864,7 +2870,10 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the avatar for.
         """
-        method, path = Api.profile_get_avatar(user_id or self.user_id)
+        method, path = Api.profile_get_avatar(
+            user_id or self.user_id,
+            access_token=self.access_token or None
+        )
 
         return await self._send(ProfileGetAvatarResponse, method, path,)
 
