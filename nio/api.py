@@ -35,7 +35,6 @@ from typing import (
 )
 
 from .exceptions import LocalProtocolError
-from .http import Http2Request, HttpRequest, TransportRequest
 
 if TYPE_CHECKING:
     from .events.account_data import PushAction, PushCondition
