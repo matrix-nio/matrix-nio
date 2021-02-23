@@ -1324,7 +1324,7 @@ class PowerLevels:
         return can_ban_lower and level > self.get_user_level(target_user_id)
 
     def can_user_redact(self, user_id: str):
-        """Return whether a user has enough power to react other user's events.
+        """Return whether a user has enough power to redact other user's events.
         """
         return self.get_user_level(user_id) >= self.defaults.redact
 
