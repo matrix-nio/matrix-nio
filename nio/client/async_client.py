@@ -53,6 +53,7 @@ from aiohttp import (
 )
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.connector import Connection
+from aiohttp_socks import ProxyConnector
 
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
@@ -253,9 +254,12 @@ def client_session(func):
             trace = TraceConfig()
             trace.on_request_chunk_sent.append(on_request_chunk_sent)
 
+            connector = ProxyConnector.from_url(self.proxy) if self.proxy \
+                else None
             self.client_session = ClientSession(
                 timeout=ClientTimeout(total=self.config.request_timeout),
                 trace_configs=[trace],
+                connector=connector,
             )
 
             self.client_session.connector.connect = partial(
@@ -327,7 +331,8 @@ class AsyncClient(Client):
             default SSL check (ssl.create_default_context() is used), False
             for skip SSL certificate validation connection.
         proxy (str, optional): The proxy that should be used for the HTTP
-            connection.
+            connection. Supports SOCKS4(a), SOCKS5, HTTP (tunneling) via an
+            URL like e.g. 'socks5://user:password@127.0.0.1:1080'.
 
     Attributes:
         synced (Event): An asyncio event that is fired every time the client
@@ -803,7 +808,6 @@ class AsyncClient(Client):
             self.homeserver + path,
             data=data,
             ssl=self.ssl,
-            proxy=self.proxy,
             headers=headers,
             trace_request_ctx=trace_context,
             timeout=self.config.request_timeout
