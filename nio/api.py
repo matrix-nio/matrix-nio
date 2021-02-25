@@ -1806,7 +1806,7 @@ class Api:
                     "conditions can only be set for override/underride rules",
                 )
 
-            content["conditions"] = [c.as_value for c in conditions],
+            content["conditions"] = [c.as_value for c in conditions]
 
         return (
             "PUT",
