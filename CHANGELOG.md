@@ -53,8 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   full member list has been fetched for the room.
 
 [#216]: https://github.com/poljar/matrix-nio/pull/216
-[[ffc4228]]: https://github.com/poljar/matrix-nio/commit/ffc42287c22a1179a9be7d4e47555693417f715d
-[[c123e24]]: https://github.com/poljar/matrix-nio/commit/c123e24c8df81c55d40973470b825e78fd2f92a2
+[ffc4228]: https://github.com/poljar/matrix-nio/commit/ffc42287c22a1179a9be7d4e47555693417f715d
+[c123e24]: https://github.com/poljar/matrix-nio/commit/c123e24c8df81c55d40973470b825e78fd2f92a2
 
 ## 0.15.0 - 2020-08-21
 
