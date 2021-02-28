@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.17.0 - 2021-02-28
+
+- [[#228]] Add support for global account data 
+- [[#222]] Add support for push rules events and API
+- [[#233]] Treat `device_lists` in `SyncResponse` as optional
+- [[#239]] Add support for authenticated `/profile` requests
+- [[#246]] Add support for SOCKS5 proxies
+
+[#228]: https://github.com/poljar/matrix-nio/pull/228
+[#222]: https://github.com/poljar/matrix-nio/pull/222
+[#233]: https://github.com/poljar/matrix-nio/pull/233
+[#239]: https://github.com/poljar/matrix-nio/pull/239
+[#246]: https://github.com/poljar/matrix-nio/pull/246
+
 ## 0.16.0 - 2021-01-18
 
 - [[#235]] Expose the whoami API endpoint in the AsyncClient.
