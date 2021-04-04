@@ -1067,9 +1067,10 @@ class Schemas:
                     "body": {"type": "string"},
                     "url": {"type": "string"},
                 },
+                "required": ["body", "url"],
             },
         },
-        "required": ["sender", "body", "url"],
+        "required": ["sender"],
     }
 
     room_resolve_alias = {
