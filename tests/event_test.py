@@ -12,6 +12,7 @@ from nio.events import (
     PowerLevelsEvent,
     RedactedEvent,
     RedactionEvent,
+    StickerEvent,
     RoomAliasEvent,
     RoomCreateEvent,
     RoomGuestAccessEvent,
@@ -217,6 +218,11 @@ class TestClass:
         parsed_dict = TestClass._load_response("tests/data/events/redaction.json")
         event = RedactionEvent.from_dict(parsed_dict)
         assert isinstance(event, RedactionEvent)
+
+    def test_sticker(self):
+        parsed_dict = TestClass._load_response("tests/data/events/sticker.json")
+        event = StickerEvent.from_dict(parsed_dict)
+        assert isinstance(event, StickerEvent)
 
     def test_empty_event(self):
         parsed_dict = {}

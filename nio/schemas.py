@@ -1057,6 +1057,21 @@ class Schemas:
         "required": ["sender", "redacts"],
     }
 
+    sticker = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "body": {"type": "string"},
+                    "url": {"type": "string"},
+                },
+            },
+        },
+        "required": ["sender", "body", "url"],
+    }
+
     room_resolve_alias = {
         "type": "object",
         "properties": {

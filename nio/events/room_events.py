@@ -162,6 +162,8 @@ class Event:
             return RedactionEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.encrypted":
             return Event.parse_encrypted_event(event_dict)
+        elif event_dict["type"] == "m.sticker":
+            return StickerEvent.parse_event(event_dict)
         elif event_dict["type"].startswith("m.call"):
             return CallEvent.parse_event(event_dict)
 
@@ -1455,4 +1457,42 @@ class RoomMemberEvent(Event):
             prev_membership,
             content,
             prev_content,
+        )
+
+
+@dataclass
+class StickerEvent(Event):
+    """An event indicating the use of a sticker
+
+    Sticker messages are specialised image messages that are displayed
+    without controls. Sticker messages are intended to provide simple
+    "reaction" events in the message timeline.
+
+    Attributes:
+        body (str): A textual representation or associated description of
+        the sticker image. This could be the alt text of the original image,
+        or a message to accompany and further describe the sticker.
+        url (str): The URL to the sticker image.
+        content (dict): The content of the of the redaction event.
+
+    """
+
+    body: str = field()
+    url: str = field()
+    content: Dict[str, Any] = field()
+
+    @classmethod
+    @verify(Schemas.sticker)
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[StickerEvent, BadEventType]
+        content = parsed_dict.get("content", {})
+
+        body = content["body"]
+        url = content["url"]
+
+        return cls(
+            parsed_dict,
+            body,
+            url,
+            content,
         )
