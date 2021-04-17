@@ -218,6 +218,7 @@ SynchronousFile = (
     io.TextIOBase,
     io.BufferedReader,
     io.BufferedRandom,
+    io.BytesIO,
     io.FileIO
 )
 AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
