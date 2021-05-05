@@ -325,6 +325,7 @@ class Schemas:
         "properties": {
             "device_one_time_keys_count": {
                 "type": "object",
+                "default": {},
                 "properties": {
                     "curve25519": {"type": "integer", "default": 0},
                     "signed_curve25519": {"type": "integer", "default": 0},
@@ -452,7 +453,7 @@ class Schemas:
             "presence": {
                 "type": "object",
                 "properties": {
-                    "events": {"type": "array"}
+                    "events": {"type": "array", "default": []},
                 },
                 "required": ["events"]
             }
