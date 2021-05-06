@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.18.0 - 2021-05-06
+
+- [[#256]] Upgrade our dependencies
+- [[#255]] Relax the sync response json schema
+- [[#253]] Support the BytesIO type for uploads
+- [[#252]] Add a sticker events type
+
+[#256]: https://github.com/poljar/matrix-nio/pull/256
+[#255]: https://github.com/poljar/matrix-nio/pull/255
+[#253]: https://github.com/poljar/matrix-nio/pull/253
+[#252]: https://github.com/poljar/matrix-nio/pull/252
+
 ## 0.17.0 - 2021-03-01
 
 - [[#228]] Add support for global account data 
