@@ -327,12 +327,13 @@ class Schemas:
                 "type": "object",
                 "default": {},
                 "properties": {
-                    "curve25519": {"type": "integer", "default": 0},
-                    "signed_curve25519": {"type": "integer", "default": 0},
+                    "curve25519": {"type": "integer"},
+                    "signed_curve25519": {"type": "integer"},
                 }
             },
             "device_lists": {
                 "type": "object",
+                "default": {},
                 "properties": {
                     "changed": {"type": "array", "items": {"type": "string"}},
                     "left": {"type": "array", "items": {"type": "string"}}
@@ -341,28 +342,32 @@ class Schemas:
             "next_batch": {"type": "string"},
             "rooms": {
                 "type": "object",
+                "default": {},
                 "properties": {
                     "invite": {
                         "type": "object",
+                        "default": {},
                         "patternProperties": {
                             RoomRegex: {
                                 "type": "object",
                                 "properties": {
                                     "invite_state": {
                                         "type": "object",
+                                        "default": {},
                                         "properties": {
-                                            "events": {"type": "array"}
+                                            "events": {
+                                                "type": "array",
+                                                "default": [],
+                                            }
                                         },
-                                        "required": ["events"]
                                     }
                                 },
-                                "required": ["invite_state"]
                             }
                         },
-                        "additionalProperties": False,
                     },
                     "join": {
                         "type": "object",
+                        "default": {},
                         "patternProperties": {
                             RoomRegex: {
                                 "type": "object",
@@ -370,17 +375,23 @@ class Schemas:
                                     "timeline": room_timeline,
                                     "state": {
                                         "type": "object",
+                                        "default": {},
                                         "properties": {
-                                            "events": {"type": "array"}
+                                            "events": {
+                                                "type": "array",
+                                                "default": [],
+                                            },
                                         },
-                                        "required": ["events"]
                                     },
                                     "ephemeral": {
                                         "type": "object",
+                                        "default": {},
                                         "properties": {
-                                            "events": {"type": "array"}
+                                            "events": {
+                                                "type": "array",
+                                                "default": [],
+                                            }
                                         },
-                                        "required": ["events"]
                                     },
                                     "summary": {
                                         "type": "object",
@@ -399,71 +410,67 @@ class Schemas:
                                     },
                                     "account_data": {
                                         "type": "object",
+                                        "default": {},
                                         "properties": {
-                                            "events": {"type": "array"}
+                                            "events": {
+                                                "type": "array",
+                                                "default": [],
+                                            },
                                         },
-                                        "required": ["events"]
                                     },
                                 },
-                                "required": [
-                                    "timeline",
-                                    "state",
-                                    "ephemeral",
-                                    "account_data",
-                                ]
                             }
                         },
-                        "additionalProperties": False,
                     },
                     "leave": {
                         "type": "object",
+                        "default": {},
                         "patternProperties": {
                             RoomRegex: {
                                 "type": "object",
                                 "properties": {
                                     "timeline": {
                                         "type": "object",
+                                        "default": {},
                                         "properties": {
-                                            "events": {"type": "array"}
+                                            "events": {
+                                                "type": "array",
+                                                "default": [],
+                                            },
                                         },
-                                        "required": ["events"]
                                     },
                                     "state": {
                                         "type": "object",
+                                        "default": {},
                                         "properties": {
-                                            "events": {"type": "array"}
+                                            "events": {
+                                                "type": "array",
+                                                "default": [],
+                                            },
                                         },
-                                        "required": ["events"]
                                     }
                                 },
-                                "required": ["timeline", "state"]
                             }
                         },
-                        "additionalProperties": False,
                     },
                 },
             },
             "to_device": {
                 "type": "object",
+                "default": {},
                 "properties": {
-                    "events": {"type": "array"}
+                    "events": {"type": "array", "default": []}
                 },
-                "required": ["events"]
             },
             "presence": {
                 "type": "object",
+                "default": {},
                 "properties": {
                     "events": {"type": "array", "default": []},
                 },
-                "required": ["events"]
             }
         },
-        "required": [
-            "next_batch",
-            "device_one_time_keys_count",
-            "rooms",
-            "to_device",
-        ],
+        "required": ["next_batch"],
     }
 
     room_event = {
@@ -986,7 +993,6 @@ class Schemas:
                         "patternProperties": {
                             EventTypeRegex: {"type": "integer"}
                         },
-                        "additionalProperties": False,
                     },
                     "users": {
                         "type": "object",
@@ -994,7 +1000,6 @@ class Schemas:
                         "patternProperties": {
                             UserIdRegex: {"type": "integer"}
                         },
-                        "additionalProperties": False,
                     },
                     "notifications": {
                         "type": "object",
@@ -1002,7 +1007,6 @@ class Schemas:
                         "properties": {
                             "room": {"type": "integer", "default": 50},
                         },
-                        "additionalProperties": {"type": "integer"},
                     },
                 },
             },
@@ -1088,14 +1092,12 @@ class Schemas:
         "type": "object",
         "properties": {"event_id": {"type": "string"}},
         "required": ["event_id"],
-        "additionalProperties": False,
     }
 
     room_id = {
         "type": "object",
         "properties": {"room_id": {"type": "string"}},
         "required": ["room_id"],
-        "additionalProperties": False,
     }
 
     room_create_response = {
@@ -1112,7 +1114,6 @@ class Schemas:
             "end": {"type": "string"},
         },
         "required": ["chunk", "start", "end"],
-        "additionalProperties": False,
     }
 
     room_context = {
@@ -1133,7 +1134,6 @@ class Schemas:
             "events_after",
             "event",
         ],
-        "additionalProperties": False,
     }
 
     invite_event = {
@@ -1171,7 +1171,6 @@ class Schemas:
             "room_id": {"type": "string"}
         },
         "required": ["content", "type"],
-        "additionalProperties": False,
     }
 
     m_receipt = {
@@ -1203,7 +1202,6 @@ class Schemas:
             "room_id": {"type": "string"}
         },
         "required": ["content", "type"],
-        "additionalProperties": True,
     }
 
     keys_upload = {
@@ -1644,7 +1642,6 @@ class Schemas:
         "type": "object",
         "properties": {"content_uri": {"type": "string"}},
         "required": ["content_uri"],
-        "additionalProperties": False,
     }
 
     content_repository_config = {

@@ -189,8 +189,8 @@ class Rooms:
 
 @dataclass
 class DeviceOneTimeKeyCount:
-    curve25519: int = field()
-    signed_curve25519: int = field()
+    curve25519: Optional[int] = field()
+    signed_curve25519: Optional[int] = field()
 
 
 @dataclass
@@ -1747,8 +1747,8 @@ class SyncResponse(Response):
 
         key_count_dict = parsed_dict["device_one_time_keys_count"]
         key_count = DeviceOneTimeKeyCount(
-            key_count_dict["curve25519"],
-            key_count_dict["signed_curve25519"]
+            key_count_dict.get("curve25519"),
+            key_count_dict.get("signed_curve25519")
         )
 
         devices = DeviceList(

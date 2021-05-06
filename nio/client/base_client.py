@@ -846,9 +846,10 @@ class Client:
         assert self.olm
 
         changed_users = set()
-        self.olm.uploaded_key_count = (
-            response.device_key_count.signed_curve25519
-        )
+        if response.device_key_count.signed_curve25519:
+            self.olm.uploaded_key_count = (
+                response.device_key_count.signed_curve25519
+            )
 
         for user in response.device_list.changed:
             for room in self.rooms.values():
