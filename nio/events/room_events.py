@@ -163,7 +163,7 @@ class Event:
         elif event_dict["type"] == "m.room.encrypted":
             return Event.parse_encrypted_event(event_dict)
         elif event_dict["type"] == "m.sticker":
-            return StickerEvent.parse_event(event_dict)
+            return StickerEvent.from_dict(event_dict)
         elif event_dict["type"].startswith("m.call"):
             return CallEvent.parse_event(event_dict)
 
