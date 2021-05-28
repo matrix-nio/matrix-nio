@@ -220,8 +220,8 @@ class Olm:
                 self.user_id, self.device_id))
             account = OlmAccount()
             self.save_account(account)
-        else:
-            self.load()
+
+        self.load()
 
         self.account = account  # type: OlmAccount
 
