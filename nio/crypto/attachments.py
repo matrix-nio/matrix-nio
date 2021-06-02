@@ -60,12 +60,13 @@ def decrypt_attachment(ciphertext: bytes, key: str, hash: str, iv: str):
         raise EncryptionError("Error decoding key.")
 
     try:
-        # Drop last 8 bytes, which are 0
-        byte_iv: bytes = unpaddedbase64.decode_base64(iv)[:8]
+        byte_iv: bytes = unpaddedbase64.decode_base64(iv)
     except (BinAsciiError, TypeError):
         raise EncryptionError("Error decoding initial values.")
 
-    ctr = Counter.new(64, prefix=byte_iv, initial_value=0)
+    prefix: bytes = byte_iv[:8]
+    cnt: int = int.from_bytes(byte_iv[8:], 'big')
+    ctr = Counter.new(64, prefix=prefix, initial_value=cnt)
 
     try:
         cipher = AES.new(byte_key, AES.MODE_CTR, counter=ctr)
