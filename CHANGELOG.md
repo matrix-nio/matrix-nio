@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.18.2 - 2021-06-03
+
+- [[#261]] Use the IV as is when decrypting attachments
+- [[#260]] Always load the crypto data, even if a new account was made
+
+[#260]: https://github.com/poljar/matrix-nio/pull/260
+[#261]: https://github.com/poljar/matrix-nio/pull/261
+
 ## 0.18.1 - 2021-05-07
 
 - [[#258]] Fix sticker event parsing
@@ -25,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.17.0 - 2021-03-01
 
-- [[#228]] Add support for global account data 
+- [[#228]] Add support for global account data
 - [[#222]] Add support for push rules events and API
 - [[#233]] Treat `device_lists` in `SyncResponse` as optional
 - [[#239]] Add support for authenticated `/profile` requests
@@ -62,12 +70,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- [[#216]] `AsyncClient.room_get_state_event()`: return a 
+- [[#216]] `AsyncClient.room_get_state_event()`: return a
   `RoomGetStateEventError` if the server returns a 404 error for the request
 - [[ffc4228]] When fetching the full list of room members, discard the members
   we previously had that are absent from the full list
-- [[c123e24]] `MatrixRoom.members_synced`: instead of depending on the 
-  potentially outdated room summary member count, become `True` when the 
+- [[c123e24]] `MatrixRoom.members_synced`: instead of depending on the
+  potentially outdated room summary member count, become `True` when the
   full member list has been fetched for the room.
 
 [#216]: https://github.com/poljar/matrix-nio/pull/216
@@ -84,12 +92,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- [[#206]] Fix `AsyncClient.room_messages()` to not accept filter IDs, using 
+- [[#206]] Fix `AsyncClient.room_messages()` to not accept filter IDs, using
   one results in a server error
 - [[4b6ea92]] Fix the `SqliteMemoryStore` constructor
 - [[4654c7a]] Wait for current session sharing operation to finish before
   starting a new one
-- [[fc9f5e3]] Fix `OverflowError` occuring in 
+- [[fc9f5e3]] Fix `OverflowError` occuring in
   `AsyncClient.get_timeout_retry_wait_time()` after a thousand retries
 
 [#194]: https://github.com/poljar/matrix-nio/pull/194
