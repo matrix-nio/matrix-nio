@@ -1255,8 +1255,7 @@ class Schemas:
                         "required": [
                             "algorithms",
                             "device_id",
-                            "keys",
-                            "signatures"
+                            "keys"
                         ]
                     }}
                 }},
