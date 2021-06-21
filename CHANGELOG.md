@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.18.3 - 2021-06-21
+
+- [[#264]] Allow for devices in keys query that have no signatures
+
+[#264]: https://github.com/poljar/matrix-nio/pull/264
+
 ## 0.18.2 - 2021-06-03
 
 - [[#261]] Use the IV as is when decrypting attachments
