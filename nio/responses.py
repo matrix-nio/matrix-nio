@@ -1694,18 +1694,18 @@ class SyncResponse(Response):
         invited_rooms: Dict[str, InviteInfo] = {}
         left_rooms: Dict[str, RoomInfo] = {}
 
-        for room_id, room_dict in parsed_dict["invite"].items():
+        for room_id, room_dict in parsed_dict.get("invite", {}).items():
             state = SyncResponse._get_invite_state(room_dict["invite_state"])
             invite_info = InviteInfo(state)
             invited_rooms[room_id] = invite_info
 
-        for room_id, room_dict in parsed_dict["leave"].items():
+        for room_id, room_dict in parsed_dict.get("leave", {}).items():
             state = SyncResponse._get_state(room_dict["state"])
             timeline = SyncResponse._get_timeline(room_dict["timeline"])
             leave_info = RoomInfo(timeline, state, [], [])
             left_rooms[room_id] = leave_info
 
-        for room_id, room_dict in parsed_dict["join"].items():
+        for room_id, room_dict in parsed_dict.get("join", {}).items():
             join_info = SyncResponse._get_join_info(
                 room_dict["state"]["events"],
                 room_dict["timeline"]["events"],
