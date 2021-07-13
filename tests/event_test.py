@@ -507,6 +507,7 @@ class TestClass:
         assert event.thumbnail_key
         assert event.thumbnail_hashes
         assert event.thumbnail_iv
+        assert event.mimetype
 
     def test_event_flattening(self):
         parsed_dict = TestClass._load_response(

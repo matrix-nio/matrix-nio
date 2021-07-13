@@ -193,7 +193,14 @@ class Api:
         return http_url
 
     @staticmethod
-    def encrypted_mxc_to_plumb(mxc, key, hash, iv, homeserver=None):
+    def encrypted_mxc_to_plumb(
+        mxc,
+        key,
+        hash,
+        iv,
+        homeserver=None,
+        mimetype=None,
+    ):
         # type: (str, str, str, str, Optional[str]) -> Optional[str]
         """Convert a matrix content URI to a encrypted mxc URI.
 
@@ -215,6 +222,7 @@ class Api:
                 payload the URI is pointing to.
             hash (str): The hash of the payload.
             iv (str): The initial value needed to decrypt the payload.
+            mimetype (str): The mimetype of the payload.
         """
         url = urlparse(mxc)
 
@@ -243,6 +251,8 @@ class Api:
             "hash": hash,
             "iv": iv,
         }
+        if mimetype is not None:
+            query_parameters["mimetype"] = mimetype
 
         plumb_url += "?{}".format(urlencode(query_parameters))
 
