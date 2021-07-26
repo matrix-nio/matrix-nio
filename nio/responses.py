@@ -1596,7 +1596,7 @@ class SyncResponse(Response):
     def _get_to_device(parsed_dict: Dict[Any, Any]):
         # type: (...) -> List[ToDeviceEvent]
         events: List[ToDeviceEvent] = []
-        for event_dict in parsed_dict["events"]:
+        for event_dict in parsed_dict.get("events", []):
             event = ToDeviceEvent.parse_event(event_dict)
 
             if event:
@@ -1608,7 +1608,7 @@ class SyncResponse(Response):
     def _get_timeline(parsed_dict: Dict[Any, Any]) -> Timeline:
         validate_json(parsed_dict, Schemas.room_timeline)
 
-        events = SyncResponse._get_room_events(parsed_dict["events"])
+        events = SyncResponse._get_room_events(parsed_dict.get("events", []))
 
         return Timeline(
             events, parsed_dict["limited"], parsed_dict["prev_batch"]
@@ -1618,7 +1618,7 @@ class SyncResponse(Response):
     def _get_state(parsed_dict: Dict[Any, Any]) -> List[Union[Event, BadEventType]]:
         validate_json(parsed_dict, Schemas.sync_room_state)
         events = SyncResponse._get_room_events(
-            parsed_dict["events"],
+            parsed_dict.get("events", []),
         )
 
         return events
@@ -1628,7 +1628,7 @@ class SyncResponse(Response):
         validate_json(parsed_dict, Schemas.sync_room_state)
         events = []
 
-        for event_dict in parsed_dict["events"]:
+        for event_dict in parsed_dict.get("events", []):
             event = InviteEvent.parse_event(event_dict)
 
             if event:
@@ -1743,9 +1743,9 @@ class SyncResponse(Response):
         parsed_dict: Dict[Any, Any],
     ):
         # type: (...) -> Union[SyncResponse, ErrorResponse]
-        to_device = cls._get_to_device(parsed_dict["to_device"])
+        to_device = cls._get_to_device(parsed_dict.get("to_device", {}))
 
-        key_count_dict = parsed_dict["device_one_time_keys_count"]
+        key_count_dict = parsed_dict.get("device_one_time_keys_count", {})
         key_count = DeviceOneTimeKeyCount(
             key_count_dict.get("curve25519"),
             key_count_dict.get("signed_curve25519")
@@ -1758,7 +1758,7 @@ class SyncResponse(Response):
 
         presence_events = SyncResponse._get_presence(parsed_dict)
 
-        rooms = SyncResponse._get_room_info(parsed_dict["rooms"])
+        rooms = SyncResponse._get_room_info(parsed_dict.get("rooms", {}))
 
         return SyncResponse(
             parsed_dict["next_batch"],
