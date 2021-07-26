@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.18.5 - 2021-07-26
+
+- [[1f17a20]] Fix errors due to missing keys in syncs
+
+[1f17a20]: https://github.com/poljar/matrix-nio/commit/1f17a20ca818c1c3a0c2e75fdc64da9c629eb5f9
+
 ## 0.18.4 - 2021-07-14
 
 - [[#265]] Fix parsing syncs missing invite/join/leave rooms
