@@ -3,8 +3,8 @@
 
 pkgbase=matrix-nio
 pkgname='python-matrix-nio-git'
-pkgver=0.18.5
-_pkgver=0.18.5
+pkgver=0.18.6
+_pkgver=0.18.6
 pkgrel=1
 pkgdesc='python no-IO library for the matrix chat protocol'
 arch=('any')

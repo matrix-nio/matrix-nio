@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.18.6 - 2021-07-28
+
+- [[#272]] Allow the mimetype to be in the info for encrypted images
+
+[#272]: https://github.com/poljar/matrix-nio/pull/272
+
 ## 0.18.5 - 2021-07-26
 
 - [[1f17a20]] Fix errors due to missing keys in syncs
