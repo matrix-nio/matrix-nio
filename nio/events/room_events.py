@@ -905,7 +905,7 @@ class RoomEncryptedMedia(RoomMessage):
         hashes (dict): A mapping from an algorithm name to a hash of the
             ciphertext encoded as base64.
         iv (str): The initialisation vector that was used to encrypt the file.
-        mimetype (str): The mimetype of the message.
+        mimetype (str, optional): The mimetype of the message.
 
         thumbnail_url (str, optional): The URL of the thumbnail file.
         thumbnail_key (dict, optional): The key that can be used to decrypt the
@@ -939,6 +939,8 @@ class RoomEncryptedMedia(RoomMessage):
         thumbnail_hashes = thumbnail_file.get("hashes")
         thumbnail_iv = thumbnail_file.get("iv")
 
+        mimetype = info.get("mimetype") or parsed_dict["content"]["file"].get("mimetype")
+
         return cls(
             parsed_dict,
             parsed_dict["content"]["file"]["url"],
@@ -946,7 +948,7 @@ class RoomEncryptedMedia(RoomMessage):
             parsed_dict["content"]["file"]["key"],
             parsed_dict["content"]["file"]["hashes"],
             parsed_dict["content"]["file"]["iv"],
-            parsed_dict["content"]["file"]["mimetype"],
+            mimetype,
             thumbnail_url,
             thumbnail_key,
             thumbnail_hashes,
