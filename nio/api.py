@@ -208,7 +208,10 @@ class Api(object):
 
         content_dict = {
             "type": "m.login.password",
-            "user": user,
+            "identifier": {
+                "type": "m.id.user",
+                "user": user
+            },
             "password": password,
         }
 
