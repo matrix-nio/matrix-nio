@@ -17,6 +17,7 @@ Projects built with nio
 - `matrix-eno-bot <https://github.com/8go/matrix-eno-bot>`_
 - `matrix-discord-bridge <https://github.com/git-bruh/matrix-discord-bridge>`_
 - `Simple-Matrix-Bot-Lib <https://github.com/KrazyKirby99999/simple-matrix-bot-lib>`_
+- `pushmatrix <https://github.com/bonukai/pushmatrix>`_
 
 Are we missing a project? Submit a pull request and we'll get you added! Just edit ``doc/built-with-nio.rst``
 
