@@ -722,6 +722,9 @@ class AsyncClient(Client):
         if content_length is not None:
             headers["Content-Length"] = str(content_length)
 
+        if self.config.custom_headers is not None:
+            headers.update(self.config.custom_headers)
+
         got_429 = 0
         max_429 = self.config.max_limit_exceeded
 
