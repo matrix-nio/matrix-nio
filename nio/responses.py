@@ -428,6 +428,16 @@ class RoomResolveAliasError(ErrorResponse):
     pass
 
 
+class RoomDeleteAliasError(ErrorResponse):
+    """A response representing an unsuccessful room alias delete request."""
+    pass
+
+
+class RoomGetVisibilityError(ErrorResponse):
+    """A response representing an unsuccessful room get visibility request."""
+    pass
+
+
 class RoomTypingError(_ErrorWithRoomId):
     """A response representing a unsuccessful room typing request."""
 
@@ -974,6 +984,35 @@ class RoomResolveAliasResponse(Response):
         room_id = parsed_dict["room_id"]
         servers = parsed_dict["servers"]
         return cls(room_alias, room_id, servers)
+
+
+@dataclass
+class RoomDeleteAliasResponse(Response):
+    """A response containing the result of deleting an alias.
+    """
+
+    @classmethod
+    def from_dict(cls):
+        # type: (...) -> Union[RoomDeleteAliasResponse, ErrorResponse]
+        return cls()
+
+
+@dataclass
+class RoomGetVisibilityResponse(Response):
+    """A response containing the result of a get visibility request.
+    """
+    visibility: str = field()
+
+    @classmethod
+    @verify(
+        Schemas.room_get_visibility,
+        RoomGetVisibilityError,
+        pass_arguments=False,
+    )
+    def from_dict(cls, parsed_dict: Dict[Any, Any]):
+        # type: (...) -> Union[RoomDeleteAliasResponse, ErrorResponse]
+        visibility = parsed_dict["visibility"]
+        return cls(visibility)
 
 
 class EmptyResponse(Response):

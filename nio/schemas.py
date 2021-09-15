@@ -1087,6 +1087,13 @@ class Schemas:
         "required": ["room_id", "servers"],
     }
 
+    room_get_visibility = {
+        "type": "object",
+        "properties": {
+            "visibility": {"type": "string", "enum": ["private", "public"]},
+        },
+        "required": ["visibility"],
+    }
 
     room_event_id = {
         "type": "object",
