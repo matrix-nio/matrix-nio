@@ -15,6 +15,7 @@ from nio import (Client, DeviceList, DeviceOneTimeKeyCount, DownloadResponse,
                  LogoutResponse, MegolmEvent, ProfileGetAvatarResponse,
                  ProfileGetDisplayNameResponse, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
+                 PushRulesEvent,
                  RoomCreateResponse,
                  RoomEncryptionEvent, RoomForgetResponse, RoomInfo,
                  RoomKeyRequestResponse, RoomMember, RoomMemberEvent, Rooms,
@@ -336,7 +337,10 @@ class TestClass:
             ],
             presence_events = [
                 PresenceEvent(ALICE_ID, "online", 1337, True, "I am here.")
-            ]
+            ],
+            account_data_events = [
+                PushRulesEvent(),
+            ],
         )
 
     @property
@@ -611,6 +615,8 @@ class TestClass:
         assert room.encrypted
         assert room.summary
         assert len(room.users) == 2
+        assert room.invited_count == 1
+        assert room.joined_count == 2
         assert room.member_count == 3
         assert room.summary.invited_member_count == 1
         assert room.summary.joined_member_count == 2
@@ -999,11 +1005,13 @@ class TestClass:
         )
         assert response.content_type == "image/png"
 
-    def test_http_client_get_profile(self, http_client):
+    def test_http_client_get_profile(self, http_client: HttpClient):
         http_client.connect(TransportType.HTTP2)
 
         name = faker.name()
         avatar = faker.avatar_url().replace("#auto", "")
+
+        http_client.user_id = ALICE_ID
 
         _, _ = http_client.get_profile()
         http_client.receive(self.get_profile_byte_response(name, avatar, 1))
@@ -1170,6 +1178,20 @@ class TestClass:
         client.add_room_account_data_callback(cb, FullyReadEvent)
 
         with pytest.raises(CallbackException):
+            client.receive_response(self.sync_response)
+
+    def test_global_account_data_cb(self, client):
+        client.receive_response(self.login_response)
+
+        class CallbackCalled(Exception):
+            pass
+
+        def cb(_event):
+            raise CallbackCalled()
+
+        client.add_global_account_data_callback(cb, PushRulesEvent)
+
+        with pytest.raises(CallbackCalled):
             client.receive_response(self.sync_response)
 
     def test_handle_account_data(self, client):

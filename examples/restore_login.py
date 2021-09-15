@@ -8,7 +8,7 @@ import getpass
 
 from nio import AsyncClient, LoginResponse
 
-CONFIG_FILE = "restore_login_config.json"
+CONFIG_FILE = "credentials.json"
 
 # Check out main() below to see how it's done.
 

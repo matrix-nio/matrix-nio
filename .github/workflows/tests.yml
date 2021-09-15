@@ -1,0 +1,50 @@
+name: Build Status
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: [3.7, 3.8, 3.9]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install Tox and any other packages
+        run: |
+            wget https://gitlab.matrix.org/matrix-org/olm/-/archive/master/olm-master.tar.bz2
+            tar -xvf olm-master.tar.bz2
+            pushd olm-master && make && sudo make PREFIX="/usr" install && popd
+            rm -r olm-master
+            pip install tox
+      - name: Run Tox
+        # Run tox using the version of Python in `PATH`
+        run: tox -e py
+
+  coverage:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: [3.9]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install Tox and any other packages
+        run: |
+            wget https://gitlab.matrix.org/matrix-org/olm/-/archive/master/olm-master.tar.bz2
+            tar -xvf olm-master.tar.bz2
+            pushd olm-master && make && sudo make PREFIX="/usr" install && popd
+            rm -r olm-master
+            pip install tox
+      - name: Run Tox
+        run: tox -e coverage

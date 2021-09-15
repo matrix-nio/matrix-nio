@@ -11,7 +11,7 @@ import magic
 
 from nio import AsyncClient, LoginResponse, UploadResponse
 
-CONFIG_FILE = "restore_login_config.json"
+CONFIG_FILE = "credentials.json"
 
 # Check out main() below to see how it's done.
 

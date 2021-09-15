@@ -218,6 +218,7 @@ class Client:
         self.ephemeral_callbacks: List[ClientCallback] = []
         self.to_device_callbacks: List[ClientCallback] = []
         self.presence_callbacks: List[ClientCallback] = []
+        self.global_account_data_callbacks: List[ClientCallback] = []
         self.room_account_data_callbacks: List[ClientCallback] = []
 
     @property
@@ -402,7 +403,8 @@ class Client:
         self.user_id = user_id
         self.device_id = device_id
         self.access_token = access_token
-        self.load_store()
+        if ENCRYPTION_ENABLED:
+            self.load_store()
 
     def room_contains_unverified(self, room_id: str) -> bool:
         """Check if a room contains unverified devices.
@@ -824,6 +826,14 @@ class Client:
                 if cb.filter is None or isinstance(event, cb.filter):
                     cb.func(event)
 
+    def _handle_global_account_data_events(
+        self, response: SyncResponse,
+    ) -> None:
+        for event in response.account_data_events:
+            for cb in self.global_account_data_callbacks:
+                if cb.filter is None or isinstance(event, cb.filter):
+                    cb.func(event)
+
     def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()
 
@@ -836,9 +846,10 @@ class Client:
         assert self.olm
 
         changed_users = set()
-        self.olm.uploaded_key_count = (
-            response.device_key_count.signed_curve25519
-        )
+        if response.device_key_count.signed_curve25519:
+            self.olm.uploaded_key_count = (
+                response.device_key_count.signed_curve25519
+            )
 
         for user in response.device_list.changed:
             for room in self.rooms.values():
@@ -877,6 +888,8 @@ class Client:
         self._handle_joined_rooms(response)
 
         self._handle_presence_events(response)
+
+        self._handle_global_account_data_events(response)
 
         if self.olm:
             self._handle_expired_verifications()
@@ -983,10 +996,20 @@ class Client:
 
         room = self.rooms[response.room_id]
 
+        joined_user_ids = {m.user_id for m in response.members}
+
+        for user_id in tuple(room.users):
+            invited = room.users[user_id].invited
+
+            if not invited and user_id not in joined_user_ids:
+                room.remove_member(user_id)
+
         for member in response.members:
             room.add_member(
                 member.user_id, member.display_name, member.avatar_url
             )
+
+        room.members_synced = True
 
         if room.encrypted and self.olm is not None:
             self.olm.update_tracked_users(room)
@@ -1247,6 +1270,32 @@ class Client:
         cb = ClientCallback(callback, filter)
         self.ephemeral_callbacks.append(cb)
 
+    def add_global_account_data_callback(
+        self,
+        callback: Callable[[AccountDataEvent], None],
+        filter: Union[
+            Type[AccountDataEvent],
+            Tuple[Type[AccountDataEvent], ...],
+        ],
+    ) -> None:
+        """Add a callback that will be executed on global account data events.
+
+        Args:
+            callback (Callable[[AccountDataEvent], None]):
+                A function that will be
+                called if the event type in the filter argument is found in
+                the account data event list.
+
+            filter
+            (Union[Type[AccountDataEvent], Tuple[Type[AccountDataEvent, ...]]):
+                The event type or a tuple
+                containing multiple types for which the function
+                will be called.
+
+        """
+        cb = ClientCallback(callback, filter)
+        self.global_account_data_callbacks.append(cb)
+
     def add_room_account_data_callback(
         self,
         callback: Callable[[MatrixRoom, AccountDataEvent], None],
@@ -1258,7 +1307,7 @@ class Client:
         """Add a callback that will be executed on room account data events.
 
         Args:
-            callback (Callable[[MatrixRoom, ToDeviceEvent], None]):
+            callback (Callable[[MatrixRoom, AccountDataEvent], None]):
                 A function that will be
                 called if the event type in the filter argument is found in
                 the room account data event list.

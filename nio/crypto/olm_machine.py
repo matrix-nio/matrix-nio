@@ -220,8 +220,8 @@ class Olm:
                 self.user_id, self.device_id))
             account = OlmAccount()
             self.save_account(account)
-        else:
-            self.load()
+
+        self.load()
 
         self.account = account  # type: OlmAccount
 
@@ -839,12 +839,10 @@ class Olm:
                 if (payload['user_id'] != user_id
                         or payload['device_id'] != device_id):
                     logger.warn(
-                        "Mismatch in keys payload of device %s "
-                        "(%s) of user %s (%s).",
-                        payload['device_id'],
-                        device_id,
-                        payload['user_id'],
-                        user_id
+                        "Mismatch in keys payload of device "
+                        f"{payload['device_id']} "
+                        f"({device_id}) of user {payload['user_id']} "
+                        f"({user_id}).",
                     )
                     continue
 
@@ -1587,6 +1585,13 @@ class Olm:
             return bad
 
         parsed_dict["event_id"] = event.event_id
+
+        if "m.relates_to" not in parsed_dict["content"]:
+            try:
+                parsed_dict["content"]["m.relates_to"] = event.source["content"]["m.relates_to"]
+            except KeyError:
+                pass
+
         parsed_dict["sender"] = event.sender
         parsed_dict["origin_server_ts"] = event.server_timestamp
 

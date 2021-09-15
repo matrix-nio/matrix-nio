@@ -19,6 +19,7 @@ import asyncio
 from aiofiles.threadpool.binary import AsyncBufferedReader
 from aiofiles.threadpool.text import AsyncTextIOWrapper
 import io
+import json
 import warnings
 from asyncio import Event as AsyncioEvent
 from functools import partial, wraps
@@ -52,16 +53,19 @@ from aiohttp import (
 )
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.connector import Connection
+from aiohttp_socks import ProxyConnector
 
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
 from ..api import (
     _FilterT,
     Api,
+    EventFormat,
     MessageDirection,
     ResizingMethod,
     RoomVisibility,
     RoomPreset,
+    PushRuleKind,
 )
 from ..crypto import (
     OlmDevice,
@@ -83,6 +87,8 @@ from ..events import (
     RoomKeyRequestCancellation,
     ToDeviceEvent,
     MegolmEvent,
+    PushAction,
+    PushCondition,
 )
 from ..event_builders import ToDeviceMessage
 from ..monitors import TransferMonitor
@@ -94,10 +100,16 @@ from ..responses import (
     DeleteDevicesError,
     DeleteDevicesResponse,
     DeleteDevicesAuthResponse,
+    DeletePushRuleError,
+    DeletePushRuleResponse,
     DevicesError,
     DevicesResponse,
+    DiscoveryInfoError,
+    DiscoveryInfoResponse,
     DownloadError,
     DownloadResponse,
+    EnablePushRuleError,
+    EnablePushRuleResponse,
     ErrorResponse,
     FileResponse,
     JoinResponse,
@@ -169,6 +181,10 @@ from ..responses import (
     RoomReadMarkersError,
     RoomUnbanError,
     RoomUnbanResponse,
+    SetPushRuleResponse,
+    SetPushRuleError,
+    SetPushRuleActionsResponse,
+    SetPushRuleActionsError,
     ShareGroupSessionError,
     ShareGroupSessionResponse,
     SyncError,
@@ -182,6 +198,10 @@ from ..responses import (
     UpdateDeviceResponse,
     UpdateDeviceError,
     UpdateReceiptMarkerResponse,
+    UploadFilterError,
+    UploadFilterResponse,
+    WhoamiResponse,
+    WhoamiError
 )
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
@@ -198,6 +218,7 @@ SynchronousFile = (
     io.TextIOBase,
     io.BufferedReader,
     io.BufferedRandom,
+    io.BytesIO,
     io.FileIO
 )
 AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
@@ -234,9 +255,12 @@ def client_session(func):
             trace = TraceConfig()
             trace.on_request_chunk_sent.append(on_request_chunk_sent)
 
+            connector = ProxyConnector.from_url(self.proxy) if self.proxy \
+                else None
             self.client_session = ClientSession(
                 timeout=ClientTimeout(total=self.config.request_timeout),
                 trace_configs=[trace],
+                connector=connector,
             )
 
             self.client_session.connector.connect = partial(
@@ -308,7 +332,8 @@ class AsyncClient(Client):
             default SSL check (ssl.create_default_context() is used), False
             for skip SSL certificate validation connection.
         proxy (str, optional): The proxy that should be used for the HTTP
-            connection.
+            connection. Supports SOCKS4(a), SOCKS5, HTTP (tunneling) via an
+            URL like e.g. 'socks5://user:password@127.0.0.1:1080'.
 
     Attributes:
         synced (Event): An asyncio event that is fired every time the client
@@ -431,6 +456,13 @@ class AsyncClient(Client):
         try:
             return await transport_response.json()
         except (JSONDecodeError, ContentTypeError):
+            try:
+                # matrix.org return an incorrect content-type for .well-known
+                # API requests, which leads to .text() working but not .json()
+                return json.loads(await transport_response.text())
+            except (JSONDecodeError, ContentTypeError):
+                pass
+
             return {}
 
     async def create_matrix_response(
@@ -470,6 +502,12 @@ class AsyncClient(Client):
         elif issubclass(response_class, FileResponse):
             body = await transport_response.read()
             resp = response_class.from_data(body, content_type, name)
+        elif (
+            issubclass(response_class, RoomGetStateEventResponse) and
+            transport_response.status == 404
+        ):
+            parsed_dict = await self.parse_body(transport_response)
+            resp = response_class.create_error(parsed_dict, data[-1])
 
         elif (
             transport_response.status == 401
@@ -556,6 +594,13 @@ class AsyncClient(Client):
                     if cb.filter is None or isinstance(event, cb.filter):
                         await asyncio.coroutine(cb.func)(room, event)
 
+            for event in join_info.account_data:
+                room.handle_account_data(event)
+
+                for cb in self.room_account_data_callbacks:
+                    if cb.filter is None or isinstance(event, cb.filter):
+                        await asyncio.coroutine(cb.func)(room, event)
+
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)
 
@@ -576,6 +621,14 @@ class AsyncClient(Client):
                 self.rooms[room_id].users[event.user_id].status_msg = event.status_msg
 
             for cb in self.presence_callbacks:
+                if cb.filter is None or isinstance(event, cb.filter):
+                    await asyncio.coroutine(cb.func)(event)
+
+    async def _handle_global_account_data_events(  # type: ignore
+        self, response: SyncResponse,
+    ) -> None:
+        for event in response.account_data_events:
+            for cb in self.global_account_data_callbacks:
                 if cb.filter is None or isinstance(event, cb.filter):
                     await asyncio.coroutine(cb.func)(event)
 
@@ -604,6 +657,8 @@ class AsyncClient(Client):
         await self._handle_joined_rooms(response)
 
         await self._handle_presence_events(response)
+
+        await self._handle_global_account_data_events(response)
 
         if self.olm:
             await self._handle_expired_verifications()
@@ -754,7 +809,6 @@ class AsyncClient(Client):
             self.homeserver + path,
             data=data,
             ssl=self.ssl,
-            proxy=self.proxy,
             headers=headers,
             trace_request_ctx=trace_context,
             timeout=self.config.request_timeout
@@ -825,6 +879,32 @@ class AsyncClient(Client):
         )
 
         return await self._send(RegisterResponse, method, path, data)
+
+    async def discovery_info(
+        self,
+    ) -> Union[DiscoveryInfoResponse, DiscoveryInfoError]:
+        """Get discovery information about current `AsyncClient.homeserver`.
+
+        Returns either a `DiscoveryInfoResponse` if the request was successful
+        or a `DiscoveryInfoError` if there was an error with the request.
+
+        Some homeservers do not redirect requests to their main domain and
+        instead require clients to use a specific URL for communication.
+
+        If the domain specified by the `AsyncClient.homeserver` URL
+        implements the
+        [.well-known](https://matrix.org/docs/spec/client_server/latest#id178),
+        discovery mechanism, this method can be used to retrieve the
+        actual homeserver URL from it.
+
+        Example:
+            >>> client = AsyncClient(homeserver="https://example.org")
+            >>> response = await client.discovery_info()
+            >>> if isinstance(response, DiscoveryInfoResponse):
+            >>>     client.homeserver = response.homeserver_url
+        """
+        method, path = Api.discovery_info()
+        return await self._send(DiscoveryInfoResponse, method, path)
 
     async def login_info(self) -> Union[LoginInfoResponse, LoginInfoError]:
         """Get the available login methods from the server
@@ -917,7 +997,9 @@ class AsyncClient(Client):
                 15 seconds of expected timeout,
                 the client will timeout by itself.
             sync_filter (Union[None, str, Dict[Any, Any]):
-                A filter ID or dict that should be used for this sync request.
+                A filter ID that can be obtained from
+                ``AsyncClient.upload_filter()`` (preferred),
+                or filter dict that should be used for this sync request.
             full_state (bool, optional): Controls whether to include the full
                 state for all rooms the user is a member of. If this is set to
                 true, then all state events will be returned, even if since is
@@ -1024,7 +1106,9 @@ class AsyncClient(Client):
                 the client will timeout by itself.
 
             sync_filter (Union[None, str, Dict[Any, Any]):
-                A filter ID or dict that should be used for sync requests.
+                A filter ID that can be obtained from
+                ``AsyncClient.upload_filter()`` (preferred),
+                or filter dict that should be used for sync requests.
 
             full_state (bool, optional): Controls whether to include the full
                 state for all rooms the user is a member of. If this is set to
@@ -1043,7 +1127,9 @@ class AsyncClient(Client):
                 successful sync loop iterations in milliseconds.
 
             first_sync_filter (Union[None, str, Dict[Any, Any]):
-                A filter ID or dict to use for the first sync request only.
+                A filter ID that can be obtained from
+                ``AsyncClient.upload_filter()`` (preferred),
+                or filter dict to use for the first sync request only.
                 If `None` (default), the `sync_filter` parameter's value
                 is used.
                 To have no filtering for the first sync regardless of
@@ -2178,7 +2264,7 @@ class AsyncClient(Client):
         end: Optional[str] = None,
         direction: MessageDirection = MessageDirection.back,
         limit: int = 10,
-        message_filter: _FilterT = None,
+        message_filter: Optional[Dict[Any, Any]] = None,
     ) -> Union[RoomMessagesResponse, RoomMessagesError]:
         """Fetch a list of message and state events for a room.
 
@@ -2204,8 +2290,8 @@ class AsyncClient(Client):
                 events from. Defaults to MessageDirection.back.
             limit (int, optional): The maximum number of events to return.
                 Defaults to 10.
-            message_filter (Union[None, str, Dict[Any, Any]]):
-                A filter ID or dict that should be used for this room messages
+            message_filter (Optional[Dict[Any, Any]]):
+                A filter dict that should be used for this room messages
                 request.
 
         Example:
@@ -2651,7 +2737,10 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the profile for.
         """
-        method, path = Api.profile_get(user_id or self.user_id)
+        method, path = Api.profile_get(
+            user_id or self.user_id,
+            access_token=self.access_token or None
+        )
 
         return await self._send(ProfileGetResponse, method, path,)
 
@@ -2735,7 +2824,10 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the display name for.
         """
-        method, path = Api.profile_get_displayname(user_id or self.user_id)
+        method, path = Api.profile_get_displayname(
+            user_id or self.user_id,
+            access_token=self.access_token or None
+        )
 
         return await self._send(ProfileGetDisplayNameResponse, method, path,)
 
@@ -2783,7 +2875,10 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the avatar for.
         """
-        method, path = Api.profile_get_avatar(user_id or self.user_id)
+        method, path = Api.profile_get_avatar(
+            user_id or self.user_id,
+            access_token=self.access_token or None
+        )
 
         return await self._send(ProfileGetAvatarResponse, method, path,)
 
@@ -2810,3 +2905,255 @@ class AsyncClient(Client):
         )
 
         return await self._send(ProfileSetAvatarResponse, method, path, data,)
+
+    @logged_in
+    async def upload_filter(
+        self,
+        user_id: Optional[str] = None,
+        event_fields: Optional[List[str]] = None,
+        event_format: EventFormat = EventFormat.client,
+        presence: Optional[Dict[str, Any]] = None,
+        account_data: Optional[Dict[str, Any]] = None,
+        room: Optional[Dict[str, Any]] = None,
+    ) -> Union[UploadFilterResponse, UploadFilterError]:
+        """Upload a new filter definition to the homeserver.
+
+        Returns either a `UploadFilterResponse` if the request was
+        successful or a `UploadFilterError` if there was an error
+        with the request.
+
+        The filter ID from the successful responses can be used for
+        the ``AsyncClient.sync()``, ``AsyncClient.sync_forever()`` and
+        ``AsyncClient.room_messages()`` methods.
+
+        Args:
+            user_id (Optional[str]):  ID of the user uploading the filter.
+                If not provider, the current logged in user's ID is used.
+
+            event_fields (Optional[List[str]]): List of event fields to
+                include. If this list is absent then all fields are included.
+                The entries may include '.' characters to indicate sub-fields.
+                A literal '.' character in a field name may be escaped
+                using a '\'.
+
+            event_format (EventFormat): The format to use for events.
+
+            presence (Dict[str, Any]): The presence updates to include.
+                The dict corresponds to the `EventFilter` type described
+                in https://matrix.org/docs/spec/client_server/latest#id240
+
+            account_data (Dict[str, Any]): The user account data that isn't
+                associated with rooms to include.
+                The dict corresponds to the `EventFilter` type described
+                in https://matrix.org/docs/spec/client_server/latest#id240
+
+            room (Dict[str, Any]): Filters to be applied to room data.
+                The dict corresponds to the `RoomFilter` type described
+                in https://matrix.org/docs/spec/client_server/latest#id240
+        """
+        method, path, data = Api.upload_filter(
+            self.access_token,
+            user_id or self.user_id,
+            event_fields,
+            event_format,
+            presence,
+            account_data,
+            room,
+        )
+
+        return await self._send(UploadFilterResponse, method, path, data)
+
+    async def whoami(self):
+        if self.access_token is None:
+            raise ValueError("No access_token is set.")
+
+        method, path = Api.whoami(self.access_token)
+        return await self._send(WhoamiResponse, method, path)
+
+    @logged_in
+    async def set_pushrule(
+        self,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
+        before: Optional[str] = None,
+        after: Optional[str] = None,
+        actions: Sequence[PushAction] = (),
+        conditions: Optional[Sequence[PushCondition]] = None,
+        pattern: Optional[str] = None,
+    ) -> Union[SetPushRuleResponse, SetPushRuleError]:
+        """Create or modify an existing push rule.
+
+        Returns either a `SetPushRuleResponse` if the request was
+        successful or a `SetPushRuleError` if there was an error
+        with the request.
+
+        Args:
+            scope (str): The scope of this rule, e.g. ``"global"``.
+                Homeservers currently only process ``global`` rules for
+                event matching, while ``device`` rules are a planned feature.
+                It is up to clients to interpret any other scope name.
+
+            kind (PushRuleKind): The kind of rule.
+
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+                For rules of ``room`` kind, this is the room ID to match for.
+                For rules of ``sender`` kind, this is the user ID to match.
+
+            before (Optional[str]): Position this rule before the one matching
+                the given rule ID.
+                The rule ID cannot belong to a predefined server rule.
+                ``before`` and ``after`` cannot be both specified.
+
+            after (Optional[str]): Position this rule after the one matching
+                the given rule ID.
+                The rule ID cannot belong to a predefined server rule.
+                ``before`` and ``after`` cannot be both specified.
+
+            actions (Sequence[PushAction]): Actions to perform when the
+                conditions for this rule are met. The given actions replace
+                the existing ones.
+
+            conditions (Sequence[PushCondition]): Event conditions that must
+                hold true for the rule to apply to that event.
+                A rule with no conditions always hold true.
+                Only applicable to ``underride`` and ``override`` rules.
+
+            pattern (Optional[str]): Glob-style pattern to match against
+                for the event's content.
+                Only applicable to ``content`` rules.
+
+        Example:
+            >>> client.set_pushrule(
+            ...     scope = "global",
+            ...     kind = PushRuleKind.room,
+            ...     rule_id = "!foo123:example.org",
+            ...     actions = [PushNotify(), PushSetTweak("sound", "default")],
+            ... )
+            ...
+            ... client.set_pushrule(
+            ...     scope = "global",
+            ...     kind = PushRuleKind.override,
+            ...     rule_id = "silence_large_rooms",
+            ...     actions = [],
+            ...     conditions = [PushRoomMemberCount(10, ">")],
+            ... )
+            ...
+            ... client.set_pushrule(
+            ...     scope = "global",
+            ...     kind = PushRuleKind.content,
+            ...     rule_id = "highlight_messages_containing_nio_word",
+            ...     actions = [PushNotify(), PushSetTweak("highlight", True)],
+            ...     pattern = "nio"
+            ... )
+
+        """
+
+        method, path, data = Api.set_pushrule(
+            self.access_token,
+            scope, kind, rule_id, before, after, actions, conditions, pattern,
+        )
+
+        return await self._send(SetPushRuleResponse, method, path, data)
+
+    @logged_in
+    async def delete_pushrule(
+        self, scope: str, kind: PushRuleKind, rule_id: str,
+    ) -> Union[DeletePushRuleResponse, DeletePushRuleError]:
+        """Delete an existing push rule.
+
+        Returns either a `DeletePushRuleResponse` if the request was
+        successful or a `DeletePushRuleError` if there was an error
+        with the request.
+
+        Args:
+            scope (str): The scope of this rule, e.g. ``"global"``.
+                Homeservers currently only process ``global`` rules for
+                event matching, while ``device`` rules are a planned feature.
+                It is up to clients to interpret any other scope name.
+
+            kind (PushRuleKind): The kind of rule.
+
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+        """
+
+        method, path = Api.delete_pushrule(
+            self.access_token, scope, kind, rule_id,
+        )
+
+        return await self._send(DeletePushRuleResponse, method, path)
+
+    @logged_in
+    async def enable_pushrule(
+        self,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
+        enable: bool,
+    ) -> Union[EnablePushRuleResponse, EnablePushRuleError]:
+        """Enable or disable an existing push rule.
+
+        Returns either a `EnablePushRuleResponse` if the request was
+        successful or a `EnablePushRuleError` if there was an error
+        with the request.
+
+        Args:
+            scope (str): The scope of this rule, e.g. ``"global"``.
+                Homeservers currently only process ``global`` rules for
+                event matching, while ``device`` rules are a planned feature.
+                It is up to clients to interpret any other scope name.
+
+            kind (PushRuleKind): The kind of rule.
+
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+
+            enable (bool): Whether to enable or disable this rule.
+        """
+
+        method, path, data = Api.enable_pushrule(
+            self.access_token, scope, kind, rule_id, enable,
+        )
+
+        return await self._send(EnablePushRuleResponse, method, path, data)
+
+    @logged_in
+    async def set_pushrule_actions(
+        self,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
+        actions: Sequence[PushAction],
+    ) -> Union[SetPushRuleActionsResponse, SetPushRuleActionsError]:
+        """Set the actions for an existing built-in or user-created push rule.
+
+        Unlike ``set_pushrule``, this method can edit built-in server rules.
+
+        Returns the HTTP method, HTTP path and data for the request.
+        Returns either a `SetPushRuleActionsResponse` if the request was
+        successful or a `SetPushRuleActionsError` if there was an error
+        with the request.
+
+        Args:
+            scope (str): The scope of this rule, e.g. ``"global"``.
+                Homeservers currently only process ``global`` rules for
+                event matching, while ``device`` rules are a planned feature.
+                It is up to clients to interpret any other scope name.
+
+            kind (PushRuleKind): The kind of rule.
+
+            rule_id (str): The identifier of the rule. Must be unique
+                within its scope and kind.
+
+            actions (Sequence[PushAction]): Actions to perform when the
+                conditions for this rule are met. The given actions replace
+                the existing ones.
+        """
+
+        method, path, data = Api.set_pushrule_actions(
+            self.access_token, scope, kind, rule_id, actions,
+        )
+
+        return await self._send(SetPushRuleActionsResponse, method, path, data)

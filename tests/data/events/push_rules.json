@@ -1,0 +1,29 @@
+{
+    "type": "m.push_rules",
+    "content": {
+        "global": {
+            "override": [
+                {
+                    "actions": [
+                        "notify",
+                        "dont_notify",
+                        "coalesce",
+                        {"set_tweak": "sound", "value": "default"},
+                        {"unknown": "abc"}
+                    ],
+                    "conditions": [
+                        {"kind": "event_match", "key": "foo", "pattern": "bar"},
+                        {"kind": "contains_display_name"},
+                        {"kind": "room_member_count", "is": "10"},
+                        {"kind": "room_member_count", "is": "<10"},
+                        {"kind": "sender_notification_permission", "key": "foo"},
+                        {"kind": "unknown", "foo": "bar"}
+                    ],
+                    "default": true,
+                    "enabled": true,
+                    "rule_id": "actions_conditions_test"
+                }
+            ]
+        }
+    }
+}

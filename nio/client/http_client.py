@@ -937,7 +937,10 @@ class HttpClient(Client):
         Args:
             user_id (str): User id of the user to get the profile for.
         """
-        request = self._build_request(Api.profile_get(user_id or self.user_id))
+        request = self._build_request(
+            Api.profile_get(user_id or self.user_id,
+                            access_token=self.access_token or None)
+        )
 
         return self._send(
             request,
@@ -958,9 +961,10 @@ class HttpClient(Client):
         Args:
             user_id (str): User id of the user to get the display name for.
         """
-        request = self._build_request(Api.profile_get_displayname(
-            user_id or self.user_id
-        ))
+        request = self._build_request(
+            Api.profile_get_displayname(user_id or self.user_id,
+                                        access_token=self.access_token or None)
+        )
 
         return self._send(
             request,
@@ -1006,9 +1010,10 @@ class HttpClient(Client):
         Args:
             user_id (str): User id of the user to get the avatar for.
         """
-        request = self._build_request(Api.profile_get_avatar(
-            user_id or self.user_id
-        ))
+        request = self._build_request(
+            Api.profile_get_avatar(user_id or self.user_id,
+                                   access_token=self.access_token or None)
+        )
 
         return self._send(
             request,

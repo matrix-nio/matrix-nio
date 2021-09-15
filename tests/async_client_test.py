@@ -20,20 +20,40 @@ from nio import (ContentRepositoryConfigResponse,
                  DeviceList, DeviceOneTimeKeyCount, DownloadError,
                  DevicesResponse, DeleteDevicesAuthResponse,
                  DeleteDevicesResponse,
+                 DeletePushRuleResponse,
+                 DiscoveryInfoError, DiscoveryInfoResponse,
                  DownloadResponse, ErrorResponse,
+                 FullyReadEvent,
+                 EnablePushRuleResponse,
                  GroupEncryptionError,
                  JoinResponse, JoinedRoomsResponse,
                  JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
-                 KeysUploadResponse, LocalProtocolError, LoginError, LoginInfoResponse,
+                 KeysUploadResponse, LocalProtocolError,
+                 LoginError, LoginInfoResponse,
                  LoginResponse, LogoutError, LogoutResponse,
                  MegolmEvent, MembersSyncError, OlmTrustError,
                  RegisterResponse,
                  RoomContextResponse, RoomForgetResponse,
                  ProfileGetAvatarResponse,
-                 ProfileGetDisplayNameResponse, ProfileGetResponse,
+                 ProfileGetDisplayNameResponse,
+                 ProfileGetError, ProfileGetResponse,
                  ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
                  PresenceGetResponse, PresenceSetResponse,
                  PresenceEvent,
+                 PushCoalesce,
+                 PushContainsDisplayName,
+                 PushDontNotify,
+                 PushEventMatch,
+                 PushNotify,
+                 PushRoomMemberCount,
+                 PushRule,
+                 PushRulesEvent,
+                 PushRuleset,
+                 PushRuleKind,
+                 PushSenderNotificationPermission,
+                 PushSetTweak,
+                 PushUnknownAction,
+                 PushUnknownCondition,
                  RoomBanResponse,
                  RoomTypingResponse, RoomCreateResponse,
                  RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
@@ -46,13 +66,16 @@ from nio import (ContentRepositoryConfigResponse,
                  RoomRedactResponse, RoomResolveAliasResponse,
                  RoomSendResponse, RoomSummary,
                  RoomUnbanResponse,
+                 SetPushRuleResponse,
+                 SetPushRuleActionsResponse,
                  ShareGroupSessionResponse,
                  SyncResponse, ThumbnailError, ThumbnailResponse,
                  Timeline, TransferMonitor, TransferCancelledError,
                  UploadResponse, UpdateDeviceResponse,
+                 UploadFilterResponse,
                  UpdateReceiptMarkerResponse,
                  RoomMessageText, RoomKeyRequest)
-from nio.api import ResizingMethod, RoomPreset, RoomVisibility
+from nio.api import EventFormat, ResizingMethod, RoomPreset, RoomVisibility
 from nio.crypto import OlmDevice, Session, decrypt_attachment
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
 
@@ -64,6 +87,8 @@ ALICE_ID = "@alice:example.org"
 ALICE_DEVICE_ID = "JLAFKJWSCS"
 
 CAROL_ID = "@carol:example.org"
+DAVE_ID = "@dave:example.org"
+EIRIN_ID = "@eirin:example.org"
 
 if sys.version_info >= (3, 5):
     import asyncio
@@ -139,17 +164,13 @@ class TestClass:
     def joined_members_response(self):
         return {
             "joined": {  # joined
-                "@bar:example.com": {
-                    "avatar_url": None,
-                    "display_name": "Bar"
-                },
-                ALICE_ID: {  # joined
+                ALICE_ID: {
                     "avatar_url": None,
                     "display_name": "Alice"
                 },
-                CAROL_ID: {  # invited
+                EIRIN_ID: {
                     "avatar_url": None,
-                    "display_name": "Carol"
+                    "display_name": "Eirin"
                 },
             }}
 
@@ -344,6 +365,10 @@ class TestClass:
         return {"displayname": displayname, "avatar_url": avatar_url}
 
     @staticmethod
+    def get_profile_unauth_error_response():
+        return {"errcode": "M_MISSING_TOKEN", "error": "Missing access token"}
+
+    @staticmethod
     def get_displayname_response(displayname):
         return {"displayname": displayname}
 
@@ -384,6 +409,64 @@ class TestClass:
 
         assert isinstance(resp, RegisterResponse)
         assert async_client.access_token
+
+    async def test_discovery_info(self, async_client, aioresponse):
+        aioresponse.get(
+            "https://example.org/.well-known/matrix/client",
+            status=200,
+            payload={
+                "m.homeserver": {"base_url": "https://an.example.org"},
+                "m.identity_server": {"base_url": "https://foo.bar"},
+            },
+        )
+
+        resp = await async_client.discovery_info()
+        assert isinstance(resp, DiscoveryInfoResponse)
+        assert resp.homeserver_url == "https://an.example.org"
+        assert resp.identity_server_url == "https://foo.bar"
+
+    async def test_discovery_info_trailing_slashes(
+        self, async_client, aioresponse,
+    ):
+        aioresponse.get(
+            "https://example.org/.well-known/matrix/client",
+            status=200,
+            payload={
+                "m.homeserver": {"base_url": "https://an.example.org/"},
+                "m.identity_server": {"base_url": "https://foo.bar/"},
+            },
+        )
+
+        resp = await async_client.discovery_info()
+        assert isinstance(resp, DiscoveryInfoResponse)
+        assert resp.homeserver_url == "https://an.example.org"
+        assert resp.identity_server_url == "https://foo.bar"
+
+    async def test_discovery_info_invalid_content_type(  # matrix.org does this
+        self, async_client, aioresponse,
+    ):
+        aioresponse.get(
+            "https://example.org/.well-known/matrix/client",
+            status=200,
+            payload={"m.homeserver": {"base_url": "https://an.example.org"}},
+            content_type="",
+        )
+
+        resp = await async_client.discovery_info()
+        assert isinstance(resp, DiscoveryInfoResponse)
+        assert resp.homeserver_url == "https://an.example.org"
+        assert resp.identity_server_url is None
+
+    async def test_discovery_info_bad_url(self, async_client, aioresponse):
+        aioresponse.get(
+            "https://example.org/.well-known/matrix/client",
+            status=200,
+            payload={"m.homeserver": {"base_url": "invalid://example.org"}},
+        )
+
+        resp2 = await async_client.discovery_info()
+        assert isinstance(resp2, DiscoveryInfoError)
+
 
     async def test_login_info(self, async_client, aioresponse):
         """Test that we can get login info"""
@@ -647,7 +730,7 @@ class TestClass:
         assert async_client.access_token
         assert async_client.logged_in
 
-    async def test_sync(self, async_client, aioresponse):
+    async def test_sync(self, async_client: AsyncClient, aioresponse: aioresponses):
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
@@ -676,7 +759,7 @@ class TestClass:
         # Test with filter ID
 
         aioresponse.get(
-            re.compile(fr"{url}&filter=test_id&since=.*"),
+            re.compile(fr"{url}&filter=test_id&since=[\w\d_]*"),
             status=200,
             payload=self.sync_response
         )
@@ -686,7 +769,7 @@ class TestClass:
         # Test with filter dict
 
         aioresponse.get(
-            re.compile(url + r"&filter=" + quote("{}") + "&since=.*"),
+            re.compile(fr"{url}&filter=[\w\d%]*&since=[\w\d_]*"),
             status=200,
             payload=self.sync_response,
         )
@@ -735,6 +818,101 @@ class TestClass:
         room = async_client.rooms["!SVkFJHzfwvuaIEawgC:localhost"]
         assert room.unread_notifications == 11
         assert room.unread_highlights == 1
+
+    async def test_sync_push_rules(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/sync?access_token=abc123",
+            status=200,
+            payload=self.sync_response,
+        )
+
+        resp = await async_client.sync()
+        assert isinstance(resp, SyncResponse)
+
+        rules = resp.account_data_events[0]
+        assert isinstance(rules, PushRulesEvent)
+        assert isinstance(rules.global_rules, PushRuleset)
+        assert isinstance(rules.device_rules, PushRuleset)
+
+        # Test __bool__ implementations
+        assert bool(rules) is True
+        assert bool(rules.device_rules) is False
+
+        assert rules.global_rules.override == [
+            PushRule(
+                kind = PushRuleKind.override,
+                id = ".m.rule.suppress_notices",
+                default = True,
+                enabled = False,
+                actions = [PushDontNotify()],
+                conditions = [PushEventMatch("content.msgtype", "m.notice")],
+            ),
+        ]
+
+        assert rules.global_rules.content == [
+            PushRule(
+                kind = PushRuleKind.content,
+                id = ".m.rule.contains_user_name",
+                default = True,
+                pattern = "alice",
+                actions = [
+                    PushNotify(),
+                    PushUnknownAction("do_special_thing"),
+                    PushSetTweak("sound", "default"),
+                    PushSetTweak("highlight", True),
+                ],
+            ),
+        ]
+
+        assert not rules.global_rules.room
+        assert not rules.global_rules.sender
+
+        assert rules.global_rules.underride == [
+            PushRule(
+                kind = PushRuleKind.underride,
+                id = ".m.rule.special_call",
+                default = True,
+                conditions = [
+                    PushUnknownCondition({"kind": "special_kind"}),
+                    PushEventMatch("type", "m.call.invite"),
+                ],
+                actions = [
+                    PushCoalesce(),
+                    PushSetTweak("sound", "ring"),
+                    PushSetTweak("highlight", False),
+                ],
+            ),
+            PushRule(
+                kind = PushRuleKind.underride,
+                id = ".m.rule.room_less_than_10_room_perm",
+                default = True,
+                conditions = [
+                    PushSenderNotificationPermission("room"),
+                    PushRoomMemberCount(10, "<"),
+                    PushEventMatch("type", "m.room.message"),
+                ],
+                actions = [PushNotify()],
+            ),
+            PushRule(
+                kind = PushRuleKind.underride,
+                id = ".m.rule.room_one_to_one",
+                default = True,
+                conditions = [
+                    PushRoomMemberCount(2, "=="),
+                    PushEventMatch("type", "m.room.message"),
+                ],
+                actions = [
+                    PushNotify(),
+                    PushSetTweak("sound", "default"),
+                    PushSetTweak("highlight", False),
+                ],
+            ),
+        ]
 
     def test_keys_upload(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
@@ -892,7 +1070,7 @@ class TestClass:
 
         assert isinstance(resp, RoomGetEventError)
 
-    async def test_room_put_state(self, async_client, aioresponse):
+    async def test_room_put_state(self, async_client, aioresponse: aioresponses):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
@@ -900,12 +1078,14 @@ class TestClass:
 
         base_url = "https://example.org/_matrix/client/r0"
 
+        # Test when key is set
+        state_key = "a-state-key"
         aioresponse.put(
             "{base}/rooms/{room}/state/{event}/{key}?{query}".format(
                 base = base_url,
                 room = TEST_ROOM_ID,
                 event = "org.example.event_type",
-                key = "",
+                key = state_key,
                 query = "access_token=abc123"
             ),
             status = 200,
@@ -913,9 +1093,32 @@ class TestClass:
         )
 
         resp = await async_client.room_put_state(
-                TEST_ROOM_ID,
-                "org.example.event_type",
-                {}
+            room_id = TEST_ROOM_ID,
+            event_type = "org.example.event_type",
+            content = {},
+            state_key = state_key
+        )
+
+        assert isinstance(resp, RoomPutStateResponse)
+
+
+        # Test when key is empty (and slash is optional)
+        aioresponse.put(
+            "{base}/rooms/{room}/state/{event}?{query}".format(
+                base = base_url,
+                room = TEST_ROOM_ID,
+                event = "org.example.event_type",
+                query = "access_token=abc123"
+            ),
+            status = 200,
+            payload={"event_id": "$1337stateeventid2342:example.org"}
+        )
+
+        resp = await async_client.room_put_state(
+            room_id=TEST_ROOM_ID,
+            event_type = "org.example.event_type",
+            content={},
+            state_key=""
         )
 
         assert isinstance(resp, RoomPutStateResponse)
@@ -928,27 +1131,47 @@ class TestClass:
         assert async_client.logged_in
 
         base_url = "https://example.org/_matrix/client/r0"
-        path = "{base}/rooms/{room}/state/{event}/{key}?{query}".format(
-            base = base_url,
-            room = TEST_ROOM_ID,
-            event = "m.room.name",
-            key = "",
-            query = "access_token=abc123"
+
+        # Test when state key is set
+        state_key = "a-state-key"
+        aioresponse.get(
+            "{base}/rooms/{room}/state/{event}/{key}?{query}".format(
+                base = base_url,
+                room = TEST_ROOM_ID,
+                event = "m.room.name",
+                key = state_key,
+                query = "access_token=abc123"
+            ),
+            status = 200,
+            payload={"name": "Test Room"}
+        )
+        resp = await async_client.room_get_state_event(
+            room_id = TEST_ROOM_ID,
+            event_type = "m.room.name",
+            state_key = state_key
         )
 
+        assert isinstance(resp, RoomGetStateEventResponse)
+
+        # without state key
         aioresponse.get(
-            path,
+            "{base}/rooms/{room}/state/{event}?{query}".format(
+                base = base_url,
+                room = TEST_ROOM_ID,
+                event = "m.room.name",
+                query = "access_token=abc123"
+            ),
             status = 200,
             payload={"name": "Test Room"}
         )
 
         resp = await async_client.room_get_state_event(
-                TEST_ROOM_ID,
-                "m.room.name"
+            room_id = TEST_ROOM_ID,
+            event_type = "m.room.name",
+            state_key = ""
         )
 
         assert isinstance(resp, RoomGetStateEventResponse)
-
 
     async def test_room_get_state(self, async_client, aioresponse):
         await async_client.receive_response(
@@ -1086,7 +1309,24 @@ class TestClass:
         )
         assert async_client.logged_in
 
-        await async_client.receive_response(self.encryption_sync_response)
+        resp = self.encryption_sync_response
+
+        # Mimic an outdated initial sync (synapse bug?) with a member that
+        # was present before, but already left and is absent from
+        # joined_members_response.
+        resp.rooms.join[TEST_ROOM_ID].timeline.events.append(
+            RoomMemberEvent(
+                {"event_id": "event_id_4",
+                 "sender": DAVE_ID,
+                 "origin_server_ts": 1516809890699},
+                DAVE_ID,
+                "join",
+                None,
+                {"membership": "join"}
+            ),
+        )
+        await async_client.receive_response(resp)
+
         aioresponse.get(
             "https://example.org/_matrix/client/r0/rooms/{}/"
             "joined_members?access_token=abc123".format(TEST_ROOM_ID),
@@ -1096,11 +1336,15 @@ class TestClass:
 
         room = async_client.rooms[TEST_ROOM_ID]
         assert not room.members_synced
+        assert tuple(room.users) == (ALICE_ID, CAROL_ID, DAVE_ID)
+        assert tuple(room.invited_users) == (CAROL_ID,)
 
         response = await async_client.joined_members(TEST_ROOM_ID)
 
         assert isinstance(response, JoinedMembersResponse)
         assert room.members_synced
+        assert tuple(room.users) == (ALICE_ID, CAROL_ID, EIRIN_ID)
+        assert tuple(room.invited_users) == (CAROL_ID,)
 
     async def test_joined_rooms(self, async_client, aioresponse):
         await async_client.receive_response(
@@ -1399,18 +1643,6 @@ class TestClass:
         )
         aioresponse.get(url, status=200, payload=self.messages_response)
         resp = await async_client.room_messages(TEST_ROOM_ID, "start_token")
-        assert isinstance(resp, RoomMessagesResponse)
-
-        # ID filter
-
-        aioresponse.get(
-            f"{url}&filter=test_id",
-            status=200,
-            payload=self.messages_response,
-        )
-        resp = await async_client.room_messages(
-            TEST_ROOM_ID, "start_token", message_filter="test_id",
-        )
         assert isinstance(resp, RoomMessagesResponse)
 
         # Dict filter
@@ -1725,7 +1957,7 @@ class TestClass:
 
         session = ClientSession()
         context = Context()
-        params  = TraceRequestChunkSentParams(chunk=b"x")
+        params = TraceRequestChunkSentParams(method="POST", url="test", chunk=b"x")
 
         await on_request_chunk_sent(session, context, params)
         assert monitor.transferred == 1
@@ -1932,7 +2164,7 @@ class TestClass:
             "?allow_remote=true".format(
                 server_name,
                 media_id,
-                quote(filename),
+                filename,
             ),
             status=200,
             content_type="image/png",
@@ -2030,10 +2262,41 @@ class TestClass:
         with pytest.raises(CallbackException):
             await async_client.receive_response(self.encryption_sync_response)
 
-    async def test_get_profile(self, async_client, aioresponse):
+    async def test_room_account_data_cb(self, async_client):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+
+        class CallbackException(Exception):
+            pass
+
+        async def cb(_, event):
+            raise CallbackException()
+
+        async_client.add_room_account_data_callback(cb, FullyReadEvent)
+
+        with pytest.raises(CallbackException):
+            await async_client.receive_response(
+                SyncResponse.from_dict(self.sync_response)
+            )
+
+    async def test_handle_account_data(self, async_client):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        await async_client.receive_response(
+            SyncResponse.from_dict(self.sync_response)
+        )
+
+        room = async_client.rooms['!SVkFJHzfwvuaIEawgC:localhost']
+        assert room.fully_read_marker == "event_id_2"
+        assert room.tags == {"u.test": {"order": 1}}
+
+    async def test_get_profile(self, async_client: AsyncClient, aioresponse: aioresponses):
         base_url = "https://example.org/_matrix/client/r0"
         name = faker.name()
         avatar = faker.avatar_url().replace("#auto", "")
+        async_client.user_id = ALICE_ID
 
         aioresponse.get(
             "{}/profile/{}".format(base_url, async_client.user_id),
@@ -2044,6 +2307,40 @@ class TestClass:
         assert isinstance(resp, ProfileGetResponse)
         assert resp.displayname == name
         assert resp.avatar_url.replace("#auto", "") == avatar
+
+    async def test_get_profile_auth_required(self,
+                                             async_client: AsyncClient,
+                                             aioresponse: aioresponses):
+        login = self.login_response
+        token = login['access_token']
+        user_id = login['user_id']
+
+        name = faker.name()
+        avatar = faker.avatar_url().replace("#auto", "")
+
+        base_url = "https://example.org/_matrix/client/r0"
+        url = "{}/profile/{}".format(base_url, user_id)
+
+        aioresponse.get(
+            url,
+            status=401,
+            payload=self.get_profile_unauth_error_response()
+        )
+
+        aioresponse.get(
+            '{}?access_token={}'.format(url, token),
+            status=200,
+            payload=self.get_profile_response(name, avatar)
+        )
+
+        resp = await async_client.get_profile(user_id)
+        assert isinstance(resp, ProfileGetError)
+
+        await async_client.receive_response(LoginResponse.from_dict(login))
+        assert async_client.logged_in
+
+        resp = await async_client.get_profile()
+        assert isinstance(resp, ProfileGetResponse)
 
     async def test_get_presence(self, async_client, aioresponse):
         """Test if we can get the presence state of a user
@@ -2228,9 +2525,11 @@ class TestClass:
         assert async_client.logged_in
 
         base_url = "https://example.org/_matrix/client/r0"
-
+        url = "{}/profile/{}/displayname?access_token={}".format(
+            base_url, async_client.user_id, async_client.access_token
+        )
         aioresponse.get(
-            "{}/profile/{}/displayname".format(base_url, async_client.user_id),
+            url,
             status=200,
             payload=self.get_displayname_response(None)
         )
@@ -2239,9 +2538,7 @@ class TestClass:
         assert not resp.displayname
 
         aioresponse.put(
-            "{}/profile/{}/displayname?access_token={}".format(
-                base_url, async_client.user_id, async_client.access_token
-            ),
+            url,
             status=200,
             payload={}
         )
@@ -2250,7 +2547,7 @@ class TestClass:
         assert isinstance(resp2, ProfileSetDisplayNameResponse)
 
         aioresponse.get(
-            "{}/profile/{}/displayname".format(base_url, async_client.user_id),
+            url,
             status=200,
             payload=self.get_displayname_response(new_name)
         )
@@ -2265,9 +2562,12 @@ class TestClass:
         assert async_client.logged_in
 
         base_url = "https://example.org/_matrix/client/r0"
+        url = "{}/profile/{}/avatar_url?access_token={}".format(
+            base_url, async_client.user_id, async_client.access_token
+        )
 
         aioresponse.get(
-            "{}/profile/{}/avatar_url".format(base_url, async_client.user_id),
+            url,
             status=200,
             payload=self.get_avatar_response(None)
         )
@@ -2276,9 +2576,7 @@ class TestClass:
         assert not resp.avatar_url
 
         aioresponse.put(
-            "{}/profile/{}/avatar_url?access_token={}".format(
-                base_url, async_client.user_id, async_client.access_token
-            ),
+            url,
             status=200,
             payload={}
         )
@@ -2287,7 +2585,7 @@ class TestClass:
         assert isinstance(resp2, ProfileSetAvatarResponse)
 
         aioresponse.get(
-            "{}/profile/{}/avatar_url".format(base_url, async_client.user_id),
+            url,
             status=200,
             payload=self.get_avatar_response(new_avatar)
         )
@@ -3844,6 +4142,20 @@ class TestClass:
             room_event_for_alice = json.loads(data)
             return CallbackResult(status=200, payload={})
 
+        aioresponse.get(
+            f"https://example.org/_matrix/client/r0/rooms/{TEST_ROOM_ID}/"
+            f"joined_members?access_token=bob_1234",
+            status=200,
+            payload=self.joined_members_response
+        )
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/keys/query?"
+            "access_token=bob_1234",
+            status=200,
+            payload=self.keys_query_response
+        )
+
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
             status=200,
@@ -3949,3 +4261,168 @@ class TestClass:
         # "AttributeError: _low_water", but the set... method works?
         ssl_transport = conn.transport._ssl_protocol._transport
         assert ssl_transport.get_write_buffer_limits()[1] == 16 * 1024
+
+    async def test_upload_filter(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            f"https://example.org/_matrix/client/r0/user/"
+            f"{async_client.user_id}/filter?access_token=abc123",
+            status=200,
+            payload={"filter_id": "abc123"},
+        )
+
+        resp = await async_client.upload_filter(
+            event_fields = ["content.body"],
+            event_format = EventFormat.federation,
+            room = {"timeline": { "limit": 1 }},
+        )
+        assert isinstance(resp, UploadFilterResponse)
+        assert resp.filter_id == "abc123"
+
+    async def test_global_account_data_cb(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        class CallbackCalled(Exception):
+            pass
+
+        async def cb(_event):
+            raise CallbackCalled()
+
+        async_client.add_global_account_data_callback(cb, PushRulesEvent)
+
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/sync?access_token=abc123",
+            status=200,
+            payload=self.sync_response,
+        )
+
+        with pytest.raises(CallbackCalled):
+            await async_client.sync()
+
+    async def test_set_pushrule(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        override = ("global", PushRuleKind.override, "foo")
+        content = ("global", PushRuleKind.content, "bar")
+
+        # Ensure before and after can't be specified together
+        with pytest.raises(TypeError):
+            await async_client.set_pushrule(*override, before="x", after="y")
+
+        # Test before + override with condition
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo?access_token=abc123&before=ov1",
+            body={
+                "actions": [],
+                "conditions": [{"kind": "contains_display_name"}],
+            },
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.set_pushrule(
+            *override, before="ov1", conditions=[PushContainsDisplayName()],
+        )
+        assert isinstance(resp, SetPushRuleResponse)
+
+        # Test after + override with action
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo?access_token=abc123&after=ov1",
+            body={"actions": ["notify"], "conditions": []},
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.set_pushrule(
+            *override, after="ov1", actions=[PushNotify()], conditions=[],
+        )
+        assert isinstance(resp, SetPushRuleResponse)
+
+        # Ensure conditions can't be specified with non-override/underride rule
+        with pytest.raises(TypeError):
+            await async_client.set_pushrule(*content, conditions=())
+
+        # Ensure pattern can't be specified with non-content rule
+        with pytest.raises(TypeError):
+            await async_client.set_pushrule(*override, pattern="notContent!")
+
+        # Test content pattern rule
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/content/bar?access_token=abc123",
+            body={"actions": [], "pattern": "foo*bar"},
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.set_pushrule(*content, pattern="foo*bar")
+        assert isinstance(resp, SetPushRuleResponse)
+
+    async def test_delete_pushrule(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        aioresponse.delete(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo?access_token=abc123",
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.delete_pushrule(
+            "global", PushRuleKind.override, "foo",
+        )
+        assert isinstance(resp, DeletePushRuleResponse)
+
+    async def test_enable_pushrule(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo/enabled?access_token=abc123",
+            body={"enabled": True},
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.enable_pushrule(
+            "global", PushRuleKind.override, "foo", enable=True,
+        )
+        assert isinstance(resp, EnablePushRuleResponse)
+
+    async def test_set_pushrule_actions(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/pushrules/"
+            "global/override/foo/actions?access_token=abc123",
+            body={"actions": [{"set_tweak": "highlight", "value": True}]},
+            status=200,
+            payload={},
+        )
+
+        tweak = PushSetTweak("highlight", True)
+        resp = await async_client.set_pushrule_actions(
+            "global", PushRuleKind.override, "foo", [tweak],
+        )
+        assert isinstance(resp, SetPushRuleActionsResponse)

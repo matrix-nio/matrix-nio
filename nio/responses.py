@@ -21,7 +21,7 @@ from builtins import str
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
@@ -45,13 +45,19 @@ __all__ = [
     "DeleteDevicesAuthResponse",
     "DeleteDevicesResponse",
     "DeleteDevicesError",
+    "DeletePushRuleError",
+    "DeletePushRuleResponse",
     "Device",
     "DeviceList",
     "DevicesResponse",
     "DevicesError",
     "DeviceOneTimeKeyCount",
+    "DiscoveryInfoError",
+    "DiscoveryInfoResponse",
     "DownloadResponse",
     "DownloadError",
+    "EnablePushRuleResponse",
+    "EnablePushRuleError",
     "ErrorResponse",
     "InviteInfo",
     "JoinResponse",
@@ -108,6 +114,10 @@ __all__ = [
     "RoomUnbanResponse",
     "RoomUnbanError",
     "Rooms",
+    "SetPushRuleError",
+    "SetPushRuleResponse",
+    "SetPushRuleActionsError",
+    "SetPushRuleActionsResponse",
     "ShareGroupSessionResponse",
     "ShareGroupSessionError",
     "SyncResponse",
@@ -143,6 +153,8 @@ __all__ = [
     "ToDeviceError",
     "RoomContextResponse",
     "RoomContextError",
+    "UploadFilterError",
+    "UploadFilterResponse",
     "UpdateReceiptMarkerError",
     "UpdateReceiptMarkerResponse",
 ]
@@ -177,8 +189,8 @@ class Rooms:
 
 @dataclass
 class DeviceOneTimeKeyCount:
-    curve25519: int = field()
-    signed_curve25519: int = field()
+    curve25519: Optional[int] = field()
+    signed_curve25519: Optional[int] = field()
 
 
 @dataclass
@@ -316,7 +328,7 @@ class FileResponse(Response):
 @dataclass
 class ErrorResponse(Response):
     message: str = field()
-    status_code: Optional[int] = None
+    status_code: Optional[str] = None
     retry_after_ms: Optional[int] = None
     soft_logout: bool = False
 
@@ -563,6 +575,41 @@ class PresenceSetError(ErrorResponse):
 
 class ProfileSetAvatarError(ErrorResponse):
     pass
+
+@dataclass
+class DiscoveryInfoError(ErrorResponse):
+    pass
+
+
+@dataclass
+class DiscoveryInfoResponse(Response):
+    """A response for a successful discovery info request.
+
+    Attributes:
+        homeserver_url (str): The base URL of the homeserver corresponding to
+            the requested domain.
+
+        identity_server_url (str, optional): The base URL of the identity
+            server corresponding to the requested domain, if any.
+    """
+
+    homeserver_url: str = field()
+    identity_server_url: Optional[str] = None
+
+    @classmethod
+    @verify(Schemas.discovery_info, DiscoveryInfoError)
+    def from_dict(
+        cls, parsed_dict: Dict[str, Any],
+    ) -> Union["DiscoveryInfoResponse", DiscoveryInfoError]:
+
+        homeserver_url = parsed_dict["m.homeserver"]["base_url"].rstrip("/")
+
+        identity_server_url = parsed_dict.get(
+            "m.identity_server", {},
+        ).get("base_url", "").rstrip("/") or None
+
+        return cls(homeserver_url, identity_server_url)
+
 
 
 @dataclass
@@ -857,7 +904,7 @@ class RoomGetStateEventResponse(Response):
         event_type: str,
         state_key: str,
         room_id: str,
-    ) -> Union["RoomGetStateEventResponse", RoomGetStateEventError] :
+    ) -> Union["RoomGetStateEventResponse", RoomGetStateEventError]:
         return cls(parsed_dict, event_type, state_key, room_id)
 
 
@@ -1509,6 +1556,7 @@ class SyncResponse(Response):
     device_list: DeviceList = field()
     to_device_events: List[ToDeviceEvent] = field()
     presence_events: List[PresenceEvent] = field()
+    account_data_events: List[AccountDataEvent] = field(default_factory=list)
 
     def __str__(self) -> str:
         result = []
@@ -1548,7 +1596,7 @@ class SyncResponse(Response):
     def _get_to_device(parsed_dict: Dict[Any, Any]):
         # type: (...) -> List[ToDeviceEvent]
         events: List[ToDeviceEvent] = []
-        for event_dict in parsed_dict["events"]:
+        for event_dict in parsed_dict.get("events", []):
             event = ToDeviceEvent.parse_event(event_dict)
 
             if event:
@@ -1560,7 +1608,7 @@ class SyncResponse(Response):
     def _get_timeline(parsed_dict: Dict[Any, Any]) -> Timeline:
         validate_json(parsed_dict, Schemas.room_timeline)
 
-        events = SyncResponse._get_room_events(parsed_dict["events"])
+        events = SyncResponse._get_room_events(parsed_dict.get("events", []))
 
         return Timeline(
             events, parsed_dict["limited"], parsed_dict["prev_batch"]
@@ -1570,7 +1618,7 @@ class SyncResponse(Response):
     def _get_state(parsed_dict: Dict[Any, Any]) -> List[Union[Event, BadEventType]]:
         validate_json(parsed_dict, Schemas.sync_room_state)
         events = SyncResponse._get_room_events(
-            parsed_dict["events"],
+            parsed_dict.get("events", []),
         )
 
         return events
@@ -1580,7 +1628,7 @@ class SyncResponse(Response):
         validate_json(parsed_dict, Schemas.sync_room_state)
         events = []
 
-        for event_dict in parsed_dict["events"]:
+        for event_dict in parsed_dict.get("events", []):
             event = InviteEvent.parse_event(event_dict)
 
             if event:
@@ -1646,18 +1694,18 @@ class SyncResponse(Response):
         invited_rooms: Dict[str, InviteInfo] = {}
         left_rooms: Dict[str, RoomInfo] = {}
 
-        for room_id, room_dict in parsed_dict["invite"].items():
+        for room_id, room_dict in parsed_dict.get("invite", {}).items():
             state = SyncResponse._get_invite_state(room_dict["invite_state"])
             invite_info = InviteInfo(state)
             invited_rooms[room_id] = invite_info
 
-        for room_id, room_dict in parsed_dict["leave"].items():
+        for room_id, room_dict in parsed_dict.get("leave", {}).items():
             state = SyncResponse._get_state(room_dict["state"])
             timeline = SyncResponse._get_timeline(room_dict["timeline"])
             leave_info = RoomInfo(timeline, state, [], [])
             left_rooms[room_id] = leave_info
 
-        for room_id, room_dict in parsed_dict["join"].items():
+        for room_id, room_dict in parsed_dict.get("join", {}).items():
             join_info = SyncResponse._get_join_info(
                 room_dict["state"]["events"],
                 room_dict["timeline"]["events"],
@@ -1681,6 +1729,13 @@ class SyncResponse(Response):
 
         return presence_events
 
+    @staticmethod
+    def _get_account_data(
+        parsed_dict: Dict[str, Any],
+    ) -> Generator[AccountDataEvent, None, None]:
+        for ev_dict in parsed_dict.get("account_data", {}).get("events", []):
+            yield AccountDataEvent.parse_event(ev_dict)
+
     @classmethod
     @verify(Schemas.sync, SyncError, False)
     def from_dict(
@@ -1688,22 +1743,22 @@ class SyncResponse(Response):
         parsed_dict: Dict[Any, Any],
     ):
         # type: (...) -> Union[SyncResponse, ErrorResponse]
-        to_device = cls._get_to_device(parsed_dict["to_device"])
+        to_device = cls._get_to_device(parsed_dict.get("to_device", {}))
 
-        key_count_dict = parsed_dict["device_one_time_keys_count"]
+        key_count_dict = parsed_dict.get("device_one_time_keys_count", {})
         key_count = DeviceOneTimeKeyCount(
-            key_count_dict["curve25519"],
-            key_count_dict["signed_curve25519"]
+            key_count_dict.get("curve25519"),
+            key_count_dict.get("signed_curve25519")
         )
 
         devices = DeviceList(
-            parsed_dict["device_lists"]["changed"],
-            parsed_dict["device_lists"]["left"],
+            parsed_dict.get("device_lists", {}).get("changed", []),
+            parsed_dict.get("device_lists", {}).get("left", []),
         )
 
         presence_events = SyncResponse._get_presence(parsed_dict)
 
-        rooms = SyncResponse._get_room_info(parsed_dict["rooms"])
+        rooms = SyncResponse._get_room_info(parsed_dict.get("rooms", {}))
 
         return SyncResponse(
             parsed_dict["next_batch"],
@@ -1711,5 +1766,90 @@ class SyncResponse(Response):
             key_count,
             devices,
             to_device,
-            presence_events
+            presence_events,
+            list(SyncResponse._get_account_data(parsed_dict)),
         )
+
+
+class UploadFilterError(ErrorResponse):
+    pass
+
+
+@dataclass
+class UploadFilterResponse(Response):
+    """Response representing a successful filter upload request.
+
+    Attributes:
+        filter_id (str): A filter ID that may be used in
+            future requests to restrict which events are returned to the
+            client.
+    """
+    filter_id: str = field()
+
+    @classmethod
+    @verify(Schemas.upload_filter, UploadFilterError)
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any],
+    ) -> Union["UploadFilterResponse", UploadFilterError]:
+        return cls(parsed_dict["filter_id"])
+
+
+class WhoamiError(ErrorResponse):
+    pass
+
+
+@dataclass
+class WhoamiResponse(Response):
+
+    user_id: str = field()
+
+    @classmethod
+    @verify(Schemas.whoami, WhoamiError)
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any],
+    ) -> Union["WhoamiResponse", WhoamiError]:
+        return cls(parsed_dict["user_id"])
+
+
+@dataclass
+class SetPushRuleResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return SetPushRuleError.from_dict(parsed_dict)
+
+
+class SetPushRuleError(ErrorResponse):
+    pass
+
+
+@dataclass
+class DeletePushRuleResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return DeletePushRuleError.from_dict(parsed_dict)
+
+
+class DeletePushRuleError(ErrorResponse):
+    pass
+
+
+@dataclass
+class EnablePushRuleResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return EnablePushRuleError.from_dict(parsed_dict)
+
+
+class EnablePushRuleError(ErrorResponse):
+    pass
+
+
+@dataclass
+class SetPushRuleActionsResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return SetPushRuleActionsError.from_dict(parsed_dict)
+
+
+class SetPushRuleActionsError(ErrorResponse):
+    pass

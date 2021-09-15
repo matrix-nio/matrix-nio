@@ -8,10 +8,10 @@ hypothesis
 hpack
 faker
 mypy
-mypy_extensions>=0.4.3,<0.5.0
-aiohttp; python_version >= '3.5'
-pytest-aiohttp; python_version >= '3.5'
-aioresponses <= 0.6.1; python_version >= '3.5'
+mypy_extensions
+aiohttp
+pytest-aiohttp
+aioresponses
 python-olm >= '3.1.0'
 peewee >= '3.9.5'
 atomicwrites

@@ -197,14 +197,14 @@ class Callbacks(object):
                     resp = await client.cancel_key_verification(
                         event.transaction_id, reject=True)
                     if isinstance(resp, ToDeviceError):
-                        print(f"confirm_short_auth_string failed with {resp}")
+                        print(f"cancel_key_verification failed with {resp}")
                 else:  # C or anything for cancel
                     print("Cancelled by user! Verification will be "
                           "cancelled.")
                     resp = await client.cancel_key_verification(
                         event.transaction_id, reject=False)
                     if isinstance(resp, ToDeviceError):
-                        print(f"confirm_short_auth_string failed with {resp}")
+                        print(f"cancel_key_verification failed with {resp}")
 
             elif isinstance(event, KeyVerificationMac):  # third step
                 """ Third step is to receive KeyVerificationMac

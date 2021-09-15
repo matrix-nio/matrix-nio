@@ -1,7 +1,6 @@
 Projects built with nio
 -----------------------
 
-- `mautrix-telegram <https://github.com/tulir/mautrix-telegram>`_
 - `pantalaimon <https://github.com/matrix-org/pantalaimon>`_
 - `nio-template <https://github.com/anoadragon453/nio-template>`_
 - `matrix-tweetalong-bot <https://github.com/babolivier/matrix-tweetalong-bot>`_
@@ -13,6 +12,12 @@ Projects built with nio
 - `cody <https://gitlab.com/carlbordum/matrix-cody>`_
 - `matrix-nio-send <https://github.com/8go/matrix-nio-send>`_
 - `Mirage <https://github.com/mirukana/mirage/>`_
+- `matrix-commander <https://github.com/8go/matrix-commander>`_
+- `matrix-archive <https://github.com/russelldavies/matrix-archive>`_
+- `matrix-eno-bot <https://github.com/8go/matrix-eno-bot>`_
+- `matrix-discord-bridge <https://github.com/git-bruh/matrix-discord-bridge>`_
+- `Simple-Matrix-Bot-Lib <https://github.com/KrazyKirby99999/simple-matrix-bot-lib>`_
+- `pushmatrix <https://github.com/bonukai/pushmatrix>`_
 
 Are we missing a project? Submit a pull request and we'll get you added! Just edit ``doc/built-with-nio.rst``
 

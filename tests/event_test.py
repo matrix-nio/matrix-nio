@@ -5,12 +5,14 @@ from __future__ import unicode_literals
 import json
 import pdb
 
+from nio.api import PushRuleKind
 from nio.events import (
     BadEvent,
     OlmEvent,
     PowerLevelsEvent,
     RedactedEvent,
     RedactionEvent,
+    StickerEvent,
     RoomAliasEvent,
     RoomCreateEvent,
     RoomGuestAccessEvent,
@@ -57,7 +59,17 @@ from nio.events import (
     DummyEvent,
     RoomKeyRequest,
     RoomKeyRequestCancellation,
+    PushRule,
+    PushRuleset,
+    PushRulesEvent,
+    PushEventMatch,
+    PushContainsDisplayName,
+    PushRoomMemberCount,
+    PushSenderNotificationPermission,
+    PushUnknownCondition,
 )
+from nio.rooms import MatrixRoom
+from nio.responses import RoomSummary
 
 
 class TestClass:
@@ -161,6 +173,8 @@ class TestClass:
         assert levels.get_state_event_required_level("m.room.undefined") == 50
         assert levels.get_message_event_required_level("m.room.message") == 25
         assert levels.get_message_event_required_level("m.room.undefined") == 0
+        assert levels.get_notification_required_level("room") == 60
+        assert levels.get_notification_required_level("non_existant") == 50
 
         assert levels.get_user_level(admin) == 100
         assert levels.get_user_level(user) == 0
@@ -192,6 +206,9 @@ class TestClass:
         assert levels.can_user_redact(admin) is True
         assert levels.can_user_redact(user) is False
 
+        assert levels.can_user_notify(admin, "room") is True
+        assert levels.can_user_notify(mod, "room") is False
+
     def test_membership(self):
         parsed_dict = TestClass._load_response("tests/data/events/member.json")
         event = RoomMemberEvent.from_dict(parsed_dict)
@@ -201,6 +218,11 @@ class TestClass:
         parsed_dict = TestClass._load_response("tests/data/events/redaction.json")
         event = RedactionEvent.from_dict(parsed_dict)
         assert isinstance(event, RedactionEvent)
+
+    def test_sticker(self):
+        parsed_dict = TestClass._load_response("tests/data/events/sticker.json")
+        event = StickerEvent.from_dict(parsed_dict)
+        assert isinstance(event, StickerEvent)
 
     def test_empty_event(self):
         parsed_dict = {}
@@ -485,3 +507,149 @@ class TestClass:
         assert event.thumbnail_key
         assert event.thumbnail_hashes
         assert event.thumbnail_iv
+        assert event.mimetype
+
+    def test_event_flattening(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/to_flatten.json",
+        )
+
+        event = Event.from_dict(parsed_dict)
+        assert event.flattened() == {
+            "content.body": "foo",
+            "content.m.dotted.key": "bar",
+            "event_id": "!test:example.org",
+            "origin_server_ts": 0,
+            "sender": "@alice:example.org",
+            "type": "m.flatten_test",
+        }
+
+    def test_pushrules_parsing(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/push_rules.json",
+        )
+        parsed_rule = parsed_dict["content"]["global"]["override"][0]
+
+        event = PushRulesEvent.from_dict(parsed_dict)
+        assert isinstance(event, PushRulesEvent)
+        assert bool(event) is True
+        rule = event.global_rules.override[0]
+
+        for i, action in enumerate(rule.actions):
+            assert action.as_value == parsed_rule["actions"][i]
+
+        for i, condition in enumerate(rule.conditions):
+            assert condition.as_value == parsed_rule["conditions"][i]
+
+    def test_pushrules_matching(self):
+        room = MatrixRoom("!test:example.org", "@alice:example.com")
+        name = "Alice"
+
+        event = Event.from_dict({
+            "event_id": "!test:example.org",
+            "room_id": room.room_id,
+            "origin_server_ts": 0,
+            "sender": "@alice:example.org",
+            "type": "m.test",
+            "words": "foo bar",
+            "int": 0,
+            "content": { "body": "a,here c" },
+        })
+
+        args = (event, room, name)
+
+        # PushEventMatch
+
+        must_succeed = [
+            ("type", "m.test"),
+            ("type", "M*T"),              # glob + ignoring case
+            ("content.body", "heRe"),     # word boundaries + ignoring case
+            ("content.body", "a"),        # word at the start of the string
+            ("content.body", "c"),        # word at the end of the string
+            ("content.body", "[a-z]*c"),  # more glob patterns
+        ]
+
+        must_fail = [
+            ("int", "0"),             # only match string values
+            ("words", "foo"),         # match words only for content.body
+            ("content.body", "her"),  # not a full word match
+        ]
+
+        for key, pattern in must_succeed:
+            assert PushEventMatch(key, pattern).matches(*args)
+
+        for key, pattern in must_fail:
+            assert not PushEventMatch(key, pattern).matches(*args)
+
+        # PushContainsDisplayName
+
+        assert not PushContainsDisplayName().matches(*args)
+
+        del event.source["content"]["body"]
+        assert not PushContainsDisplayName().matches(*args)
+
+        event.source["content"]["body"] = "alice!"
+        assert PushContainsDisplayName().matches(*args)
+
+        # PushRoomMemberCount
+
+        room.summary = RoomSummary(100, 5)  # invited members don't matter
+        tests = [(5, "=="), (6, "<"), (4, ">"), (5, "<="), (4, ">=")]
+
+        for count, operator in tests:
+            assert PushRoomMemberCount(count, operator).matches(*args)
+
+        # PushSenderNotificationPermission
+
+        assert not PushSenderNotificationPermission("room").matches(*args)
+
+        room.power_levels.users[event.sender] = 50
+        assert PushSenderNotificationPermission("room").matches(*args)
+
+        # PushUnknownCondition
+
+        assert not PushUnknownCondition({}).matches(*args)
+
+        # PushRule
+
+        rule = PushRule(PushRuleKind.override, "all", False)
+        assert rule.matches(*args)
+        rule.enabled = False
+        assert not rule.matches(*args)
+
+        cnds = [PushEventMatch("type", "m.test")]
+        rule = PushRule(PushRuleKind.override, "test", False, conditions=cnds)
+        assert rule.matches(*args)
+        cnds.append(PushUnknownCondition({}))
+        assert not rule.matches(*args)
+
+        rule = PushRule(PushRuleKind.room, room.room_id, False)
+        assert rule.matches(*args)
+        rule.id += "blah"
+        assert not rule.matches(*args)
+
+        rule = PushRule(PushRuleKind.sender, event.sender, False)
+        assert rule.matches(*args)
+        rule.id += "blah"
+        assert not rule.matches(*args)
+
+        event.source["content"]["body"] = "a here! b c"
+        rule = PushRule(PushRuleKind.content, "here", False, pattern="here")
+        assert rule.matches(*args)
+        rule.pattern = "her"
+        assert not rule.matches(*args)
+
+        # PushRuleset
+
+        ruleset = PushRuleset(
+            room=[
+                PushRule(PushRuleKind.room, "blah", False),
+                PushRule(PushRuleKind.room, room.room_id, False),
+            ],
+            sender=[PushRule(PushRuleKind.sender, event.sender, False)],
+        )
+        assert ruleset.matching_rule(*args) is ruleset.room[1]
+
+        del ruleset.room[1]
+        del ruleset.sender[0]
+        assert ruleset.matching_rule(*args) is None

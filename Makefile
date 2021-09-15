@@ -18,15 +18,11 @@ clean:
 	-rm -r dist/ __pycache__/
 	-rm -r packages/
 
-install:
-	$(PYTHON) setup.py build
-	$(PYTHON) setup.py install --skip-build -O1 --root=$(DESTDIR)
-
 arch-git-pkg:
 	-rm -r packages/
-	umask 0022 && $(PYTHON) setup.py sdist --dist-dir packages
-	cp contrib/archlinux/pkgbuild/PKGBUILD.git packages/PKGBUILD
-	cd packages && makepkg -ci
+	umask 0022 && poetry build --format sdist
+	cp contrib/archlinux/pkgbuild/PKGBUILD.git dist/PKGBUILD
+	cd dist && makepkg -ci
 
 
 .PHONY: all clean test typecheck coverage

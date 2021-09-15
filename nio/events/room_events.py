@@ -73,6 +73,33 @@ class Event:
         self.sender = self.source["sender"]
         self.server_timestamp = self.source["origin_server_ts"]
 
+    def flattened(
+        self,
+        _prefix: str = "",
+        _source: Optional[Dict[str, Any]] = None,
+        _flat: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Return a flattened version of the ``source`` dict with dotted keys.
+
+        Example:
+            >>> event.source
+            {"content": {"body": "foo"}, "m.test": {"key": "bar"}}
+            >>> event.source.flattened()
+            {"content.body": "foo", "m.test.key": "bar"}
+
+        """
+
+        source = self.source if _source is None else _source
+        flat = {} if _flat is None else _flat
+
+        for key, value in source.items():
+            if isinstance(value, dict):
+                self.flattened(f"{_prefix}{key}.", value, flat)
+            else:
+                flat[f"{_prefix}{key}"] = value
+
+        return flat
+
     @classmethod
     def from_dict(cls, parsed_dict):
         # type: (Dict[Any, Any]) -> Union[Event, BadEventType]
@@ -135,6 +162,8 @@ class Event:
             return RedactionEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.encrypted":
             return Event.parse_encrypted_event(event_dict)
+        elif event_dict["type"] == "m.sticker":
+            return StickerEvent.from_dict(event_dict)
         elif event_dict["type"].startswith("m.call"):
             return CallEvent.parse_event(event_dict)
 
@@ -876,6 +905,7 @@ class RoomEncryptedMedia(RoomMessage):
         hashes (dict): A mapping from an algorithm name to a hash of the
             ciphertext encoded as base64.
         iv (str): The initialisation vector that was used to encrypt the file.
+        mimetype (str, optional): The mimetype of the message.
 
         thumbnail_url (str, optional): The URL of the thumbnail file.
         thumbnail_key (dict, optional): The key that can be used to decrypt the
@@ -891,6 +921,7 @@ class RoomEncryptedMedia(RoomMessage):
     key: Dict[str, Any] = field()
     hashes: Dict[str, Any] = field()
     iv: str = field()
+    mimetype: str = field()
 
     thumbnail_url: Optional[str] = None
     thumbnail_key: Optional[Dict] = None
@@ -908,6 +939,8 @@ class RoomEncryptedMedia(RoomMessage):
         thumbnail_hashes = thumbnail_file.get("hashes")
         thumbnail_iv = thumbnail_file.get("iv")
 
+        mimetype = info.get("mimetype") or parsed_dict["content"]["file"].get("mimetype")
+
         return cls(
             parsed_dict,
             parsed_dict["content"]["file"]["url"],
@@ -915,6 +948,7 @@ class RoomEncryptedMedia(RoomMessage):
             parsed_dict["content"]["file"]["key"],
             parsed_dict["content"]["file"]["hashes"],
             parsed_dict["content"]["file"]["iv"],
+            mimetype,
             thumbnail_url,
             thumbnail_key,
             thumbnail_hashes,
@@ -1132,7 +1166,9 @@ class DefaultLevels:
             can be overridden by the events power level mapping.
         users_default (int): The default power level for every user in the
             room. This can be overridden by the users power level mapping.
-
+        notifications (Dict[str, int]): The level required to send different
+            kinds of notifications. Used for ``sender_notification_permission``
+            conditions in push rules.
     """
 
     ban: int = 50
@@ -1142,7 +1178,7 @@ class DefaultLevels:
     state_default: int = 0
     events_default: int = 0
     users_default: int = 0
-    # TODO: notifications
+    notifications: Dict[str, int] = field(default_factory=lambda: {"room": 50})
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -1163,7 +1199,8 @@ class DefaultLevels:
             content["redact"],
             content["state_default"],
             content["events_default"],
-            content["users_default"]
+            content["users_default"],
+            content["notifications"],
         )
 
 
@@ -1207,6 +1244,17 @@ class PowerLevels:
                 required level for, e.g. `m.room.message`.
         """
         return self.events.get(event_type, self.defaults.events_default)
+
+    def get_notification_required_level(self, notification_type: str) -> int:
+        """Get required power level to send a certain type of notification.
+
+        Returns an integer representing the required power level.
+
+        Args:
+            notification_type (str): The type of notification to get the
+                required level for, e.g. ``"room"``.
+        """
+        return self.defaults.notifications.get(notification_type, 50)
 
     def get_user_level(self, user_id):
         # type: (str) -> int
@@ -1282,11 +1330,16 @@ class PowerLevels:
 
         return can_ban_lower and level > self.get_user_level(target_user_id)
 
-    def can_user_redact(self, user_id):
-        # type: (str) -> bool
-        """Return whether a user has enough power to react other user's events.
+    def can_user_redact(self, user_id: str):
+        """Return whether a user has enough power to redact other user's events.
         """
         return self.get_user_level(user_id) >= self.defaults.redact
+
+    def can_user_notify(self, user_id: str, notification_type: str):
+        """Return whether user has enough power to send a type of notification.
+        """
+        required = self.get_notification_required_level(notification_type)
+        return self.get_user_level(user_id) >= required
 
     def update(self, new_levels):
         """Update the power levels object with new levels.
@@ -1409,4 +1462,42 @@ class RoomMemberEvent(Event):
             prev_membership,
             content,
             prev_content,
+        )
+
+
+@dataclass
+class StickerEvent(Event):
+    """An event indicating the use of a sticker
+
+    Sticker messages are specialised image messages that are displayed
+    without controls. Sticker messages are intended to provide simple
+    "reaction" events in the message timeline.
+
+    Attributes:
+        body (str): A textual representation or associated description of
+        the sticker image. This could be the alt text of the original image,
+        or a message to accompany and further describe the sticker.
+        url (str): The URL to the sticker image.
+        content (dict): The content of the of the redaction event.
+
+    """
+
+    body: str = field()
+    url: str = field()
+    content: Dict[str, Any] = field()
+
+    @classmethod
+    @verify(Schemas.sticker)
+    def from_dict(cls, parsed_dict):
+        # type: (Dict[Any, Any]) -> Union[StickerEvent, BadEventType]
+        content = parsed_dict.get("content", {})
+
+        body = content["body"]
+        url = content["url"]
+
+        return cls(
+            parsed_dict,
+            body,
+            url,
+            content,
         )

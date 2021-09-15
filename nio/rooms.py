@@ -78,6 +78,7 @@ class MatrixRoom:
         self.tags: Dict[str, Optional[Dict[str, float]]] = {}
         self.unread_notifications: int = 0
         self.unread_highlights: int = 0
+        self.members_synced: bool = False
         # yapf: enable
 
     @property
@@ -435,23 +436,18 @@ class MatrixRoom:
         )
 
     @property
-    def members_synced(self) -> bool:
-        """Check if the room member state is fully synced.
-
-        Room members can be missing from the room if syncs are done using lazy
-        member loading, the room summary will contain the full member count but
-        other member info will be missing.
-
-        A `joined_members` request should be done for this room to populate the
-        member list. This is crucial for encrypted rooms before sending any
-        messages.
-        """
+    def joined_count(self) -> int:
         try:
-            _, joined, invited = self._summary_details()
+            return self._summary_details()[1]
         except ValueError:
-            return True
+            return len(tuple(u for u in self.users.values() if not u.invited))
 
-        return joined + invited == len(self.users)
+    @property
+    def invited_count(self) -> int:
+        try:
+            return self._summary_details()[2]
+        except ValueError:
+            return len(tuple(u for u in self.users.values() if u.invited))
 
     @property
     def member_count(self) -> int:

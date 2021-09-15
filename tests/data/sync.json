@@ -13,7 +13,24 @@
         "join": {
             "!SVkFJHzfwvuaIEawgC:localhost": {
                 "account_data": {
-                    "events": []
+                    "events": [
+                        {
+                            "type": "m.fully_read",
+                            "content": {
+                                "event_id": "event_id_2"
+                            }
+                        },
+                        {
+                            "type": "m.tag",
+                            "content": {
+                                "tags": {
+                                    "u.test": {
+                                        "order": 1
+                                    }
+                                }
+                            }
+                        }
+                    ]
                 },
                 "ephemeral": {
                     "events": [
@@ -216,9 +233,11 @@
         },
         "leave": {}
     },
+
     "to_device": {
         "events": []
     },
+
     "presence": {
         "events": [
             {
@@ -239,6 +258,134 @@
                     "last_active_ago": 1337,
                     "currently_active": false,
                     "status_msg": "I am gone."
+                }
+            }
+        ]
+    },
+
+    "account_data": {
+        "events": [
+            {
+                "type": "m.push_rules",
+                "content": {
+                    "global": {
+                        "override": [
+                            {
+                                "actions": [
+                                    "dont_notify"
+                                ],
+                                "conditions": [
+                                    {
+                                        "key": "content.msgtype",
+                                        "kind": "event_match",
+                                        "pattern": "m.notice"
+                                    }
+                                ],
+                                "default": true,
+                                "enabled": false,
+                                "rule_id": ".m.rule.suppress_notices"
+                            }
+                        ],
+                        "content": [
+                            {
+                                "actions": [
+                                    "notify",
+                                    "do_special_thing",
+                                    {
+                                        "set_tweak": "sound",
+                                        "value": "default"
+                                    },
+                                    {
+                                        "set_tweak": "highlight"
+                                    }
+                                ],
+                                "default": true,
+                                "enabled": true,
+                                "pattern": "alice",
+                                "rule_id": ".m.rule.contains_user_name"
+                            }
+                        ],
+                        "room": [],
+                        "sender": [],
+                        "underride": [
+                            {
+                                "actions": [
+                                    "coalesce",
+                                    {
+                                        "set_tweak": "sound",
+                                        "value": "ring"
+                                    },
+                                    {
+                                        "set_tweak": "highlight",
+                                        "value": false
+                                    }
+                                ],
+                                "conditions": [
+                                    {
+                                        "kind": "special_kind"
+                                    },
+                                    {
+                                        "key": "type",
+                                        "kind": "event_match",
+                                        "pattern": "m.call.invite"
+                                    }
+                                ],
+                                "default": true,
+                                "enabled": true,
+                                "rule_id": ".m.rule.special_call"
+                            },
+                            {
+                                "actions": [
+                                    "notify"
+                                ],
+                                "conditions": [
+                                    {
+                                        "key": "room",
+                                        "kind": "sender_notification_permission"
+                                    },
+                                    {
+                                        "is": "<10",
+                                        "kind": "room_member_count"
+                                    },
+                                    {
+                                        "key": "type",
+                                        "kind": "event_match",
+                                        "pattern": "m.room.message"
+                                    }
+                                ],
+                                "default": true,
+                                "enabled": true,
+                                "rule_id": ".m.rule.room_less_than_10_room_perm"
+                            },
+                            {
+                                "actions": [
+                                    "notify",
+                                    {
+                                        "set_tweak": "sound",
+                                        "value": "default"
+                                    },
+                                    {
+                                        "set_tweak": "highlight",
+                                        "value": false
+                                    }
+                                ],
+                                "conditions": [
+                                    {
+                                        "is": "2",
+                                        "kind": "room_member_count"
+                                    },
+                                    {
+                                        "key": "type",
+                                        "kind": "event_match",
+                                        "pattern": "m.room.message"
+                                    }
+                                ],
+                                "default": true,
+                                "enabled": true,
+                                "rule_id": ".m.rule.room_one_to_one"
+                            }
+                        ]
+                    }
                 }
             }
         ]

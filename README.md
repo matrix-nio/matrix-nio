@@ -1,7 +1,7 @@
 nio
 ===
 
-[![Build Status](https://img.shields.io/travis/poljar/matrix-nio.svg?style=flat-square)](https://travis-ci.org/poljar/matrix-nio)
+[![Build Status](https://img.shields.io/github/workflow/status/poljar/matrix-nio/Build%20Status?style=flat-square)](https://github.com/poljar/matrix-nio/actions)
 [![codecov](https://img.shields.io/codecov/c/github/poljar/matrix-nio/master.svg?style=flat-square)](https://codecov.io/gh/poljar/matrix-nio)
 [![license](https://img.shields.io/badge/license-ISC-blue.svg?style=flat-square)](https://github.com/poljar/matrix-nio/blob/master/LICENSE.md)
 [![Documentation Status](https://readthedocs.org/projects/matrix-nio/badge/?version=latest&style=flat-square)](https://matrix-nio.readthedocs.io/en/latest/?badge=latest)
@@ -57,8 +57,8 @@ Note that this installs nio without end-to-end encryption support. For e2ee
 support, python-olm is needed which requires the
 [libolm](https://gitlab.matrix.org/matrix-org/olm) C library (version 3.x).
 On Debian and Ubuntu one can use `apt-get` to install package `libolm-dev`.
-On Fedora one can use `dnf` to install package `libolm-devel`. 
-On MacOS one can use [brew](https://brew.sh/) to install package `libolm`. 
+On Fedora one can use `dnf` to install package `libolm-devel`.
+On MacOS one can use [brew](https://brew.sh/) to install package `libolm`.
 Make sure version 3 is installed.
 
 After libolm has been installed, the e2ee enabled version of nio can be
