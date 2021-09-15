@@ -1221,6 +1221,20 @@ class Api:
         return "DELETE", Api._build_path(path)
 
     @staticmethod
+    def room_get_visibility(room_id):
+        # type: (str) -> Tuple[str, str]
+        """Get visibility of a room in the directory.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            room_id (str): The room ID to query.
+        """
+        path = "directory/list/room/{}".format(room_id)
+
+        return "GET", Api._build_path(path)
+
+    @staticmethod
     def room_typing(
         access_token,       # type: str
         room_id,            # type: str
