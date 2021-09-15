@@ -1207,6 +1207,20 @@ class Api:
         return "GET", Api._build_path(path)
 
     @staticmethod
+    def room_delete_alias(room_alias):
+        # type: (str) -> Tuple[str, str]
+        """Delete a room alias.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            room_alias (str): The alias to delete
+        """
+        path = "directory/room/{}".format(room_alias)
+
+        return "DELETE", Api._build_path(path)
+
+    @staticmethod
     def room_typing(
         access_token,       # type: str
         room_id,            # type: str
