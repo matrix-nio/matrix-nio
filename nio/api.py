@@ -383,7 +383,10 @@ class Api:
         if password is not None:
             content_dict = {
                 "type": "m.login.password",
-                "user": user,
+                "identifier": {
+                    "type": "m.id.user",
+                    "user": user
+                },
                 "password": password,
             }
         elif token is not None:
