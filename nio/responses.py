@@ -26,7 +26,6 @@ from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
-from . import RoomVisibility
 from .event_builders import ToDeviceMessage
 from .events import (AccountDataEvent, BadEventType, Event, InviteEvent,
                      ToDeviceEvent, EphemeralEvent)
@@ -1003,7 +1002,7 @@ class RoomGetVisibilityResponse(Response):
     """A response containing the result of a get visibility request.
     """
     room_id: str = field()
-    visibility: RoomVisibility = field()
+    visibility: str = field()
 
     @classmethod
     @verify(
@@ -1013,7 +1012,7 @@ class RoomGetVisibilityResponse(Response):
     )
     def from_dict(cls, parsed_dict: Dict[Any, Any], room_id: str):
         # type: (...) -> Union[RoomGetVisibilityResponse, ErrorResponse]
-        visibility = RoomVisibility(parsed_dict["visibility"])
+        visibility = parsed_dict["visibility"]
         return cls(room_id, visibility)
 
 
