@@ -1280,7 +1280,7 @@ class Api:
         Args:
             room_alias (str): The alias to delete
         """
-        path = "directory/room/{}".format(room_alias)
+        path = ["directory", "room", room_alias]
 
         return "DELETE", Api._build_path(path)
 
@@ -1294,7 +1294,7 @@ class Api:
         Args:
             room_id (str): The room ID to query.
         """
-        path = "directory/list/room/{}".format(room_id)
+        path = ["directory", "list", "room", room_id]
 
         return "GET", Api._build_path(path)
 
