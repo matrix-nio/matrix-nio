@@ -1001,6 +1001,7 @@ class RoomDeleteAliasResponse(Response):
 class RoomGetVisibilityResponse(Response):
     """A response containing the result of a get visibility request.
     """
+    room_id: str = field()
     visibility: str = field()
 
     @classmethod
@@ -1009,10 +1010,10 @@ class RoomGetVisibilityResponse(Response):
         RoomGetVisibilityError,
         pass_arguments=False,
     )
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> Union[RoomDeleteAliasResponse, ErrorResponse]
+    def from_dict(cls, parsed_dict: Dict[Any, Any], room_id: str):
+        # type: (...) -> Union[RoomGetVisibilityResponse, ErrorResponse]
         visibility = parsed_dict["visibility"]
-        return cls(visibility)
+        return cls(room_id, visibility)
 
 
 class EmptyResponse(Response):
