@@ -370,7 +370,8 @@ class Api:
 
         Args:
             user (str): The fully qualified user ID or just local part of the
-                user ID, to log in.
+                user ID, to log in. If the user ID contains an '@', but no ':',
+                the user ID will be considered to be an email address.
             password (str): The user's password.
             device_name (str): A display name to assign to a newly-created
                 device. Ignored if device_id corresponds to a known device
@@ -381,12 +382,24 @@ class Api:
         path = Api._build_path(path=["login"])
 
         if password is not None:
+            identifier = {}
+            if '@' in user and not user.startswith('@'):
+                identifier = {
+                    'type': 'm.id.thirdparty',
+                    'medium': 'email',
+                    'address': user,
+                }
+            else:
+                # As per spec, a user can login with either their localpart (that
+                # cannot contain an @) or their full Matrix ID, starting with an @.
+                identifier = {
+                    'type': 'm.id.user',
+                    'user': user,
+                }
+
             content_dict = {
                 "type": "m.login.password",
-                "identifier": {
-                    "type": "m.id.user",
-                    "user": user
-                },
+                "identifier": identifier,
                 "password": password,
             }
         elif token is not None:
