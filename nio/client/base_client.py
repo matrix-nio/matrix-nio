@@ -139,6 +139,7 @@ class ClientConfig:
             end to end encryption keys.
         store_sync_tokens (bool, optional): Should the client store and restore
             sync tokens.
+        custom_headers (Dict[str, str]): A dictionary of custom http headers.
 
     Raises an ImportWarning if encryption_enabled is true but the dependencies
     for encryption aren't installed.
