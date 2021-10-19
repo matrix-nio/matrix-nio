@@ -990,11 +990,12 @@ class RoomResolveAliasResponse(Response):
 class RoomDeleteAliasResponse(Response):
     """A response containing the result of deleting an alias.
     """
+    room_alias: str = field()
 
     @classmethod
-    def from_dict(cls):
+    def from_dict(cls, parsed_dict: Dict[Any, Any], room_alias: str):
         # type: (...) -> Union[RoomDeleteAliasResponse, ErrorResponse]
-        return cls()
+        return cls(room_alias)
 
 
 @dataclass
