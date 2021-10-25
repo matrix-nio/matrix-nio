@@ -1285,6 +1285,24 @@ class Api:
         return "DELETE", Api._build_path(path)
 
     @staticmethod
+    def room_put_alias(room_alias, room_id):
+        # type: (str, str) -> Tuple[str, str, str]
+        """Add a room alias.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            room_alias (str): The alias to add
+            room_id (str): The room ID to map to
+        """
+        path = ["directory", "room", room_alias]
+        body = {
+            "room_id": room_id,
+        }
+
+        return "PUT", Api._build_path(path), Api.to_json(body)
+
+    @staticmethod
     def room_get_visibility(room_id):
         # type: (str) -> Tuple[str, str]
         """Get visibility of a room in the directory.

@@ -172,6 +172,8 @@ from ..responses import (
     RoomGetStateEventResponse,
     RoomGetEventError,
     RoomGetEventResponse,
+    RoomPutAliasError,
+    RoomPutAliasResponse,
     RoomPutStateError,
     RoomPutStateResponse,
     RoomRedactError,
@@ -205,7 +207,7 @@ from ..responses import (
     UploadFilterError,
     UploadFilterResponse,
     WhoamiResponse,
-    WhoamiError
+    WhoamiError,
 )
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
@@ -1768,6 +1770,31 @@ class AsyncClient(Client):
             method,
             path,
             response_data=(room_alias,),
+        )
+
+    async def room_put_alias(
+        self, room_alias: str, room_id: str,
+    ) -> Union[RoomPutAliasResponse, RoomPutAliasError]:
+        """Add a room alias.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `RoomPutAliasResponse` if the request was
+        successful or a `RoomPutAliasError if there was an error
+        with the request.
+
+        Args:
+            room_alias (str): The alias to add
+            room_id (str): The room ID to map to
+        """
+        method, path, data = Api.room_put_alias(room_alias, room_id)
+
+        return await self._send(
+            RoomPutAliasResponse,
+            method,
+            path,
+            data=data,
+            response_data=(room_alias, room_id),
         )
 
     async def room_get_visibility(

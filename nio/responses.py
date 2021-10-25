@@ -433,6 +433,11 @@ class RoomDeleteAliasError(ErrorResponse):
     pass
 
 
+class RoomPutAliasError(ErrorResponse):
+    """A response representing an unsuccessful room alias put request."""
+    pass
+
+
 class RoomGetVisibilityError(ErrorResponse):
     """A response representing an unsuccessful room get visibility request."""
     pass
@@ -996,6 +1001,19 @@ class RoomDeleteAliasResponse(Response):
     def from_dict(cls, parsed_dict: Dict[Any, Any], room_alias: str):
         # type: (...) -> Union[RoomDeleteAliasResponse, ErrorResponse]
         return cls(room_alias)
+
+
+@dataclass
+class RoomPutAliasResponse(Response):
+    """A response containing the result of adding an alias.
+    """
+    room_alias: str = field()
+    room_id: str = field()
+
+    @classmethod
+    def from_dict(cls, parsed_dict: Dict[Any, Any], room_alias: str, room_id: str):
+        # type: (...) -> Union[RoomPutAliasResponse, ErrorResponse]
+        return cls(room_alias, room_id)
 
 
 @dataclass
