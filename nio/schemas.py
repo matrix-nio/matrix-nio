@@ -815,6 +815,10 @@ class Schemas:
                     "creator": {"type": "string", "format": "user_id"},
                     "m.federate": {"type": "boolean", "default": True},
                     "room_version": {"type": "string", "default": "1"},
+                    "predecessor": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    }
                 },
                 "required": ["creator"],
             },
@@ -1924,8 +1928,8 @@ class Schemas:
             "content": {
                 "type": "object",
                 "properties": {
-                    "body": {"type": "string", "format": "room_id"},
-                    "replacement_room": {"type": "string"},
+                    "body": {"type": "string"},
+                    "replacement_room": {"type": "string", "format": "room_id"},
                 },
                 "required": [
                     "body",
