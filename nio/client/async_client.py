@@ -2144,6 +2144,12 @@ class AsyncClient(Client):
                 to override the default.
                 The dict will be applied on top of the generated
                 ``m.room.power_levels`` event before it is sent to the room.
+
+            predecessor (dict): A reference to the room this room replaces, if the previous room was upgraded.
+                Containing the event ID of the last known event in the old room.
+                And the ID of the old room.
+                ``event_id``: ``$something:example.org``,
+                ``room_id``: ``!oldroom:example.org``
         """
 
         method, path, data = Api.room_create(
