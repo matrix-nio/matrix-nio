@@ -3259,9 +3259,17 @@ class AsyncClient(Client):
     async def room_upgrade(self,
                            old_room_id: str,
                            new_room_version: str,
-                           copy_events: list = ['m.room.topic', 'm.room.name', 'm.room.avatar', 'm.room.encryption'],
+                           copy_events: list = ['m.room.server_acl',
+                                                'm.room.encryption',
+                                                'm.room.name',
+                                                'm.room.avatar',
+                                                'm.room.topic',
+                                                'm.room.guest_access',
+                                                'm.room.history_visibility',
+                                                'm.room.join_rules',
+                                                'm.room.power_levels'],
                            room_upgrade_message: str = "This room has been replaced")->Union[RoomUpgradeResponse, RoomUpgradeError]:
-        """Upgrade an exsisting room.
+        """Upgrade an existing room.
 
         Args:
             old_room_id (str): Room-ID of the old room
@@ -3269,7 +3277,9 @@ class AsyncClient(Client):
             new_room_version (str): The new room version
 
             copy_events (list): List of state-events to copy from the old room
-                                Defaults m.room.topic, m.room.name, m.room.avatar, m.room.encryption
+                                Defaults m.room.server_acl, m.room.encryption, m.room.name,
+                                         m.room.avatar, m.room.topic, m.room.guest_access,
+                                         m.room.history_visibility, m.room.join_rules, m.room.power_levels
 
             room_upgrade_message (str): Message inside the tombstone-event
         """
