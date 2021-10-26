@@ -6,7 +6,7 @@ from nio.events import (InviteAliasEvent, InviteMemberEvent, InviteNameEvent,
                         RoomCreateEvent, RoomGuestAccessEvent,
                         RoomHistoryVisibilityEvent, RoomJoinRulesEvent,
                         RoomMemberEvent, RoomNameEvent, TypingNoticeEvent,
-                        Receipt, ReceiptEvent)
+                        Receipt, ReceiptEvent, RoomUpgradeEvent)
 from nio.responses import RoomSummary
 from nio.rooms import MatrixInvitedRoom, MatrixRoom
 
@@ -588,3 +588,15 @@ class TestClass:
 
         assert not room.handle_membership(leaves_event)
         assert not room.handle_membership(unknown_event)
+
+    def test_room_upgrade(self):
+        room = self.test_room
+        room.handle_event(
+            RoomUpgradeEvent(
+                {"event_id": "event5", "sender": ALICE_ID, "origin_server_ts": 4, "state_key": ""},
+                "This room has been replaced",
+                "!newroom:example.org"
+            )
+        )
+        assert room.is_replaced == True
+        assert room.replacement_room == "!newroom:example.org"

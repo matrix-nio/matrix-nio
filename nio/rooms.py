@@ -33,7 +33,7 @@ from .events import (AccountDataEvent, FullyReadEvent, TagEvent,
                      RoomGuestAccessEvent, RoomHistoryVisibilityEvent,
                      RoomJoinRulesEvent, RoomMemberEvent, RoomNameEvent,
                      RoomTopicEvent, RoomAvatarEvent, TypingNoticeEvent,
-                     ReceiptEvent, Receipt)
+                     ReceiptEvent, Receipt, RoomUpgradeEvent)
 from .log import logger_group
 from .responses import RoomSummary, UnreadNotifications
 
@@ -79,6 +79,8 @@ class MatrixRoom:
         self.unread_notifications: int = 0
         self.unread_highlights: int = 0
         self.members_synced: bool = False
+        self.is_replaced: bool = False
+        self.replacement_room: Union[str, None] = None
         # yapf: enable
 
     @property
@@ -376,6 +378,10 @@ class MatrixRoom:
 
         elif isinstance(event, RoomEncryptionEvent):
             self.encrypted = True
+
+        elif isinstance(event, RoomUpgradeEvent):
+            self.is_replaced = True
+            self.replacement_room = event.replacement_room
 
         elif isinstance(event, PowerLevelsEvent):
             self.power_levels.update(event.power_levels)
