@@ -831,6 +831,7 @@ class Api:
         invite=(),                          # type: Sequence[str]
         initial_state=(),                   # type: Sequence[Dict[str, Any]]
         power_level_override=None,          # type: Optional[Dict[str, Any]]
+        predecessor=None,                   # type: Optional[Dict[str, Any]]
     ):
         # type (...) -> Tuple[str, str, str]
         """Create a new room.
@@ -920,6 +921,9 @@ class Api:
 
         if power_level_override:
             body["power_level_content_override"] = power_level_override
+
+        if predecessor:
+            body["creation_content"]["predecessor"] = predecessor
 
         return (
             "POST",
@@ -1980,3 +1984,46 @@ class Api:
             Api._build_path(path, query_parameters),
             Api.to_json(content),
         )
+
+    @staticmethod
+    def delete_room_alias(
+            access_token: str,
+            alias: str) -> Tuple[str, str]:
+        """Delete an room alias
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            alias (str): The room alias
+        """
+
+        query_parameters = {"access_token": access_token}
+        path = ["directory", "room", alias]
+
+        return ("DELETE",
+                Api._build_path(path, query_parameters))
+
+    @staticmethod
+    def put_room_alias(
+            access_token: str,
+            alias: str,
+            room_id: str) -> tuple[str, str, str]:
+        """Add an room alias
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            alias (str): The room alias
+            room_id (str): The room to point to
+        """
+
+        query_parameters = {"access_token": access_token}
+        path = ["directory", "room", alias]
+        content = dict()
+        content['room_id'] = room_id
+
+        return ("PUT",
+                Api._build_path(path, query_parameters),
+                Api.to_json(content),)

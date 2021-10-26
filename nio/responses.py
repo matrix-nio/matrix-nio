@@ -1916,3 +1916,25 @@ class SetPushRuleActionsResponse(EmptyResponse):
 
 class SetPushRuleActionsError(ErrorResponse):
     pass
+
+
+@dataclass
+class DeleteAliasResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return DeletePushRuleError.from_dict(parsed_dict)
+
+
+class DeleteAliasError(ErrorResponse):
+    pass
+
+
+@dataclass
+class PutAliasResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return DeletePushRuleError.from_dict(parsed_dict)
+
+
+class PutAliasError(ErrorResponse):
+    pass
