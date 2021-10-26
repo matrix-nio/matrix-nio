@@ -2011,7 +2011,7 @@ class Api:
             room_id: str) -> tuple[str, str, str]:
         """Add an room alias
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP method, HTTP path and data for the request.
 
         Args:
             access_token (str): The access token to be used with the request.

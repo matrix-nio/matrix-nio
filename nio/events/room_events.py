@@ -1516,7 +1516,7 @@ class RoomUpgradeEvent(Event):
     Attributes:
         body (str): A server-defined message.
         replacement_room (str): The new room the client should be visiting.
-        content (dict): The content of the of the redaction event.
+        content (dict): The content of the tombstone event.
     """
 
     body: str = field()

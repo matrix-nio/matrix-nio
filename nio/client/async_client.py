@@ -3259,7 +3259,20 @@ class AsyncClient(Client):
     async def room_upgrade(self,
                            old_room_id: str,
                            new_room_version: str,
-                           copy_events: list = ['m.room.topic', 'm.room.name', 'm.room.avatar', 'm.room.encryption']):
+                           copy_events: list = ['m.room.topic', 'm.room.name', 'm.room.avatar', 'm.room.encryption'],
+                           room_upgrade_message: str = "This room has been replaced")->Union[RoomUpgradeResponse, RoomUpgradeError]:
+        """Upgrade an exsisting room.
+
+        Args:
+            old_room_id (str): Room-ID of the old room
+
+            new_room_version (str): The new room version
+
+            copy_events (list): List of state-events to copy from the old room
+                                Defaults m.room.topic, m.room.name, m.room.avatar, m.room.encryption
+
+            room_upgrade_message (str): Message inside the tombstone-event
+        """
 
         # Get the create event of the old room
         old_room_create_event = await self.room_get_state_event(old_room_id, "m.room.create")
@@ -3277,7 +3290,7 @@ class AsyncClient(Client):
 
             # Send tombstone event to the old room
             await self.room_put_state(old_room_id, "m.room.tombstone",
-                                      {"body": "This room has been replaced",
+                                      {"body": room_upgrade_message,
                                        "replacement_room": new_room.room_id})
 
             # Remove old room from the room directory
