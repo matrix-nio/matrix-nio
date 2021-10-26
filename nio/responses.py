@@ -1938,3 +1938,10 @@ class PutAliasResponse(EmptyResponse):
 
 class PutAliasError(ErrorResponse):
     pass
+
+class RoomUpgradeError(ErrorResponse):
+    pass
+
+
+class RoomUpgradeResponse(RoomCreateResponse):
+    pass
