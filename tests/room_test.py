@@ -614,5 +614,4 @@ class TestClass:
                 "!newroom:example.org"
             )
         )
-        assert room.is_replaced == True
         assert room.replacement_room == "!newroom:example.org"

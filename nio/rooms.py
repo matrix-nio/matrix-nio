@@ -80,7 +80,6 @@ class MatrixRoom:
         self.unread_notifications: int = 0
         self.unread_highlights: int = 0
         self.members_synced: bool = False
-        self.is_replaced: bool = False
         self.replacement_room: Union[str, None] = None
         # yapf: enable
 
@@ -381,7 +380,6 @@ class MatrixRoom:
             self.encrypted = True
 
         elif isinstance(event, RoomUpgradeEvent):
-            self.is_replaced = True
             self.replacement_room = event.replacement_room
 
         elif isinstance(event, PowerLevelsEvent):
