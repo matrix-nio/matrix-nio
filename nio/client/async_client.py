@@ -3297,8 +3297,11 @@ class AsyncClient(Client):
             old_room_events = await self.room_get_state(old_room_id)
             old_room_last_event = old_room_events.events[-1]
 
+            # Get powerlevel of the old room
+            old_room_powerlevels = await self.room_get_state_event(old_room_id, "m.room.power_levels")
             new_room = await self.room_create(
                 room_version=new_room_version,
+                power_level_override=old_room_powerlevels.content,
                 predecessor={
                     "event_id": old_room_last_event['event_id'],
                     "room_id": old_room_id
