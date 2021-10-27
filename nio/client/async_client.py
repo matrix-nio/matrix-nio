@@ -3294,23 +3294,41 @@ class AsyncClient(Client):
         old_room_create_event = await self.room_get_state_event(old_room_id, "m.room.create")
         if isinstance(old_room_create_event, RoomGetStateEventResponse):
             # Get last known event for the old room
-            old_room_events = await self.room_get_state(old_room_id)
-            old_room_last_event = old_room_events.events[-1]
+            old_room_state_events = await self.room_get_state(old_room_id)
+            if isinstance(old_room_state_events, RoomGetStateError):
+                return RoomUpgradeError("Failed to get room events")
 
-            # Get powerlevel of the old room
-            old_room_powerlevels = await self.room_get_state_event(old_room_id, "m.room.power_levels")
+            old_room_last_event = old_room_state_events.events[-1]
+
+            # Get initial_state and power_level
+            old_room_power_levels = None
+            new_room_initial_state = list()
+            for event in old_room_state_events.events:
+                if event['type'] in copy_events \
+                   and not event['type'] == 'm.room.power_levels':
+                    new_room_initial_state.append(event)
+                if event['type'] == 'm.room.power_levels':
+                    old_room_power_levels = event['content']
+
+            # Create new room
             new_room = await self.room_create(
                 room_version=new_room_version,
-                power_level_override=old_room_powerlevels.content,
+                power_level_override=old_room_power_levels,
+                initial_state=new_room_initial_state,
                 predecessor={
                     "event_id": old_room_last_event['event_id'],
                     "room_id": old_room_id
                 })
 
+            if isinstance(new_room, RoomCreateError):
+                return RoomUpgradeError("Room creation failed")
+
             # Send tombstone event to the old room
-            await self.room_put_state(old_room_id, "m.room.tombstone",
-                                      {"body": room_upgrade_message,
-                                       "replacement_room": new_room.room_id})
+            old_room_tombstone = await self.room_put_state(old_room_id, "m.room.tombstone",
+                                                          {"body": room_upgrade_message,
+                                                           "replacement_room": new_room.room_id})
+            if isinstance(old_room_tombstone, RoomPutStateError):
+                return RoomUpgradeError("Failed to put m.room.tombstone")
 
             # Remove old room from the room directory
             old_room_alias = await self.room_get_state_event(old_room_id, "m.room.canonical_alias")
@@ -3325,10 +3343,13 @@ class AsyncClient(Client):
                     alt_aliases = []
 
                 # Remove old room aliases
-                await self.room_put_state(old_room_id,
-                                          "m.room.canonical_alias", {
-                                              "alt_aliases": []
-                                          })
+                old_room_put_alias = await self.room_put_state(old_room_id,
+                                                               "m.room.canonical_alias", {
+                                                                   "alt_aliases": []
+                                                               })
+
+                if isinstance(old_room_put_alias, RoomPutStateError):
+                    return RoomUpgradeError("Failed to put m.room.canonical_alias")
 
                 for alias in aliases:
                     # Delete old aliases from room dir
@@ -3339,20 +3360,15 @@ class AsyncClient(Client):
                     await self._send(PutAliasResponse, method, path, data)
 
                 # Add new aliases to the new room
-
-                await self.room_put_state(new_room.room_id,
-                                          "m.room.canonical_alias",
-                                          {
-                                             "alias": old_room_alias.content['alias'],
-                                             "alt_aliases": alt_aliases
-                                          })
-
-                # Copy other data to the new room
-                for event_type in copy_events:
-                    event = await self.room_get_state_event(old_room_id, event_type)
-                    if isinstance(event, RoomGetStateEventResponse):
-                        await self.room_put_state(new_room.room_id, event_type, event.content)
+                NEW_room_put_alias = await self.room_put_state(new_room.room_id,
+                                                               "m.room.canonical_alias",
+                                                               {
+                                                                  "alias": old_room_alias.content['alias'],
+                                                                  "alt_aliases": alt_aliases
+                                                               })
+                if isinstance(old_room_put_alias, RoomPutStateError):
+                    return RoomUpgradeError("Failed to put m.room.canonical_alias")
 
             return RoomUpgradeResponse(new_room.room_id)
         else:
-            return RoomUpgradeError
+            return RoomUpgradeError("No m.room.create state event")
