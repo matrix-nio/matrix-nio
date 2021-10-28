@@ -3274,7 +3274,8 @@ class AsyncClient(Client):
                                                 'm.room.history_visibility',
                                                 'm.room.join_rules',
                                                 'm.room.power_levels'],
-                           room_upgrade_message: str = "This room has been replaced")->Union[RoomUpgradeResponse, RoomUpgradeError]:
+                           room_upgrade_message: str = "This room has been replaced") -> Union[RoomUpgradeResponse,
+                                                                                               RoomUpgradeError]:
         """Upgrade an existing room.
 
         Args:
@@ -3293,12 +3294,10 @@ class AsyncClient(Client):
         # Get the create event of the old room
         old_room_create_event = await self.room_get_state_event(old_room_id, "m.room.create")
         if isinstance(old_room_create_event, RoomGetStateEventResponse):
-            # Get last known event for the old room
+            # Get state events for the old room
             old_room_state_events = await self.room_get_state(old_room_id)
             if isinstance(old_room_state_events, RoomGetStateError):
                 return RoomUpgradeError("Failed to get room events")
-
-            old_room_last_event = old_room_state_events.events[-1]
 
             # Get initial_state and power_level
             old_room_power_levels = None
@@ -3310,13 +3309,24 @@ class AsyncClient(Client):
                 if event['type'] == 'm.room.power_levels':
                     old_room_power_levels = event['content']
 
+            # Get last known event from the old room
+            old_room_event = await self.room_messages(
+                                                    start="",
+                                                    room_id=old_room_id,
+                                                    limit=1
+            )
+            if isinstance(old_room_event, RoomMessagesError):
+                return RoomUpgradeError("Failed to get last known event")
+
+            old_room_last_event = old_room_event.chunk[0]
+
             # Create new room
             new_room = await self.room_create(
                 room_version=new_room_version,
                 power_level_override=old_room_power_levels,
                 initial_state=new_room_initial_state,
                 predecessor={
-                    "event_id": old_room_last_event['event_id'],
+                    "event_id": old_room_last_event.event_id,
                     "room_id": old_room_id
                 })
 
@@ -3325,8 +3335,9 @@ class AsyncClient(Client):
 
             # Send tombstone event to the old room
             old_room_tombstone = await self.room_put_state(old_room_id, "m.room.tombstone",
-                                                          {"body": room_upgrade_message,
-                                                           "replacement_room": new_room.room_id})
+                                                           {"body": room_upgrade_message,
+                                                            "replacement_room": new_room.room_id
+                                                           })
             if isinstance(old_room_tombstone, RoomPutStateError):
                 return RoomUpgradeError("Failed to put m.room.tombstone")
 
@@ -3360,13 +3371,13 @@ class AsyncClient(Client):
                     await self._send(PutAliasResponse, method, path, data)
 
                 # Add new aliases to the new room
-                NEW_room_put_alias = await self.room_put_state(new_room.room_id,
+                new_room_put_alias = await self.room_put_state(new_room.room_id,
                                                                "m.room.canonical_alias",
                                                                {
                                                                   "alias": old_room_alias.content['alias'],
                                                                   "alt_aliases": alt_aliases
                                                                })
-                if isinstance(old_room_put_alias, RoomPutStateError):
+                if isinstance(new_room_put_alias, RoomPutStateError):
                     return RoomUpgradeError("Failed to put m.room.canonical_alias")
 
             return RoomUpgradeResponse(new_room.room_id)
