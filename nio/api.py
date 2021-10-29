@@ -1271,36 +1271,40 @@ class Api:
         return "GET", Api._build_path(path)
 
     @staticmethod
-    def room_delete_alias(room_alias):
-        # type: (str) -> Tuple[str, str]
+    def room_delete_alias(access_token, room_alias):
+        # type: (str, str) -> Tuple[str, str]
         """Delete a room alias.
 
         Returns the HTTP method and HTTP path for the request.
 
         Args:
+            access_token (str): The access token to be used with the request.
             room_alias (str): The alias to delete
         """
+        query_parameters = {"access_token": access_token}
         path = ["directory", "room", room_alias]
 
-        return "DELETE", Api._build_path(path)
+        return "DELETE", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def room_put_alias(room_alias, room_id):
-        # type: (str, str) -> Tuple[str, str, str]
+    def room_put_alias(access_token, room_alias, room_id):
+        # type: (str, str, str) -> Tuple[str, str, str]
         """Add a room alias.
 
         Returns the HTTP method and HTTP path for the request.
 
         Args:
+            access_token (str): The access token to be used with the request.
             room_alias (str): The alias to add
             room_id (str): The room ID to map to
         """
+        query_parameters = {"access_token": access_token}
         path = ["directory", "room", room_alias]
         body = {
             "room_id": room_id,
         }
 
-        return "PUT", Api._build_path(path), Api.to_json(body)
+        return "PUT", Api._build_path(path, query_parameters), Api.to_json(body)
 
     @staticmethod
     def room_get_visibility(room_id):

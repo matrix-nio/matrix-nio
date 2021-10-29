@@ -1749,6 +1749,7 @@ class AsyncClient(Client):
             response_data=(room_alias,),
         )
 
+    @logged_in
     async def room_delete_alias(
         self, room_alias: str,
     ) -> Union[RoomDeleteAliasResponse, RoomDeleteAliasError]:
@@ -1763,7 +1764,10 @@ class AsyncClient(Client):
         Args:
             room_alias (str): The alias to delete
         """
-        method, path = Api.room_delete_alias(room_alias)
+        method, path = Api.room_delete_alias(
+            self.access_token,
+            room_alias,
+        )
 
         return await self._send(
             RoomDeleteAliasResponse,
@@ -1772,6 +1776,7 @@ class AsyncClient(Client):
             response_data=(room_alias,),
         )
 
+    @logged_in
     async def room_put_alias(
         self, room_alias: str, room_id: str,
     ) -> Union[RoomPutAliasResponse, RoomPutAliasError]:
@@ -1787,7 +1792,11 @@ class AsyncClient(Client):
             room_alias (str): The alias to add
             room_id (str): The room ID to map to
         """
-        method, path, data = Api.room_put_alias(room_alias, room_id)
+        method, path, data = Api.room_put_alias(
+            self.access_token,
+            room_alias,
+            room_id,
+        )
 
         return await self._send(
             RoomPutAliasResponse,
