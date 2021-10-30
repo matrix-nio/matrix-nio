@@ -74,7 +74,10 @@ from nio import (ContentRepositoryConfigResponse,
                  UploadResponse, UpdateDeviceResponse,
                  UploadFilterResponse,
                  UpdateReceiptMarkerResponse,
-                 RoomMessageText, RoomKeyRequest)
+                 RoomMessageText, RoomKeyRequest,
+                 RoomDeleteAliasResponse,
+                 RoomGetVisibilityResponse,
+                 RoomPutAliasResponse)
 from nio.api import EventFormat, ResizingMethod, RoomPreset, RoomVisibility
 from nio.crypto import OlmDevice, Session, decrypt_attachment
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
@@ -2603,6 +2606,52 @@ class TestClass:
         resp = await async_client.room_resolve_alias("#test:example.org")
 
         assert isinstance(resp, RoomResolveAliasResponse)
+
+    async def test_room_delete_alias(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        aioresponse.delete(
+            "https://example.org/_matrix/client/r0/directory/room/%23test%3Aexample.org"
+            "?access_token={}".format(async_client.access_token),
+            status=200,
+            payload={},
+        )
+
+        resp = await async_client.room_delete_alias("#test:example.org")
+
+        assert isinstance(resp, RoomDeleteAliasResponse)
+
+    async def test_room_put_alias(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/directory/room/%23test%3Aexample.org"
+            "?access_token={}".format(async_client.access_token),
+            status=200,
+            payload={
+                "room_id": "!foobar:example.org",
+            },
+        )
+
+        resp = await async_client.room_put_alias("#test:example.org", "!foobar:example.org")
+
+        assert isinstance(resp, RoomPutAliasResponse)
+
+    async def test_room_get_visibility(self, async_client, aioresponse):
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/directory/list/room/!foobar:example.org",
+            status=200,
+            payload={
+                "room_id": "!foobar:example.org",
+                "visibility": "private",
+            },
+        )
+
+        resp = await async_client.room_get_visibility("!foobar:example.org")
+
+        assert isinstance(resp, RoomGetVisibilityResponse)
 
     async def test_limit_exceeded(self, async_client, aioresponse):
         aioresponse.post(

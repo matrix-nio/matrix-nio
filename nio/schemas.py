@@ -1090,6 +1090,7 @@ class Schemas:
     room_get_visibility = {
         "type": "object",
         "properties": {
+            "room_id": {"type": "string"},
             "visibility": {"type": "string", "enum": ["private", "public"]},
         },
         "required": ["visibility"],
