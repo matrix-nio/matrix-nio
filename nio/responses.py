@@ -84,6 +84,8 @@ __all__ = [
     "RoomBanError",
     "RoomCreateResponse",
     "RoomCreateError",
+    "RoomDeleteAliasError",
+    "RoomDeleteAliasResponse",
     "RoomInfo",
     "RoomInviteResponse",
     "RoomInviteError",
@@ -102,6 +104,8 @@ __all__ = [
     "RoomGetStateEventError",
     "RoomGetEventResponse",
     "RoomGetEventError",
+    "RoomGetVisibilityResponse",
+    "RoomPutAliasResponse",
     "RoomPutStateResponse",
     "RoomPutStateError",
     "RoomRedactResponse",
@@ -425,6 +429,21 @@ class RoomRedactError(_ErrorWithRoomId):
 
 class RoomResolveAliasError(ErrorResponse):
     """A response representing an unsuccessful room alias query."""
+    pass
+
+
+class RoomDeleteAliasError(ErrorResponse):
+    """A response representing an unsuccessful room alias delete request."""
+    pass
+
+
+class RoomPutAliasError(ErrorResponse):
+    """A response representing an unsuccessful room alias put request."""
+    pass
+
+
+class RoomGetVisibilityError(ErrorResponse):
+    """A response representing an unsuccessful room get visibility request."""
     pass
 
 
@@ -974,6 +993,50 @@ class RoomResolveAliasResponse(Response):
         room_id = parsed_dict["room_id"]
         servers = parsed_dict["servers"]
         return cls(room_alias, room_id, servers)
+
+
+@dataclass
+class RoomDeleteAliasResponse(Response):
+    """A response containing the result of deleting an alias.
+    """
+    room_alias: str = field()
+
+    @classmethod
+    def from_dict(cls, parsed_dict: Dict[Any, Any], room_alias: str):
+        # type: (...) -> Union[RoomDeleteAliasResponse, ErrorResponse]
+        return cls(room_alias)
+
+
+@dataclass
+class RoomPutAliasResponse(Response):
+    """A response containing the result of adding an alias.
+    """
+    room_alias: str = field()
+    room_id: str = field()
+
+    @classmethod
+    def from_dict(cls, parsed_dict: Dict[Any, Any], room_alias: str, room_id: str):
+        # type: (...) -> Union[RoomPutAliasResponse, ErrorResponse]
+        return cls(room_alias, room_id)
+
+
+@dataclass
+class RoomGetVisibilityResponse(Response):
+    """A response containing the result of a get visibility request.
+    """
+    room_id: str = field()
+    visibility: str = field()
+
+    @classmethod
+    @verify(
+        Schemas.room_get_visibility,
+        RoomGetVisibilityError,
+        pass_arguments=False,
+    )
+    def from_dict(cls, parsed_dict: Dict[Any, Any], room_id: str):
+        # type: (...) -> Union[RoomGetVisibilityResponse, ErrorResponse]
+        visibility = parsed_dict["visibility"]
+        return cls(room_id, visibility)
 
 
 class EmptyResponse(Response):

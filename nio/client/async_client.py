@@ -150,8 +150,12 @@ from ..responses import (
     RoomContextResponse,
     RoomCreateResponse,
     RoomCreateError,
+    RoomDeleteAliasError,
+    RoomDeleteAliasResponse,
     RoomForgetResponse,
     RoomForgetError,
+    RoomGetVisibilityError,
+    RoomGetVisibilityResponse,
     RoomInviteResponse,
     RoomInviteError,
     RoomKeyRequestError,
@@ -168,6 +172,8 @@ from ..responses import (
     RoomGetStateEventResponse,
     RoomGetEventError,
     RoomGetEventResponse,
+    RoomPutAliasError,
+    RoomPutAliasResponse,
     RoomPutStateError,
     RoomPutStateResponse,
     RoomRedactError,
@@ -201,7 +207,7 @@ from ..responses import (
     UploadFilterError,
     UploadFilterResponse,
     WhoamiResponse,
-    WhoamiError
+    WhoamiError,
 )
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
@@ -1744,6 +1750,86 @@ class AsyncClient(Client):
             method,
             path,
             response_data=(room_alias,),
+        )
+
+    @logged_in
+    async def room_delete_alias(
+        self, room_alias: str,
+    ) -> Union[RoomDeleteAliasResponse, RoomDeleteAliasError]:
+        """Delete a room alias.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `RoomDeleteAliasResponse` if the request was
+        successful or a `RoomDeleteAliasError if there was an error
+        with the request.
+
+        Args:
+            room_alias (str): The alias to delete
+        """
+        method, path = Api.room_delete_alias(
+            self.access_token,
+            room_alias,
+        )
+
+        return await self._send(
+            RoomDeleteAliasResponse,
+            method,
+            path,
+            response_data=(room_alias,),
+        )
+
+    @logged_in
+    async def room_put_alias(
+        self, room_alias: str, room_id: str,
+    ) -> Union[RoomPutAliasResponse, RoomPutAliasError]:
+        """Add a room alias.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `RoomPutAliasResponse` if the request was
+        successful or a `RoomPutAliasError if there was an error
+        with the request.
+
+        Args:
+            room_alias (str): The alias to add
+            room_id (str): The room ID to map to
+        """
+        method, path, data = Api.room_put_alias(
+            self.access_token,
+            room_alias,
+            room_id,
+        )
+
+        return await self._send(
+            RoomPutAliasResponse,
+            method,
+            path,
+            data=data,
+            response_data=(room_alias, room_id),
+        )
+
+    async def room_get_visibility(
+        self, room_id: str,
+    ) -> Union[RoomGetVisibilityResponse, RoomGetVisibilityError]:
+        """Get visibility for a room.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `RoomGetVisibilityResponse` if the request was
+        successful or a `RoomGetVisibilityError if there was an error
+        with the request.
+
+        Args:
+            room_id (str): The room ID to get visibility for
+        """
+        method, path = Api.room_get_visibility(room_id)
+
+        return await self._send(
+            RoomGetVisibilityResponse,
+            method,
+            path,
+            response_data=(room_id,),
         )
 
     @logged_in
