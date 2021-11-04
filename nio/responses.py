@@ -1939,6 +1939,14 @@ class PutAliasResponse(EmptyResponse):
 class PutAliasError(ErrorResponse):
     pass
 
+
+class RoomUpdateAliasError(ErrorResponse):
+    pass
+
+
+class RoomUpdateAliasResponse(EmptyResponse):
+    pass
+
 class RoomUpgradeError(ErrorResponse):
     pass
 

@@ -212,6 +212,8 @@ from ..responses import (
     DeleteAliasError,
     PutAliasResponse,
     PutAliasError,
+    RoomUpdateAliasError,
+    RoomUpdateAliasResponse,
     RoomUpgradeResponse,
     RoomUpgradeError
 )
@@ -3262,6 +3264,63 @@ class AsyncClient(Client):
         return await self._send(SetPushRuleActionsResponse, method, path, data)
 
     @logged_in
+    async def room_update_aliases(self,
+                                  room_id: str,
+                                  canonical_alias: Union[str, None] = None,
+                                  alt_aliases: List[str] = []):
+        """Update the aliases of an existing room.
+           This method will not transfer aliases from one room to another!
+           Remove the old alias before trying to assign it again
+
+        Args:
+            room_id (str): Room-ID of the room to assign / remove aliases from
+
+            canonical_alias (str, None): The main alias of the room
+
+            alt_aliases (list[str], None): List of alternative aliases for the room
+
+            If None is passed as canonical_alias or alt_aliases the existing aliases
+             will be removed without assigning new aliases.
+        """
+        # Concentrate new aliases
+        if canonical_alias is None:
+            new_aliases = list()
+        else:
+            new_aliases = alt_aliases + [canonical_alias]
+
+        # Get current aliases
+        current_aliases = list()
+        current_alias_event = await self.room_get_state_event(room_id, "m.room.canonical_alias")
+        if isinstance(current_alias_event, RoomGetStateEventResponse):
+            current_aliases.append(current_alias_event.content['alias'])
+            if 'alt_aliases' in current_alias_event.content:
+                alt_aliases = current_alias_event.content['alt_aliases']
+                for alias in alt_aliases:
+                    current_aliases.append(alias)
+
+        # Unregister old aliases
+        for alias in current_aliases:
+            if alias not in new_aliases:
+                if isinstance(await self.room_delete_alias(alias), RoomDeleteAliasError):
+                    return RoomUpdateAliasError("Could not delete alias {}".format(alias))
+
+        # Register new aliases
+        for alias in new_aliases:
+            if isinstance(await self.room_put_alias(alias, room_id), RoomDeleteAliasError):
+                return RoomUpdateAliasError("Could not put alias {}".format(alias))
+
+        # Send m.room.canonical_alias event
+        put_alias_event = await self.room_put_state(room_id,
+                                                    "m.room.canonical_alias",
+                                                       {
+                                                           "alias": canonical_alias,
+                                                           "alt_aliases": alt_aliases
+                                                       })
+        if isinstance(put_alias_event, RoomPutStateError):
+            return RoomUpdateAliasError("Failed to put m.room.canonical_alias")
+        return RoomUpdateAliasResponse()
+
+    @logged_in
     async def room_upgrade(self,
                            old_room_id: str,
                            new_room_version: str,
@@ -3348,7 +3407,7 @@ class AsyncClient(Client):
         if isinstance(old_room_tombstone, RoomPutStateError):
             return RoomUpgradeError("Failed to put m.room.tombstone")
 
-        # Remove old room from the room directory
+        # Get the old rooms aliases
         old_room_alias = await self.room_get_state_event(old_room_id, "m.room.canonical_alias")
         if isinstance(old_room_alias, RoomGetStateEventResponse):
             aliases = list()
@@ -3360,31 +3419,15 @@ class AsyncClient(Client):
             else:
                 alt_aliases = []
 
-            # Remove old room aliases
-            old_room_put_alias = await self.room_put_state(old_room_id,
-                                                           "m.room.canonical_alias", {
-                                                               "alt_aliases": []
-                                                           })
+            # Remove the old aliases
+            if isinstance(await self.room_update_aliases(old_room_id), RoomDeleteAliasError):
+                return RoomUpgradeError("Could update the old rooms aliases")
 
-            if isinstance(old_room_put_alias, RoomPutStateError):
-                return RoomUpgradeError("Failed to put m.room.canonical_alias")
-
-            for alias in aliases:
-                # Delete old aliases from room dir
-                method, path = Api.delete_room_alias(self.access_token, alias)
-                await self._send(DeleteAliasResponse, method, path)
-
-                method, path, data = Api.put_room_alias(self.access_token, alias, new_room.room_id)
-                await self._send(PutAliasResponse, method, path, data)
-
-            # Add new aliases to the new room
-            new_room_put_alias = await self.room_put_state(new_room.room_id,
-                                                           "m.room.canonical_alias",
-                                                           {
-                                                              "alias": old_room_alias.content['alias'],
-                                                              "alt_aliases": alt_aliases
-                                                           })
-            if isinstance(new_room_put_alias, RoomPutStateError):
-                return RoomUpgradeError("Failed to put m.room.canonical_alias")
+            # Assign new aliases
+            if isinstance(await self.room_update_aliases(new_room.room_id,
+                                                         canonical_alias=old_room_alias.content['alias'],
+                                                         alt_aliases=alt_aliases)
+                          , RoomDeleteAliasError):
+                return RoomUpgradeError("Could update the new rooms aliases")
 
         return RoomUpgradeResponse(new_room.room_id)
