@@ -3355,6 +3355,10 @@ class AsyncClient(Client):
                 The dict will be applied on top of the generated
                 ``m.room.power_levels`` event before it is sent to the room.
         """
+        # Check if we are allowed to tombstone a room
+        if not await self.has_event_permission(old_room_id, "m.room.tombstone"):
+            return RoomUpgradeError("Not allowed to upgrade room")
+
 
         # Get state events for the old room
         old_room_state_events = await self.room_get_state(old_room_id)
@@ -3431,3 +3435,52 @@ class AsyncClient(Client):
                 return RoomUpgradeError("Could update the new rooms aliases")
 
         return RoomUpgradeResponse(new_room.room_id)
+
+    @logged_in
+    async def has_event_permission(self,
+                                   room_id: str,
+                                   event_name: str,
+                                   event_type: str = "event") -> Union[bool, ErrorResponse]:
+        who_am_i = await self.whoami()
+        power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
+
+        try:
+            user_power_level = power_levels.content['users'][who_am_i.user_id]
+        except KeyError:
+            user_power_level = power_levels.content['users_default']
+        else:
+            return ErrorResponse("Couldn't get user power levels")
+
+        try:
+            event_power_level = power_levels.content['events'][event_name]
+        except KeyError:
+            if event_type == "event":
+                event_power_level = power_levels.content['events_default']
+            elif event_type == "state":
+                event_power_level = power_levels.content['state_default']
+            else:
+                return ErrorResponse("event_type {} unknown".format(event_type))
+        else:
+            return ErrorResponse("Couldn't get event power levels")
+
+        return user_power_level >= event_power_level
+
+    async def has_permission(self,
+                             room_id: str,
+                             permission_type: str) -> Union[bool, ErrorResponse]:
+        who_am_i = await self.whoami()
+        power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
+
+        try:
+            user_power_level = power_levels.content['users'][who_am_i.user_id]
+        except KeyError:
+            user_power_level = power_levels.content['users_default']
+        else:
+            return ErrorResponse("Couldn't get user power levels")
+
+        try:
+            permission_power_level = power_levels.content[permission_type]
+        except KeyError:
+            return ErrorResponse("permission_type {} unknown".format(permission_type))
+
+        return user_power_level >= permission_power_level
