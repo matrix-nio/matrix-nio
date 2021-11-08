@@ -317,7 +317,7 @@ class Schemas:
             "limited": {"type": "boolean"},
             "prev_batch": {"type": "string"},
         },
-        "required": ["events", "limited", "prev_batch"],
+        "required": ["events", "limited"],
     }
 
     sync = {

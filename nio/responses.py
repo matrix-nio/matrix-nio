@@ -207,7 +207,7 @@ class DeviceList:
 class Timeline:
     events: List = field()
     limited: bool = field()
-    prev_batch: str = field()
+    prev_batch: Optional[str] = field()
 
 
 @dataclass
@@ -1674,7 +1674,7 @@ class SyncResponse(Response):
         events = SyncResponse._get_room_events(parsed_dict.get("events", []))
 
         return Timeline(
-            events, parsed_dict["limited"], parsed_dict["prev_batch"]
+            events, parsed_dict["limited"], parsed_dict.get("prev_batch")
         )
 
     @staticmethod
@@ -1713,7 +1713,7 @@ class SyncResponse(Response):
     def _get_join_info(
         state_events: List[Any],
         timeline_events: List[Any],
-        prev_batch: str,
+        prev_batch: Optional[str],
         limited: bool,
         ephemeral_events: List[Any],
         summary_events: Dict[str, Any],
@@ -1772,7 +1772,7 @@ class SyncResponse(Response):
             join_info = SyncResponse._get_join_info(
                 room_dict["state"]["events"],
                 room_dict["timeline"]["events"],
-                room_dict["timeline"]["prev_batch"],
+                room_dict["timeline"].get("prev_batch"),
                 room_dict["timeline"]["limited"],
                 room_dict["ephemeral"]["events"],
                 room_dict.get("summary", {}),
