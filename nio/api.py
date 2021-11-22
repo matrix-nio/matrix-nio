@@ -2008,7 +2008,7 @@ class Api:
     def put_room_alias(
             access_token: str,
             alias: str,
-            room_id: str) -> tuple[str, str, str]:
+            room_id: str) -> Tuple[str, str, str]:
         """Add an room alias
 
         Returns the HTTP method, HTTP path and data for the request.
