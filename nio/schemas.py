@@ -816,8 +816,15 @@ class Schemas:
                     "m.federate": {"type": "boolean", "default": True},
                     "room_version": {"type": "string", "default": "1"},
                     "predecessor": {
-                        "type": "array",
-                        "items": {"type": "string"}
+                          "type": "object",
+                          "properties": {
+                              "event_id": {"type": "string"},
+                              "room_id": {"type": "string", "format": "room_id"}
+                          },
+                          "required": [
+                              "event_id",
+                              "room_id"
+                          ]
                     }
                 },
                 "required": ["creator"],
