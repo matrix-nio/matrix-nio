@@ -755,7 +755,6 @@ class Schemas:
                     "room_id": {"type": "string", "format": "room_id"},
                     "session_id": {"type": "string"},
                     "session_key": {"type": "string"},
-                    "chain_index": {"type": "integer"},
                 },
                 "required": [
                     "algorithm",

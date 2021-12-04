@@ -478,7 +478,6 @@ class Olm:
             "session_key": group_session.export_session(
                 group_session.first_known_index
             ),
-            "chain_index": group_session.first_known_index,
         }
 
         olm_dict = self._olm_encrypt(session, device, "m.forwarded_room_key",
@@ -1812,7 +1811,6 @@ class Olm:
             "room_id": room_id,
             "session_id": group_session.id,
             "session_key": group_session.session_key,
-            "chain_index": group_session.message_index,
         }
 
         already_shared_set = group_session.users_shared_with
@@ -1900,7 +1898,6 @@ class Olm:
             "room_id": room_id,
             "session_id": group_session.id,
             "session_key": group_session.session_key,
-            "chain_index": group_session.message_index,
         }
 
         to_device_dict = {"messages": {}}  # type: Dict[str, Any]
