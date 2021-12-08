@@ -17,6 +17,7 @@
 from functools import wraps
 from typing import (
     Any,
+    Awaitable,
     Callable,
     Dict,
     List,
@@ -1227,7 +1228,7 @@ class Client:
 
     def add_event_callback(
         self,
-        callback: Callable[[MatrixRoom, Event], None],
+        callback: Callable[[MatrixRoom, Event], Optional[Awaitable[None]]],
         filter: Union[Type[Event], Tuple[Type[Event], ...]],
     ) -> None:
         """Add a callback that will be executed on room events.
