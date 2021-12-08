@@ -1238,7 +1238,7 @@ class Client:
         depending on if the room is joined or invited.
 
         Args:
-            callback (Callable[[MatrixRoom, Event], None]): A
+            callback (Callable[[MatrixRoom, Event], Optional[Awaitable[None]]]): A
                 function that will be called if the event type in the filter
                 argument is found in a room timeline.
 
