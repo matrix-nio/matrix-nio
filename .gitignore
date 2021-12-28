@@ -4,6 +4,7 @@
 .pytest_cache/
 packages/
 __pycache__
+poetry.lock
 *.pyc
 .hypothesis/
 .tox/
