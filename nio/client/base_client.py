@@ -17,6 +17,7 @@
 from functools import wraps
 from typing import (
     Any,
+    Awaitable,
     Callable,
     Dict,
     List,
@@ -1227,7 +1228,7 @@ class Client:
 
     def add_event_callback(
         self,
-        callback: Callable[[MatrixRoom, Event], None],
+        callback: Callable[[MatrixRoom, Event], Optional[Awaitable[None]]],
         filter: Union[Type[Event], Tuple[Type[Event], ...]],
     ) -> None:
         """Add a callback that will be executed on room events.
@@ -1237,7 +1238,7 @@ class Client:
         depending on if the room is joined or invited.
 
         Args:
-            callback (Callable[[MatrixRoom, Event], None]): A
+            callback (Callable[[MatrixRoom, Event], Optional[Awaitable[None]]]): A
                 function that will be called if the event type in the filter
                 argument is found in a room timeline.
 
