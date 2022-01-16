@@ -181,6 +181,10 @@ class PushEventMatch(PushCondition):
     def matches(
         self, event: Event, room: "MatrixRoom", display_name: str,
     ) -> bool:
+        
+        if self.key == "room_id":
+            return fnmatchcase(room.room_id, self.pattern)
+        
         value = event.flattened().get(self.key)
 
         if not isinstance(value, str):
