@@ -2081,6 +2081,7 @@ class AsyncClient(Client):
         invite: Sequence[str] = (),
         initial_state: Sequence[Dict[str, Any]] = (),
         power_level_override: Optional[Dict[str, Any]] = None,
+        space: bool = False,
     ) -> Union[RoomCreateResponse, RoomCreateError]:
         """Create a new room.
 
@@ -2137,6 +2138,8 @@ class AsyncClient(Client):
                 to override the default.
                 The dict will be applied on top of the generated
                 ``m.room.power_levels`` event before it is sent to the room.
+
+            space (bool): Create as a Space (defaults to False).
         """
 
         method, path, data = Api.room_create(
@@ -2152,6 +2155,7 @@ class AsyncClient(Client):
             invite=invite,
             initial_state=initial_state,
             power_level_override=power_level_override,
+            space=space,
         )
 
         return await self._send(RoomCreateResponse, method, path, data)
