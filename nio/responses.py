@@ -1222,6 +1222,7 @@ class RoomIdResponse(Response):
 
         return cls(parsed_dict["room_id"])
 
+
 @dataclass
 class RoomCreateResponse(Response):
     """Response representing a successful create room request."""
@@ -1238,7 +1239,6 @@ class RoomCreateResponse(Response):
     ):
         # type: (...) -> Union[RoomCreateResponse, RoomCreateError]
         return cls(parsed_dict["room_id"])
-
 
 
 class JoinResponse(RoomIdResponse):

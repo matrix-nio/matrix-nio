@@ -1455,6 +1455,34 @@ class TestClass:
         assert isinstance(resp, RoomCreateResponse)
         assert resp.room_id == TEST_ROOM_ID
 
+    async def test_room_create__space(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/createRoom"
+            "?access_token=abc123",
+            status=200,
+            payload=self.room_id_response(TEST_ROOM_ID),
+        )
+
+        resp = await async_client.room_create(
+            visibility=RoomVisibility.public,
+            alias="foo-space",
+            name="bar",
+            topic="Foos and bars space",
+            room_version="9",
+            preset=RoomPreset.public_chat,
+            invite={ALICE_ID},
+            initial_state=[],
+            power_level_override={},
+            space=True,
+        )
+        assert isinstance(resp, RoomCreateResponse)
+        assert resp.room_id == TEST_ROOM_ID
+
     async def test_join(self, async_client, aioresponse):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)

@@ -2090,6 +2090,7 @@ class AsyncClient(Client):
         initial_state: Sequence[Dict[str, Any]] = (),
         power_level_override: Optional[Dict[str, Any]] = None,
         predecessor: Optional[Dict[str, Any]] = None,
+        space: bool = False,
     ) -> Union[RoomCreateResponse, RoomCreateError]:
         """Create a new room.
 
@@ -2152,6 +2153,8 @@ class AsyncClient(Client):
                 And the ID of the old room.
                 ``event_id``: ``$something:example.org``,
                 ``room_id``: ``!oldroom:example.org``
+
+            space (bool): Create as a Space (defaults to False).
         """
 
         method, path, data = Api.room_create(
@@ -2168,6 +2171,7 @@ class AsyncClient(Client):
             initial_state=initial_state,
             power_level_override=power_level_override,
             predecessor=predecessor,
+            space=space,
         )
 
         return await self._send(RoomCreateResponse, method, path, data)

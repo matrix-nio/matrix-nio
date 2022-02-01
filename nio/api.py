@@ -832,6 +832,7 @@ class Api:
         initial_state=(),                   # type: Sequence[Dict[str, Any]]
         power_level_override=None,          # type: Optional[Dict[str, Any]]
         predecessor=None,                   # type: Optional[Dict[str, Any]]
+        space=False,                        # type: bool
     ):
         # type (...) -> Tuple[str, str, str]
         """Create a new room.
@@ -888,6 +889,8 @@ class Api:
                 to override the default.
                 The dict will be applied on top of the generated
                 ``m.room.power_levels`` event before it is sent to the room.
+
+            space (bool): Create as a Space (defaults to False).
         """
         path = ["createRoom"]
         query_parameters = {"access_token": access_token}
@@ -924,6 +927,9 @@ class Api:
 
         if predecessor:
             body["creation_content"]["predecessor"] = predecessor
+
+        if space:
+            body["creation_content"]["type"] = "m.space"
 
         return (
             "POST",
