@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
-# Copyright © 2020 Famedly GmbH
+# Copyright © 2020-2021 Famedly GmbH
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -1915,4 +1915,41 @@ class SetPushRuleActionsResponse(EmptyResponse):
 
 
 class SetPushRuleActionsError(ErrorResponse):
+    pass
+
+
+@dataclass
+class DeleteAliasResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return DeletePushRuleError.from_dict(parsed_dict)
+
+
+class DeleteAliasError(ErrorResponse):
+    pass
+
+
+@dataclass
+class PutAliasResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict: Dict[str, Any]):
+        return DeletePushRuleError.from_dict(parsed_dict)
+
+
+class PutAliasError(ErrorResponse):
+    pass
+
+
+class RoomUpdateAliasError(ErrorResponse):
+    pass
+
+
+class RoomUpdateAliasResponse(EmptyResponse):
+    pass
+
+class RoomUpgradeError(ErrorResponse):
+    pass
+
+
+class RoomUpgradeResponse(RoomCreateResponse):
     pass

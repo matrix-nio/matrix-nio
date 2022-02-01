@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
-# Copyright © 2020 Famedly GmbH
+# Copyright © 2020-2021 Famedly GmbH
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -208,6 +208,14 @@ from ..responses import (
     UploadFilterResponse,
     WhoamiResponse,
     WhoamiError,
+    DeleteAliasResponse,
+    DeleteAliasError,
+    PutAliasResponse,
+    PutAliasError,
+    RoomUpdateAliasError,
+    RoomUpdateAliasResponse,
+    RoomUpgradeResponse,
+    RoomUpgradeError
 )
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
@@ -2081,6 +2089,7 @@ class AsyncClient(Client):
         invite: Sequence[str] = (),
         initial_state: Sequence[Dict[str, Any]] = (),
         power_level_override: Optional[Dict[str, Any]] = None,
+        predecessor: Optional[Dict[str, Any]] = None,
     ) -> Union[RoomCreateResponse, RoomCreateError]:
         """Create a new room.
 
@@ -2137,6 +2146,12 @@ class AsyncClient(Client):
                 to override the default.
                 The dict will be applied on top of the generated
                 ``m.room.power_levels`` event before it is sent to the room.
+
+            predecessor (dict): A reference to the room this room replaces, if the previous room was upgraded.
+                Containing the event ID of the last known event in the old room.
+                And the ID of the old room.
+                ``event_id``: ``$something:example.org``,
+                ``room_id``: ``!oldroom:example.org``
         """
 
         method, path, data = Api.room_create(
@@ -2152,6 +2167,7 @@ class AsyncClient(Client):
             invite=invite,
             initial_state=initial_state,
             power_level_override=power_level_override,
+            predecessor=predecessor,
         )
 
         return await self._send(RoomCreateResponse, method, path, data)
@@ -3246,3 +3262,225 @@ class AsyncClient(Client):
         )
 
         return await self._send(SetPushRuleActionsResponse, method, path, data)
+
+    @logged_in
+    async def room_update_aliases(self,
+                                  room_id: str,
+                                  canonical_alias: Union[str, None] = None,
+                                  alt_aliases: List[str] = []):
+        """Update the aliases of an existing room.
+           This method will not transfer aliases from one room to another!
+           Remove the old alias before trying to assign it again
+
+        Args:
+            room_id (str): Room-ID of the room to assign / remove aliases from
+
+            canonical_alias (str, None): The main alias of the room
+
+            alt_aliases (list[str], None): List of alternative aliases for the room
+
+            If None is passed as canonical_alias or alt_aliases the existing aliases
+             will be removed without assigning new aliases.
+        """
+        # Concentrate new aliases
+        if canonical_alias is None:
+            new_aliases = list()
+        else:
+            new_aliases = alt_aliases + [canonical_alias]
+
+        # Get current aliases
+        current_aliases = list()
+        current_alias_event = await self.room_get_state_event(room_id, "m.room.canonical_alias")
+        if isinstance(current_alias_event, RoomGetStateEventResponse):
+            current_aliases.append(current_alias_event.content['alias'])
+            if 'alt_aliases' in current_alias_event.content:
+                alt_aliases = current_alias_event.content['alt_aliases']
+                for alias in alt_aliases:
+                    current_aliases.append(alias)
+
+        # Unregister old aliases
+        for alias in current_aliases:
+            if alias not in new_aliases:
+                if isinstance(await self.room_delete_alias(alias), RoomDeleteAliasError):
+                    return RoomUpdateAliasError("Could not delete alias {}".format(alias))
+
+        # Register new aliases
+        for alias in new_aliases:
+            if isinstance(await self.room_put_alias(alias, room_id), RoomDeleteAliasError):
+                return RoomUpdateAliasError("Could not put alias {}".format(alias))
+
+        # Send m.room.canonical_alias event
+        put_alias_event = await self.room_put_state(room_id,
+                                                    "m.room.canonical_alias",
+                                                       {
+                                                           "alias": canonical_alias,
+                                                           "alt_aliases": alt_aliases
+                                                       })
+        if isinstance(put_alias_event, RoomPutStateError):
+            return RoomUpdateAliasError("Failed to put m.room.canonical_alias")
+        return RoomUpdateAliasResponse()
+
+    @logged_in
+    async def room_upgrade(self,
+                           old_room_id: str,
+                           new_room_version: str,
+                           copy_events: list = ['m.room.server_acl',
+                                                'm.room.encryption',
+                                                'm.room.name',
+                                                'm.room.avatar',
+                                                'm.room.topic',
+                                                'm.room.guest_access',
+                                                'm.room.history_visibility',
+                                                'm.room.join_rules',
+                                                'm.room.power_levels'],
+                           room_upgrade_message: str = "This room has been replaced",
+                           room_power_level_overwrite: Optional[Dict[str, Any]] = None
+                           ) -> Union[RoomUpgradeResponse, RoomUpgradeError]:
+        """Upgrade an existing room.
+
+        Args:
+            old_room_id (str): Room-ID of the old room
+
+            new_room_version (str): The new room version
+
+            copy_events (list): List of state-events to copy from the old room
+                                Defaults m.room.server_acl, m.room.encryption, m.room.name,
+                                         m.room.avatar, m.room.topic, m.room.guest_access,
+                                         m.room.history_visibility, m.room.join_rules, m.room.power_levels
+
+            room_upgrade_message (str): Message inside the tombstone-event
+
+            room_power_level_overwrite (dict): A ``m.room.power_levels content`` dict
+                to override the default.
+                The dict will be applied on top of the generated
+                ``m.room.power_levels`` event before it is sent to the room.
+        """
+        # Check if we are allowed to tombstone a room
+        if not await self.has_event_permission(old_room_id, "m.room.tombstone"):
+            return RoomUpgradeError("Not allowed to upgrade room")
+
+
+        # Get state events for the old room
+        old_room_state_events = await self.room_get_state(old_room_id)
+        if isinstance(old_room_state_events, RoomGetStateError):
+            return RoomUpgradeError("Failed to get room events")
+
+        # Get initial_state and power_level
+        old_room_power_levels = None
+        new_room_initial_state = list()
+        for event in old_room_state_events.events:
+            if event['type'] in copy_events \
+               and not event['type'] == 'm.room.power_levels':
+                new_room_initial_state.append(event)
+            if event['type'] == 'm.room.power_levels':
+                old_room_power_levels = event['content']
+
+        # Get last known event from the old room
+        old_room_event = await self.room_messages(
+                                                start="",
+                                                room_id=old_room_id,
+                                                limit=1
+        )
+        if isinstance(old_room_event, RoomMessagesError):
+            return RoomUpgradeError("Failed to get last known event")
+
+        old_room_last_event = old_room_event.chunk[0]
+
+        # Overwrite power level if a new power level was passed
+        if room_power_level_overwrite is not None:
+            old_room_power_levels = room_power_level_overwrite
+
+        # Create new room
+        new_room = await self.room_create(
+            room_version=new_room_version,
+            power_level_override=old_room_power_levels,
+            initial_state=new_room_initial_state,
+            predecessor={
+                "event_id": old_room_last_event.event_id,
+                "room_id": old_room_id
+            })
+
+        if isinstance(new_room, RoomCreateError):
+            return RoomUpgradeError("Room creation failed")
+
+        # Send tombstone event to the old room
+        old_room_tombstone = await self.room_put_state(old_room_id, "m.room.tombstone",
+                                                       {"body": room_upgrade_message,
+                                                        "replacement_room": new_room.room_id
+                                                       })
+        if isinstance(old_room_tombstone, RoomPutStateError):
+            return RoomUpgradeError("Failed to put m.room.tombstone")
+
+        # Get the old rooms aliases
+        old_room_alias = await self.room_get_state_event(old_room_id, "m.room.canonical_alias")
+        if isinstance(old_room_alias, RoomGetStateEventResponse):
+            aliases = list()
+            aliases.append(old_room_alias.content['alias'])
+            if 'alt_aliases' in old_room_alias.content:
+                alt_aliases = old_room_alias.content['alt_aliases']
+                for alias in alt_aliases:
+                    aliases.append(alias)
+            else:
+                alt_aliases = []
+
+            # Remove the old aliases
+            if isinstance(await self.room_update_aliases(old_room_id), RoomDeleteAliasError):
+                return RoomUpgradeError("Could update the old rooms aliases")
+
+            # Assign new aliases
+            if isinstance(await self.room_update_aliases(new_room.room_id,
+                                                         canonical_alias=old_room_alias.content['alias'],
+                                                         alt_aliases=alt_aliases)
+                          , RoomDeleteAliasError):
+                return RoomUpgradeError("Could update the new rooms aliases")
+
+        return RoomUpgradeResponse(new_room.room_id)
+
+    @logged_in
+    async def has_event_permission(self,
+                                   room_id: str,
+                                   event_name: str,
+                                   event_type: str = "event") -> Union[bool, ErrorResponse]:
+        who_am_i = await self.whoami()
+        power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
+
+        try:
+            user_power_level = power_levels.content['users'][who_am_i.user_id]
+        except KeyError:
+            user_power_level = power_levels.content['users_default']
+        else:
+            return ErrorResponse("Couldn't get user power levels")
+
+        try:
+            event_power_level = power_levels.content['events'][event_name]
+        except KeyError:
+            if event_type == "event":
+                event_power_level = power_levels.content['events_default']
+            elif event_type == "state":
+                event_power_level = power_levels.content['state_default']
+            else:
+                return ErrorResponse("event_type {} unknown".format(event_type))
+        else:
+            return ErrorResponse("Couldn't get event power levels")
+
+        return user_power_level >= event_power_level
+
+    async def has_permission(self,
+                             room_id: str,
+                             permission_type: str) -> Union[bool, ErrorResponse]:
+        who_am_i = await self.whoami()
+        power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
+
+        try:
+            user_power_level = power_levels.content['users'][who_am_i.user_id]
+        except KeyError:
+            user_power_level = power_levels.content['users_default']
+        else:
+            return ErrorResponse("Couldn't get user power levels")
+
+        try:
+            permission_power_level = power_levels.content[permission_type]
+        except KeyError:
+            return ErrorResponse("permission_type {} unknown".format(permission_type))
+
+        return user_power_level >= permission_power_level

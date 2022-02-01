@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
-# Copyright © 2020 Famedly GmbH
+# Copyright © 2020-2021 Famedly GmbH
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -814,6 +814,17 @@ class Schemas:
                     "creator": {"type": "string", "format": "user_id"},
                     "m.federate": {"type": "boolean", "default": True},
                     "room_version": {"type": "string", "default": "1"},
+                    "predecessor": {
+                          "type": "object",
+                          "properties": {
+                              "event_id": {"type": "string"},
+                              "room_id": {"type": "string", "format": "room_id"}
+                          },
+                          "required": [
+                              "event_id",
+                              "room_id"
+                          ]
+                    }
                 },
                 "required": ["creator"],
             },
@@ -1913,4 +1924,29 @@ class Schemas:
         "type": "object",
         "user_id": "string",
         "required": ["user_id"],
+    }
+
+    room_tombstone = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string", "const": "m.room.tombstone"},
+            "state_key": {"type": "string", "const": ""},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "body": {"type": "string"},
+                    "replacement_room": {"type": "string", "format": "room_id"},
+                },
+                "required": [
+                    "body",
+                    "replacement_room",
+                ]
+            }
+        },
+        "required": [
+            "sender",
+            "type",
+            "content",
+            "state_key",
+        ],
     }

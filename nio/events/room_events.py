@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2021 Famedly GmbH
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -160,6 +161,8 @@ class Event:
             return RoomEncryptionEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.redaction":
             return RedactionEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.room.tombstone":
+            return RoomUpgradeEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.encrypted":
             return Event.parse_encrypted_event(event_dict)
         elif event_dict["type"] == "m.sticker":
@@ -1500,4 +1503,34 @@ class StickerEvent(Event):
             body,
             url,
             content,
+        )
+
+
+@dataclass
+class RoomUpgradeEvent(Event):
+    """Class representing to an m.room.tombstone event.
+
+    A state event signifying that a room has been upgraded to a
+    different room version, and that clients should go there.
+
+    Attributes:
+        body (str): A server-defined message.
+        replacement_room (str): The new room the client should be visiting.
+        content (dict): The content of the tombstone event.
+    """
+
+    body: str = field()
+    replacement_room: str = field()
+
+    @classmethod
+    @verify(Schemas.room_tombstone)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict.get("content", {})
+        body = content.get("body", "")
+        replacement_room = content.get("replacement_room", "")
+
+        return cls(
+            parsed_dict,
+            body,
+            replacement_room,
         )

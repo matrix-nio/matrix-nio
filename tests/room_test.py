@@ -1,3 +1,19 @@
+# -*- coding: utf-8 -*-
+
+# Copyright © 2021 Famedly GmbH
+#
+# Permission to use, copy, modify, and/or distribute this software for
+# any purpose with or without fee is hereby granted, provided that the
+# above copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
+# RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
+# CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+# CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 import pytest
 
 from helpers import faker
@@ -6,7 +22,7 @@ from nio.events import (InviteAliasEvent, InviteMemberEvent, InviteNameEvent,
                         RoomCreateEvent, RoomGuestAccessEvent,
                         RoomHistoryVisibilityEvent, RoomJoinRulesEvent,
                         RoomMemberEvent, RoomNameEvent, TypingNoticeEvent,
-                        Receipt, ReceiptEvent)
+                        Receipt, ReceiptEvent, RoomUpgradeEvent)
 from nio.responses import RoomSummary
 from nio.rooms import MatrixInvitedRoom, MatrixRoom
 
@@ -588,3 +604,14 @@ class TestClass:
 
         assert not room.handle_membership(leaves_event)
         assert not room.handle_membership(unknown_event)
+
+    def test_room_upgrade(self):
+        room = self.test_room
+        room.handle_event(
+            RoomUpgradeEvent(
+                {"event_id": "event5", "sender": ALICE_ID, "origin_server_ts": 4, "state_key": ""},
+                "This room has been replaced",
+                "!newroom:example.org"
+            )
+        )
+        assert room.replacement_room == "!newroom:example.org"
