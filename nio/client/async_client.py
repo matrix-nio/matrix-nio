@@ -2479,6 +2479,7 @@ class AsyncClient(Client):
             UpdateReceiptMarkerResponse,
             method,
             path,
+            "{}",
         )
 
     @logged_in
