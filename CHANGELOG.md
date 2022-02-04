@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.19.0 - 2022-02-03
+
+- [[#296]] Allow creating spaces
+- [[#293]] Add special check for "room_id" in PushEventMatch
+- [[#291]] Send empty object with m.read receipt
+- [[#288]] Update aiohttp-socks dependency
+- [[#286]] Fix type annotation for async callbacks in add_event_callback
+- [[#285]] Remove chain_index field when sending room keys
+- [[#281]] Add support for room upgrades
+
+[#296]: https://github.com/poljar/matrix-nio/pull/296
+[#293]: https://github.com/poljar/matrix-nio/pull/293
+[#291]: https://github.com/poljar/matrix-nio/pull/291
+[#288]: https://github.com/poljar/matrix-nio/pull/288
+[#286]: https://github.com/poljar/matrix-nio/pull/286
+[#285]: https://github.com/poljar/matrix-nio/pull/285
+[#281]: https://github.com/poljar/matrix-nio/pull/281
+
 ## 0.18.7 - 2021-09-27
 
 - [[#277]] Allow setting custom headers with the client.
