@@ -2033,3 +2033,32 @@ class Api:
         return ("PUT",
                 Api._build_path(path, query_parameters),
                 Api.to_json(content),)
+
+    @staticmethod
+    def update_room_topic(
+            access_token: str,
+            room_id: str,
+            topic: str,
+            state_key="") -> Tuple[str, str, str]:
+        """Update the room topic.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room id of the room to be updated.
+            topic (str): The new room topic.
+            state_key (str): The key of the state to look up. Defaults to an empty string.
+        """
+        # type (str, str, str) -> Tuple[str, str, str]
+        query_parameters = {"access_token": access_token}
+
+        path = ["rooms", room_id, "state", "m.room.topic", state_key]
+
+        body = {"topic": topic}
+
+        return (
+            "PUT",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body)
+        )

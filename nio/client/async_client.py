@@ -3442,6 +3442,35 @@ class AsyncClient(Client):
         return RoomUpgradeResponse(new_room.room_id)
 
     @logged_in
+    async def update_room_topic(
+        self,
+        room_id: str,
+        topic: str,
+        state_key: str = "",
+    ) -> Union[RoomPutStateResponse, RoomPutStateError]:
+        """Update the room topic
+
+        Returns either a `RoomPutStateResponse` if the request was successful
+        or a `RoomPutStateError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room to be updated.
+            topic (str): The new room topic.
+            state_key (str): The key of the state event to send. Defaults to an empty string.
+        """
+
+        method, path, data = Api.update_room_topic(
+            self.access_token,
+            room_id,
+            topic,
+            state_key=state_key,
+        )
+
+        return await self._send(
+            RoomPutStateResponse, method, path, data, response_data=(room_id,),
+        )
+
+    @logged_in
     async def has_event_permission(self,
                                    room_id: str,
                                    event_name: str,
