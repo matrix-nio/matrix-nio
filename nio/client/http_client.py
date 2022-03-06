@@ -555,6 +555,42 @@ class HttpClient(Client):
             RoomForgetResponse,
             (room_id,)
         ))
+    
+    @connected
+    @logged_in
+    def room_context(
+        self,
+        room_id: str,
+        event_id: str,
+        limit: Optional[int] = None,
+    ):
+        """Fetch a number of events that happened before and after an event.
+
+        This allows clients to get the context surrounding an event.
+
+        Returns a unique uuid that identifies the request and the bytes that 
+        should be sent to the socket.
+
+        Args:
+            room_id (str): The room id of the room that contains the event and
+                its context.
+            event_id (str): The event_id of the event that we wish to get the
+                context for.
+            limit(int, optional): The maximum number of events to request.
+        """
+
+        request = self._build_request(
+            Api.room_context(
+                self.access_token,
+                room_id,
+                event_id,
+                limit=limit
+            )
+        )
+        return self._send(
+            request,
+            RequestInfo(RoomContextResponse, (room_id, ))
+        )
 
     @connected
     @logged_in
