@@ -1356,33 +1356,3 @@ class HttpClient(Client):
         self.receive_response(response)
 
         return response
-
-    @connected
-    @logged_in
-    def update_room_topic(
-            self,
-            room_id: str,
-            topic: str,
-            state_key: str = "",
-    ) -> tuple[UUID, bytes]:
-        """Update the room topic
-
-        Args:
-            room_id (str): The room id of the room to be updated.
-            topic (str): The new room topic.
-            state_key (str): The key of the state event to send. Defaults to an empty string.
-        """
-
-        request = self._build_request(
-            Api.update_room_topic(
-                self.access_token,
-                room_id,
-                topic,
-                state_key=state_key
-            )
-        )
-
-        return self._send(
-            request,
-            RequestInfo(RoomPutStateResponse, (room_id, ))
-        )
