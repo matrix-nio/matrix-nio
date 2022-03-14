@@ -44,6 +44,7 @@ logger_group.add_logger(logger)
 __all__ = [
     "MatrixRoom",
     "MatrixInvitedRoom",
+    "MatrixLeftRoom",
     "MatrixUser",
 ]
 
@@ -503,6 +504,23 @@ class MatrixInvitedRoom(MatrixRoom):
         elif isinstance(event, InviteAliasEvent):
             self.canonical_alias = event.canonical_alias
 
+class MatrixLeftRoom(MatrixRoom):
+
+    def handle_event(self, event: Event) -> None:
+        logger.info(
+            "Room {} handling event of type {}".format(
+                self.room_id, type(event).__name__
+            )
+        )
+
+        if isinstance(event, RoomMemberEvent):
+            self.handle_membership(event)
+
+        elif isinstance(event, RoomNameEvent):
+            self.name = event.name
+
+        elif isinstance(event, RoomAliasEvent):
+            self.canonical_alias = event.canonical_alias
 
 class MatrixUser:
     def __init__(
