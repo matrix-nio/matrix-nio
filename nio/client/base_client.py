@@ -72,7 +72,7 @@ from ..responses import (
     ToDeviceResponse,
     PresenceGetResponse,
 )
-from ..rooms import MatrixInvitedRoom, MatrixRoom
+from ..rooms import MatrixInvitedRoom, MatrixRoom, MatrixLeftRoom
 
 from ..crypto import DeviceStore, OlmDevice, OutgoingKeyRequest
 
@@ -215,6 +215,7 @@ class Client:
 
         self.rooms: Dict[str, MatrixRoom] = dict()
         self.invited_rooms: Dict[str, MatrixInvitedRoom] = dict()
+        self.left_rooms: Dict[str, MatrixLeftRoom] = dict()
         self.encrypted_rooms: Set[str] = set()
 
         self.event_callbacks: List[ClientCallback] = []
@@ -704,12 +705,24 @@ class Client:
                 for cb in self.event_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
                         cb.func(room, event)
+    
+    def _get_left_room(self, room_id: str) -> MatrixLeftRoom:
+        if room_id not in self.left_rooms:
+            logger.info("New left room {}".format(room_id))
+            self.left_rooms[room_id] = MatrixLeftRoom(
+                room_id, self.user_id
+            )
+
+        return self.left_rooms[room_id]
 
     def _handle_joined_state(
         self, room_id: str, join_info: RoomInfo, encrypted_rooms: Set[str]
     ):
         if room_id in self.invited_rooms:
             del self.invited_rooms[room_id]
+        
+        if room_id in self.left_rooms:
+            del self.left_rooms[room_id]
 
         if room_id not in self.rooms:
             logger.info("New joined room {}".format(room_id))
@@ -1028,6 +1041,9 @@ class Client:
 
         elif response.room_id in self.invited_rooms:
             del self.invited_rooms[response.room_id]
+        
+        elif response.room_id in self.left_rooms:
+            del self.left_rooms[response.room_id]
 
     def _handle_presence_response(self, response: PresenceGetResponse):
         for room_id in self.rooms.keys():
