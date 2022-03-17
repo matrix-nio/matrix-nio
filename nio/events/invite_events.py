@@ -29,9 +29,8 @@ be displayed to users if they are invited to a room.
 """
 
 
-from typing import Any, Dict, Optional, Union
-
 from dataclasses import dataclass, field
+from typing import Any, Dict, Optional, Union
 
 from ..schemas import Schemas
 from .misc import BadEventType, verify, verify_or_none
@@ -134,9 +133,7 @@ class InviteMemberEvent(InviteEvent):
         prev_content = unsigned.get("prev_content", None)
 
         membership = content["membership"]
-        prev_membership = (
-            prev_content.get("membership") if prev_content else None
-        )
+        prev_membership = prev_content.get("membership") if prev_content else None
 
         return cls(
             parsed_dict,

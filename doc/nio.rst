@@ -179,4 +179,3 @@ Encryption
 
 .. autoclass:: nio.crypto.Sas
     :members:
-

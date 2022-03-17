@@ -15,8 +15,16 @@ import time
 from builtins import bytes
 from datetime import datetime
 
-from peewee import (SQL, BlobField, BooleanField, CompositeKey,
-                    ForeignKeyField, IntegerField, Model, TextField)
+from peewee import (
+    SQL,
+    BlobField,
+    BooleanField,
+    CompositeKey,
+    ForeignKeyField,
+    IntegerField,
+    Model,
+    TextField,
+)
 
 from ..crypto import TrustState
 
@@ -78,9 +86,7 @@ class OlmSessions(Model):
     last_usage_date = DateField()
     sender_key = TextField()
     account = ForeignKeyField(
-        model=Accounts,
-        backref="olm_sessions",
-        on_delete="CASCADE"
+        model=Accounts, backref="olm_sessions", on_delete="CASCADE"
     )
     session = ByteField()
     session_id = TextField(primary_key=True)
@@ -162,7 +168,7 @@ class ForwardedChains(Model):
         model=MegolmInboundSessions,
         column_name="session_id",
         backref="forwarded_chains",
-        on_delete="CASCADE"
+        on_delete="CASCADE",
     )
 
     class Meta:
@@ -175,7 +181,7 @@ class EncryptedRooms(Model):
         model=Accounts,
         column_name="account_id",
         on_delete="CASCADE",
-        backref="encrypted_rooms"
+        backref="encrypted_rooms",
     )
 
     class Meta:

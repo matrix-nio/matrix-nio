@@ -7,22 +7,36 @@ import time
 from datetime import datetime, timedelta
 
 import pytest
+from helpers import faker
 from olm import Account, OlmMessage, OlmPreKeyMessage, OutboundGroupSession
 
-from nio.crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
-                        Olm, OlmDevice, OutboundSession, OutgoingKeyRequest,
-                        SessionStore, Session)
-from nio.events import (ForwardedRoomKeyEvent, MegolmEvent, OlmEvent,
-                        RoomKeyEvent, RoomMessageText, UnknownBadEvent,
-                        ToDeviceEvent, DummyEvent, RoomKeyRequest,
-                        RoomKeyRequestCancellation)
-from nio.exceptions import EncryptionError, GroupEncryptionError, OlmTrustError
-from nio.responses import (KeysClaimResponse, KeysQueryResponse,
-                           KeysUploadResponse)
-from nio.store import DefaultStore, Ed25519Key, Key, KeyStore
+from nio.crypto import (
+    DeviceStore,
+    GroupSessionStore,
+    InboundGroupSession,
+    Olm,
+    OlmDevice,
+    OutboundSession,
+    OutgoingKeyRequest,
+    Session,
+    SessionStore,
+)
 from nio.event_builders import RoomKeyRequestMessage
-
-from helpers import faker
+from nio.events import (
+    DummyEvent,
+    ForwardedRoomKeyEvent,
+    MegolmEvent,
+    OlmEvent,
+    RoomKeyEvent,
+    RoomKeyRequest,
+    RoomKeyRequestCancellation,
+    RoomMessageText,
+    ToDeviceEvent,
+    UnknownBadEvent,
+)
+from nio.exceptions import EncryptionError, GroupEncryptionError, OlmTrustError
+from nio.responses import KeysClaimResponse, KeysQueryResponse, KeysUploadResponse
+from nio.store import DefaultStore, Ed25519Key, Key, KeyStore
 
 AliceId = "@alice:example.org"
 Alice_device = "ALDEVICE"
@@ -38,34 +52,29 @@ TEST_ROOM = "!test_room"
 
 ephemeral_dir = os.path.join(os.curdir, "tests/data/encryption")
 
+
 def ephemeral(func):
     def wrapper(*args, **kwargs):
         try:
             ret = func(*args, **kwargs)
         finally:
-            os.remove(os.path.join(
-                ephemeral_dir,
-                "ephemeral_DEVICEID.db"
-            ))
+            os.remove(os.path.join(ephemeral_dir, "ephemeral_DEVICEID.db"))
         return ret
+
     return wrapper
 
 
 @pytest.fixture
 def olm_account(tempdir):
     return Olm(
-        faker.mx_id(),
-        faker.device_id(),
-        DefaultStore("ephemeral", "DEVICEID", tempdir)
+        faker.mx_id(), faker.device_id(), DefaultStore("ephemeral", "DEVICEID", tempdir)
     )
 
 
 @pytest.fixture
 def bob_account(tempdir):
     return Olm(
-        faker.mx_id(),
-        faker.device_id(),
-        DefaultStore("ephemeral", "DEVICEID", tempdir)
+        faker.mx_id(), faker.device_id(), DefaultStore("ephemeral", "DEVICEID", tempdir)
     )
 
 
@@ -100,35 +109,28 @@ class TestClass:
         assert isinstance(olm.account, Account)
 
     def _load(self, user_id, device_id, pickle_key=""):
-        return Olm(
-            user_id,
-            device_id,
-            self._get_store(user_id, device_id, pickle_key)
-        )
+        return Olm(user_id, device_id, self._get_store(user_id, device_id, pickle_key))
 
     def test_account_loading(self):
         olm = self._load("example", "DEVICEID", PICKLE_KEY)
         assert isinstance(olm.account, Account)
-        assert (olm.account.identity_keys["curve25519"]
-                == "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM")
-        assert (olm.account.identity_keys["ed25519"]
-                == "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4")
+        assert (
+            olm.account.identity_keys["curve25519"]
+            == "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM"
+        )
+        assert (
+            olm.account.identity_keys["ed25519"]
+            == "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4"
+        )
 
     def test_fingerprint_store(self, monkeypatch):
         def mocksave(self):
             return
 
-        monkeypatch.setattr(KeyStore, '_save', mocksave)
-        store = KeyStore(os.path.join(
-            ephemeral_dir,
-            "ephemeral_devices"
-        ))
+        monkeypatch.setattr(KeyStore, "_save", mocksave)
+        store = KeyStore(os.path.join(ephemeral_dir, "ephemeral_devices"))
         account = Account()
-        device = OlmDevice(
-            "example",
-            "DEVICEID",
-            account.identity_keys
-        )
+        device = OlmDevice("example", "DEVICEID", account.identity_keys)
         key = Key.from_olmdevice(device)
 
         assert key not in store
@@ -140,33 +142,25 @@ class TestClass:
     def test_fingerprint_store_loading(self):
         store = KeyStore(os.path.join(ephemeral_dir, "known_devices"))
         key = Ed25519Key(
-            "example",
-            "DEVICEID",
-            "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
+            "example", "DEVICEID", "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
         )
 
         assert key in store
 
     def test_invalid_store_entry_equality(self):
         entry = Ed25519Key(
-            "example",
-            "DEVICEID",
-            "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
+            "example", "DEVICEID", "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
         )
 
         assert entry != 1
 
     def test_differing_store_entries(self):
         alice = Ed25519Key(
-            "alice",
-            "DEVICEID",
-            "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
+            "alice", "DEVICEID", "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
         )
 
         bob = Ed25519Key(
-            "bob",
-            "DEVICEDI",
-            "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
+            "bob", "DEVICEDI", "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
         )
 
         assert alice != bob
@@ -206,8 +200,10 @@ class TestClass:
         alice = OlmDevice(
             "example",
             "DEVICEID",
-            {"ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA",
-             "curve25519": "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"}
+            {
+                "ed25519": "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA",
+                "curve25519": "3MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA",
+            },
         )
 
         store = DeviceStore()
@@ -222,18 +218,13 @@ class TestClass:
         bob.generate_one_time_keys(1)
         one_time = list(bob.one_time_keys["curve25519"].values())[0]
 
-        bob_device = OlmDevice(
-            BobId,
-            Bob_device,
-            bob.identity_keys
-        )
+        bob_device = OlmDevice(BobId, Bob_device, bob.identity_keys)
 
         olm = self.ephemeral_olm
         olm.device_store[bob_device.user_id][bob_device.id] = bob_device
         olm.create_session(one_time, bob_device.curve25519)
         assert isinstance(
-            olm.session_store.get(bob.identity_keys["curve25519"]),
-            OutboundSession
+            olm.session_store.get(bob.identity_keys["curve25519"]), OutboundSession
         )
 
     def test_olm_session_load(self):
@@ -243,8 +234,7 @@ class TestClass:
             "+Qs131S/odNdWG6VJ8hiy9YZW0us24wnsDjYQbaxLk4"
         )
         assert bob_session
-        assert (bob_session.id
-                == "EeEiqT9LjCtECaN7WTqcBQ7D5Dwm4+/L9Uxr1IyPAts")
+        assert bob_session.id == "EeEiqT9LjCtECaN7WTqcBQ7D5Dwm4+/L9Uxr1IyPAts"
 
     @ephemeral
     def test_olm_group_session_store(self):
@@ -256,50 +246,42 @@ class TestClass:
             bob_account.identity_keys["ed25519"],
             "!test_room",
             outbound_session.id,
-            outbound_session.session_key)
+            outbound_session.session_key,
+        )
 
         del olm
 
         olm = self.ephemeral_olm
 
         bob_session = olm.inbound_group_store.get(
-            "!test_room",
-            bob_account.identity_keys["curve25519"],
-            outbound_session.id
+            "!test_room", bob_account.identity_keys["curve25519"], outbound_session.id
         )
 
         assert bob_session
-        assert (bob_session.id
-                == outbound_session.id)
+        assert bob_session.id == outbound_session.id
 
     @ephemeral
     def test_keys_query(self):
         olm = self.ephemeral_olm
-        parsed_dict = TestClass._load_response(
-            "tests/data/keys_query.json")
+        parsed_dict = TestClass._load_response("tests/data/keys_query.json")
         response = KeysQueryResponse.from_dict(parsed_dict)
 
         assert isinstance(response, KeysQueryResponse)
 
         olm.handle_response(response)
         device = olm.device_store["@alice:example.org"]["JLAFKJWSCS"]
-        assert (
-            device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
-        )
+        assert device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
 
         del olm
 
         olm = self.ephemeral_olm
         device = olm.device_store["@alice:example.org"]["JLAFKJWSCS"]
-        assert (
-            device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
-        )
+        assert device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
 
     @ephemeral
     def test_same_query_response_twice(self):
         olm = self.ephemeral_olm
-        parsed_dict = TestClass._load_response(
-            "tests/data/keys_query.json")
+        parsed_dict = TestClass._load_response("tests/data/keys_query.json")
         response = KeysQueryResponse.from_dict(parsed_dict)
         olm.handle_response(response)
         assert response.changed
@@ -310,12 +292,11 @@ class TestClass:
         olm.handle_response(response)
         assert response2.changed
 
-
     def test_olm_inbound_session(self, monkeypatch):
         def mocksave(self):
             return
 
-        monkeypatch.setattr(KeyStore, '_save', mocksave)
+        monkeypatch.setattr(KeyStore, "_save", mocksave)
 
         # create three new accounts
         alice = self._load(AliceId, Alice_device)
@@ -323,22 +304,10 @@ class TestClass:
         malory = self._load(BobId, Bob_device)
 
         # create olm devices for each others known devices list
-        alice_device = OlmDevice(
-            AliceId,
-            Alice_device,
-            alice.account.identity_keys
-        )
-        bob_device = OlmDevice(
-            BobId,
-            Bob_device,
-            bob.account.identity_keys
-        )
+        alice_device = OlmDevice(AliceId, Alice_device, alice.account.identity_keys)
+        bob_device = OlmDevice(BobId, Bob_device, bob.account.identity_keys)
 
-        malory_device = OlmDevice(
-            MaloryId,
-            Malory_device,
-            malory.account.identity_keys
-        )
+        malory_device = OlmDevice(MaloryId, Malory_device, malory.account.identity_keys)
 
         # add the devices to the device list
         alice.device_store.add(bob_device)
@@ -361,8 +330,7 @@ class TestClass:
         # alice shares the group session with bob, but bob isn't verified
         with pytest.raises(OlmTrustError):
             sharing_with, to_device = alice.share_group_session(
-                "!test:example.org",
-                [BobId]
+                "!test:example.org", [BobId]
             )
 
         alice.verify_device(bob_device)
@@ -371,14 +339,12 @@ class TestClass:
         # blocked
         with pytest.raises(OlmTrustError):
             sharing_with, to_device = alice.share_group_session(
-                "!test:example.org",
-                [BobId, MaloryId]
+                "!test:example.org", [BobId, MaloryId]
             )
 
         alice.blacklist_device(malory_device)
         sharing_with, to_device = alice.share_group_session(
-            "!test:example.org",
-            [BobId, MaloryId]
+            "!test:example.org", [BobId, MaloryId]
         )
 
         # check that we aren't sharing the group session with malory
@@ -393,8 +359,8 @@ class TestClass:
             "content": {
                 "algorithm": Olm._olm_algorithm,
                 "sender_key": alice_device.curve25519,
-                "ciphertext": ciphertext
-            }
+                "ciphertext": ciphertext,
+            },
         }
 
         olm_event = OlmEvent.from_dict(olm_event_dict)
@@ -420,8 +386,7 @@ class TestClass:
             group_session = alice.outbound_group_sessions[TEST_ROOM]
 
             sharing_with, to_device = alice.share_group_session(
-                TEST_ROOM,
-                [BobId, MaloryId]
+                TEST_ROOM, [BobId, MaloryId]
             )
 
             ciphertext = to_device["messages"][BobId][bob_device.id]["ciphertext"]
@@ -432,8 +397,8 @@ class TestClass:
                 "content": {
                     "algorithm": Olm._olm_algorithm,
                     "sender_key": alice_device.curve25519,
-                    "ciphertext": ciphertext
-                }
+                    "ciphertext": ciphertext,
+                },
             }
 
             olm_event = OlmEvent.from_dict(olm_event_dict)
@@ -451,20 +416,16 @@ class TestClass:
         finally:
             # remove the databases, the known devices store is handled by
             # monkeypatching
-            os.remove(os.path.join(
-                ephemeral_dir,
-                "{}_{}.db".format(AliceId, Alice_device)
-            ))
-            os.remove(os.path.join(
-                ephemeral_dir,
-                "{}_{}.db".format(BobId, Bob_device)
-            ))
+            os.remove(
+                os.path.join(ephemeral_dir, "{}_{}.db".format(AliceId, Alice_device))
+            )
+            os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(BobId, Bob_device)))
 
     def test_group_session_sharing(self, monkeypatch):
         def mocksave(self):
             return
 
-        monkeypatch.setattr(KeyStore, '_save', mocksave)
+        monkeypatch.setattr(KeyStore, "_save", mocksave)
 
         # create three new accounts
         alice = self._load(AliceId, Alice_device)
@@ -472,22 +433,10 @@ class TestClass:
         malory = self._load(BobId, Bob_device)
 
         # create olm devices for each others known devices list
-        alice_device = OlmDevice(
-            AliceId,
-            Alice_device,
-            alice.account.identity_keys
-        )
-        bob_device = OlmDevice(
-            BobId,
-            Bob_device,
-            bob.account.identity_keys
-        )
+        alice_device = OlmDevice(AliceId, Alice_device, alice.account.identity_keys)
+        bob_device = OlmDevice(BobId, Bob_device, bob.account.identity_keys)
 
-        malory_device = OlmDevice(
-            MaloryId,
-            Malory_device,
-            malory.account.identity_keys
-        )
+        malory_device = OlmDevice(MaloryId, Malory_device, malory.account.identity_keys)
 
         # add the devices to the device list
         alice.device_store.add(bob_device)
@@ -509,8 +458,7 @@ class TestClass:
         alice._maxToDeviceMessagesPerRequest = 1
 
         sharing_with, to_device = alice.share_group_session(
-            "!test:example.org",
-            [BobId, MaloryId]
+            "!test:example.org", [BobId, MaloryId]
         )
         group_session = alice.outbound_group_sessions["!test:example.org"]
 
@@ -522,20 +470,13 @@ class TestClass:
         group_session.users_shared_with.update(sharing_with)
 
         sharing_with, to_device = alice.share_group_session(
-            "!test:example.org",
-            [BobId, MaloryId]
+            "!test:example.org", [BobId, MaloryId]
         )
 
         assert len(sharing_with) == 1
 
-        os.remove(os.path.join(
-            ephemeral_dir,
-            "{}_{}.db".format(AliceId, Alice_device)
-        ))
-        os.remove(os.path.join(
-            ephemeral_dir,
-            "{}_{}.db".format(BobId, Bob_device)
-        ))
+        os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(AliceId, Alice_device)))
+        os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(BobId, Bob_device)))
 
     @ephemeral
     def test_room_key_event(self):
@@ -553,34 +494,25 @@ class TestClass:
                 "session_id": session.id,
                 "session_key": session.session_key,
             },
-            "keys": {
-            }
+            "keys": {},
         }
 
         bad_event = olm._handle_room_key_event(
-            BobId,
-            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
-            {}
+            BobId, "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM", {}
         )
 
         assert isinstance(bad_event, UnknownBadEvent)
 
         event = olm._handle_room_key_event(
-            BobId,
-            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
-            payload
+            BobId, "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM", payload
         )
 
         assert not event
 
-        payload["keys"] = {
-            "ed25519": "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4"
-        }
+        payload["keys"] = {"ed25519": "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4"}
 
         event = olm._handle_room_key_event(
-            BobId,
-            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
-            payload
+            BobId, "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM", payload
         )
 
         assert isinstance(event, RoomKeyEvent)
@@ -594,7 +526,7 @@ class TestClass:
             session.session_key,
             "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4",
             "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
-            TEST_ROOM
+            TEST_ROOM,
         )
 
         payload = {
@@ -605,29 +537,21 @@ class TestClass:
                 "algorithm": "m.megolm.v1.aes-sha2",
                 "room_id": session.room_id,
                 "session_id": session.id,
-                "session_key": session.export_session(
-                    session.first_known_index
-                ),
+                "session_key": session.export_session(session.first_known_index),
                 "sender_key": session.sender_key,
                 "sender_claimed_ed25519_key": session.ed25519,
                 "forwarding_curve25519_key_chain": session.forwarding_chain,
             },
-            "keys": {
-                "ed25519": session.ed25519
-            }
+            "keys": {"ed25519": session.ed25519},
         }
 
         bad_event = olm._handle_room_key_event(
-            BobId,
-            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
-            {}
+            BobId, "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM", {}
         )
         assert isinstance(bad_event, UnknownBadEvent)
 
         event = olm._handle_forwarded_room_key_event(
-            BobId,
-            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
-            payload
+            BobId, "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM", payload
         )
         assert not event
 
@@ -640,9 +564,7 @@ class TestClass:
 
         olm.outgoing_key_requests[session.id] = key_request
         event = olm._handle_olm_event(
-            BobId,
-            "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM",
-            payload
+            BobId, "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM", payload
         )
         assert isinstance(event, ForwardedRoomKeyEvent)
 
@@ -650,24 +572,16 @@ class TestClass:
         def mocksave(self):
             return
 
-        monkeypatch.setattr(KeyStore, '_save', mocksave)
+        monkeypatch.setattr(KeyStore, "_save", mocksave)
 
         # create three new accounts
         alice = self._load(AliceId, Alice_device)
         bob = self._load(BobId, Bob_device)
 
         # create olm devices for each others known devices list
-        bob_device = OlmDevice(
-            BobId,
-            Bob_device,
-            bob.account.identity_keys
-        )
+        bob_device = OlmDevice(BobId, Bob_device, bob.account.identity_keys)
 
-        bob2_device = OlmDevice(
-            BobId,
-            Malory_device,
-            bob.account.identity_keys
-        )
+        bob2_device = OlmDevice(BobId, Malory_device, bob.account.identity_keys)
 
         alice.device_store.add(bob_device)
 
@@ -682,14 +596,8 @@ class TestClass:
         alice.verify_device(bob2_device)
         assert alice.user_fully_verified(BobId)
 
-        os.remove(os.path.join(
-            ephemeral_dir,
-            "{}_{}.db".format(AliceId, Alice_device)
-        ))
-        os.remove(os.path.join(
-            ephemeral_dir,
-            "{}_{}.db".format(BobId, Bob_device)
-        ))
+        os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(AliceId, Alice_device)))
+        os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(BobId, Bob_device)))
 
     @ephemeral
     def test_group_decryption(self):
@@ -712,10 +620,7 @@ class TestClass:
 
         encrypted_dict = olm.group_encrypt(TEST_ROOM, message)
 
-        megolm = {
-            "type": "m.room.encrypted",
-            "content": encrypted_dict
-        }
+        megolm = {"type": "m.room.encrypted", "content": encrypted_dict}
 
         megolm_event = MegolmEvent.from_dict(megolm)
         assert isinstance(megolm_event, UnknownBadEvent)
@@ -755,12 +660,14 @@ class TestClass:
         assert "one_time_keys" in to_share
         assert len(to_share["one_time_keys"]) == olm.account.max_one_time_keys // 2
 
-        response = KeysUploadResponse.from_dict({
-            "one_time_key_counts": {
-                "curve25519": 0,
-                "signed_curve25519": olm.account.max_one_time_keys // 2
+        response = KeysUploadResponse.from_dict(
+            {
+                "one_time_key_counts": {
+                    "curve25519": 0,
+                    "signed_curve25519": olm.account.max_one_time_keys // 2,
+                }
             }
-        })
+        )
 
         olm.handle_response(response)
 
@@ -782,16 +689,12 @@ class TestClass:
         def mocksave(self):
             return
 
-        monkeypatch.setattr(KeyStore, '_save', mocksave)
+        monkeypatch.setattr(KeyStore, "_save", mocksave)
 
         alice = self._load(AliceId, Alice_device)
         bob = self._load(BobId, Bob_device)
 
-        bob_device = OlmDevice(
-            BobId,
-            Bob_device,
-            bob.account.identity_keys
-        )
+        bob_device = OlmDevice(BobId, Bob_device, bob.account.identity_keys)
 
         assert not alice.get_missing_sessions([BobId])
 
@@ -827,29 +730,17 @@ class TestClass:
         assert not alice.get_missing_sessions([BobId])
         assert alice.session_store.get(bob_device.curve25519)
 
-        os.remove(os.path.join(
-            ephemeral_dir,
-            "{}_{}.db".format(AliceId, Alice_device)
-        ))
-        os.remove(os.path.join(
-            ephemeral_dir,
-            "{}_{}.db".format(BobId, Bob_device)
-        ))
+        os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(AliceId, Alice_device)))
+        os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(BobId, Bob_device)))
 
     def test_group_session_sharing_new(self, olm_account, bob_account):
         alice = olm_account
         bob = bob_account
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.account.identity_keys
+            alice.user_id, alice.device_id, alice.account.identity_keys
         )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.account.identity_keys
-        )
+        bob_device = OlmDevice(bob.user_id, bob.device_id, bob.account.identity_keys)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -861,9 +752,7 @@ class TestClass:
         alice.create_session(one_time, bob_device.curve25519)
 
         sharing_with, to_device = alice.share_group_session(
-            "!test:example.org",
-            [bob.user_id],
-            ignore_unverified_devices=True
+            "!test:example.org", [bob.user_id], ignore_unverified_devices=True
         )
 
         assert len(sharing_with) == 1
@@ -876,15 +765,9 @@ class TestClass:
         bob = bob_account
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.account.identity_keys
+            alice.user_id, alice.device_id, alice.account.identity_keys
         )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.account.identity_keys
-        )
+        bob_device = OlmDevice(bob.user_id, bob.device_id, bob.account.identity_keys)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -901,9 +784,7 @@ class TestClass:
 
         # Share a initial olm encrypted message
         _, to_device = alice.share_group_session(
-            TEST_ROOM,
-            [bob.user_id],
-            ignore_unverified_devices=True
+            TEST_ROOM, [bob.user_id], ignore_unverified_devices=True
         )
 
         outbound_session = alice.outbound_group_sessions[TEST_ROOM]
@@ -919,18 +800,14 @@ class TestClass:
         # Make sure bob got the room-key
         assert bob.inbound_group_store
         bob_session = bob.inbound_group_store.get(
-            TEST_ROOM,
-            alice_device.curve25519,
-            outbound_session.id
+            TEST_ROOM, alice_device.curve25519, outbound_session.id
         )
 
         assert bob_session.id == outbound_session.id
 
         # Now bob shares a room-key with alice
         _, to_device = bob.share_group_session(
-            TEST_ROOM,
-            [alice.user_id],
-            ignore_unverified_devices=True
+            TEST_ROOM, [alice.user_id], ignore_unverified_devices=True
         )
 
         olm_message = self.olm_message_to_event(to_device, alice, bob)
@@ -941,17 +818,15 @@ class TestClass:
 
         # Let us wedge the session now
         session = alice.session_store[bob_device.curve25519][0]
-        alice.session_store[bob_device.curve25519][0] = (
-            Session.from_pickle(alice_pickle, session.creation_time, "",
-                                session.use_time))
+        alice.session_store[bob_device.curve25519][0] = Session.from_pickle(
+            alice_pickle, session.creation_time, "", session.use_time
+        )
 
         alice.rotate_outbound_group_session(TEST_ROOM)
 
         # Try to share a room-key now
         _, to_device = alice.share_group_session(
-            TEST_ROOM,
-            [bob.user_id],
-            ignore_unverified_devices=True
+            TEST_ROOM, [bob.user_id], ignore_unverified_devices=True
         )
 
         # Set the creation time to be older than an hour, otherwise we will not
@@ -1025,13 +900,11 @@ class TestClass:
 
         # Try to mark the device again to be unwedged, this should fail since
         # our creation time isn't old enough.
-        alice._mark_device_for_unwedging(alice_device.user_id,
-                                         alice_device.curve25519)
+        alice._mark_device_for_unwedging(alice_device.user_id, alice_device.curve25519)
         assert alice_device not in bob.wedged_devices
 
     def test_device_renaming(self, olm_account):
-        parsed_dict = TestClass._load_response(
-            "tests/data/keys_query.json")
+        parsed_dict = TestClass._load_response("tests/data/keys_query.json")
         response = KeysQueryResponse.from_dict(parsed_dict)
 
         assert isinstance(response, KeysQueryResponse)
@@ -1039,12 +912,12 @@ class TestClass:
         olm_account.handle_response(response)
         device = olm_account.device_store["@alice:example.org"]["JLAFKJWSCS"]
 
-        assert (
-            device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
-        )
+        assert device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
         assert device.display_name == "Alice's mobile phone"
 
-        parsed_dict["device_keys"]["@alice:example.org"]["JLAFKJWSCS"]["unsigned"]["device_display_name"] = "Phoney"
+        parsed_dict["device_keys"]["@alice:example.org"]["JLAFKJWSCS"]["unsigned"][
+            "device_display_name"
+        ] = "Phoney"
 
         response = KeysQueryResponse.from_dict(parsed_dict)
         olm_account.handle_response(response)
@@ -1055,15 +928,9 @@ class TestClass:
         bob = bob_account
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.account.identity_keys
+            alice.user_id, alice.device_id, alice.account.identity_keys
         )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.account.identity_keys
-        )
+        bob_device = OlmDevice(bob.user_id, bob.device_id, bob.account.identity_keys)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1076,9 +943,7 @@ class TestClass:
 
         # Share a initial olm encrypted message
         _, to_device = alice.share_group_session(
-            TEST_ROOM,
-            [bob.user_id],
-            ignore_unverified_devices=True
+            TEST_ROOM, [bob.user_id], ignore_unverified_devices=True
         )
 
         outbound_session = alice.outbound_group_sessions[TEST_ROOM]
@@ -1094,10 +959,7 @@ class TestClass:
 
         message = {
             "type": "m.room.message",
-            "content": {
-                "msgtype": "m.text",
-                "body": "It's a secret to everybody."
-            }
+            "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
         }
         encrypted_content = alice.group_encrypt(TEST_ROOM, message)
 
@@ -1107,7 +969,7 @@ class TestClass:
             "sender": alice.user_id,
             "origin_server_ts": int(time.time()),
             "content": encrypted_content,
-            "room_id": TEST_ROOM
+            "room_id": TEST_ROOM,
         }
         event = MegolmEvent.from_dict(encrypted_message)
 
@@ -1144,15 +1006,9 @@ class TestClass:
         bob = bob_account
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.account.identity_keys
+            alice.user_id, alice.device_id, alice.account.identity_keys
         )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.account.identity_keys
-        )
+        bob_device = OlmDevice(bob.user_id, bob.device_id, bob.account.identity_keys)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1164,9 +1020,7 @@ class TestClass:
         alice.create_session(one_time, bob_device.curve25519)
 
         _, to_device = alice.share_group_session(
-            TEST_ROOM,
-            [bob.user_id],
-            ignore_unverified_devices=True
+            TEST_ROOM, [bob.user_id], ignore_unverified_devices=True
         )
 
         # Setup a working olm session by sharing a key from alice to bob
@@ -1177,9 +1031,7 @@ class TestClass:
         # Bob shares a room session as well but alice never receives the
         # session.
         bob.share_group_session(
-            TEST_ROOM,
-            [alice.user_id],
-            ignore_unverified_devices=True
+            TEST_ROOM, [alice.user_id], ignore_unverified_devices=True
         )
 
         session = bob.outbound_group_sessions[TEST_ROOM]
@@ -1188,10 +1040,7 @@ class TestClass:
 
         message = {
             "type": "m.room.message",
-            "content": {
-                "msgtype": "m.text",
-                "body": "It's a secret to everybody."
-            }
+            "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
         }
         encrypted_content = bob.group_encrypt(TEST_ROOM, message)
 
@@ -1201,7 +1050,7 @@ class TestClass:
             "sender": bob.user_id,
             "origin_server_ts": int(time.time()),
             "content": encrypted_content,
-            "room_id": TEST_ROOM
+            "room_id": TEST_ROOM,
         }
         event = MegolmEvent.from_dict(encrypted_message)
 
@@ -1216,10 +1065,7 @@ class TestClass:
         )
 
         outgoing_key_request = OutgoingKeyRequest(
-            event.session_id,
-            event.session_id,
-            TEST_ROOM,
-            event.algorithm
+            event.session_id, event.session_id, TEST_ROOM, event.algorithm
         )
 
         alice.outgoing_key_requests[event.session_id] = outgoing_key_request
@@ -1227,7 +1073,7 @@ class TestClass:
         key_request = {
             "sender": alice.user_id,
             "type": "m.room_key_request",
-            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"],
         }
 
         key_request_event = RoomKeyRequest.from_dict(key_request)
@@ -1249,8 +1095,7 @@ class TestClass:
         to_device = bob.outgoing_to_device_messages[0]
 
         # Let us now share the to-device message with Alice
-        olm_message = self.olm_message_to_event(to_device.as_dict(), alice,
-                                                bob)
+        olm_message = self.olm_message_to_event(to_device.as_dict(), alice, bob)
         forwarded_key_event = ToDeviceEvent.parse_event(olm_message)
 
         assert isinstance(forwarded_key_event, OlmEvent)
@@ -1271,15 +1116,9 @@ class TestClass:
         bob.user_id = alice.user_id
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.account.identity_keys
+            alice.user_id, alice.device_id, alice.account.identity_keys
         )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.account.identity_keys
-        )
+        bob_device = OlmDevice(bob.user_id, bob.device_id, bob.account.identity_keys)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1292,9 +1131,7 @@ class TestClass:
         alice.create_session(one_time, bob_device.curve25519)
 
         _, to_device = alice.share_group_session(
-            TEST_ROOM,
-            [bob.user_id],
-            ignore_unverified_devices=True
+            TEST_ROOM, [bob.user_id], ignore_unverified_devices=True
         )
 
         # Setup a working olm session by sharing a key from alice to bob
@@ -1305,9 +1142,7 @@ class TestClass:
         # Bob shares a room session as well but alice never receives the
         # session.
         bob.share_group_session(
-            TEST_ROOM,
-            [alice.user_id],
-            ignore_unverified_devices=True
+            TEST_ROOM, [alice.user_id], ignore_unverified_devices=True
         )
 
         session = bob.outbound_group_sessions[TEST_ROOM]
@@ -1316,10 +1151,7 @@ class TestClass:
 
         message = {
             "type": "m.room.message",
-            "content": {
-                "msgtype": "m.text",
-                "body": "It's a secret to everybody."
-            }
+            "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
         }
         encrypted_content = bob.group_encrypt(TEST_ROOM, message)
 
@@ -1329,7 +1161,7 @@ class TestClass:
             "sender": bob.user_id,
             "origin_server_ts": int(time.time()),
             "content": encrypted_content,
-            "room_id": TEST_ROOM
+            "room_id": TEST_ROOM,
         }
         event = MegolmEvent.from_dict(encrypted_message)
 
@@ -1344,10 +1176,7 @@ class TestClass:
         )
 
         outgoing_key_request = OutgoingKeyRequest(
-            event.session_id,
-            event.session_id,
-            TEST_ROOM,
-            event.algorithm
+            event.session_id, event.session_id, TEST_ROOM, event.algorithm
         )
 
         alice.outgoing_key_requests[event.session_id] = outgoing_key_request
@@ -1355,7 +1184,7 @@ class TestClass:
         key_request = {
             "sender": alice.user_id,
             "type": "m.room_key_request",
-            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"],
         }
 
         key_request_event = RoomKeyRequest.from_dict(key_request)
@@ -1377,8 +1206,7 @@ class TestClass:
         to_device = bob.outgoing_to_device_messages[0]
 
         # Let us now share the to-device message with Alice
-        olm_message = self.olm_message_to_event(to_device.as_dict(), alice,
-                                                bob)
+        olm_message = self.olm_message_to_event(to_device.as_dict(), alice, bob)
         forwarded_key_event = ToDeviceEvent.parse_event(olm_message)
 
         assert isinstance(forwarded_key_event, OlmEvent)
@@ -1399,15 +1227,9 @@ class TestClass:
         bob.user_id = alice.user_id
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.account.identity_keys
+            alice.user_id, alice.device_id, alice.account.identity_keys
         )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.account.identity_keys
-        )
+        bob_device = OlmDevice(bob.user_id, bob.device_id, bob.account.identity_keys)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1419,10 +1241,7 @@ class TestClass:
 
         message = {
             "type": "m.room.message",
-            "content": {
-                "msgtype": "m.text",
-                "body": "It's a secret to everybody."
-            }
+            "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
         }
         encrypted_content = bob.group_encrypt(TEST_ROOM, message)
 
@@ -1432,7 +1251,7 @@ class TestClass:
             "sender": bob.user_id,
             "origin_server_ts": int(time.time()),
             "content": encrypted_content,
-            "room_id": TEST_ROOM
+            "room_id": TEST_ROOM,
         }
         event = MegolmEvent.from_dict(encrypted_message)
 
@@ -1447,10 +1266,7 @@ class TestClass:
         )
 
         outgoing_key_request = OutgoingKeyRequest(
-            event.session_id,
-            event.session_id,
-            TEST_ROOM,
-            event.algorithm
+            event.session_id, event.session_id, TEST_ROOM, event.algorithm
         )
 
         alice.outgoing_key_requests[event.session_id] = outgoing_key_request
@@ -1458,7 +1274,7 @@ class TestClass:
         key_request = {
             "sender": alice.user_id,
             "type": "m.room_key_request",
-            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"],
         }
 
         key_request_event = RoomKeyRequest.from_dict(key_request)
@@ -1479,8 +1295,10 @@ class TestClass:
 
         assert alice_device in bob.key_request_devices_no_session
         assert (
-            key_request_event in
-            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
+            key_request_event
+            in bob.key_requests_waiting_for_session[
+                alice_device.user_id, alice_device.id
+            ].values()
         )
 
         # Let us do a key claim request.
@@ -1503,8 +1321,10 @@ class TestClass:
         assert alice_device not in bob.key_request_devices_no_session
         # The key request is neither waiting for a session anymore.
         assert (
-            key_request_event not in
-            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
+            key_request_event
+            not in bob.key_requests_waiting_for_session[
+                alice_device.user_id, alice_device.id
+            ].values()
         )
         # The key request is now waiting to be collected again.
         assert key_request_event in bob.received_key_requests.values()
@@ -1516,8 +1336,7 @@ class TestClass:
         to_device = bob.outgoing_to_device_messages[0]
 
         # Let us now share the to-device message with Alice
-        olm_message = self.olm_message_to_event(to_device.as_dict(), alice,
-                                                bob)
+        olm_message = self.olm_message_to_event(to_device.as_dict(), alice, bob)
         forwarded_key_event = ToDeviceEvent.parse_event(olm_message)
 
         assert isinstance(forwarded_key_event, OlmEvent)
@@ -1538,15 +1357,9 @@ class TestClass:
         bob.user_id = alice.user_id
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.account.identity_keys
+            alice.user_id, alice.device_id, alice.account.identity_keys
         )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.account.identity_keys
-        )
+        bob_device = OlmDevice(bob.user_id, bob.device_id, bob.account.identity_keys)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1558,9 +1371,7 @@ class TestClass:
         alice.create_session(one_time, bob_device.curve25519)
 
         _, to_device = alice.share_group_session(
-            TEST_ROOM,
-            [bob.user_id],
-            ignore_unverified_devices=True
+            TEST_ROOM, [bob.user_id], ignore_unverified_devices=True
         )
 
         # Setup a working olm session by sharing a key from alice to bob
@@ -1571,9 +1382,7 @@ class TestClass:
         # Bob shares a room session as well but alice never receives the
         # session.
         bob.share_group_session(
-            TEST_ROOM,
-            [alice.user_id],
-            ignore_unverified_devices=True
+            TEST_ROOM, [alice.user_id], ignore_unverified_devices=True
         )
 
         session = bob.outbound_group_sessions[TEST_ROOM]
@@ -1582,10 +1391,7 @@ class TestClass:
 
         message = {
             "type": "m.room.message",
-            "content": {
-                "msgtype": "m.text",
-                "body": "It's a secret to everybody."
-            }
+            "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
         }
         encrypted_content = bob.group_encrypt(TEST_ROOM, message)
 
@@ -1595,7 +1401,7 @@ class TestClass:
             "sender": bob.user_id,
             "origin_server_ts": int(time.time()),
             "content": encrypted_content,
-            "room_id": TEST_ROOM
+            "room_id": TEST_ROOM,
         }
         event = MegolmEvent.from_dict(encrypted_message)
 
@@ -1610,10 +1416,7 @@ class TestClass:
         )
 
         outgoing_key_request = OutgoingKeyRequest(
-            event.session_id,
-            event.session_id,
-            TEST_ROOM,
-            event.algorithm
+            event.session_id, event.session_id, TEST_ROOM, event.algorithm
         )
 
         alice.outgoing_key_requests[event.session_id] = outgoing_key_request
@@ -1621,7 +1424,7 @@ class TestClass:
         key_request = {
             "sender": alice.user_id,
             "type": "m.room_key_request",
-            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"],
         }
 
         key_request_event = RoomKeyRequest.from_dict(key_request)
@@ -1656,8 +1459,7 @@ class TestClass:
         to_device = bob.outgoing_to_device_messages[0]
 
         # Let us now share the to-device message with Alice
-        olm_message = self.olm_message_to_event(to_device.as_dict(), alice,
-                                                bob)
+        olm_message = self.olm_message_to_event(to_device.as_dict(), alice, bob)
         forwarded_key_event = ToDeviceEvent.parse_event(olm_message)
 
         assert isinstance(forwarded_key_event, OlmEvent)
@@ -1678,15 +1480,9 @@ class TestClass:
         bob.user_id = alice.user_id
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.account.identity_keys
+            alice.user_id, alice.device_id, alice.account.identity_keys
         )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.account.identity_keys
-        )
+        bob_device = OlmDevice(bob.user_id, bob.device_id, bob.account.identity_keys)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1698,10 +1494,7 @@ class TestClass:
 
         message = {
             "type": "m.room.message",
-            "content": {
-                "msgtype": "m.text",
-                "body": "It's a secret to everybody."
-            }
+            "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
         }
         encrypted_content = bob.group_encrypt(TEST_ROOM, message)
 
@@ -1711,7 +1504,7 @@ class TestClass:
             "sender": bob.user_id,
             "origin_server_ts": int(time.time()),
             "content": encrypted_content,
-            "room_id": TEST_ROOM
+            "room_id": TEST_ROOM,
         }
         event = MegolmEvent.from_dict(encrypted_message)
 
@@ -1726,10 +1519,7 @@ class TestClass:
         )
 
         outgoing_key_request = OutgoingKeyRequest(
-            event.session_id,
-            event.session_id,
-            TEST_ROOM,
-            event.algorithm
+            event.session_id, event.session_id, TEST_ROOM, event.algorithm
         )
 
         alice.outgoing_key_requests[event.session_id] = outgoing_key_request
@@ -1737,7 +1527,7 @@ class TestClass:
         key_request = {
             "sender": alice.user_id,
             "type": "m.room_key_request",
-            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"],
         }
 
         key_request_event = RoomKeyRequest.from_dict(key_request)
@@ -1770,8 +1560,10 @@ class TestClass:
 
         assert alice_device in bob.key_request_devices_no_session
         assert (
-            key_request_event in
-            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
+            key_request_event
+            in bob.key_requests_waiting_for_session[
+                alice_device.user_id, alice_device.id
+            ].values()
         )
 
         # We cancel again.
@@ -1780,8 +1572,10 @@ class TestClass:
 
         assert alice_device not in bob.key_request_devices_no_session
         assert (
-            key_request_event not in
-            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
+            key_request_event
+            not in bob.key_requests_waiting_for_session[
+                alice_device.user_id, alice_device.id
+            ].values()
         )
 
         # Let us do another round
@@ -1808,8 +1602,10 @@ class TestClass:
         assert alice_device not in bob.key_request_devices_no_session
         # The key request is neither waiting for a session anymore.
         assert (
-            key_request_event not in
-            bob.key_requests_waiting_for_session[alice_device.user_id, alice_device.id].values()
+            key_request_event
+            not in bob.key_requests_waiting_for_session[
+                alice_device.user_id, alice_device.id
+            ].values()
         )
         # The key request is now waiting to be collected again.
         assert key_request_event in bob.received_key_requests.values()
@@ -1841,15 +1637,9 @@ class TestClass:
         bob = bob_account
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.account.identity_keys
+            alice.user_id, alice.device_id, alice.account.identity_keys
         )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.account.identity_keys
-        )
+        bob_device = OlmDevice(bob.user_id, bob.device_id, bob.account.identity_keys)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1861,10 +1651,7 @@ class TestClass:
 
         message = {
             "type": "m.room.message",
-            "content": {
-                "msgtype": "m.text",
-                "body": "It's a secret to everybody."
-            }
+            "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
         }
         encrypted_content = bob.group_encrypt(TEST_ROOM, message)
 
@@ -1874,7 +1661,7 @@ class TestClass:
             "sender": bob.user_id,
             "origin_server_ts": int(time.time()),
             "content": encrypted_content,
-            "room_id": TEST_ROOM
+            "room_id": TEST_ROOM,
         }
         event = MegolmEvent.from_dict(encrypted_message)
 
@@ -1889,10 +1676,7 @@ class TestClass:
         )
 
         outgoing_key_request = OutgoingKeyRequest(
-            event.session_id,
-            event.session_id,
-            TEST_ROOM,
-            event.algorithm
+            event.session_id, event.session_id, TEST_ROOM, event.algorithm
         )
 
         alice.outgoing_key_requests[event.session_id] = outgoing_key_request
@@ -1900,7 +1684,7 @@ class TestClass:
         key_request = {
             "sender": alice.user_id,
             "type": "m.room_key_request",
-            "content": key_request.as_dict()["messages"][bob.user_id]["*"]
+            "content": key_request.as_dict()["messages"][bob.user_id]["*"],
         }
 
         key_request_event = RoomKeyRequest.from_dict(key_request)
@@ -1958,15 +1742,9 @@ class TestClass:
         bob = bob_account
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.account.identity_keys
+            alice.user_id, alice.device_id, alice.account.identity_keys
         )
-        bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.account.identity_keys
-        )
+        bob_device = OlmDevice(bob.user_id, bob.device_id, bob.account.identity_keys)
 
         alice.device_store.add(bob_device)
         bob.device_store.add(alice_device)
@@ -1985,9 +1763,7 @@ class TestClass:
 
         # Share a initial olm encrypted message
         _, to_device = alice.share_group_session(
-            TEST_ROOM,
-            [bob.user_id],
-            ignore_unverified_devices=True
+            TEST_ROOM, [bob.user_id], ignore_unverified_devices=True
         )
 
         outbound_session = alice.outbound_group_sessions[TEST_ROOM]
@@ -2003,18 +1779,14 @@ class TestClass:
         # Make sure bob got the room-key
         assert bob.inbound_group_store
         bob_session = bob.inbound_group_store.get(
-            TEST_ROOM,
-            alice_device.curve25519,
-            outbound_session.id
+            TEST_ROOM, alice_device.curve25519, outbound_session.id
         )
 
         assert bob_session.id == outbound_session.id
 
         # Now bob shares a room-key with alice
         _, to_device = bob.share_group_session(
-            TEST_ROOM,
-            [alice.user_id],
-            ignore_unverified_devices=True
+            TEST_ROOM, [alice.user_id], ignore_unverified_devices=True
         )
 
         olm_message = self.olm_message_to_event(to_device, alice, bob)
@@ -2025,17 +1797,15 @@ class TestClass:
 
         # Let us wedge the session now
         session = alice.session_store[bob_device.curve25519][0]
-        alice.session_store[bob_device.curve25519][0] = (
-            Session.from_pickle(alice_pickle, session.creation_time, "",
-                                session.use_time))
+        alice.session_store[bob_device.curve25519][0] = Session.from_pickle(
+            alice_pickle, session.creation_time, "", session.use_time
+        )
 
         alice.rotate_outbound_group_session(TEST_ROOM)
 
         # Try to share a room-key now
         _, to_device = alice.share_group_session(
-            TEST_ROOM,
-            [bob.user_id],
-            ignore_unverified_devices=True
+            TEST_ROOM, [bob.user_id], ignore_unverified_devices=True
         )
 
         # Set the creation time to be older than an hour, otherwise we will not
@@ -2079,7 +1849,7 @@ class TestClass:
             "sender": alice.user_id,
             "origin_server_ts": int(time.time()),
             "content": encrypted_content,
-            "room_id": TEST_ROOM
+            "room_id": TEST_ROOM,
         }
         megolm_event = MegolmEvent.from_dict(encrypted_message)
 
@@ -2090,8 +1860,10 @@ class TestClass:
             bob.decrypt_megolm_event(megolm_event)
 
         # Let's check if bob had cached the event for a key re-request.
-        assert megolm_event in bob.key_re_requests_events[(megolm_event.sender,
-                                                           megolm_event.device_id)]
+        assert (
+            megolm_event
+            in bob.key_re_requests_events[(megolm_event.sender, megolm_event.device_id)]
+        )
 
         # Bob should now claim new keys from alice, we're simulating this over
         # here since the olm machine doesn't know how to do requests.
@@ -2150,7 +1922,7 @@ class TestClass:
         key_request = {
             "sender": bob.user_id,
             "type": "m.room_key_request",
-            "content": message.as_dict()["messages"][alice.user_id][alice.device_id]
+            "content": message.as_dict()["messages"][alice.user_id][alice.device_id],
         }
 
         key_request_event = RoomKeyRequest.from_dict(key_request)
@@ -2166,8 +1938,7 @@ class TestClass:
 
         message = alice.outgoing_to_device_messages[0]
 
-        olm_message = self.olm_message_to_event(message.as_dict(), bob,
-                                                alice)
+        olm_message = self.olm_message_to_event(message.as_dict(), bob, alice)
         forwarded_key_event = ToDeviceEvent.parse_event(olm_message)
         assert isinstance(forwarded_key_event, OlmEvent)
 

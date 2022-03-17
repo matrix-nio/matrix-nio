@@ -7,11 +7,11 @@ from hypothesis.strategies import binary
 
 from nio import EncryptionError
 from nio.crypto import Olm
-from nio.crypto.key_export import (decrypt, decrypt_and_read, encrypt,
-                                   encrypt_and_save)
+from nio.crypto.key_export import decrypt, decrypt_and_read, encrypt, encrypt_and_save
 from nio.store import DefaultStore
 
 TEST_ROOM = "!test:example.org"
+
 
 class TestClass:
     @given(binary())
@@ -58,9 +58,7 @@ class TestClass:
         out_session = olm.outbound_group_sessions[TEST_ROOM]
 
         assert olm.inbound_group_store.get(
-                TEST_ROOM,
-                olm.account.identity_keys["curve25519"],
-                out_session.id
+            TEST_ROOM, olm.account.identity_keys["curve25519"], out_session.id
         )
         olm.export_keys(file, "pass")
 
@@ -68,17 +66,13 @@ class TestClass:
         alice = Olm("alice", device_id, alice_store)
 
         assert not alice.inbound_group_store.get(
-                TEST_ROOM,
-                olm.account.identity_keys["curve25519"],
-                out_session.id
+            TEST_ROOM, olm.account.identity_keys["curve25519"], out_session.id
         )
 
         alice.import_keys(file, "pass")
 
         assert alice.inbound_group_store.get(
-                TEST_ROOM,
-                olm.account.identity_keys["curve25519"],
-                out_session.id
+            TEST_ROOM, olm.account.identity_keys["curve25519"], out_session.id
         )
 
     def test_unencrypted_import(self, tempdir):
@@ -109,20 +103,9 @@ class TestClass:
         device_id = "DEVICEID"
         file = path.join(tempdir, "keys_file")
 
-        payload = {
-            "sessions": [
-                {
-                    "algorithm": "test"
-                }
-            ]
-        }
+        payload = {"sessions": [{"algorithm": "test"}]}
 
-        encrypt_and_save(
-            json.dumps(payload).encode(),
-            file,
-            "pass",
-            count=10
-        )
+        encrypt_and_save(json.dumps(payload).encode(), file, "pass", count=10)
 
         alice_store = DefaultStore("alice", device_id, tempdir, "")
         alice = Olm("alice", device_id, alice_store)

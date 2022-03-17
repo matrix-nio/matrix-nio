@@ -4,26 +4,54 @@ import random
 from uuid import uuid4
 
 import pytest
-
 from helpers import FrameFactory, ephemeral, ephemeral_dir, faker
-from nio import (Client, DeviceList, DeviceOneTimeKeyCount, DownloadResponse,
-                 EncryptionError,
-                 FullyReadEvent,
-                 TagEvent,
-                 HttpClient, JoinedMembersResponse, KeysQueryResponse,
-                 KeysUploadResponse, LocalProtocolError, LoginResponse,
-                 LogoutResponse, MegolmEvent, ProfileGetAvatarResponse,
-                 ProfileGetDisplayNameResponse, ProfileGetResponse,
-                 ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
-                 PushRulesEvent,
-                 RoomCreateResponse,
-                 RoomEncryptionEvent, RoomForgetResponse, RoomInfo,
-                 RoomKeyRequestResponse, RoomMember, RoomMemberEvent, Rooms,
-                 RoomSummary, RoomTypingResponse, RoomRedactResponse,
-                 ShareGroupSessionResponse, SyncResponse,
-                 Timeline, ThumbnailResponse, TransportType, TypingNoticeEvent,
-                 InviteMemberEvent, InviteInfo, ClientConfig, ReceiptEvent,
-                 Receipt, PresenceEvent)
+
+from nio import (
+    Client,
+    ClientConfig,
+    DeviceList,
+    DeviceOneTimeKeyCount,
+    DownloadResponse,
+    EncryptionError,
+    FullyReadEvent,
+    HttpClient,
+    InviteInfo,
+    InviteMemberEvent,
+    JoinedMembersResponse,
+    KeysQueryResponse,
+    KeysUploadResponse,
+    LocalProtocolError,
+    LoginResponse,
+    LogoutResponse,
+    MegolmEvent,
+    PresenceEvent,
+    ProfileGetAvatarResponse,
+    ProfileGetDisplayNameResponse,
+    ProfileGetResponse,
+    ProfileSetAvatarResponse,
+    ProfileSetDisplayNameResponse,
+    PushRulesEvent,
+    Receipt,
+    ReceiptEvent,
+    RoomCreateResponse,
+    RoomEncryptionEvent,
+    RoomForgetResponse,
+    RoomInfo,
+    RoomKeyRequestResponse,
+    RoomMember,
+    RoomMemberEvent,
+    RoomRedactResponse,
+    Rooms,
+    RoomSummary,
+    RoomTypingResponse,
+    ShareGroupSessionResponse,
+    SyncResponse,
+    TagEvent,
+    ThumbnailResponse,
+    Timeline,
+    TransportType,
+    TypingNoticeEvent,
+)
 from nio.event_builders import ToDeviceMessage
 
 HOST = "example.org"
@@ -61,10 +89,7 @@ def synced_client(tempdir):
 
 
 class TestClass:
-    example_response_headers = [
-        (':status', '200'),
-        ('server', 'fake-serv/0.1.0')
-    ]
+    example_response_headers = [(":status", "200"), ("server", "fake-serv/0.1.0")]
 
     @property
     def login_response(self):
@@ -92,16 +117,16 @@ class TestClass:
             headers=self.example_response_headers, stream_id=1
         )
 
-        login_body = json.dumps({
-            "user_id": "@ephemeral:example.org",
-            "access_token": "ABCD",
-            "device_id": "DEVICEID",
-        }).encode("utf-8")
+        login_body = json.dumps(
+            {
+                "user_id": "@ephemeral:example.org",
+                "access_token": "ABCD",
+                "device_id": "DEVICEID",
+            }
+        ).encode("utf-8")
 
         data = frame_factory.build_data_frame(
-            data=login_body,
-            stream_id=1,
-            flags=['END_STREAM']
+            data=login_body, stream_id=1, flags=["END_STREAM"]
         )
 
         return f.serialize() + data.serialize()
@@ -117,9 +142,7 @@ class TestClass:
         body = self._load_byte_response("tests/data/sync.json")
 
         data = frame_factory.build_data_frame(
-            data=body,
-            stream_id=3,
-            flags=['END_STREAM']
+            data=body, stream_id=3, flags=["END_STREAM"]
         )
 
         return f.serialize() + data.serialize()
@@ -127,9 +150,7 @@ class TestClass:
     def file_byte_response(self, stream_id=5, header_filename=""):
         frame_factory = FrameFactory()
 
-        headers = self.example_response_headers + [
-            ("content-type", "image/png")
-        ]
+        headers = self.example_response_headers + [("content-type", "image/png")]
 
         if header_filename:
             headers.append(
@@ -139,16 +160,12 @@ class TestClass:
                 ),
             )
 
-        f = frame_factory.build_headers_frame(
-            headers=headers, stream_id=stream_id
-        )
+        f = frame_factory.build_headers_frame(headers=headers, stream_id=stream_id)
 
         body = self._load_byte_response("tests/data/file_response")
 
         data = frame_factory.build_data_frame(
-            data=body,
-            stream_id=stream_id,
-            flags=['END_STREAM']
+            data=body, stream_id=stream_id, flags=["END_STREAM"]
         )
 
         return f.serialize() + data.serialize()
@@ -163,9 +180,7 @@ class TestClass:
         body = b"{}"
 
         data = frame_factory.build_data_frame(
-            data=body,
-            stream_id=stream_id,
-            flags=['END_STREAM']
+            data=body, stream_id=stream_id, flags=["END_STREAM"]
         )
 
         return f.serialize() + data.serialize()
@@ -180,9 +195,7 @@ class TestClass:
         body = json.dumps({"room_id": room_id}).encode()
 
         data = frame_factory.build_data_frame(
-            data=body,
-            stream_id=stream_id,
-            flags=['END_STREAM']
+            data=body, stream_id=stream_id, flags=["END_STREAM"]
         )
 
         return f.serialize() + data.serialize()
@@ -199,7 +212,7 @@ class TestClass:
         data = frame_factory.build_data_frame(
             data=body,
             stream_id=stream_id,
-            flags=['END_STREAM'],
+            flags=["END_STREAM"],
         )
 
         return f.serialize() + data.serialize()
@@ -214,9 +227,7 @@ class TestClass:
         body = json.dumps({"displayname": displayname}).encode("utf-8")
 
         data = frame_factory.build_data_frame(
-            data=body,
-            stream_id=stream_id,
-            flags=['END_STREAM']
+            data=body, stream_id=stream_id, flags=["END_STREAM"]
         )
 
         return f.serialize() + data.serialize()
@@ -231,9 +242,7 @@ class TestClass:
         body = json.dumps({"avatar_url": avatar_url}).encode("utf-8")
 
         data = frame_factory.build_data_frame(
-            data=body,
-            stream_id=stream_id,
-            flags=['END_STREAM']
+            data=body, stream_id=stream_id, flags=["END_STREAM"]
         )
 
         return f.serialize() + data.serialize()
@@ -250,9 +259,7 @@ class TestClass:
         ).encode("utf-8")
 
         data = frame_factory.build_data_frame(
-            data=body,
-            stream_id=stream_id,
-            flags=['END_STREAM']
+            data=body, stream_id=stream_id, flags=["END_STREAM"]
         )
 
         return f.serialize() + data.serialize()
@@ -262,18 +269,22 @@ class TestClass:
         timeline = Timeline(
             [
                 RoomMemberEvent(
-                    {"event_id": "event_id_1",
-                     "sender": ALICE_ID,
-                     "origin_server_ts": 1516809890615},
+                    {
+                        "event_id": "event_id_1",
+                        "sender": ALICE_ID,
+                        "origin_server_ts": 1516809890615,
+                    },
                     ALICE_ID,
                     "join",
                     None,
-                    {"membership": "join"}
+                    {"membership": "join"},
                 ),
                 RoomMemberEvent(
-                    {"event_id": "event_id_2",
-                     "sender": ALICE_ID,
-                     "origin_server_ts": 1516809890615},
+                    {
+                        "event_id": "event_id_2",
+                        "sender": ALICE_ID,
+                        "origin_server_ts": 1516809890615,
+                    },
                     CAROL_ID,
                     "invite",
                     None,
@@ -283,17 +294,17 @@ class TestClass:
                     {
                         "event_id": "event_id_3",
                         "sender": ALICE_ID,
-                        "origin_server_ts": 1516809890615
+                        "origin_server_ts": 1516809890615,
                     }
-                )
+                ),
             ],
             False,
-            "prev_batch_token"
+            "prev_batch_token",
         )
         test_room_info = RoomInfo(
-            timeline = timeline,
-            state = [],
-            ephemeral = [
+            timeline=timeline,
+            state=[],
+            ephemeral=[
                 TypingNoticeEvent([ALICE_ID]),
                 ReceiptEvent(
                     [
@@ -301,44 +312,39 @@ class TestClass:
                             event_id="event_id_3",
                             receipt_type="m.read",
                             user_id=ALICE_ID,
-                            timestamp=1516809890615
+                            timestamp=1516809890615,
                         )
                     ]
-                )
+                ),
             ],
-            account_data = [
+            account_data=[
                 FullyReadEvent(event_id="event_id_2"),
                 TagEvent(tags={"u.test": {"order": 1}}),
             ],
-            summary = RoomSummary(
-                invited_member_count=1, joined_member_count=2,
+            summary=RoomSummary(
+                invited_member_count=1,
+                joined_member_count=2,
             ),
         )
-        rooms = Rooms(
-            invite = {},
-            join = {
-                TEST_ROOM_ID: test_room_info
-            },
-            leave = {}
-        )
+        rooms = Rooms(invite={}, join={TEST_ROOM_ID: test_room_info}, leave={})
         return SyncResponse(
-            next_batch = "token123",
-            rooms = rooms,
-            device_key_count = DeviceOneTimeKeyCount(49, 50),
-            device_list = DeviceList([ALICE_ID], []),
-            to_device_events = [
+            next_batch="token123",
+            rooms=rooms,
+            device_key_count=DeviceOneTimeKeyCount(49, 50),
+            device_list=DeviceList([ALICE_ID], []),
+            to_device_events=[
                 RoomEncryptionEvent(
                     {
                         "event_id": "event_id_2",
                         "sender": ALICE_ID,
-                        "origin_server_ts": 1516809890615
+                        "origin_server_ts": 1516809890615,
                     }
                 )
             ],
-            presence_events = [
+            presence_events=[
                 PresenceEvent(ALICE_ID, "online", 1337, True, "I am here.")
             ],
-            account_data_events = [
+            account_data_events=[
                 PushRulesEvent(),
             ],
         )
@@ -355,25 +361,19 @@ class TestClass:
                 {
                     "membership": "invite",
                     "display_name": None,
-                }
+                },
             )
         ]
 
         test_room_info = InviteInfo(state)
-        rooms = Rooms(
-            {
-                TEST_ROOM_ID: test_room_info
-            },
-            {},
-            {}
-        )
+        rooms = Rooms({TEST_ROOM_ID: test_room_info}, {}, {})
         return SyncResponse(
             "token123",
             rooms,
             DeviceOneTimeKeyCount(49, 50),
             DeviceList([ALICE_ID], []),
             [],
-            []
+            [],
         )
 
     @property
@@ -381,92 +381,77 @@ class TestClass:
         timeline = Timeline(
             [
                 RoomMemberEvent(
-                    {"event_id": "event_id_1",
-                     "sender": ALICE_ID,
-                     "origin_server_ts": 1516809890615},
+                    {
+                        "event_id": "event_id_1",
+                        "sender": ALICE_ID,
+                        "origin_server_ts": 1516809890615,
+                    },
                     ALICE_ID,
                     "join",
                     None,
-                    {"membership": "join"}
+                    {"membership": "join"},
                 ),
             ],
             False,
-            "prev_batch_token"
+            "prev_batch_token",
         )
         test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(1, 2, []))
-        rooms = Rooms(
-            {},
-            {
-                TEST_ROOM_ID: test_room_info
-            },
-            {}
-        )
+        rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {})
         return SyncResponse(
             "token123",
             rooms,
             DeviceOneTimeKeyCount(49, 50),
             DeviceList([ALICE_ID], []),
             [],
-            []
+            [],
         )
-
 
     @property
     def second_sync(self):
         timeline = Timeline(
             [
                 RoomMemberEvent(
-                    {"event_id": "event_id_1",
-                     "sender": ALICE_ID,
-                     "origin_server_ts": 1516809890615},
+                    {
+                        "event_id": "event_id_1",
+                        "sender": ALICE_ID,
+                        "origin_server_ts": 1516809890615,
+                    },
                     ALICE_ID,
                     "join",
                     None,
-                    {"membership": "join"}
+                    {"membership": "join"},
                 ),
                 RoomEncryptionEvent(
                     {
                         "event_id": "event_id_2",
                         "sender": ALICE_ID,
-                        "origin_server_ts": 1516809890615
+                        "origin_server_ts": 1516809890615,
                     }
-                )
+                ),
             ],
             True,
-            "prev_batch_token"
+            "prev_batch_token",
         )
         test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(1, 2, []))
-        rooms = Rooms(
-            {},
-            {
-                TEST_ROOM_ID: test_room_info
-            },
-            {}
-        )
+        rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {})
         return SyncResponse(
-            "token123",
-            rooms,
-            DeviceOneTimeKeyCount(49, 50),
-            DeviceList([], []),
-            [],
-            []
+            "token123", rooms, DeviceOneTimeKeyCount(49, 50), DeviceList([], []), [], []
         )
 
     @property
     def keys_query_response(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/keys_query.json")
+        parsed_dict = TestClass._load_response("tests/data/keys_query.json")
         return KeysQueryResponse.from_dict(parsed_dict)
 
     @property
     def joined_members(self):
         return JoinedMembersResponse(
             [
-                RoomMember(BOB_ID, None, None),    # joined
+                RoomMember(BOB_ID, None, None),  # joined
                 RoomMember(ALICE_ID, None, None),  # joined
                 RoomMember(CAROL_ID, None, None),  # invited
             ],
-            TEST_ROOM_ID
+            TEST_ROOM_ID,
         )
 
     def test_client_protocol_error(self):
@@ -728,9 +713,7 @@ class TestClass:
             client.olm.share_group_session(TEST_ROOM_ID, room.users)
 
         shared_with, to_device = client.olm.share_group_session(
-            TEST_ROOM_ID,
-            room.users,
-            True
+            TEST_ROOM_ID, room.users, True
         )
 
         session = client.olm.outbound_group_sessions[TEST_ROOM_ID]
@@ -778,10 +761,10 @@ class TestClass:
             "identifier": {
                 "type": "m.id.thirdparty",
                 "medium": "email",
-                "address": "testemail@mail.org"
+                "address": "testemail@mail.org",
             },
             "password": "PASSWORDABCD",
-            "initial_device_display_name": "Citadel bot"
+            "initial_device_display_name": "Citadel bot",
         }
         _, _ = http_client.login_raw(auth_dict)
 
@@ -805,9 +788,7 @@ class TestClass:
         auth_dict = None
 
         with pytest.raises(ValueError):
-            _, _ = http_client.login_raw(
-                auth_dict
-            )
+            _, _ = http_client.login_raw(auth_dict)
 
         assert not http_client.access_token == "ABCD"
 
@@ -858,8 +839,10 @@ class TestClass:
         response = http_client.next_response()
 
         assert isinstance(response, RoomKeyRequestResponse)
-        assert ("X3lUlvLELLYxeTx4yOVu6UDpasGEVO0Jbu+QFnm0cKQ" in
-                http_client.outgoing_key_requests)
+        assert (
+            "X3lUlvLELLYxeTx4yOVu6UDpasGEVO0Jbu+QFnm0cKQ"
+            in http_client.outgoing_key_requests
+        )
 
     def test_http_client_room_create(self, http_client):
         http_client.connect(TransportType.HTTP2)
@@ -916,10 +899,10 @@ class TestClass:
         assert isinstance(response, RoomForgetResponse)
 
     def test_http_client_room_redact(self, synced_client):
-        room_id  = next(iter(synced_client.rooms))
+        room_id = next(iter(synced_client.rooms))
         event_id = "$15163622445EBvZJ:localhost"
-        tx_id    = uuid4()
-        reason   = "for no reason"
+        tx_id = uuid4()
+        reason = "for no reason"
 
         synced_client.room_redact(room_id, event_id, reason, tx_id)
         synced_client.receive(self.event_id_response(5))
@@ -958,7 +941,7 @@ class TestClass:
         http_client.connect(TransportType.HTTP2)
 
         server_name = "example.og"
-        media_id = "ascERGshawAWawugaAcauga",
+        media_id = ("ascERGshawAWawugaAcauga",)
         filename = "example&.png"  # has unsafe character to test % encoding
 
         _, _ = http_client.download(server_name, media_id, allow_remote=False)
@@ -967,9 +950,7 @@ class TestClass:
         response = http_client.next_response()
 
         assert isinstance(response, DownloadResponse)
-        assert response.body == self._load_byte_response(
-            "tests/data/file_response"
-        )
+        assert response.body == self._load_byte_response("tests/data/file_response")
         assert response.content_type == "image/png"
         assert response.filename is None
 
@@ -979,9 +960,7 @@ class TestClass:
         response = http_client.next_response()
 
         assert isinstance(response, DownloadResponse)
-        assert response.body == self._load_byte_response(
-            "tests/data/file_response"
-        )
+        assert response.body == self._load_byte_response("tests/data/file_response")
         assert response.content_type == "image/png"
         assert response.filename == filename
 
@@ -989,20 +968,14 @@ class TestClass:
         http_client.connect(TransportType.HTTP2)
 
         _, _ = http_client.thumbnail(
-            "example.org",
-            "ascERGshawAWawugaAcauga",
-            32,
-            32,
-            allow_remote=False
+            "example.org", "ascERGshawAWawugaAcauga", 32, 32, allow_remote=False
         )
 
         http_client.receive(self.file_byte_response(1))
         response = http_client.next_response()
 
         assert isinstance(response, ThumbnailResponse)
-        assert response.body == self._load_byte_response(
-            "tests/data/file_response"
-        )
+        assert response.body == self._load_byte_response("tests/data/file_response")
         assert response.content_type == "image/png"
 
     def test_http_client_get_profile(self, http_client: HttpClient):
@@ -1144,7 +1117,7 @@ class TestClass:
         event_selection = random.choices(
             population=ephemeral_events,
             # By the pigeonhole princple, we'll have at least one duplicate Event
-            k=len(ephemeral_events) + 1
+            k=len(ephemeral_events) + 1,
         )
         # This will only print during a failure, at which point we want to know
         # what event selection caused an error.
@@ -1153,8 +1126,7 @@ class TestClass:
         exceptions = []
         for index, event in enumerate(event_selection):
             exception_class = type(
-                f"CbException{event.__name__}_{index}",
-                (Exception,), {}
+                f"CbException{event.__name__}_{index}", (Exception,), {}
             )
             exceptions.append(exception_class)
 
@@ -1265,9 +1237,7 @@ class TestClass:
         assert host == "example.org:443"
         assert path == "_matrix"
 
-        host, path = HttpClient._parse_homeserver(
-            "https://example.org:8008/_matrix"
-        )
+        host, path = HttpClient._parse_homeserver("https://example.org:8008/_matrix")
         assert host == "example.org:8008"
         assert path == "_matrix"
 
@@ -1294,7 +1264,7 @@ class TestClass:
             {
                 "errcode": "M_UNKNOWN_TOKEN",
                 "error": "Access token has expired",
-                "soft_logout": True
+                "soft_logout": True,
             }
         )
         client.receive_response(error_response)
@@ -1304,7 +1274,7 @@ class TestClass:
     def test_sync_token_restoring(self, client):
         user = client.user_id
         device_id = client.device_id
-        path= client.store_path
+        path = client.store_path
         del client
 
         config = ClientConfig(store_sync_tokens=True)
@@ -1330,10 +1300,7 @@ class TestClass:
             if isinstance(event, PresenceEvent):
                 raise CallbackException()
 
-        client.add_presence_callback(
-            cb,
-            PresenceEvent
-        )
+        client.add_presence_callback(cb, PresenceEvent)
 
         client.add_presence_callback(cb, PresenceEvent)
 

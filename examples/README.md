@@ -20,12 +20,12 @@ Enjoy! Find more in the [matrix-nio documentaion](
 https://matrix-nio.readthedocs.io/en/latest/index.html).
 
 If you desire more sample code and want to do additional reading and exploration
-have a 
+have a
 look at this external repo (not maintained by us) called
 [matrix-commander](<https://github.com/8go/matrix-commander>).
-It showcases various types of sending, receiving and verification.  
+It showcases various types of sending, receiving and verification.
 
-And last but not least, you should definitely check out all 
-the other projects built with `matrix-nio`. To do so, explore our 
+And last but not least, you should definitely check out all
+the other projects built with `matrix-nio`. To do so, explore our
 [built-with-marix-nio list](
 <https://github.com/poljar/matrix-nio/blob/master/doc/built-with-nio.rst>).

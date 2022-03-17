@@ -15,6 +15,7 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from urllib.parse import urlencode
+
 from nio.api import Api
 
 
@@ -49,7 +50,7 @@ class TestClass:
         expected = f"/_matrix/client/r0/profile/{encoded}?access_token={token}"
         resp = api.profile_get(user_id, token)
 
-        assert resp == ('GET', expected)
+        assert resp == ("GET", expected)
 
     def test_delete_room_alias(self) -> None:
         """Test that profile_get sets access_token in query param"""
@@ -61,7 +62,7 @@ class TestClass:
         expected = f"/_matrix/client/r0/directory/room/{encoded}?access_token={token}"
         resp = api.delete_room_alias(token, room_alias)
 
-        assert resp == ('DELETE', expected)
+        assert resp == ("DELETE", expected)
 
     def test_put_room_alias(self) -> None:
         """Test that profile_get sets access_token in query param"""
@@ -71,8 +72,10 @@ class TestClass:
         room_id = "!room_id:example.com"
         token = "SECRET_TOKEN"
 
-        expected_path = f"/_matrix/client/r0/directory/room/{encoded}?access_token={token}"
+        expected_path = (
+            f"/_matrix/client/r0/directory/room/{encoded}?access_token={token}"
+        )
         expected_data = '{"room_id":"!room_id:example.com"}'
         resp = api.put_room_alias(token, room_alias, room_id)
 
-        assert resp == ('PUT', expected_path, expected_data)
+        assert resp == ("PUT", expected_path, expected_data)

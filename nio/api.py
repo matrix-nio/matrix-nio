@@ -30,8 +30,17 @@ import json
 from collections import defaultdict
 from enum import Enum, unique
 from typing import (
-    Any, DefaultDict, Dict, Iterable, List, Optional, Sequence, Set, Tuple,
-    Union, TYPE_CHECKING,
+    TYPE_CHECKING,
+    Any,
+    DefaultDict,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
 )
 
 from .exceptions import LocalProtocolError
@@ -46,6 +55,7 @@ try:
     from urllib.parse import quote, urlencode, urlparse
 except ImportError:
     from urllib import quote, urlencode  # type: ignore
+
     from urlparse import urlparse  # type: ignore
 
 
@@ -109,9 +119,9 @@ class RoomPreset(Enum):
 class EventFormat(Enum):
     """Available formats in which a filter can make the server return events.
 
-     "client" will return the events in a format suitable for clients.
-     "federation" will return the raw event as received over federation.
-     """
+    "client" will return the events in a format suitable for clients.
+    "federation" will return the raw event as received over federation.
+    """
 
     client = "client"
     federation = "federation"
@@ -179,15 +189,15 @@ class Api:
         parsed_homeserver = urlparse(homeserver) if homeserver else None
 
         http_url = (
-            "{homeserver}/_matrix/media/r0/download/"
-            "{server_name}{mediaId}"
+            "{homeserver}/_matrix/media/r0/download/" "{server_name}{mediaId}"
         ).format(
             homeserver=(
-                parsed_homeserver.geturl() if parsed_homeserver
+                parsed_homeserver.geturl()
+                if parsed_homeserver
                 else "https://{}".format(url.netloc)
             ),
             server_name=url.hostname,
-            mediaId=url.path
+            mediaId=url.path,
         )
 
         return http_url
@@ -234,16 +244,18 @@ class Api:
 
         parsed_homeserver = urlparse(homeserver) if homeserver else None
 
-        host = (parsed_homeserver._replace(scheme="emxc").geturl()
-                if parsed_homeserver else None)
+        host = (
+            parsed_homeserver._replace(scheme="emxc").geturl()
+            if parsed_homeserver
+            else None
+        )
 
         plumb_url = (
-            "{homeserver}/_matrix/media/r0/download/"
-            "{server_name}{mediaId}"
+            "{homeserver}/_matrix/media/r0/download/" "{server_name}{mediaId}"
         ).format(
             homeserver=host if host else "emxc://{}".format(url.netloc),
             server_name=url.hostname,
-            mediaId=url.path
+            mediaId=url.path,
         )
 
         query_parameters = {
@@ -260,9 +272,7 @@ class Api:
 
     @staticmethod
     def _build_path(
-        path: List[str],
-        query_parameters: Dict = None,
-        base_path: str = MATRIX_API_PATH
+        path: List[str], query_parameters: Dict = None, base_path: str = MATRIX_API_PATH
     ) -> str:
         """Builds a percent-encoded path from a list of strings.
 
@@ -283,14 +293,13 @@ class Api:
         if isinstance(path, str):
             quoted_path = quote(path, safe="")
         elif isinstance(path, List):
-            quoted_path='/'.join([quote(str(part), safe="") for part in path])
+            quoted_path = "/".join([quote(str(part), safe="") for part in path])
         else:
-            raise AssertionError(f"'path' must be of type List[str] or str, got {type(path)}")
+            raise AssertionError(
+                f"'path' must be of type List[str] or str, got {type(path)}"
+            )
 
-        built_path = "{base}/{path}".format(
-            base=base_path,
-            path=quoted_path
-        )
+        built_path = "{base}/{path}".format(base=base_path, path=quoted_path)
 
         built_path = built_path.rstrip("/")
 
@@ -308,7 +317,6 @@ class Api:
         path = Api._build_path(path=[".well-known", "matrix", "client"], base_path="")
         return ("GET", path)
 
-
     @staticmethod
     def login_info() -> Tuple[str, str]:
         """Get the homeserver's supported login types
@@ -322,10 +330,10 @@ class Api:
 
     @staticmethod
     def register(
-            user,           # type: str
-            password=None,  # type: str
-            device_name="",  # type: Optional[str]
-            device_id="",    # type: Optional[str]
+        user,  # type: str
+        password=None,  # type: str
+        device_name="",  # type: Optional[str]
+        device_id="",  # type: Optional[str]
     ):
         """Register a new user.
 
@@ -357,11 +365,11 @@ class Api:
 
     @staticmethod
     def login(
-        user,            # type: str
-        password=None,   # type: str
+        user,  # type: str
+        password=None,  # type: str
         device_name="",  # type: Optional[str]
-        device_id="",    # type: Optional[str]
-        token=None,       # type: str
+        device_id="",  # type: Optional[str]
+        token=None,  # type: str
     ):
         # type: (...) -> Tuple[str, str, str]
         """Authenticate the user.
@@ -383,18 +391,18 @@ class Api:
 
         if password is not None:
             identifier = {}
-            if '@' in user and not user.startswith('@'):
+            if "@" in user and not user.startswith("@"):
                 identifier = {
-                    'type': 'm.id.thirdparty',
-                    'medium': 'email',
-                    'address': user,
+                    "type": "m.id.thirdparty",
+                    "medium": "email",
+                    "address": user,
                 }
             else:
                 # As per spec, a user can login with either their localpart (that
                 # cannot contain an @) or their full Matrix ID, starting with an @.
                 identifier = {
-                    'type': 'm.id.user',
-                    'user': user,
+                    "type": "m.id.user",
+                    "user": user,
                 }
 
             content_dict = {
@@ -420,7 +428,7 @@ class Api:
 
     @staticmethod
     def login_raw(
-        auth_dict      # type: Dict[str, Any]
+        auth_dict,  # type: Dict[str, Any]
     ):
         # type: (...) -> Tuple[str, str, str]
         """Login to the homeserver using a raw dictionary.
@@ -453,11 +461,10 @@ class Api:
 
         return "POST", path, Api.to_json(auth_dict)
 
-
     @staticmethod
     def logout(
-        access_token,     # type: str
-        all_devices=False         # type: bool
+        access_token,  # type: str
+        all_devices=False,  # type: bool
     ):
         """Logout the session.
 
@@ -478,17 +485,17 @@ class Api:
         return (
             "POST",
             Api._build_path(api_path, query_parameters),
-            Api.to_json(content_dict)
+            Api.to_json(content_dict),
         )
 
     @staticmethod
     def sync(
         access_token: str,
-        since:        Optional[str]  = None,
-        timeout:      Optional[int]  = None,
-        filter:       _FilterT       = None,
-        full_state:   Optional[bool] = None,
-        set_presence: Optional[str]  = None,
+        since: Optional[str] = None,
+        timeout: Optional[int] = None,
+        filter: _FilterT = None,
+        full_state: Optional[bool] = None,
+        set_presence: Optional[str] = None,
     ):
         # type: (...) -> Tuple[str, str]
         """Synchronise the client's state with the latest state on the server.
@@ -541,10 +548,10 @@ class Api:
     @staticmethod
     def room_send(
         access_token,  # type: str
-        room_id,       # type: str
-        event_type,    # type: str
-        body,          # type: Dict[Any, Any]
-        tx_id          # type: Union[str, UUID]
+        room_id,  # type: str
+        event_type,  # type: str
+        body,  # type: Dict[Any, Any]
+        tx_id,  # type: Union[str, UUID]
     ):
         # type (...) -> Tuple[str, str, str]
         """Send a message event to a room.
@@ -564,17 +571,11 @@ class Api:
 
         path = ["rooms", room_id, "send", event_type, str(tx_id)]
 
-        return (
-            "PUT",
-            Api._build_path(path, query_parameters),
-            Api.to_json(body)
-        )
+        return ("PUT", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
     def room_get_event(
-        access_token: str,
-        room_id: str,
-        event_id: str
+        access_token: str, room_id: str, event_id: str
     ) -> Tuple[str, str]:
         """Get a single event based on roomId/eventId.
 
@@ -589,18 +590,15 @@ class Api:
 
         path = ["rooms", room_id, "event", event_id]
 
-        return (
-            "GET",
-            Api._build_path(path, query_parameters)
-        )
+        return ("GET", Api._build_path(path, query_parameters))
 
     @staticmethod
     def room_put_state(
-        access_token, # type str
-        room_id,      # type str
-        event_type,   # type str
-        body,         # type Dict[Any, Any]
-        state_key=""  # type str
+        access_token,  # type str
+        room_id,  # type str
+        event_type,  # type str
+        body,  # type Dict[Any, Any]
+        state_key="",  # type str
     ):
         # type (...) -> Tuple[str, str, str]
         """Send a state event.
@@ -621,11 +619,7 @@ class Api:
 
         path = ["rooms", room_id, "state", event_type, state_key]
 
-        return (
-            "PUT",
-            Api._build_path(path, query_parameters),
-            Api.to_json(body)
-        )
+        return ("PUT", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
     def room_get_state_event(access_token, room_id, event_type, state_key=""):
@@ -646,10 +640,7 @@ class Api:
 
         path = ["rooms", room_id, "state", event_type, state_key]
 
-        return (
-            "GET",
-            Api._build_path(path, query_parameters)
-        )
+        return ("GET", Api._build_path(path, query_parameters))
 
     @staticmethod
     def room_get_state(access_token, room_id):
@@ -667,17 +658,15 @@ class Api:
 
         path = ["rooms", room_id, "state"]
 
-        return (
-            "GET",
-            Api._build_path(path, query_parameters)
-        )
+        return ("GET", Api._build_path(path, query_parameters))
+
     @staticmethod
     def room_redact(
         access_token,  # type: str
-        room_id,       # type: str
-        event_id,      # type: str
-        tx_id,         # type: Union[str, UUID]
-        reason=None    # type: Optional[str]
+        room_id,  # type: str
+        event_id,  # type: str
+        tx_id,  # type: Union[str, UUID]
+        reason=None,  # type: Optional[str]
     ):
         # type (...) -> Tuple[str, str, str]
         """Strip information out of an event.
@@ -702,11 +691,7 @@ class Api:
 
         path = ["rooms", room_id, "redact", event_id, str(tx_id)]
 
-        return (
-            "PUT",
-            Api._build_path(path, query_parameters),
-            Api.to_json(body)
-        )
+        return ("PUT", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
     def room_kick(access_token, room_id, user_id, reason=None):
@@ -731,11 +716,7 @@ class Api:
 
         path = ["rooms", room_id, "kick"]
 
-        return (
-            "POST",
-            Api._build_path(path, query_parameters),
-            Api.to_json(body)
-        )
+        return ("POST", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
     def room_ban(
@@ -771,7 +752,9 @@ class Api:
 
     @staticmethod
     def room_unban(
-        access_token: str, room_id: str, user_id: str,
+        access_token: str,
+        room_id: str,
+        user_id: str,
     ) -> Tuple[str, str, str]:
         """Unban a user from a room.
 
@@ -811,28 +794,24 @@ class Api:
         query_parameters = {"access_token": access_token}
         body = {"user_id": user_id}
 
-        return (
-            "POST",
-            Api._build_path(path, query_parameters),
-            Api.to_json(body)
-        )
+        return ("POST", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
     def room_create(
-        access_token,                       # type: str
+        access_token,  # type: str
         visibility=RoomVisibility.private,  # type: RoomVisibility
-        alias=None,                         # type: Optional[str]
-        name=None,                          # type: Optional[str]
-        topic=None,                         # type: Optional[str]
-        room_version=None,                  # type: Optional[str]
-        federate=True,                      # type: bool
-        is_direct=False,                    # type: bool
-        preset=None,                        # type: Optional[RoomPreset]
-        invite=(),                          # type: Sequence[str]
-        initial_state=(),                   # type: Sequence[Dict[str, Any]]
-        power_level_override=None,          # type: Optional[Dict[str, Any]]
-        predecessor=None,                   # type: Optional[Dict[str, Any]]
-        space=False,                        # type: bool
+        alias=None,  # type: Optional[str]
+        name=None,  # type: Optional[str]
+        topic=None,  # type: Optional[str]
+        room_version=None,  # type: Optional[str]
+        federate=True,  # type: bool
+        is_direct=False,  # type: bool
+        preset=None,  # type: Optional[RoomPreset]
+        invite=(),  # type: Sequence[str]
+        initial_state=(),  # type: Sequence[Dict[str, Any]]
+        power_level_override=None,  # type: Optional[Dict[str, Any]]
+        predecessor=None,  # type: Optional[Dict[str, Any]]
+        space=False,  # type: bool
     ):
         # type (...) -> Tuple[str, str, str]
         """Create a new room.
@@ -931,11 +910,7 @@ class Api:
         if space:
             body["creation_content"]["type"] = "m.space"
 
-        return (
-            "POST",
-            Api._build_path(path, query_parameters),
-            Api.to_json(body)
-        )
+        return ("POST", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
     def join(access_token, room_id):
@@ -952,11 +927,7 @@ class Api:
         query_parameters = {"access_token": access_token}
         body = {}
 
-        return (
-            "POST",
-            Api._build_path(path, query_parameters),
-            Api.to_json(body)
-        )
+        return ("POST", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
     def room_leave(access_token, room_id):
@@ -973,11 +944,7 @@ class Api:
         query_parameters = {"access_token": access_token}
         body = {}
 
-        return (
-            "POST",
-            Api._build_path(path, query_parameters),
-            Api.to_json(body)
-        )
+        return ("POST", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
     def room_forget(access_token, room_id):
@@ -994,20 +961,16 @@ class Api:
         query_parameters = {"access_token": access_token}
         body = {}
 
-        return (
-            "POST",
-            Api._build_path(path, query_parameters),
-            Api.to_json(body)
-        )
+        return ("POST", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
     def room_messages(
-        access_token:   str,
-        room_id:        str,
-        start:          str,
-        end:            Optional[str]            = None,
-        direction:      MessageDirection         = MessageDirection.back,
-        limit:          int                      = 10,
+        access_token: str,
+        room_id: str,
+        start: str,
+        end: Optional[str] = None,
+        direction: MessageDirection = MessageDirection.back,
+        limit: int = 10,
         message_filter: Optional[Dict[Any, Any]] = None,
     ):
         # type (...) -> Tuple[str, str]
@@ -1074,11 +1037,7 @@ class Api:
         body = key_dict
         path = ["keys", "upload"]
 
-        return (
-            "POST",
-            Api._build_path(path, query_parameters),
-            Api.to_json(body)
-        )
+        return ("POST", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
     def keys_query(access_token, user_set, token=None):
@@ -1106,11 +1065,7 @@ class Api:
         if token:
             content["token"] = token  # type: ignore
 
-        return (
-            "POST",
-            Api._build_path(path, query_parameters),
-            Api.to_json(content)
-        )
+        return ("POST", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
     def keys_claim(access_token, user_set):
@@ -1134,22 +1089,16 @@ class Api:
             for device_id in device_list:
                 payload[user_id][device_id] = "signed_curve25519"
 
-        content = {
-            "one_time_keys": payload
-        }
+        content = {"one_time_keys": payload}
 
-        return (
-            "POST",
-            Api._build_path(path, query_parameters),
-            Api.to_json(content)
-        )
+        return ("POST", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
     def to_device(
         access_token,  # type: str
-        event_type,    # type: str
-        content,       # type: Dict[Any, Any]
-        tx_id          # type: Union[str, UUID]
+        event_type,  # type: str
+        content,  # type: Dict[Any, Any]
+        tx_id,  # type: Union[str, UUID]
     ):
         # type: (...) -> Tuple[str, str, str]
         r"""Send to-device events to a set of client devices.
@@ -1167,11 +1116,7 @@ class Api:
         query_parameters = {"access_token": access_token}
         path = ["sendToDevice", event_type, str(tx_id)]
 
-        return (
-            "PUT",
-            Api._build_path(path, query_parameters),
-            Api.to_json(content)
-        )
+        return ("PUT", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
     def devices(access_token):
@@ -1188,7 +1133,9 @@ class Api:
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def update_device(access_token: str, device_id: str, content: Dict[str, str]) -> Tuple[str, str, str]:
+    def update_device(
+        access_token: str, device_id: str, content: Dict[str, str]
+    ) -> Tuple[str, str, str]:
         """Update the metadata of the given device.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -1202,17 +1149,13 @@ class Api:
         query_parameters = {"access_token": access_token}
         path = ["devices", device_id]
 
-        return (
-            "PUT",
-            Api._build_path(path, query_parameters),
-            Api.to_json(content)
-        )
+        return ("PUT", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
     def delete_devices(
-        access_token,   # type: str
-        devices,        # type: List[str]
-        auth_dict=None  # type: Optional[Dict[str, str]]
+        access_token,  # type: str
+        devices,  # type: List[str]
+        auth_dict=None,  # type: Optional[Dict[str, str]]
     ):
         # type: (...) -> Tuple[str, str, str]
         """Delete a device.
@@ -1235,18 +1178,12 @@ class Api:
         query_parameters = {"access_token": access_token}
         path = ["delete_devices"]
 
-        content = {
-            "devices": devices
-        }  # type: Dict[str, Any]
+        content = {"devices": devices}  # type: Dict[str, Any]
 
         if auth_dict:
             content["auth"] = auth_dict
 
-        return (
-            "POST",
-            Api._build_path(path, query_parameters),
-            Api.to_json(content)
-        )
+        return ("POST", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
     def joined_members(access_token, room_id):
@@ -1345,11 +1282,11 @@ class Api:
 
     @staticmethod
     def room_typing(
-        access_token,       # type: str
-        room_id,            # type: str
-        user_id,            # type: str
+        access_token,  # type: str
+        room_id,  # type: str
+        user_id,  # type: str
         typing_state=True,  # type: bool
-        timeout=30000       # type: int
+        timeout=30000,  # type: int
     ):
         # type: (...) -> Tuple[str, str, str]
         """Send a typing notice to the server.
@@ -1371,18 +1308,12 @@ class Api:
         query_parameters = {"access_token": access_token}
         path = ["rooms", room_id, "typing", user_id]
 
-        content = {
-            "typing": typing_state
-        }
+        content = {"typing": typing_state}
 
         if typing_state:
             content["timeout"] = timeout  # type: ignore
 
-        return (
-            "PUT",
-            Api._build_path(path, query_parameters),
-            Api.to_json(content)
-        )
+        return ("PUT", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
     def update_receipt_marker(
@@ -1410,10 +1341,10 @@ class Api:
 
     @staticmethod
     def room_read_markers(
-        access_token,       # type: str
-        room_id,            # type: str
-        fully_read_event,   # type: str
-        read_event=None,    # type: Optional[str]
+        access_token,  # type: str
+        room_id,  # type: str
+        fully_read_event,  # type: str
+        read_event=None,  # type: Optional[str]
     ):
         # type: (...) -> Tuple[str, str, str]
         """Update fully read marker and optionally read marker for a room.
@@ -1435,18 +1366,12 @@ class Api:
         query_parameters = {"access_token": access_token}
         path = ["rooms", room_id, "read_markers"]
 
-        content = {
-            "m.fully_read": fully_read_event
-        }
+        content = {"m.fully_read": fully_read_event}
 
         if read_event:
             content["m.read"] = read_event
 
-        return (
-            "POST",
-            Api._build_path(path, query_parameters),
-            Api.to_json(content)
-        )
+        return ("POST", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
     def content_repository_config(access_token: str) -> Tuple[str, str]:
@@ -1467,8 +1392,8 @@ class Api:
 
     @staticmethod
     def upload(
-        access_token,       # type: str
-        filename=None,      # type: Optional[str]
+        access_token,  # type: str
+        filename=None,  # type: Optional[str]
     ):
         # type: (...) -> Tuple[str, str, str]
         """Upload a file's content to the content repository.
@@ -1492,14 +1417,14 @@ class Api:
         return (
             "POST",
             Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH),
-            ""
+            "",
         )
 
     @staticmethod
     def download(
-        server_name,        # type: str
-        media_id,           # type: str
-        filename=None,      # type: Optional[str]
+        server_name,  # type: str
+        media_id,  # type: str
+        filename=None,  # type: Optional[str]
         allow_remote=True,  # type: bool
     ):
         # type: (...) -> Tuple[str, str]
@@ -1526,19 +1451,16 @@ class Api:
             end = filename
         path = ["download", server_name, media_id, end]
 
-        return (
-            "GET",
-            Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH)
-        )
+        return ("GET", Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH))
 
     @staticmethod
     def thumbnail(
-        server_name,                  # type: str
-        media_id,                     # type: str
-        width,                        # type: int
-        height,                       # type: int
+        server_name,  # type: str
+        media_id,  # type: str
+        width,  # type: int
+        height,  # type: int
         method=ResizingMethod.scale,  # ŧype: ResizingMethod
-        allow_remote=True,            # type: bool
+        allow_remote=True,  # type: bool
     ):
         # type: (...) -> Tuple[str, str]
         """Get the thumbnail of a file from the content repository.
@@ -1566,10 +1488,7 @@ class Api:
         }
         path = ["thumbnail", server_name, media_id]
 
-        return (
-            "GET",
-            Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH)
-        )
+        return ("GET", Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH))
 
     @staticmethod
     def profile_get(user_id: str, access_token: str = None) -> Tuple[str, str]:
@@ -1628,11 +1547,7 @@ class Api:
         content = {"displayname": display_name}
         path = ["profile", user_id, "displayname"]
 
-        return (
-            "PUT",
-            Api._build_path(path, query_parameters),
-            Api.to_json(content)
-        )
+        return ("PUT", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
     def profile_get_avatar(user_id, access_token: str = None):
@@ -1669,11 +1584,7 @@ class Api:
         content = {"avatar_url": avatar_url}
         path = ["profile", user_id, "avatar_url"]
 
-        return (
-            "PUT",
-            Api._build_path(path, query_parameters),
-            Api.to_json(content)
-        )
+        return ("PUT", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
     def get_presence(access_token: str, user_id: str) -> Tuple[str, str]:
@@ -1694,7 +1605,9 @@ class Api:
         )
 
     @staticmethod
-    def set_presence(access_token: str, user_id: str, presence: str, status_msg: str = None):
+    def set_presence(
+        access_token: str, user_id: str, presence: str, status_msg: str = None
+    ):
         """This API sets the given user's presence state.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -1711,11 +1624,7 @@ class Api:
             content["status_msg"] = status_msg
         path = ["presence", user_id, "status"]
 
-        return (
-            "PUT",
-            Api._build_path(path, query_parameters),
-            Api.to_json(content)
-        )
+        return ("PUT", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
     def whoami(access_token):
@@ -1902,7 +1811,10 @@ class Api:
 
     @staticmethod
     def delete_pushrule(
-        access_token: str, scope: str, kind: PushRuleKind, rule_id: str,
+        access_token: str,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
     ) -> Tuple[str, str]:
         """Delete an existing user-created push rule.
 
@@ -1992,9 +1904,7 @@ class Api:
         )
 
     @staticmethod
-    def delete_room_alias(
-            access_token: str,
-            alias: str) -> Tuple[str, str]:
+    def delete_room_alias(access_token: str, alias: str) -> Tuple[str, str]:
         """Delete an room alias
 
         Returns the HTTP method and HTTP path for the request.
@@ -2007,14 +1917,12 @@ class Api:
         query_parameters = {"access_token": access_token}
         path = ["directory", "room", alias]
 
-        return ("DELETE",
-                Api._build_path(path, query_parameters))
+        return ("DELETE", Api._build_path(path, query_parameters))
 
     @staticmethod
     def put_room_alias(
-            access_token: str,
-            alias: str,
-            room_id: str) -> Tuple[str, str, str]:
+        access_token: str, alias: str, room_id: str
+    ) -> Tuple[str, str, str]:
         """Add an room alias
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -2028,8 +1936,10 @@ class Api:
         query_parameters = {"access_token": access_token}
         path = ["directory", "room", alias]
         content = dict()
-        content['room_id'] = room_id
+        content["room_id"] = room_id
 
-        return ("PUT",
-                Api._build_path(path, query_parameters),
-                Api.to_json(content),)
+        return (
+            "PUT",
+            Api._build_path(path, query_parameters),
+            Api.to_json(content),
+        )

@@ -64,27 +64,28 @@ class TransferMonitor:
             indicate to methods using this object that they should raise
             a ``TransferCancelledError``.
     """
+
     # TODO: tell that this can be used for downloads too once implemented.
 
-    total_size:       int                               = field()
-    on_transferred:   Optional[Callable[[int], None]]   = None
+    total_size: int = field()
+    on_transferred: Optional[Callable[[int], None]] = None
     on_speed_changed: Optional[Callable[[float], None]] = None
-    speed_period:     float                             = 10
+    speed_period: float = 10
 
-    average_speed: float              = field(init=False, default=0.0)
-    start_time:    datetime           = field(init=False)
-    end_time:      Optional[datetime] = field(init=False, default=None)
-    pause:         bool               = field(init=False, default=False)
-    cancel:        bool               = field(init=False, default=False)
+    average_speed: float = field(init=False, default=0.0)
+    start_time: datetime = field(init=False)
+    end_time: Optional[datetime] = field(init=False, default=None)
+    pause: bool = field(init=False, default=False)
+    cancel: bool = field(init=False, default=False)
 
-    _transferred:            int       = field(init=False, default=0)
-    _updater:                Thread    = field(init=False)
+    _transferred: int = field(init=False, default=0)
+    _updater: Thread = field(init=False)
     _last_transferred_sizes: List[int] = field(init=False)
 
     _update_loop_sleep_time: float = field(default=1)
 
     def __post_init__(self) -> None:
-        self.start_time              = datetime.now()
+        self.start_time = datetime.now()
         self._last_transferred_sizes = []
         self._start_update_loop()
 
@@ -113,9 +114,8 @@ class TransferMonitor:
 
             self.average_speed = max(
                 0,
-                self.average_speed *
-                (consider_past_secs - 1) / consider_past_secs +
-                bytes_transferred_this_second / consider_past_secs,
+                self.average_speed * (consider_past_secs - 1) / consider_past_secs
+                + bytes_transferred_this_second / consider_past_secs,
             )
 
             if self.average_speed != previous_speed and self.on_speed_changed:
@@ -137,7 +137,7 @@ class TransferMonitor:
 
     @transferred.setter
     def transferred(self, size: int) -> None:
-        old_value        = self._transferred
+        old_value = self._transferred
         self._transferred = size
 
         self._last_transferred_sizes.append(size - old_value)

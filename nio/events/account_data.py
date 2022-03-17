@@ -26,11 +26,9 @@ across installations on a particular device.
 from __future__ import unicode_literals
 
 import re
-
-from fnmatch import fnmatchcase
-from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
-
 from dataclasses import dataclass, field
+from fnmatch import fnmatchcase
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from ..api import PushRuleKind
 from ..schemas import Schemas
@@ -112,9 +110,7 @@ class TagEvent(AccountDataEvent):
     def from_dict(cls, event_dict):
         """Construct a TagEvent from a dictionary."""
         content = event_dict.pop("content")
-        return cls(
-            content["tags"]
-        )
+        return cls(content["tags"])
 
 
 @dataclass
@@ -144,7 +140,10 @@ class PushCondition:
         raise NotImplementedError()
 
     def matches(
-        self, event: Event, room: "MatrixRoom", display_name: str,
+        self,
+        event: Event,
+        room: "MatrixRoom",
+        display_name: str,
     ) -> bool:
         """Return whether this condition holds true for a room event.
 
@@ -175,16 +174,21 @@ class PushEventMatch(PushCondition):
     @property
     def as_value(self) -> Dict[str, Any]:
         return {
-            "kind": "event_match", "key": self.key, "pattern": self.pattern,
+            "kind": "event_match",
+            "key": self.key,
+            "pattern": self.pattern,
         }
 
     def matches(
-        self, event: Event, room: "MatrixRoom", display_name: str,
+        self,
+        event: Event,
+        room: "MatrixRoom",
+        display_name: str,
     ) -> bool:
-        
+
         if self.key == "room_id":
             return fnmatchcase(room.room_id, self.pattern)
-        
+
         value = event.flattened().get(self.key)
 
         if not isinstance(value, str):
@@ -209,7 +213,10 @@ class PushContainsDisplayName(PushCondition):
         return {"kind": "contains_display_name"}
 
     def matches(
-        self, event: Event, room: "MatrixRoom", display_name: str,
+        self,
+        event: Event,
+        room: "MatrixRoom",
+        display_name: str,
     ) -> bool:
         body = event.source.get("content", {}).get("body")
 
@@ -246,7 +253,10 @@ class PushRoomMemberCount(PushCondition):
         return {"kind": "room_member_count", "is": f"{operator}{self.count}"}
 
     def matches(
-        self, event: Event, room: "MatrixRoom", display_name: str,
+        self,
+        event: Event,
+        room: "MatrixRoom",
+        display_name: str,
     ) -> bool:
         if self.operator == "==":
             return room.joined_count == self.count
@@ -258,6 +268,7 @@ class PushRoomMemberCount(PushCondition):
             return room.joined_count <= self.count
         else:
             return room.joined_count >= self.count
+
 
 @dataclass
 class PushSenderNotificationPermission(PushCondition):
@@ -276,11 +287,15 @@ class PushSenderNotificationPermission(PushCondition):
     @property
     def as_value(self) -> Dict[str, Any]:
         return {
-            "kind": "sender_notification_permission", "key": self.key,
+            "kind": "sender_notification_permission",
+            "key": self.key,
         }
 
     def matches(
-        self, event: Event, room: "MatrixRoom", display_name: str,
+        self,
+        event: Event,
+        room: "MatrixRoom",
+        display_name: str,
     ) -> bool:
         return room.power_levels.can_user_notify(event.sender, self.key)
 
@@ -293,6 +308,7 @@ class PushUnknownCondition(PushCondition):
         condition (Dict[str, Any]): The condition as a dict from the
             source event.
     """
+
     condition: Dict[str, Any] = field()
 
     @property
@@ -404,6 +420,7 @@ class PushUnknownAction(PushAction):
         action (Union[str, Dict[str, Any]]): The action as a string or dict
             from the source event.
     """
+
     action: Union[str, Dict[str, Any]] = field()
 
     @property
@@ -451,7 +468,10 @@ class PushRule:
     actions: List[PushAction] = field(default_factory=list)
 
     def matches(
-        self, event: Event, room: "MatrixRoom", display_name: str,
+        self,
+        event: Event,
+        room: "MatrixRoom",
+        display_name: str,
     ) -> bool:
         """Return whether this push rule matches a room event.
 
@@ -516,7 +536,10 @@ class PushRuleset:
     underride: List[PushRule] = field(default_factory=list)
 
     def matching_rule(
-        self, event: Event, room: "MatrixRoom", display_name: str,
+        self,
+        event: Event,
+        room: "MatrixRoom",
+        display_name: str,
     ) -> Optional[PushRule]:
         """Return the push rule in this set that matches a room event, if any.
 
@@ -550,8 +573,7 @@ class PushRuleset:
 
     def __bool__(self) -> bool:
         return bool(
-            self.override or self.content or self.room or self.sender or
-            self.underride,
+            self.override or self.content or self.room or self.sender or self.underride,
         )
 
 
@@ -598,7 +620,4 @@ class UnknownAccountDataEvent(AccountDataEvent):
     def from_dict(cls, event_dict):
         """Construct an UnknownAccountDataEvent from a dictionary."""
         content = event_dict.pop("content")
-        return cls(
-            event_dict["type"],
-            content
-        )
+        return cls(event_dict["type"], content)

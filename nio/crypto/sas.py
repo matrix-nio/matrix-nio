@@ -26,9 +26,9 @@ import olm
 from future.moves.itertools import zip_longest
 
 from ..api import Api
+from ..event_builders import ToDeviceMessage
 from ..events import KeyVerificationEvent, KeyVerificationStart
 from ..exceptions import LocalProtocolError
-from ..event_builders import ToDeviceMessage
 from .device import OlmDevice
 
 
@@ -249,8 +249,8 @@ class Sas(olm.Sas):
         if (
             Sas._sas_method_v1 != event.method
             or (
-                Sas._key_agreement_v1 not in event.key_agreement_protocols and
-                Sas._key_agreement_v2 not in event.key_agreement_protocols
+                Sas._key_agreement_v1 not in event.key_agreement_protocols
+                and Sas._key_agreement_v2 not in event.key_agreement_protocols
             )
             or Sas._hash_v1 not in event.hashes
             or (
@@ -411,8 +411,7 @@ class Sas(olm.Sas):
         generated_bytes = self.generate_bytes(extra_info, 5)
         number = "".join([format(x, "08b") for x in bytes(generated_bytes)])
         return tuple(
-            int(x, 2) + 1000
-            for x in map("".join, list(self._grouper(number[:-1], 13)))
+            int(x, 2) + 1000 for x in map("".join, list(self._grouper(number[:-1], 13)))
         )
 
     def start_verification(self) -> ToDeviceMessage:
@@ -634,9 +633,9 @@ class Sas(olm.Sas):
 
     def receive_key_event(self, event):
         """Receive a KeyVerificationKey event."""
-        if (self.other_key_set or
-                ((self.state != SasState.started) and
-                 (self.state != SasState.accepted))):
+        if self.other_key_set or (
+            (self.state != SasState.started) and (self.state != SasState.accepted)
+        ):
             self.state = SasState.canceled
             (
                 self.cancel_code,

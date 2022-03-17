@@ -1,7 +1,14 @@
 from helpers import ephemeral, ephemeral_dir, faker
-from nio.crypto import (GroupSessionStore, InboundGroupSession, OlmAccount,
-                        OutboundGroupSession, OutboundSession, SessionStore,
-                        DeviceStore)
+
+from nio.crypto import (
+    DeviceStore,
+    GroupSessionStore,
+    InboundGroupSession,
+    OlmAccount,
+    OutboundGroupSession,
+    OutboundSession,
+    SessionStore,
+)
 from nio.exceptions import OlmTrustError
 from nio.store import Ed25519Key, Key, KeyStore, MatrixStore
 
@@ -10,6 +17,7 @@ BOB_DEVICE = "AGMTSWVYML"
 BOB_CURVE = "T9tOKF+TShsn6mk1zisW2IBsBbTtzDNvw99RBFMJOgI"
 BOB_ONETIME = "6QlQw3mGUveS735k/JDaviuoaih5eEi6S1J65iHjfgU"
 TEST_ROOM = "!test:example.org"
+
 
 class TestClass:
     def test_session_store(self):
@@ -71,8 +79,7 @@ class TestClass:
 
         store.add(device)
 
-        fetched_device = store.device_from_sender_key(device.user_id,
-                                                      device.curve25519)
+        fetched_device = store.device_from_sender_key(device.user_id, device.curve25519)
 
         assert fetched_device == device
 
@@ -85,7 +92,7 @@ class TestClass:
             out_group.session_key,
             account.identity_keys["ed25519"],
             BOB_CURVE,
-            TEST_ROOM
+            TEST_ROOM,
         )
 
         assert session not in store

@@ -3,9 +3,9 @@ from typing import Any, Iterator, List, Optional
 
 from atomicwrites import atomic_write
 
-from . import logger
 from ..crypto import OlmDevice
 from ..exceptions import OlmTrustError
+from . import logger
 
 try:
     FileNotFoundError  # type: ignore
@@ -40,9 +40,7 @@ class Key:
         if isinstance(self, Ed25519Key):
             key_type = "matrix-ed25519"
         else:  # pragma: no cover
-            raise NotImplementedError(
-                "Invalid key type {}".format(type(self.key))
-            )
+            raise NotImplementedError("Invalid key type {}".format(type(self.key)))
 
         line = "{} {} {} {}\n".format(
             self.user_id, self.device_id, key_type, str(self.key)
@@ -126,7 +124,7 @@ class KeyStore:
                 line = entry.to_line()
                 f.write(line)
 
-    @_save_store # type: ignore
+    @_save_store  # type: ignore
     def add_many(self, keys: List[Key]):
         for key in keys:
             self._add_without_save(key)
@@ -153,17 +151,17 @@ class KeyStore:
         self._entries.append(key)
         return True
 
-    @_save_store # type: ignore
+    @_save_store  # type: ignore
     def add(self, key: Key) -> bool:
         return self._add_without_save(key)
 
-    @_save_store # type: ignore
+    @_save_store  # type: ignore
     def remove_many(self, keys: List[Key]):
         for key in keys:
             if key in self._entries:
                 self._entries.remove(key)
 
-    @_save_store # type: ignore
+    @_save_store  # type: ignore
     def remove(self, key: Key) -> bool:
         if key in self._entries:
             self._entries.remove(key)

@@ -65,7 +65,7 @@ def decrypt_attachment(ciphertext: bytes, key: str, hash: str, iv: str):
         raise EncryptionError("Error decoding initial values.")
 
     prefix: bytes = byte_iv[:8]
-    cnt: int = int.from_bytes(byte_iv[8:], 'big')
+    cnt: int = int.from_bytes(byte_iv[8:], "big")
     ctr = Counter.new(64, prefix=prefix, initial_value=cnt)
 
     try:
@@ -151,5 +151,7 @@ def _get_decryption_info_dict(
         "key": json_web_key,
         # Send IV concatenated with counter
         "iv": unpaddedbase64.encode_base64(iv + b"\x00" * 8),
-        "hashes": {"sha256": unpaddedbase64.encode_base64(sha256.digest()),},
+        "hashes": {
+            "sha256": unpaddedbase64.encode_base64(sha256.digest()),
+        },
     }

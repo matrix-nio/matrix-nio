@@ -1,88 +1,127 @@
 import json
 import math
-import sys
 import re
+import sys
 import time
-from pathlib import Path
-from os import path
 from datetime import datetime, timedelta
+from os import path
+from pathlib import Path
 from urllib.parse import quote
 from uuid import uuid4
 
 import aiofiles
 import pytest
-from aiohttp import (ClientRequest, ClientSession, ClientTimeout,
-                     TraceRequestChunkSentParams)
+from aiohttp import (
+    ClientRequest,
+    ClientSession,
+    ClientTimeout,
+    TraceRequestChunkSentParams,
+)
+from aioresponses import CallbackResult, aioresponses
+from helpers import faker
 from yarl import URL
 
-from helpers import faker
-from nio import (ContentRepositoryConfigResponse,
-                 DeviceList, DeviceOneTimeKeyCount, DownloadError,
-                 DevicesResponse, DeleteDevicesAuthResponse,
-                 DeleteDevicesResponse,
-                 DeletePushRuleResponse,
-                 DiscoveryInfoError, DiscoveryInfoResponse,
-                 DownloadResponse, ErrorResponse,
-                 FullyReadEvent,
-                 EnablePushRuleResponse,
-                 GroupEncryptionError,
-                 JoinResponse, JoinedRoomsResponse,
-                 JoinedMembersResponse, KeysClaimResponse, KeysQueryResponse,
-                 KeysUploadResponse, LocalProtocolError,
-                 LoginError, LoginInfoResponse,
-                 LoginResponse, LogoutError, LogoutResponse,
-                 MegolmEvent, MembersSyncError, OlmTrustError,
-                 RegisterResponse,
-                 RoomContextResponse, RoomForgetResponse,
-                 ProfileGetAvatarResponse,
-                 ProfileGetDisplayNameResponse,
-                 ProfileGetError, ProfileGetResponse,
-                 ProfileSetAvatarResponse, ProfileSetDisplayNameResponse,
-                 PresenceGetResponse, PresenceSetResponse,
-                 PresenceEvent,
-                 PushCoalesce,
-                 PushContainsDisplayName,
-                 PushDontNotify,
-                 PushEventMatch,
-                 PushNotify,
-                 PushRoomMemberCount,
-                 PushRule,
-                 PushRulesEvent,
-                 PushRuleset,
-                 PushRuleKind,
-                 PushSenderNotificationPermission,
-                 PushSetTweak,
-                 PushUnknownAction,
-                 PushUnknownCondition,
-                 RoomBanResponse,
-                 RoomTypingResponse, RoomCreateResponse,
-                 RoomEncryptionEvent, RoomInfo, RoomLeaveResponse,
-                 RoomInviteResponse,
-                 RoomMemberEvent, RoomMessagesResponse, Rooms,
-                 RoomGetStateResponse, RoomGetStateEventResponse,
-                 RoomKickResponse,
-                 RoomGetEventResponse, RoomGetEventError,
-                 RoomPutStateResponse, RoomReadMarkersResponse,
-                 RoomRedactResponse, RoomResolveAliasResponse,
-                 RoomSendResponse, RoomSummary,
-                 RoomUnbanResponse,
-                 SetPushRuleResponse,
-                 SetPushRuleActionsResponse,
-                 ShareGroupSessionResponse,
-                 SyncResponse, ThumbnailError, ThumbnailResponse,
-                 Timeline, TransferMonitor, TransferCancelledError,
-                 UploadResponse, UpdateDeviceResponse,
-                 UploadFilterResponse,
-                 UpdateReceiptMarkerResponse,
-                 RoomMessageText, RoomKeyRequest,
-                 RoomDeleteAliasResponse,
-                 RoomGetVisibilityResponse,
-                 RoomPutAliasResponse)
+from nio import (
+    ContentRepositoryConfigResponse,
+    DeleteDevicesAuthResponse,
+    DeleteDevicesResponse,
+    DeletePushRuleResponse,
+    DeviceList,
+    DeviceOneTimeKeyCount,
+    DevicesResponse,
+    DiscoveryInfoError,
+    DiscoveryInfoResponse,
+    DownloadError,
+    DownloadResponse,
+    EnablePushRuleResponse,
+    ErrorResponse,
+    FullyReadEvent,
+    GroupEncryptionError,
+    JoinedMembersResponse,
+    JoinedRoomsResponse,
+    JoinResponse,
+    KeysClaimResponse,
+    KeysQueryResponse,
+    KeysUploadResponse,
+    LocalProtocolError,
+    LoginError,
+    LoginInfoResponse,
+    LoginResponse,
+    LogoutError,
+    LogoutResponse,
+    MegolmEvent,
+    MembersSyncError,
+    OlmTrustError,
+    PresenceEvent,
+    PresenceGetResponse,
+    PresenceSetResponse,
+    ProfileGetAvatarResponse,
+    ProfileGetDisplayNameResponse,
+    ProfileGetError,
+    ProfileGetResponse,
+    ProfileSetAvatarResponse,
+    ProfileSetDisplayNameResponse,
+    PushCoalesce,
+    PushContainsDisplayName,
+    PushDontNotify,
+    PushEventMatch,
+    PushNotify,
+    PushRoomMemberCount,
+    PushRule,
+    PushRuleKind,
+    PushRuleset,
+    PushRulesEvent,
+    PushSenderNotificationPermission,
+    PushSetTweak,
+    PushUnknownAction,
+    PushUnknownCondition,
+    RegisterResponse,
+    RoomBanResponse,
+    RoomContextResponse,
+    RoomCreateResponse,
+    RoomDeleteAliasResponse,
+    RoomEncryptionEvent,
+    RoomForgetResponse,
+    RoomGetEventError,
+    RoomGetEventResponse,
+    RoomGetStateEventResponse,
+    RoomGetStateResponse,
+    RoomGetVisibilityResponse,
+    RoomInfo,
+    RoomInviteResponse,
+    RoomKeyRequest,
+    RoomKickResponse,
+    RoomLeaveResponse,
+    RoomMemberEvent,
+    RoomMessagesResponse,
+    RoomMessageText,
+    RoomPutAliasResponse,
+    RoomPutStateResponse,
+    RoomReadMarkersResponse,
+    RoomRedactResponse,
+    RoomResolveAliasResponse,
+    Rooms,
+    RoomSendResponse,
+    RoomSummary,
+    RoomTypingResponse,
+    RoomUnbanResponse,
+    SetPushRuleActionsResponse,
+    SetPushRuleResponse,
+    ShareGroupSessionResponse,
+    SyncResponse,
+    ThumbnailError,
+    ThumbnailResponse,
+    Timeline,
+    TransferCancelledError,
+    TransferMonitor,
+    UpdateDeviceResponse,
+    UpdateReceiptMarkerResponse,
+    UploadFilterResponse,
+    UploadResponse,
+)
 from nio.api import EventFormat, ResizingMethod, RoomPreset, RoomVisibility
-from nio.crypto import OlmDevice, Session, decrypt_attachment
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
-
-from aioresponses import CallbackResult, aioresponses
+from nio.crypto import OlmDevice, Session, decrypt_attachment
 
 TEST_ROOM_ID = "!testroom:example.org"
 
@@ -95,6 +134,7 @@ EIRIN_ID = "@eirin:example.org"
 
 if sys.version_info >= (3, 5):
     import asyncio
+
     from nio import AsyncClient, AsyncClientConfig
 
 
@@ -114,7 +154,6 @@ class TestClass:
             "type": type,
             "content": olm_content,
         }
-
 
     @staticmethod
     def _load_response(filename):
@@ -139,12 +178,7 @@ class TestClass:
 
     @property
     def final_keys_upload_response(self):
-        return {
-            "one_time_key_counts": {
-                "curve25519": 10,
-                "signed_curve25519": 50
-            }
-        }
+        return {"one_time_key_counts": {"curve25519": 10, "signed_curve25519": 50}}
 
     @property
     def sync_response(self):
@@ -160,163 +194,131 @@ class TestClass:
 
     @property
     def keys_query_response(self):
-        return self._load_response(
-            "tests/data/keys_query.json")
+        return self._load_response("tests/data/keys_query.json")
 
     @property
     def joined_members_response(self):
         return {
             "joined": {  # joined
-                ALICE_ID: {
-                    "avatar_url": None,
-                    "display_name": "Alice"
-                },
-                EIRIN_ID: {
-                    "avatar_url": None,
-                    "display_name": "Eirin"
-                },
-            }}
-
-    @property
-    def joined_rooms_response(self):
-        return {
-            "joined_rooms": [TEST_ROOM_ID]
+                ALICE_ID: {"avatar_url": None, "display_name": "Alice"},
+                EIRIN_ID: {"avatar_url": None, "display_name": "Eirin"},
+            }
         }
 
     @property
+    def joined_rooms_response(self):
+        return {"joined_rooms": [TEST_ROOM_ID]}
+
+    @property
     def room_get_state_response(self):
-        return self._load_response(
-            "tests/data/room_state.json")
+        return self._load_response("tests/data/room_state.json")
 
     @property
     def encryption_sync_response(self):
         timeline = Timeline(
             [
                 RoomMemberEvent(
-                    {"event_id": "event_id_1",
-                     "sender": ALICE_ID,
-                     "origin_server_ts": 1516809890615},
+                    {
+                        "event_id": "event_id_1",
+                        "sender": ALICE_ID,
+                        "origin_server_ts": 1516809890615,
+                    },
                     ALICE_ID,
                     "join",
                     None,
-                    {"membership": "join"}
+                    {"membership": "join"},
                 ),
                 RoomMemberEvent(
-                    {"event_id": "event_id_2",
-                     "sender": ALICE_ID,
-                     "origin_server_ts": 1516809890615},
+                    {
+                        "event_id": "event_id_2",
+                        "sender": ALICE_ID,
+                        "origin_server_ts": 1516809890615,
+                    },
                     CAROL_ID,
                     "invite",
                     None,
-                    {"membership": "invite"}
+                    {"membership": "invite"},
                 ),
                 RoomEncryptionEvent(
                     {
                         "event_id": "event_id_3",
                         "sender": ALICE_ID,
-                        "origin_server_ts": 1516809890615
+                        "origin_server_ts": 1516809890615,
                     }
-                )
+                ),
             ],
             False,
-            "prev_batch_token"
+            "prev_batch_token",
         )
         test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(1, 2, []))
-        rooms = Rooms(
-            {},
-            {
-                TEST_ROOM_ID: test_room_info
-            },
-            {}
-        )
+        rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {})
         return SyncResponse(
             "token123",
             rooms,
             DeviceOneTimeKeyCount(49, 50),
             DeviceList([ALICE_ID], []),
             [],
-            []
+            [],
         )
 
     def synce_response_for(self, own_user, other_user):
         timeline = Timeline(
             [
                 RoomMemberEvent(
-                    {"event_id": "event_id_1",
-                     "sender": own_user,
-                     "origin_server_ts": 1516809890615},
+                    {
+                        "event_id": "event_id_1",
+                        "sender": own_user,
+                        "origin_server_ts": 1516809890615,
+                    },
                     own_user,
                     "join",
                     None,
-                    {"membership": "join"}
+                    {"membership": "join"},
                 ),
                 RoomMemberEvent(
-                    {"event_id": "event_id_1",
-                     "sender": other_user,
-                     "origin_server_ts": 1516809890615},
+                    {
+                        "event_id": "event_id_1",
+                        "sender": other_user,
+                        "origin_server_ts": 1516809890615,
+                    },
                     other_user,
                     "join",
                     None,
-                    {"membership": "join"}
+                    {"membership": "join"},
                 ),
                 RoomEncryptionEvent(
                     {
                         "event_id": "event_id_2",
                         "sender": other_user,
-                        "origin_server_ts": 1516809890615
+                        "origin_server_ts": 1516809890615,
                     }
-                )
+                ),
             ],
             False,
-            "prev_batch_token"
+            "prev_batch_token",
         )
         test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(0, 2, []))
-        rooms = Rooms(
-            {},
-            {
-                TEST_ROOM_ID: test_room_info
-            },
-            {}
-        )
+        rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {})
         return SyncResponse(
             "token123",
             rooms,
             DeviceOneTimeKeyCount(50, 50),
             DeviceList([other_user], []),
             [],
-            []
+            [],
         )
 
     @property
     def empty_sync(self):
         return {
-            "account_data": {
-                "events": []
-            },
-            "device_lists": {
-                "changed": [],
-                "left": []
-            },
-            "device_one_time_keys_count": {
-                "signed_curve25519": 50
-            },
-            "groups": {
-                "invite": {},
-                "join": {},
-                "leave": {}
-            },
+            "account_data": {"events": []},
+            "device_lists": {"changed": [], "left": []},
+            "device_one_time_keys_count": {"signed_curve25519": 50},
+            "groups": {"invite": {}, "join": {}, "leave": {}},
             "next_batch": "s1059_133339_44_763_246_1_586_12411_1",
-            "presence": {
-                "events": []
-            },
-            "rooms": {
-                "invite": {},
-                "join": {},
-                "leave": {}
-            },
-            "to_device": {
-                "events": []
-            }
+            "presence": {"events": []},
+            "rooms": {"invite": {}, "join": {}, "leave": {}},
+            "to_device": {"events": []},
         }
 
     def sync_with_to_device_events(self, event, sync_token=None):
@@ -331,21 +333,16 @@ class TestClass:
     def sync_with_room_event(self, event, sync_token=None):
         response = self.empty_sync
         response["rooms"]["join"][TEST_ROOM_ID] = {
-            "timeline": {
-                "events": [event],
-                "limited": False,
-                "prev_batch": "12345"
-            },
+            "timeline": {"events": [event], "limited": False, "prev_batch": "12345"},
             "state": {"events": []},
             "ephemeral": {"events": []},
-            "account_data": {"events": []}
+            "account_data": {"events": []},
         }
 
         if sync_token:
             response["next_batch"] += sync_token
 
         return response
-
 
     @property
     def limit_exceeded_error_response(self):
@@ -381,21 +378,18 @@ class TestClass:
 
     @property
     def room_resolve_alias_response(self):
-        return {
-            "room_id": TEST_ROOM_ID,
-            "servers": ["example.org", "matrix.org"]
-        }
+        return {"room_id": TEST_ROOM_ID, "servers": ["example.org", "matrix.org"]}
 
     async def test_mxc_to_http(self, async_client):
-        mxc      = "mxc://privacytools.io/123foo"
+        mxc = "mxc://privacytools.io/123foo"
         url_path = "/_matrix/media/r0/download/privacytools.io/123foo"
 
         async_client.homeserver = "https://chat.privacytools.io"
-        expected                = f"{async_client.homeserver}{url_path}"
+        expected = f"{async_client.homeserver}{url_path}"
         assert await async_client.mxc_to_http(mxc) == expected
 
         other_server = "http://localhost:8081"
-        expected     = f"{other_server}{url_path}"
+        expected = f"{other_server}{url_path}"
         assert await async_client.mxc_to_http(mxc, other_server) == expected
 
     def test_register(self, async_client, aioresponse):
@@ -406,7 +400,7 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/register",
             status=200,
-            payload=self.register_response
+            payload=self.register_response,
         )
         resp = loop.run_until_complete(async_client.register("user", "password"))
 
@@ -429,7 +423,9 @@ class TestClass:
         assert resp.identity_server_url == "https://foo.bar"
 
     async def test_discovery_info_trailing_slashes(
-        self, async_client, aioresponse,
+        self,
+        async_client,
+        aioresponse,
     ):
         aioresponse.get(
             "https://example.org/.well-known/matrix/client",
@@ -446,7 +442,9 @@ class TestClass:
         assert resp.identity_server_url == "https://foo.bar"
 
     async def test_discovery_info_invalid_content_type(  # matrix.org does this
-        self, async_client, aioresponse,
+        self,
+        async_client,
+        aioresponse,
     ):
         aioresponse.get(
             "https://example.org/.well-known/matrix/client",
@@ -470,25 +468,17 @@ class TestClass:
         resp2 = await async_client.discovery_info()
         assert isinstance(resp2, DiscoveryInfoError)
 
-
     async def test_login_info(self, async_client, aioresponse):
         """Test that we can get login info"""
 
         aioresponse.get(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload={
-                "flows": [
-                    {
-                        "type": "m.login.password"
-                    }
-                ]
-            }
+            payload={"flows": [{"type": "m.login.password"}]},
         )
         resp = await async_client.login_info()
 
         assert isinstance(resp, LoginInfoResponse)
-
 
     def test_login(self, async_client, aioresponse):
         loop = asyncio.get_event_loop()
@@ -499,7 +489,7 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload=self.login_response
+            payload=self.login_response,
         )
         resp = loop.run_until_complete(async_client.login("wordpass"))
 
@@ -514,9 +504,7 @@ class TestClass:
         assert not async_client.logged_in
 
         aioresponse.post(
-            "https://example.org/_matrix/client/r0/login",
-            status=400,
-            body=""
+            "https://example.org/_matrix/client/r0/login", status=400, body=""
         )
         resp = loop.run_until_complete(async_client.login("wordpass"))
         assert isinstance(resp, LoginError)
@@ -535,23 +523,19 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload=self.login_response
+            payload=self.login_response,
         )
         auth_dict = {
             "type": "m.login.password",
             "identifier": {
                 "type": "m.id.thirdparty",
                 "medium": "email",
-                "address": "testemail@mail.org"
+                "address": "testemail@mail.org",
             },
             "password": "PASSWORDABCD",
-            "initial_device_display_name": "Test user"
+            "initial_device_display_name": "Test user",
         }
-        resp = loop.run_until_complete(
-            async_client.login_raw(
-                auth_dict
-            )
-        )
+        resp = loop.run_until_complete(async_client.login_raw(auth_dict))
 
         assert isinstance(resp, LoginResponse)
         assert async_client.access_token
@@ -564,9 +548,7 @@ class TestClass:
         assert not async_client.logged_in
 
         aioresponse.post(
-            "https://example.org/_matrix/client/r0/login",
-            status=400,
-            body=""
+            "https://example.org/_matrix/client/r0/login", status=400, body=""
         )
 
         auth_dict = {
@@ -574,15 +556,13 @@ class TestClass:
             "identifier": {
                 "type": "m.id.thirdparty",
                 "medium": "email",
-                "address": "testemail@mail.org"
+                "address": "testemail@mail.org",
             },
             "password": "WRONGPASSWORD",
-            "initial_device_display_name": "Test user"
+            "initial_device_display_name": "Test user",
         }
 
-        resp = loop.run_until_complete(
-            async_client.login_raw(auth_dict)
-        )
+        resp = loop.run_until_complete(async_client.login_raw(auth_dict))
 
         assert isinstance(resp, LoginError)
         assert not async_client.logged_in
@@ -601,9 +581,7 @@ class TestClass:
         resp = None
 
         with pytest.raises(ValueError):
-            resp = loop.run_until_complete(
-                async_client.login_raw(auth_dict)
-            )
+            resp = loop.run_until_complete(async_client.login_raw(auth_dict))
 
         assert not resp
         assert not async_client.logged_in
@@ -622,9 +600,7 @@ class TestClass:
         resp = None
 
         with pytest.raises(ValueError):
-            resp = loop.run_until_complete(
-                async_client.login_raw(auth_dict)
-            )
+            resp = loop.run_until_complete(async_client.login_raw(auth_dict))
 
         assert not resp
         assert not async_client.logged_in
@@ -639,13 +615,13 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload=self.login_response
+            payload=self.login_response,
         )
 
         aioresponse.post(
             "https://example.org/_matrix/client/r0/logout?access_token=abc123",
             status=200,
-            payload=self.logout_response
+            payload=self.logout_response,
         )
 
         resp = loop.run_until_complete(async_client.login("wordpass"))
@@ -664,13 +640,13 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload=self.login_response
+            payload=self.login_response,
         )
 
         aioresponse.post(
             "https://example.org/_matrix/client/r0/logout?access_token=abc123",
             status=400,
-            body=""
+            body="",
         )
 
         resp = loop.run_until_complete(async_client.login("wordpass"))
@@ -689,13 +665,13 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload=self.login_response
+            payload=self.login_response,
         )
 
         aioresponse.post(
             "https://example.org/_matrix/client/r0/logout/all?access_token=abc123",
             status=200,
-            payload=self.logout_response
+            payload=self.logout_response,
         )
 
         resp = loop.run_until_complete(async_client.login("wordpass"))
@@ -714,13 +690,13 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload=self.login_response
+            payload=self.login_response,
         )
 
         aioresponse.post(
             "https://example.org/_matrix/client/r0/logout/all?access_token=abc123",
             status=400,
-            body=""
+            body="",
         )
 
         resp = loop.run_until_complete(async_client.login("wordpass"))
@@ -737,19 +713,12 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload=self.login_response
+            payload=self.login_response,
         )
 
-        url = (
-            r"^https://example\.org/_matrix/client/r0/"
-            r"sync\?access_token=abc123"
-        )
+        url = r"^https://example\.org/_matrix/client/r0/" r"sync\?access_token=abc123"
 
-        aioresponse.get(
-            re.compile(fr"{url}$"),
-            status=200,
-            payload=self.sync_response
-        )
+        aioresponse.get(re.compile(rf"{url}$"), status=200, payload=self.sync_response)
 
         with pytest.raises(LocalProtocolError):
             resp2 = await async_client.sync()
@@ -762,9 +731,9 @@ class TestClass:
         # Test with filter ID
 
         aioresponse.get(
-            re.compile(fr"{url}&filter=test_id&since=[\w\d_]*"),
+            re.compile(rf"{url}&filter=test_id&since=[\w\d_]*"),
             status=200,
-            payload=self.sync_response
+            payload=self.sync_response,
         )
         resp3 = await async_client.sync(sync_filter="test_id")
         assert isinstance(resp3, SyncResponse)
@@ -772,7 +741,7 @@ class TestClass:
         # Test with filter dict
 
         aioresponse.get(
-            re.compile(fr"{url}&filter=[\w\d%]*&since=[\w\d_]*"),
+            re.compile(rf"{url}&filter=[\w\d%]*&since=[\w\d_]*"),
             status=200,
             payload=self.sync_response,
         )
@@ -780,23 +749,26 @@ class TestClass:
         assert isinstance(resp4, SyncResponse)
 
     async def test_sync_presence(self, async_client, aioresponse):
-        """Test if prsences info in sync events are parsed correctly
-        """
+        """Test if prsences info in sync events are parsed correctly"""
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
         assert async_client.logged_in
 
         aioresponse.get(
-            "https://example.org/_matrix/client/r0/sync?access_token={}".format(async_client.access_token),
+            "https://example.org/_matrix/client/r0/sync?access_token={}".format(
+                async_client.access_token
+            ),
             status=200,
-            payload=self.sync_response
+            payload=self.sync_response,
         )
 
         resp = await async_client.sync()
         assert isinstance(resp, SyncResponse)
 
-        user = async_client.rooms["!SVkFJHzfwvuaIEawgC:localhost"].users["@example:localhost"]
+        user = async_client.rooms["!SVkFJHzfwvuaIEawgC:localhost"].users[
+            "@example:localhost"
+        ]
 
         assert user.currently_active
         assert user.last_active_ago == 1337
@@ -848,22 +820,22 @@ class TestClass:
 
         assert rules.global_rules.override == [
             PushRule(
-                kind = PushRuleKind.override,
-                id = ".m.rule.suppress_notices",
-                default = True,
-                enabled = False,
-                actions = [PushDontNotify()],
-                conditions = [PushEventMatch("content.msgtype", "m.notice")],
+                kind=PushRuleKind.override,
+                id=".m.rule.suppress_notices",
+                default=True,
+                enabled=False,
+                actions=[PushDontNotify()],
+                conditions=[PushEventMatch("content.msgtype", "m.notice")],
             ),
         ]
 
         assert rules.global_rules.content == [
             PushRule(
-                kind = PushRuleKind.content,
-                id = ".m.rule.contains_user_name",
-                default = True,
-                pattern = "alice",
-                actions = [
+                kind=PushRuleKind.content,
+                id=".m.rule.contains_user_name",
+                default=True,
+                pattern="alice",
+                actions=[
                     PushNotify(),
                     PushUnknownAction("do_special_thing"),
                     PushSetTweak("sound", "default"),
@@ -877,39 +849,39 @@ class TestClass:
 
         assert rules.global_rules.underride == [
             PushRule(
-                kind = PushRuleKind.underride,
-                id = ".m.rule.special_call",
-                default = True,
-                conditions = [
+                kind=PushRuleKind.underride,
+                id=".m.rule.special_call",
+                default=True,
+                conditions=[
                     PushUnknownCondition({"kind": "special_kind"}),
                     PushEventMatch("type", "m.call.invite"),
                 ],
-                actions = [
+                actions=[
                     PushCoalesce(),
                     PushSetTweak("sound", "ring"),
                     PushSetTweak("highlight", False),
                 ],
             ),
             PushRule(
-                kind = PushRuleKind.underride,
-                id = ".m.rule.room_less_than_10_room_perm",
-                default = True,
-                conditions = [
+                kind=PushRuleKind.underride,
+                id=".m.rule.room_less_than_10_room_perm",
+                default=True,
+                conditions=[
                     PushSenderNotificationPermission("room"),
                     PushRoomMemberCount(10, "<"),
                     PushEventMatch("type", "m.room.message"),
                 ],
-                actions = [PushNotify()],
+                actions=[PushNotify()],
             ),
             PushRule(
-                kind = PushRuleKind.underride,
-                id = ".m.rule.room_one_to_one",
-                default = True,
-                conditions = [
+                kind=PushRuleKind.underride,
+                id=".m.rule.room_one_to_one",
+                default=True,
+                conditions=[
                     PushRoomMemberCount(2, "=="),
                     PushEventMatch("type", "m.room.message"),
                 ],
-                actions = [
+                actions=[
                     PushNotify(),
                     PushSetTweak("sound", "default"),
                     PushSetTweak("highlight", False),
@@ -928,12 +900,12 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload=self.login_response
+            payload=self.login_response,
         )
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/upload?access_token=abc123",
             status=200,
-            payload=self.keys_upload_response
+            payload=self.keys_upload_response,
         )
 
         resp = loop.run_until_complete(async_client.login("wordpass"))
@@ -950,12 +922,12 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload=self.login_response
+            payload=self.login_response,
         )
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/query?access_token=abc123",
             status=200,
-            payload=self.keys_query_response
+            payload=self.keys_query_response,
         )
 
         await async_client.login("wordpass")
@@ -971,23 +943,23 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload=self.login_response
+            payload=self.login_response,
         )
         aioresponse.put(
-                "https://example.org/_matrix/client/r0/rooms/!testroom:example.org/send/m.room.encrypted/1?access_token=abc123",
+            "https://example.org/_matrix/client/r0/rooms/!testroom:example.org/send/m.room.encrypted/1?access_token=abc123",
             status=200,
-            payload={"event_id": "$1555:example.org"}
+            payload={"event_id": "$1555:example.org"},
         )
         aioresponse.get(
             "https://example.org/_matrix/client/r0/rooms/{}/"
             "joined_members?access_token=abc123".format(TEST_ROOM_ID),
             status=200,
-            payload=self.joined_members_response
+            payload=self.joined_members_response,
         )
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/query?access_token=abc123",
             status=200,
-            payload=self.keys_query_response
+            payload=self.keys_query_response,
         )
 
         await async_client.login("wordpass")
@@ -1000,10 +972,7 @@ class TestClass:
         async_client.olm.outbound_group_sessions[TEST_ROOM_ID].shared = True
 
         response = await async_client.room_send(
-            TEST_ROOM_ID,
-            "m.room.message",
-            {"body": "hello"},
-            "1"
+            TEST_ROOM_ID, "m.room.message", {"body": "hello"}, "1"
         )
 
         assert isinstance(response, RoomSendResponse)
@@ -1017,36 +986,33 @@ class TestClass:
         base_url = "https://example.org/_matrix/client/r0"
 
         response = {
-                "content": {
-                    "body": "This is an example text message",
-                    "msgtype": "m.text",
-                    "format": "org.matrix.custom.html",
-                    "formatted_body": "<b>This is an example text message</b>"
-                },
-                "type": "m.room.message",
-                "event_id": "$15163622445EBvZJ:localhost",
-                "room_id": TEST_ROOM_ID,
-                "sender": "@example:example.org",
-                "origin_server_ts": 1432735824653,
-                "unsigned": {
-                    "age": 1234
-                }
-            }
+            "content": {
+                "body": "This is an example text message",
+                "msgtype": "m.text",
+                "format": "org.matrix.custom.html",
+                "formatted_body": "<b>This is an example text message</b>",
+            },
+            "type": "m.room.message",
+            "event_id": "$15163622445EBvZJ:localhost",
+            "room_id": TEST_ROOM_ID,
+            "sender": "@example:example.org",
+            "origin_server_ts": 1432735824653,
+            "unsigned": {"age": 1234},
+        }
 
         aioresponse.get(
             "{base}/rooms/{room}/event/{event_id}?{query}".format(
                 base=base_url,
                 room=TEST_ROOM_ID,
                 event_id="$15163622445EBvZJ:localhost",
-                query="access_token=abc123"
+                query="access_token=abc123",
             ),
             status=200,
-            payload=response
+            payload=response,
         )
 
         resp = await async_client.room_get_event(
-            TEST_ROOM_ID,
-            "$15163622445EBvZJ:localhost"
+            TEST_ROOM_ID, "$15163622445EBvZJ:localhost"
         )
 
         assert isinstance(resp, RoomGetEventResponse)
@@ -1057,19 +1023,13 @@ class TestClass:
                 base=base_url,
                 room=TEST_ROOM_ID,
                 event_id="$not-found:localhost",
-                query="access_token=abc123"
+                query="access_token=abc123",
             ),
             status=200,
-            payload={
-                "errcode": "M_NOT_FOUND",
-                "error": "Event not found."
-            }
+            payload={"errcode": "M_NOT_FOUND", "error": "Event not found."},
         )
 
-        resp = await async_client.room_get_event(
-            TEST_ROOM_ID,
-            "$not-found:localhost"
-        )
+        resp = await async_client.room_get_event(TEST_ROOM_ID, "$not-found:localhost")
 
         assert isinstance(resp, RoomGetEventError)
 
@@ -1085,47 +1045,45 @@ class TestClass:
         state_key = "a-state-key"
         aioresponse.put(
             "{base}/rooms/{room}/state/{event}/{key}?{query}".format(
-                base = base_url,
-                room = TEST_ROOM_ID,
-                event = "org.example.event_type",
-                key = state_key,
-                query = "access_token=abc123"
+                base=base_url,
+                room=TEST_ROOM_ID,
+                event="org.example.event_type",
+                key=state_key,
+                query="access_token=abc123",
             ),
-            status = 200,
-            payload={"event_id": "$1337stateeventid2342:example.org"}
-        )
-
-        resp = await async_client.room_put_state(
-            room_id = TEST_ROOM_ID,
-            event_type = "org.example.event_type",
-            content = {},
-            state_key = state_key
-        )
-
-        assert isinstance(resp, RoomPutStateResponse)
-
-
-        # Test when key is empty (and slash is optional)
-        aioresponse.put(
-            "{base}/rooms/{room}/state/{event}?{query}".format(
-                base = base_url,
-                room = TEST_ROOM_ID,
-                event = "org.example.event_type",
-                query = "access_token=abc123"
-            ),
-            status = 200,
-            payload={"event_id": "$1337stateeventid2342:example.org"}
+            status=200,
+            payload={"event_id": "$1337stateeventid2342:example.org"},
         )
 
         resp = await async_client.room_put_state(
             room_id=TEST_ROOM_ID,
-            event_type = "org.example.event_type",
+            event_type="org.example.event_type",
             content={},
-            state_key=""
+            state_key=state_key,
         )
 
         assert isinstance(resp, RoomPutStateResponse)
 
+        # Test when key is empty (and slash is optional)
+        aioresponse.put(
+            "{base}/rooms/{room}/state/{event}?{query}".format(
+                base=base_url,
+                room=TEST_ROOM_ID,
+                event="org.example.event_type",
+                query="access_token=abc123",
+            ),
+            status=200,
+            payload={"event_id": "$1337stateeventid2342:example.org"},
+        )
+
+        resp = await async_client.room_put_state(
+            room_id=TEST_ROOM_ID,
+            event_type="org.example.event_type",
+            content={},
+            state_key="",
+        )
+
+        assert isinstance(resp, RoomPutStateResponse)
 
     async def test_room_get_state_event(self, async_client, aioresponse):
         await async_client.receive_response(
@@ -1139,19 +1097,17 @@ class TestClass:
         state_key = "a-state-key"
         aioresponse.get(
             "{base}/rooms/{room}/state/{event}/{key}?{query}".format(
-                base = base_url,
-                room = TEST_ROOM_ID,
-                event = "m.room.name",
-                key = state_key,
-                query = "access_token=abc123"
+                base=base_url,
+                room=TEST_ROOM_ID,
+                event="m.room.name",
+                key=state_key,
+                query="access_token=abc123",
             ),
-            status = 200,
-            payload={"name": "Test Room"}
+            status=200,
+            payload={"name": "Test Room"},
         )
         resp = await async_client.room_get_state_event(
-            room_id = TEST_ROOM_ID,
-            event_type = "m.room.name",
-            state_key = state_key
+            room_id=TEST_ROOM_ID, event_type="m.room.name", state_key=state_key
         )
 
         assert isinstance(resp, RoomGetStateEventResponse)
@@ -1159,19 +1115,17 @@ class TestClass:
         # without state key
         aioresponse.get(
             "{base}/rooms/{room}/state/{event}?{query}".format(
-                base = base_url,
-                room = TEST_ROOM_ID,
-                event = "m.room.name",
-                query = "access_token=abc123"
+                base=base_url,
+                room=TEST_ROOM_ID,
+                event="m.room.name",
+                query="access_token=abc123",
             ),
-            status = 200,
-            payload={"name": "Test Room"}
+            status=200,
+            payload={"name": "Test Room"},
         )
 
         resp = await async_client.room_get_state_event(
-            room_id = TEST_ROOM_ID,
-            event_type = "m.room.name",
-            state_key = ""
+            room_id=TEST_ROOM_ID, event_type="m.room.name", state_key=""
         )
 
         assert isinstance(resp, RoomGetStateEventResponse)
@@ -1186,20 +1140,17 @@ class TestClass:
 
         aioresponse.get(
             "{base}/rooms/{room}/state?{query}".format(
-                base = base_url,
-                room = TEST_ROOM_ID,
-                query = "access_token=abc123"
+                base=base_url, room=TEST_ROOM_ID, query="access_token=abc123"
             ),
-            status = 200,
-            payload=self.room_get_state_response
+            status=200,
+            payload=self.room_get_state_response,
         )
 
         resp = await async_client.room_get_state(
-                TEST_ROOM_ID,
+            TEST_ROOM_ID,
         )
 
         assert isinstance(resp, RoomGetStateResponse)
-
 
     def keys_claim_dict(self, client):
         to_share = client.olm.share_keys()
@@ -1213,7 +1164,6 @@ class TestClass:
             "failures": {},
         }
 
-
     async def test_key_claiming(self, alice_client, async_client, aioresponse):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
@@ -1224,9 +1174,7 @@ class TestClass:
 
         alice_client.load_store()
         alice_device = OlmDevice(
-            ALICE_ID,
-            ALICE_DEVICE_ID,
-            alice_client.olm.account.identity_keys
+            ALICE_ID, ALICE_DEVICE_ID, alice_client.olm.account.identity_keys
         )
 
         async_client.device_store.add(alice_device)
@@ -1238,7 +1186,7 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=abc123",
             status=200,
-            payload=self.keys_claim_dict(alice_client)
+            payload=self.keys_claim_dict(alice_client),
         )
 
         response = await async_client.keys_claim(missing)
@@ -1257,9 +1205,7 @@ class TestClass:
 
         alice_client.load_store()
         alice_device = OlmDevice(
-            ALICE_ID,
-            ALICE_DEVICE_ID,
-            alice_client.olm.account.identity_keys
+            ALICE_ID, ALICE_DEVICE_ID, alice_client.olm.account.identity_keys
         )
 
         async_client.device_store.add(alice_device)
@@ -1285,13 +1231,13 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=abc123",
             status=200,
-            payload=key_claim_dict
+            payload=key_claim_dict,
         )
 
         aioresponse.put(
             "https://example.org/_matrix/client/r0/sendToDevice/m.room.encrypted/1?access_token=abc123",
             status=200,
-            payload={}
+            payload={},
         )
 
         with pytest.raises(KeyError):
@@ -1319,13 +1265,15 @@ class TestClass:
         # joined_members_response.
         resp.rooms.join[TEST_ROOM_ID].timeline.events.append(
             RoomMemberEvent(
-                {"event_id": "event_id_4",
-                 "sender": DAVE_ID,
-                 "origin_server_ts": 1516809890699},
+                {
+                    "event_id": "event_id_4",
+                    "sender": DAVE_ID,
+                    "origin_server_ts": 1516809890699,
+                },
                 DAVE_ID,
                 "join",
                 None,
-                {"membership": "join"}
+                {"membership": "join"},
             ),
         )
         await async_client.receive_response(resp)
@@ -1334,7 +1282,7 @@ class TestClass:
             "https://example.org/_matrix/client/r0/rooms/{}/"
             "joined_members?access_token=abc123".format(TEST_ROOM_ID),
             status=200,
-            payload=self.joined_members_response
+            payload=self.joined_members_response,
         )
 
         room = async_client.rooms[TEST_ROOM_ID]
@@ -1358,7 +1306,7 @@ class TestClass:
         aioresponse.get(
             "https://example.org/_matrix/client/r0/joined_rooms?access_token=abc123",
             status=200,
-            payload=self.joined_rooms_response
+            payload=self.joined_rooms_response,
         )
 
         response = await async_client.joined_rooms()
@@ -1378,7 +1326,7 @@ class TestClass:
         aioresponse.put(
             "https://example.org/_matrix/client/r0/sendToDevice/m.room_key_request/1?access_token=abc123",
             status=200,
-            payload={}
+            payload={},
         )
 
         event = MegolmEvent.from_dict(
@@ -1387,8 +1335,10 @@ class TestClass:
 
         await async_client.request_room_key(event, "1")
 
-        assert ("X3lUlvLELLYxeTx4yOVu6UDpasGEVO0Jbu+QFnm0cKQ" in
-                async_client.outgoing_key_requests)
+        assert (
+            "X3lUlvLELLYxeTx4yOVu6UDpasGEVO0Jbu+QFnm0cKQ"
+            in async_client.outgoing_key_requests
+        )
 
     async def test_key_exports(self, async_client, tempdir):
         file = path.join(tempdir, "keys_file")
@@ -1404,15 +1354,12 @@ class TestClass:
         assert async_client.olm.inbound_group_store.get(
             TEST_ROOM_ID,
             async_client.olm.account.identity_keys["curve25519"],
-            out_session.id
+            out_session.id,
         )
         await async_client.export_keys(file, "pass")
 
         alice_client = AsyncClient(
-            "https://example.org",
-            "alice",
-            ALICE_DEVICE_ID,
-            tempdir
+            "https://example.org", "alice", ALICE_DEVICE_ID, tempdir
         )
 
         alice_client.user_id = ALICE_ID
@@ -1423,7 +1370,7 @@ class TestClass:
         imported_session = alice_client.olm.inbound_group_store.get(
             TEST_ROOM_ID,
             async_client.olm.account.identity_keys["curve25519"],
-            out_session.id
+            out_session.id,
         )
 
         assert imported_session.id == out_session.id
@@ -1435,8 +1382,7 @@ class TestClass:
         assert async_client.logged_in
 
         aioresponse.post(
-            "https://example.org/_matrix/client/r0/createRoom"
-            "?access_token=abc123",
+            "https://example.org/_matrix/client/r0/createRoom" "?access_token=abc123",
             status=200,
             payload=self.room_id_response(TEST_ROOM_ID),
         )
@@ -1462,8 +1408,7 @@ class TestClass:
         assert async_client.logged_in
 
         aioresponse.post(
-            "https://example.org/_matrix/client/r0/createRoom"
-            "?access_token=abc123",
+            "https://example.org/_matrix/client/r0/createRoom" "?access_token=abc123",
             status=200,
             payload=self.room_id_response(TEST_ROOM_ID),
         )
@@ -1491,9 +1436,7 @@ class TestClass:
 
         aioresponse.post(
             "https://example.org/_matrix/client/r0/join/{}"
-            "?access_token=abc123".format(
-                TEST_ROOM_ID
-            ),
+            "?access_token=abc123".format(TEST_ROOM_ID),
             status=200,
             payload=self.room_id_response(TEST_ROOM_ID),
         )
@@ -1526,11 +1469,9 @@ class TestClass:
 
         aioresponse.post(
             "https://example.org/_matrix/client/r0/rooms/{}/leave"
-            "?access_token=abc123".format(
-                TEST_ROOM_ID
-            ),
+            "?access_token=abc123".format(TEST_ROOM_ID),
             status=200,
-            payload={}
+            payload={},
         )
         resp = await async_client.room_leave(TEST_ROOM_ID)
         assert isinstance(resp, RoomLeaveResponse)
@@ -1546,11 +1487,9 @@ class TestClass:
 
         aioresponse.post(
             "https://example.org/_matrix/client/r0/rooms/{}/forget"
-            "?access_token=abc123".format(
-                room_id
-            ),
+            "?access_token=abc123".format(room_id),
             status=200,
-            payload={}
+            payload={},
         )
         resp = await async_client.room_forget(room_id)
         assert isinstance(resp, RoomForgetResponse)
@@ -1620,16 +1559,14 @@ class TestClass:
         assert async_client.logged_in
         await async_client.receive_response(self.encryption_sync_response)
 
-        room_id  = next(iter(async_client.rooms))
+        room_id = next(iter(async_client.rooms))
         event_id = "$15163622445EBvZJ:localhost"
-        tx_id    = uuid4()
-        reason   = "for no reason"
+        tx_id = uuid4()
+        reason = "for no reason"
 
         aioresponse.put(
             "https://example.org/_matrix/client/r0/rooms/{}/redact/{}/{}"
-            "?access_token=abc123".format(
-                room_id, event_id, tx_id
-            ),
+            "?access_token=abc123".format(room_id, event_id, tx_id),
             status=200,
             payload={"event_id": "$90813622447EBvZJ:localhost"},
         )
@@ -1646,12 +1583,9 @@ class TestClass:
         await async_client.receive_response(self.encryption_sync_response)
         aioresponse.get(
             "https://example.org/_matrix/client/r0/rooms/{}/"
-            "context/{}?access_token=abc123".format(
-                TEST_ROOM_ID,
-                event_id
-            ),
+            "context/{}?access_token=abc123".format(TEST_ROOM_ID, event_id),
             status=200,
-            payload=self.context_response
+            payload=self.context_response,
         )
 
         response = await async_client.room_context(TEST_ROOM_ID, event_id)
@@ -1686,7 +1620,7 @@ class TestClass:
         resp = await async_client.room_messages(
             TEST_ROOM_ID,
             "start_token",
-            message_filter = {"room": {"state": {"limit": 1}}},
+            message_filter={"room": {"state": {"limit": 1}}},
         )
         assert isinstance(resp, RoomMessagesResponse)
 
@@ -1701,12 +1635,9 @@ class TestClass:
 
         aioresponse.put(
             "https://example.org/_matrix/client/r0/rooms/{}/typing/{}"
-            "?access_token=abc123".format(
-                room_id,
-                async_client.user_id
-            ),
+            "?access_token=abc123".format(room_id, async_client.user_id),
             status=200,
-            payload={}
+            payload={},
         )
         resp = await async_client.room_typing(room_id, typing_state=True)
         assert isinstance(resp, RoomTypingResponse)
@@ -1724,19 +1655,16 @@ class TestClass:
             f"https://example.org/_matrix/client/r0/rooms/{room_id}/receipt/"
             f"m.read/{event_id}?access_token=abc123",
             status=200,
-            payload={}
+            payload={},
         )
 
         resp = await async_client.update_receipt_marker(room_id, event_id)
         assert isinstance(resp, UpdateReceiptMarkerResponse)
 
     async def test_room_read_marker(
-        self,
-        async_client: AsyncClient,
-        aioresponse: aioresponses
+        self, async_client: AsyncClient, aioresponse: aioresponses
     ):
-        """Test that we can set the room read receipt marker.
-        """
+        """Test that we can set the room read receipt marker."""
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
@@ -1747,16 +1675,14 @@ class TestClass:
         receipt_event_id = "$15163700000EBvZJ:localhost"
 
         aioresponse.post(
-            f"https://example.org/_matrix/client/r0/rooms/{room_id}" + \
-                "/read_markers?access_token=abc123",
+            f"https://example.org/_matrix/client/r0/rooms/{room_id}"
+            + "/read_markers?access_token=abc123",
             status=200,
-            payload={}
+            payload={},
         )
 
         resp = await async_client.room_read_markers(
-            room_id,
-            fully_read_event_id,
-            receipt_event_id
+            room_id, fully_read_event_id, receipt_event_id
         )
         assert isinstance(resp, RoomReadMarkersResponse)
 
@@ -1768,8 +1694,8 @@ class TestClass:
 
         aioresponse.get(
             "https://example.org/_matrix/media/r0/config?access_token=abc123",
-            status  = 200,
-            payload = {"m.upload.size": 1024},
+            status=200,
+            payload={"m.upload.size": 1024},
         )
 
         response = await async_client.content_repository_config()
@@ -1782,9 +1708,9 @@ class TestClass:
         )
         assert async_client.logged_in
 
-        path     = Path("tests/data/file_response")
+        path = Path("tests/data/file_response")
         filesize = path.stat().st_size
-        monitor  = TransferMonitor(filesize)
+        monitor = TransferMonitor(filesize)
 
         aioresponse.post(
             "https://example.org/_matrix/media/r0/upload"
@@ -1795,7 +1721,10 @@ class TestClass:
         )
 
         resp, decryption_info = await async_client.upload(
-            lambda *_: path, "image/png", "test.png", monitor=monitor,
+            lambda *_: path,
+            "image/png",
+            "test.png",
+            monitor=monitor,
         )
         assert isinstance(resp, UploadResponse)
         assert decryption_info is None
@@ -1805,18 +1734,18 @@ class TestClass:
         monitor.cancel = True
         self._wait_monitor_thread_exited(monitor)
 
-
-    async def test_upload_binary_file_object(self, async_client: AsyncClient, aioresponse):
-        """Test uploading binary files using file objects.
-        """
+    async def test_upload_binary_file_object(
+        self, async_client: AsyncClient, aioresponse
+    ):
+        """Test uploading binary files using file objects."""
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response),
         )
         assert async_client.logged_in
 
-        path     = Path("tests/data/file_response")
+        path = Path("tests/data/file_response")
         filesize = path.stat().st_size
-        monitor  = TransferMonitor(filesize)
+        monitor = TransferMonitor(filesize)
 
         aioresponse.post(
             "https://example.org/_matrix/media/r0/upload"
@@ -1829,7 +1758,10 @@ class TestClass:
         # Upload binary file using a standard file object
         with open("tests/data/file_response", "r+b") as f:
             resp, decryption_info = await async_client.upload(
-                f, "image/png", "test.png", monitor=monitor,
+                f,
+                "image/png",
+                "test.png",
+                monitor=monitor,
             )
 
         assert isinstance(resp, UploadResponse)
@@ -1838,7 +1770,10 @@ class TestClass:
         # Upload binary file using an async file object
         async with aiofiles.open("tests/data/file_response", "r+b") as f:
             resp, decryption_info = await async_client.upload(
-                f, "image/png", "test.png", monitor=monitor,
+                f,
+                "image/png",
+                "test.png",
+                monitor=monitor,
             )
 
         assert isinstance(resp, UploadResponse)
@@ -1847,18 +1782,18 @@ class TestClass:
         monitor.cancel = True
         self._wait_monitor_thread_exited(monitor)
 
-
-    async def test_upload_text_file_object(self, async_client: AsyncClient, aioresponse):
-        """Test uploading text files using file objects.
-        """
+    async def test_upload_text_file_object(
+        self, async_client: AsyncClient, aioresponse
+    ):
+        """Test uploading text files using file objects."""
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response),
         )
         assert async_client.logged_in
 
-        path     = Path("tests/data/sample_text_file.py")
+        path = Path("tests/data/sample_text_file.py")
         filesize = path.stat().st_size
-        monitor  = TransferMonitor(filesize)
+        monitor = TransferMonitor(filesize)
 
         aioresponse.post(
             "https://example.org/_matrix/media/r0/upload"
@@ -1871,7 +1806,10 @@ class TestClass:
         # Upload text file using a async file object
         async with aiofiles.open("tests/data/sample_text_file.py") as f:
             resp, decryption_info = await async_client.upload(
-                f, "text/plain", "test.py", monitor=monitor,
+                f,
+                "text/plain",
+                "test.py",
+                monitor=monitor,
             )
 
         assert isinstance(resp, UploadResponse)
@@ -1879,7 +1817,6 @@ class TestClass:
 
         monitor.cancel = True
         self._wait_monitor_thread_exited(monitor)
-
 
     async def test_upload_retry(self, async_client: AsyncClient, aioresponse):
         """Test that files upload correctly after receiving a 429 or timeout.
@@ -1893,15 +1830,14 @@ class TestClass:
         )
         assert async_client.logged_in
 
-        path     = Path("tests/data/sample_text_file.py")
+        path = Path("tests/data/sample_text_file.py")
         filesize = path.stat().st_size
-        monitor  = TransferMonitor(filesize)
+        monitor = TransferMonitor(filesize)
 
         async def check_content(url, **kwargs):
-            """Verify the data that the server receives is the full file.
-            """
-            data: Iterable = kwargs['data']
-            received = ''
+            """Verify the data that the server receives is the full file."""
+            data: Iterable = kwargs["data"]
+            received = ""
             async for piece in data:
                 received += piece
 
@@ -1914,19 +1850,22 @@ class TestClass:
             "?access_token=abc123&filename=test.py",
             status=429,
             payload=self.limit_exceeded_error_response,
-            callback=check_content
+            callback=check_content,
         )
         aioresponse.post(
             "https://example.org/_matrix/media/r0/upload"
             "?access_token=abc123&filename=test.py",
             status=200,
             payload=self.upload_response,
-            callback=check_content
+            callback=check_content,
         )
 
         async with aiofiles.open("tests/data/sample_text_file.py") as f:
             resp, decryption_info = await async_client.upload(
-                f, "text/plain", "test.py", monitor=monitor,
+                f,
+                "text/plain",
+                "test.py",
+                monitor=monitor,
             )
 
         assert isinstance(resp, UploadResponse)
@@ -1935,30 +1874,29 @@ class TestClass:
         monitor.cancel = True
         self._wait_monitor_thread_exited(monitor)
 
-
     async def test_encrypted_upload(self, async_client, aioresponse):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response),
         )
         assert async_client.logged_in
 
-        path     = Path("tests/data/file_response")
+        path = Path("tests/data/file_response")
         filesize = path.stat().st_size
-        monitor  = TransferMonitor(filesize)
+        monitor = TransferMonitor(filesize)
 
         aioresponse.post(
             "https://example.org/_matrix/media/r0/upload"
             "?access_token=abc123&filename=test.png",
-            status  = 429,
-            payload = self.limit_exceeded_error_response
+            status=429,
+            payload=self.limit_exceeded_error_response,
         )
 
         aioresponse.post(
             "https://example.org/_matrix/media/r0/upload"
             "?access_token=abc123&filename=test.png",
-            status  = 200,
-            payload = self.upload_response,
-            repeat  = True,
+            status=200,
+            payload=self.upload_response,
+            repeat=True,
         )
 
         async with aiofiles.open(path, "rb") as file:
@@ -1966,9 +1904,9 @@ class TestClass:
                 lambda *_: file,
                 "image/png",
                 "test.png",
-                encrypt  = True,
-                monitor  = monitor,
-                filesize = filesize,
+                encrypt=True,
+                monitor=monitor,
+                filesize=filesize,
             )
 
         assert isinstance(resp, UploadResponse)
@@ -1995,15 +1933,15 @@ class TestClass:
         self._verify_monitor_state_for_finished_transfer(monitor, 1)
 
     async def test_plain_data_generator(self, async_client):
-        original_data   = [b"123", b"456", b"789", b"0"]
-        data_size       = len(b"".join(original_data))
-        monitor         = TransferMonitor(
+        original_data = [b"123", b"456", b"789", b"0"]
+        data_size = len(b"".join(original_data))
+        monitor = TransferMonitor(
             data_size,
             # Ensure the loop has time to land on the pause code
-            _update_loop_sleep_time = 0.1,
+            _update_loop_sleep_time=0.1,
         )
 
-        gen  = async_client._plain_data_generator(original_data, monitor)
+        gen = async_client._plain_data_generator(original_data, monitor)
         data = []
 
         assert not monitor.pause
@@ -2016,8 +1954,8 @@ class TestClass:
             monitor.pause = False
             assert speed_when_paused == monitor.speed
 
-        paused_at         = time.time()
-        monitor.pause     = True
+        paused_at = time.time()
+        monitor.pause = True
         speed_when_paused = monitor.average_speed
         asyncio.ensure_future(unpause(speed_when_paused))
         data.append(await asyncio.wait_for(gen.__anext__(), 5))
@@ -2035,10 +1973,10 @@ class TestClass:
         assert monitor.transferred == len(b"".join(data))
         self._wait_monitor_thread_exited(monitor)
 
-        left      = original_data[len(data):]
+        left = original_data[len(data) :]
         left_size = len(b"".join(left))
-        monitor   = TransferMonitor(left_size)
-        gen       = async_client._plain_data_generator(left, monitor)
+        monitor = TransferMonitor(left_size)
+        gen = async_client._plain_data_generator(left, monitor)
 
         # Finish and integrity checks
 
@@ -2049,13 +1987,15 @@ class TestClass:
         self._verify_monitor_state_for_finished_transfer(monitor, left_size)
 
     async def test_encrypted_data_generator(self, async_client):
-        original_data   = b"x" * 4096 * 4
-        data_size       = len(original_data)
-        monitor         = TransferMonitor(data_size)
+        original_data = b"x" * 4096 * 4
+        data_size = len(original_data)
+        monitor = TransferMonitor(data_size)
         decryption_dict = {}
 
         gen = async_client._encrypted_data_generator(
-            original_data, decryption_dict, monitor,
+            original_data,
+            decryption_dict,
+            monitor,
         )
         encrypted_data = b""
 
@@ -2068,7 +2008,7 @@ class TestClass:
             await asyncio.sleep(0.5)
             monitor.pause = False
 
-        paused_at     = time.time()
+        paused_at = time.time()
         monitor.pause = True
         asyncio.ensure_future(unpause())
         encrypted_data += await asyncio.wait_for(gen.__anext__(), 5)
@@ -2089,9 +2029,11 @@ class TestClass:
         # Restart from scratch (avoid encrypted data SHA mismatch)
 
         decryption_dict = {}
-        monitor         = TransferMonitor(data_size)
-        gen             = async_client._encrypted_data_generator(
-            original_data, decryption_dict, monitor,
+        monitor = TransferMonitor(data_size)
+        gen = async_client._encrypted_data_generator(
+            original_data,
+            decryption_dict,
+            monitor,
         )
 
         # Finish and integrity checks
@@ -2199,9 +2141,7 @@ class TestClass:
             ),
             status=200,
             content_type="image/png",
-            headers = {
-                "content-disposition": 'inline; filename="{}"'.format(filename)
-            },
+            headers={"content-disposition": 'inline; filename="{}"'.format(filename)},
             body=self.file_response,
         )
         resp = await async_client.download(server_name, media_id, filename)
@@ -2219,7 +2159,7 @@ class TestClass:
             ),
             status=429,
             content_type="application/json",
-            body = b'{"errcode": "M_LIMIT_EXCEEDED", "retry_after_ms": 1}',
+            body=b'{"errcode": "M_LIMIT_EXCEEDED", "retry_after_ms": 1}',
             repeat=True,
         )
         resp = await async_client.download(server_name, media_id)
@@ -2264,14 +2204,13 @@ class TestClass:
             ),
             status=429,
             content_type="application/json",
-            body = b'{"errcode": "M_LIMIT_EXCEEDED", "retry_after_ms": 1}',
-            repeat = True,
+            body=b'{"errcode": "M_LIMIT_EXCEEDED", "retry_after_ms": 1}',
+            repeat=True,
         )
         resp = await async_client.thumbnail(
             server_name, media_id, width, height, method
         )
         assert isinstance(resp, ThumbnailError)
-
 
     async def test_event_callback(self, async_client):
         await async_client.receive_response(
@@ -2285,10 +2224,7 @@ class TestClass:
             if isinstance(event, RoomMemberEvent):
                 raise CallbackException()
 
-        async_client.add_event_callback(
-            cb,
-            (RoomMemberEvent, RoomEncryptionEvent)
-        )
+        async_client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
 
         with pytest.raises(CallbackException):
             await async_client.receive_response(self.encryption_sync_response)
@@ -2315,15 +2251,15 @@ class TestClass:
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
-        await async_client.receive_response(
-            SyncResponse.from_dict(self.sync_response)
-        )
+        await async_client.receive_response(SyncResponse.from_dict(self.sync_response))
 
-        room = async_client.rooms['!SVkFJHzfwvuaIEawgC:localhost']
+        room = async_client.rooms["!SVkFJHzfwvuaIEawgC:localhost"]
         assert room.fully_read_marker == "event_id_2"
         assert room.tags == {"u.test": {"order": 1}}
 
-    async def test_get_profile(self, async_client: AsyncClient, aioresponse: aioresponses):
+    async def test_get_profile(
+        self, async_client: AsyncClient, aioresponse: aioresponses
+    ):
         base_url = "https://example.org/_matrix/client/r0"
         name = faker.name()
         avatar = faker.avatar_url().replace("#auto", "")
@@ -2332,19 +2268,19 @@ class TestClass:
         aioresponse.get(
             "{}/profile/{}".format(base_url, async_client.user_id),
             status=200,
-            payload=self.get_profile_response(name, avatar)
+            payload=self.get_profile_response(name, avatar),
         )
         resp = await async_client.get_profile()
         assert isinstance(resp, ProfileGetResponse)
         assert resp.displayname == name
         assert resp.avatar_url.replace("#auto", "") == avatar
 
-    async def test_get_profile_auth_required(self,
-                                             async_client: AsyncClient,
-                                             aioresponse: aioresponses):
+    async def test_get_profile_auth_required(
+        self, async_client: AsyncClient, aioresponse: aioresponses
+    ):
         login = self.login_response
-        token = login['access_token']
-        user_id = login['user_id']
+        token = login["access_token"]
+        user_id = login["user_id"]
 
         name = faker.name()
         avatar = faker.avatar_url().replace("#auto", "")
@@ -2353,15 +2289,13 @@ class TestClass:
         url = "{}/profile/{}".format(base_url, user_id)
 
         aioresponse.get(
-            url,
-            status=401,
-            payload=self.get_profile_unauth_error_response()
+            url, status=401, payload=self.get_profile_unauth_error_response()
         )
 
         aioresponse.get(
-            '{}?access_token={}'.format(url, token),
+            "{}?access_token={}".format(url, token),
             status=200,
-            payload=self.get_profile_response(name, avatar)
+            payload=self.get_profile_response(name, avatar),
         )
 
         resp = await async_client.get_profile(user_id)
@@ -2374,8 +2308,7 @@ class TestClass:
         assert isinstance(resp, ProfileGetResponse)
 
     async def test_get_presence(self, async_client, aioresponse):
-        """Test if we can get the presence state of a user
-        """
+        """Test if we can get the presence state of a user"""
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
@@ -2385,14 +2318,10 @@ class TestClass:
 
         aioresponse.get(
             "https://example.org/_matrix/client/r0/presence/{}/status?access_token={}".format(
-                user_id,
-                async_client.access_token
+                user_id, async_client.access_token
             ),
             status=200,
-            payload={
-                "presence": "unavailable",
-                "last_active_ago": 420845
-            }
+            payload={"presence": "unavailable", "last_active_ago": 420845},
         )
 
         resp = await async_client.get_presence(user_id)
@@ -2406,8 +2335,7 @@ class TestClass:
 
         aioresponse.get(
             "https://example.org/_matrix/client/r0/presence/{}/status?access_token={}".format(
-                user_id,
-                async_client.access_token
+                user_id, async_client.access_token
             ),
             status=200,
             payload={
@@ -2415,7 +2343,7 @@ class TestClass:
                 "last_active_ago": 0,
                 "currently_active": True,
                 "status_msg": "I am here.",
-            }
+            },
         )
 
         resp = await async_client.get_presence(user_id)
@@ -2428,8 +2356,7 @@ class TestClass:
         assert resp.status_msg == "I am here."
 
     async def test_set_presence(self, async_client, aioresponse):
-        """Test if we can set the presence state of user
-        """
+        """Test if we can set the presence state of user"""
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
@@ -2437,11 +2364,10 @@ class TestClass:
 
         aioresponse.put(
             "https://example.org/_matrix/client/r0/presence/{}/status?access_token={}".format(
-                async_client.user_id,
-                async_client.access_token
+                async_client.user_id, async_client.access_token
             ),
             status=200,
-            payload={}
+            payload={},
         )
 
         resp = await async_client.set_presence("online", "I am here.")
@@ -2449,8 +2375,7 @@ class TestClass:
         assert isinstance(resp, PresenceSetResponse)
 
     async def test_presence_callback(self, async_client, aioresponse):
-        """Test if we can add a presence callback and if it get´s called
-        """
+        """Test if we can add a presence callback and if it get´s called"""
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
@@ -2462,21 +2387,11 @@ class TestClass:
             if isinstance(event, PresenceEvent):
                 raise CallbackException()
 
-        async_client.add_presence_callback(
-            cb,
-            PresenceEvent
-        )
+        async_client.add_presence_callback(cb, PresenceEvent)
 
-        url = (
-            r"^https://example\.org/_matrix/client/r0/"
-            r"sync\?access_token=abc123"
-        )
+        url = r"^https://example\.org/_matrix/client/r0/" r"sync\?access_token=abc123"
 
-        aioresponse.get(
-            re.compile(fr"{url}$"),
-            status=200,
-            payload=self.sync_response
-        )
+        aioresponse.get(re.compile(rf"{url}$"), status=200, payload=self.sync_response)
 
         with pytest.raises(CallbackException):
             await async_client.sync()
@@ -2491,7 +2406,7 @@ class TestClass:
         delete_auth = {
             "flows": [{"stages": ["m.login.password"]}],
             "params": {},
-            "session": "DBVNTKnPYYEVIvazoJwLqsNJ"
+            "session": "DBVNTKnPYYEVIvazoJwLqsNJ",
         }
 
         devices = {
@@ -2501,17 +2416,22 @@ class TestClass:
                     "display_name": None,
                     "last_seen_ip": "-",
                     "last_seen_ts": 1573294480287,
-                    "user_id": "@example:localhost"
+                    "user_id": "@example:localhost",
                 }
             ]
         }
 
-        aioresponse.post(f"{base_url}/delete_devices?access_token=abc123",
-                         status=401, payload=delete_auth)
-        aioresponse.post(f"{base_url}/delete_devices?access_token=abc123",
-                         status=200, payload={})
-        aioresponse.get(f"{base_url}/devices?access_token=abc123", status=200,
-                        payload=devices)
+        aioresponse.post(
+            f"{base_url}/delete_devices?access_token=abc123",
+            status=401,
+            payload=delete_auth,
+        )
+        aioresponse.post(
+            f"{base_url}/delete_devices?access_token=abc123", status=200, payload={}
+        )
+        aioresponse.get(
+            f"{base_url}/devices?access_token=abc123", status=200, payload=devices
+        )
 
         resp = await async_client.devices()
         assert isinstance(resp, DevicesResponse)
@@ -2524,9 +2444,10 @@ class TestClass:
         resp = await async_client.delete_devices(devices)
         assert isinstance(resp, DeleteDevicesResponse)
 
-    async def test_update_device(self, async_client: AsyncClient, aioresponse: aioresponses):
-        """Test that we can update a device
-        """
+    async def test_update_device(
+        self, async_client: AsyncClient, aioresponse: aioresponses
+    ):
+        """Test that we can update a device"""
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
@@ -2537,17 +2458,15 @@ class TestClass:
 
         aioresponse.put(
             "https://example.org/_matrix/client/r0/devices/{}?access_token={}".format(
-                device_id,
-                async_client.access_token
+                device_id, async_client.access_token
             ),
             status=200,
-            payload={}
+            payload={},
         )
 
         resp = await async_client.update_device(device_id, content)
 
         assert isinstance(resp, UpdateDeviceResponse)
-
 
     async def test_get_set_displayname(self, async_client, aioresponse):
         await async_client.receive_response(
@@ -2559,28 +2478,18 @@ class TestClass:
         url = "{}/profile/{}/displayname?access_token={}".format(
             base_url, async_client.user_id, async_client.access_token
         )
-        aioresponse.get(
-            url,
-            status=200,
-            payload=self.get_displayname_response(None)
-        )
+        aioresponse.get(url, status=200, payload=self.get_displayname_response(None))
         resp = await async_client.get_displayname()
         assert isinstance(resp, ProfileGetDisplayNameResponse)
         assert not resp.displayname
 
-        aioresponse.put(
-            url,
-            status=200,
-            payload={}
-        )
+        aioresponse.put(url, status=200, payload={})
         new_name = faker.name()
         resp2 = await async_client.set_displayname(new_name)
         assert isinstance(resp2, ProfileSetDisplayNameResponse)
 
         aioresponse.get(
-            url,
-            status=200,
-            payload=self.get_displayname_response(new_name)
+            url, status=200, payload=self.get_displayname_response(new_name)
         )
         resp3 = await async_client.get_displayname()
         assert isinstance(resp3, ProfileGetDisplayNameResponse)
@@ -2597,38 +2506,26 @@ class TestClass:
             base_url, async_client.user_id, async_client.access_token
         )
 
-        aioresponse.get(
-            url,
-            status=200,
-            payload=self.get_avatar_response(None)
-        )
+        aioresponse.get(url, status=200, payload=self.get_avatar_response(None))
         resp = await async_client.get_avatar()
         assert isinstance(resp, ProfileGetAvatarResponse)
         assert not resp.avatar_url
 
-        aioresponse.put(
-            url,
-            status=200,
-            payload={}
-        )
+        aioresponse.put(url, status=200, payload={})
         new_avatar = faker.avatar_url().replace("#auto", "")
         resp2 = await async_client.set_avatar(new_avatar)
         assert isinstance(resp2, ProfileSetAvatarResponse)
 
-        aioresponse.get(
-            url,
-            status=200,
-            payload=self.get_avatar_response(new_avatar)
-        )
+        aioresponse.get(url, status=200, payload=self.get_avatar_response(new_avatar))
         resp3 = await async_client.get_avatar()
         assert isinstance(resp3, ProfileGetAvatarResponse)
         assert resp3.avatar_url.replace("#auto", "") == new_avatar
 
     async def test_room_resolve_alias(self, async_client, aioresponse):
         aioresponse.get(
-                "https://example.org/_matrix/client/r0/directory/room/%23test%3Aexample.org",
+            "https://example.org/_matrix/client/r0/directory/room/%23test%3Aexample.org",
             status=200,
-            payload=self.room_resolve_alias_response
+            payload=self.room_resolve_alias_response,
         )
 
         resp = await async_client.room_resolve_alias("#test:example.org")
@@ -2663,7 +2560,9 @@ class TestClass:
             },
         )
 
-        resp = await async_client.room_put_alias("#test:example.org", "!foobar:example.org")
+        resp = await async_client.room_put_alias(
+            "#test:example.org", "!foobar:example.org"
+        )
 
         assert isinstance(resp, RoomPutAliasResponse)
 
@@ -2689,12 +2588,12 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload=self.limit_exceeded_error_response
+            payload=self.limit_exceeded_error_response,
         )
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload=self.login_response
+            payload=self.login_response,
         )
 
         got_error = []
@@ -2722,12 +2621,13 @@ class TestClass:
             "https://example.org/_matrix/client/r0/login",
             status=429,
             payload=self.limit_exceeded_error_response,
-            repeat=True
+            repeat=True,
         )
 
         async_client.config = AsyncClientConfig(max_limit_exceeded=2)
 
         got_error = []
+
         async def on_error(_):
             got_error.append(True)
 
@@ -2744,12 +2644,12 @@ class TestClass:
             "https://example.org/_matrix/client/r0/login",
             status=200,
             payload=self.login_response,
-            timeout=True
+            timeout=True,
         )
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
             status=200,
-            payload=self.login_response
+            payload=self.login_response,
         )
 
         async_client.config = AsyncClientConfig(max_timeouts=3)
@@ -2765,7 +2665,7 @@ class TestClass:
             status=200,
             payload=self.login_response,
             timeout=True,
-            repeat=True
+            repeat=True,
         )
 
         async_client.config = AsyncClientConfig(max_timeouts=3)
@@ -2779,8 +2679,7 @@ class TestClass:
 
     async def test_exponential_backoff(self, async_client):
         async_client.config = AsyncClientConfig(
-            backoff_factor = 0.2,
-            max_timeout_retry_wait_time = 30
+            backoff_factor=0.2, max_timeout_retry_wait_time=30
         )
 
         get_time = async_client.get_timeout_retry_wait_time
@@ -2792,7 +2691,7 @@ class TestClass:
 
     async def test_sync_forever(self, async_client, aioresponse, loop):
         sync_url = re.compile(
-            r'^https://example\.org/_matrix/client/r0/sync\?access_token=.*'
+            r"^https://example\.org/_matrix/client/r0/sync\?access_token=.*"
         )
 
         aioresponse.get(
@@ -2801,12 +2700,7 @@ class TestClass:
             payload=self.sync_response,
         )
 
-        aioresponse.get(
-            sync_url,
-            status=200,
-            payload=self.empty_sync,
-            repeat=True
-        )
+        aioresponse.get(sync_url, status=200, payload=self.empty_sync, repeat=True)
 
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/upload?access_token=abc123",
@@ -2818,7 +2712,7 @@ class TestClass:
             "https://example.org/_matrix/client/r0/keys/query?access_token=abc123",
             status=200,
             payload=self.keys_query_response,
-            repeat=True
+            repeat=True,
         )
 
         await async_client.receive_response(
@@ -2841,18 +2735,16 @@ class TestClass:
         assert alice.logged_in
         assert bob.logged_in
 
-        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await alice.receive_response(
+            self.synce_response_for(alice.user_id, bob.user_id)
+        )
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.olm.account.identity_keys
+            alice.user_id, alice.device_id, alice.olm.account.identity_keys
         )
         bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.olm.account.identity_keys
+            bob.user_id, bob.device_id, bob.olm.account.identity_keys
         )
 
         alice.olm.device_store.add(bob_device)
@@ -2898,13 +2790,11 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
             status=200,
-            payload=key_claim_dict
+            payload=key_claim_dict,
         )
 
-        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb,
-                        repeat=True)
-        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb,
-                        repeat=True)
+        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb, repeat=True)
+        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb, repeat=True)
 
         session = alice.olm.session_store.get(bob_device.curve25519)
         assert not session
@@ -2925,7 +2815,7 @@ class TestClass:
             status=200,
             payload=self.sync_with_to_device_events(
                 self.olm_message_to_event(to_device_for_alice, alice, bob)
-            )
+            ),
         )
 
         # Run a sync for Alice, the sync will now contain the to-device message
@@ -2942,9 +2832,7 @@ class TestClass:
 
         # Check that we successfully received the group session as well.
         alice_group_session = alice.olm.inbound_group_store.get(
-            TEST_ROOM_ID,
-            bob_device.curve25519,
-            group_session.id
+            TEST_ROOM_ID, bob_device.curve25519, group_session.id
         )
         assert alice_group_session.id == group_session.id
 
@@ -2957,7 +2845,7 @@ class TestClass:
             status=200,
             payload=self.sync_with_to_device_events(
                 self.olm_message_to_event(to_device_for_bob, bob, alice)
-            )
+            ),
         )
 
         group_session = alice.olm.outbound_group_sessions[TEST_ROOM_ID]
@@ -2966,9 +2854,7 @@ class TestClass:
         # Bob syncs and receives a the group session.
         await bob.sync()
         bob_group_session = bob.olm.inbound_group_store.get(
-            TEST_ROOM_ID,
-            alice_device.curve25519,
-            group_session.id
+            TEST_ROOM_ID, alice_device.curve25519, group_session.id
         )
         assert bob_group_session.id == group_session.id
 
@@ -2976,9 +2862,9 @@ class TestClass:
 
         # Let us wedge the session now
         session = alice.olm.session_store.get(bob_device.curve25519)
-        alice.olm.session_store[bob_device.curve25519][0] = (
-            Session.from_pickle(alice_pickle, session.creation_time, "",
-                                session.use_time))
+        alice.olm.session_store[bob_device.curve25519][0] = Session.from_pickle(
+            alice_pickle, session.creation_time, "", session.use_time
+        )
 
         # Invalidate the current outbound group session
         alice.invalidate_outbound_session(TEST_ROOM_ID)
@@ -2997,9 +2883,8 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_bob, bob, alice),
-                "2"
-            )
+                self.olm_message_to_event(to_device_for_bob, bob, alice), "2"
+            ),
         )
         assert not bob.outgoing_to_device_messages
         assert not bob.should_claim_keys
@@ -3012,9 +2897,7 @@ class TestClass:
         await bob.sync()
         # Check that bob was unable to decrypt the new group session.
         bob_group_session = bob.olm.inbound_group_store.get(
-            TEST_ROOM_ID,
-            alice_device.curve25519,
-            group_session.id
+            TEST_ROOM_ID, alice_device.curve25519, group_session.id
         )
         assert not bob_group_session
 
@@ -3038,7 +2921,7 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
             status=200,
-            payload=key_claim_dict
+            payload=key_claim_dict,
         )
 
         assert not bob.outgoing_to_device_messages
@@ -3061,9 +2944,8 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_alice, alice, bob),
-                "3"
-            )
+                self.olm_message_to_event(to_device_for_alice, alice, bob), "3"
+            ),
         )
 
         # Take out the wedged session
@@ -3087,18 +2969,16 @@ class TestClass:
         assert alice.logged_in
         assert bob.logged_in
 
-        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await alice.receive_response(
+            self.synce_response_for(alice.user_id, bob.user_id)
+        )
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.olm.account.identity_keys
+            alice.user_id, alice.device_id, alice.olm.account.identity_keys
         )
         bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.olm.account.identity_keys
+            bob.user_id, bob.device_id, bob.olm.account.identity_keys
         )
 
         alice.olm.device_store.add(bob_device)
@@ -3144,13 +3024,11 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
             status=200,
-            payload=key_claim_dict
+            payload=key_claim_dict,
         )
 
-        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb,
-                        repeat=True)
-        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb,
-                        repeat=True)
+        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb, repeat=True)
+        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb, repeat=True)
 
         session = alice.olm.session_store.get(bob_device.curve25519)
         assert not session
@@ -3171,10 +3049,7 @@ class TestClass:
         # We deliberatly don't share the message with alice
         message = {
             "type": "m.room.message",
-            "content": {
-                "msgtype": "m.text",
-                "body": "It's a secret to everybody."
-            }
+            "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
         }
         encrypted_content = bob.olm.group_encrypt(TEST_ROOM_ID, message)
 
@@ -3184,13 +3059,13 @@ class TestClass:
             "sender": bob.user_id,
             "origin_server_ts": int(time.time()),
             "content": encrypted_content,
-            "room_id": TEST_ROOM_ID
+            "room_id": TEST_ROOM_ID,
         }
 
         aioresponse.get(
             sync_url,
             status=200,
-            payload=self.sync_with_room_event(encrypted_message, "3")
+            payload=self.sync_with_room_event(encrypted_message, "3"),
         )
 
         response = await alice.sync()
@@ -3213,7 +3088,9 @@ class TestClass:
         to_device_for_bob = {
             "messages": {
                 bob_device.user_id: {
-                    bob_device.device_id: to_device_for_bob["messages"][alice_device.user_id]["*"]
+                    bob_device.device_id: to_device_for_bob["messages"][
+                        alice_device.user_id
+                    ]["*"]
                 }
             }
         }
@@ -3222,9 +3099,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.room_key_request"),
-                "4"
-            )
+                self.olm_message_to_event(
+                    to_device_for_bob, bob, alice, "m.room_key_request"
+                ),
+                "4",
+            ),
         )
 
         assert not bob.outgoing_to_device_messages
@@ -3244,9 +3123,8 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_alice, alice, bob),
-                "5"
-            )
+                self.olm_message_to_event(to_device_for_alice, alice, bob), "5"
+            ),
         )
 
         # Alice syncs and receives the forwarded key.
@@ -3263,18 +3141,16 @@ class TestClass:
         assert alice.logged_in
         assert bob.logged_in
 
-        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await alice.receive_response(
+            self.synce_response_for(alice.user_id, bob.user_id)
+        )
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.olm.account.identity_keys
+            alice.user_id, alice.device_id, alice.olm.account.identity_keys
         )
         bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.olm.account.identity_keys
+            bob.user_id, bob.device_id, bob.olm.account.identity_keys
         )
 
         alice.olm.device_store.add(bob_device)
@@ -3320,13 +3196,11 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
             status=200,
-            payload=key_claim_dict
+            payload=key_claim_dict,
         )
 
-        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb,
-                        repeat=True)
-        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb,
-                        repeat=True)
+        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb, repeat=True)
+        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb, repeat=True)
 
         session = alice.olm.session_store.get(bob_device.curve25519)
         assert not session
@@ -3347,9 +3221,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_alice, alice, bob, "m.key.verification.start"),
-                "4"
-            )
+                self.olm_message_to_event(
+                    to_device_for_alice, alice, bob, "m.key.verification.start"
+                ),
+                "4",
+            ),
         )
         assert not alice.key_verifications
         await alice.sync()
@@ -3365,9 +3241,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.key.verification.accept"),
-                "5"
-            )
+                self.olm_message_to_event(
+                    to_device_for_bob, bob, alice, "m.key.verification.accept"
+                ),
+                "5",
+            ),
         )
 
         to_device_for_alice = None
@@ -3383,9 +3261,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_alice, alice, bob, "m.key.verification.key"),
-                "6"
-            )
+                self.olm_message_to_event(
+                    to_device_for_alice, alice, bob, "m.key.verification.key"
+                ),
+                "6",
+            ),
         )
 
         assert not bob.outgoing_to_device_messages
@@ -3397,9 +3277,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.key.verification.key"),
-                "7"
-            )
+                self.olm_message_to_event(
+                    to_device_for_bob, bob, alice, "m.key.verification.key"
+                ),
+                "7",
+            ),
         )
 
         await bob.sync()
@@ -3418,9 +3300,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.key.verification.mac"),
-                "8"
-            )
+                self.olm_message_to_event(
+                    to_device_for_bob, bob, alice, "m.key.verification.mac"
+                ),
+                "8",
+            ),
         )
 
         await bob.sync()
@@ -3431,9 +3315,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_alice, alice, bob, "m.key.verification.mac"),
-                "8"
-            )
+                self.olm_message_to_event(
+                    to_device_for_alice, alice, bob, "m.key.verification.mac"
+                ),
+                "8",
+            ),
         )
 
         await alice.sync()
@@ -3453,10 +3339,7 @@ class TestClass:
         # We deliberatly don't share the message with alice
         message = {
             "type": "m.room.message",
-            "content": {
-                "msgtype": "m.text",
-                "body": "It's a secret to everybody."
-            }
+            "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
         }
         encrypted_content = bob.olm.group_encrypt(TEST_ROOM_ID, message)
 
@@ -3466,13 +3349,13 @@ class TestClass:
             "sender": bob.user_id,
             "origin_server_ts": int(time.time()),
             "content": encrypted_content,
-            "room_id": TEST_ROOM_ID
+            "room_id": TEST_ROOM_ID,
         }
 
         aioresponse.get(
             sync_url,
             status=200,
-            payload=self.sync_with_room_event(encrypted_message, "3")
+            payload=self.sync_with_room_event(encrypted_message, "3"),
         )
 
         response = await alice.sync()
@@ -3495,7 +3378,9 @@ class TestClass:
         to_device_for_bob = {
             "messages": {
                 bob_device.user_id: {
-                    bob_device.device_id: to_device_for_bob["messages"][alice_device.user_id]["*"]
+                    bob_device.device_id: to_device_for_bob["messages"][
+                        alice_device.user_id
+                    ]["*"]
                 }
             }
         }
@@ -3504,9 +3389,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.room_key_request"),
-                "4"
-            )
+                self.olm_message_to_event(
+                    to_device_for_bob, bob, alice, "m.room_key_request"
+                ),
+                "4",
+            ),
         )
 
         assert not bob.outgoing_to_device_messages
@@ -3526,9 +3413,8 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_alice, alice, bob),
-                "5"
-            )
+                self.olm_message_to_event(to_device_for_alice, alice, bob), "5"
+            ),
         )
 
         # Alice syncs and receives the forwarded key.
@@ -3550,18 +3436,16 @@ class TestClass:
         bob.user_id = alice.user_id
         bob.olm.user_id = alice.user_id
 
-        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await alice.receive_response(
+            self.synce_response_for(alice.user_id, bob.user_id)
+        )
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.olm.account.identity_keys
+            alice.user_id, alice.device_id, alice.olm.account.identity_keys
         )
         bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.olm.account.identity_keys
+            bob.user_id, bob.device_id, bob.olm.account.identity_keys
         )
 
         def key_request_cb(event):
@@ -3569,8 +3453,7 @@ class TestClass:
             bob.verify_device(alice_device)
 
             for key_share in bob.get_active_key_requests(
-                event.sender,
-                event.requesting_device_id
+                event.sender, event.requesting_device_id
             ):
                 bob.continue_key_share(key_share)
 
@@ -3619,13 +3502,11 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
             status=200,
-            payload=key_claim_dict
+            payload=key_claim_dict,
         )
 
-        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb,
-                        repeat=True)
-        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb,
-                        repeat=True)
+        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb, repeat=True)
+        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb, repeat=True)
 
         session = alice.olm.session_store.get(bob_device.curve25519)
         assert not session
@@ -3646,10 +3527,7 @@ class TestClass:
         # We deliberatly don't share the message with alice
         message = {
             "type": "m.room.message",
-            "content": {
-                "msgtype": "m.text",
-                "body": "It's a secret to everybody."
-            }
+            "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
         }
         encrypted_content = bob.olm.group_encrypt(TEST_ROOM_ID, message)
 
@@ -3659,13 +3537,13 @@ class TestClass:
             "sender": bob.user_id,
             "origin_server_ts": int(time.time()),
             "content": encrypted_content,
-            "room_id": TEST_ROOM_ID
+            "room_id": TEST_ROOM_ID,
         }
 
         aioresponse.get(
             sync_url,
             status=200,
-            payload=self.sync_with_room_event(encrypted_message, "3")
+            payload=self.sync_with_room_event(encrypted_message, "3"),
         )
 
         response = await alice.sync()
@@ -3688,7 +3566,9 @@ class TestClass:
         to_device_for_bob = {
             "messages": {
                 bob_device.user_id: {
-                    bob_device.device_id: to_device_for_bob["messages"][alice_device.user_id]["*"]
+                    bob_device.device_id: to_device_for_bob["messages"][
+                        alice_device.user_id
+                    ]["*"]
                 }
             }
         }
@@ -3697,9 +3577,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.room_key_request"),
-                "4"
-            )
+                self.olm_message_to_event(
+                    to_device_for_bob, bob, alice, "m.room_key_request"
+                ),
+                "4",
+            ),
         )
 
         assert not bob.outgoing_to_device_messages
@@ -3719,9 +3601,8 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_alice, alice, bob),
-                "5"
-            )
+                self.olm_message_to_event(to_device_for_alice, alice, bob), "5"
+            ),
         )
 
         # Alice syncs and receives the forwarded key.
@@ -3735,18 +3616,16 @@ class TestClass:
     async def test_key_invalidation(self, async_client_pair, aioresponse, loop):
         alice, bob = async_client_pair
 
-        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await alice.receive_response(
+            self.synce_response_for(alice.user_id, bob.user_id)
+        )
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.olm.account.identity_keys
+            alice.user_id, alice.device_id, alice.olm.account.identity_keys
         )
         bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.olm.account.identity_keys
+            bob.user_id, bob.device_id, bob.olm.account.identity_keys
         )
 
         alice.olm.device_store.add(bob_device)
@@ -3771,7 +3650,7 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
             status=200,
-            payload=key_claim_dict
+            payload=key_claim_dict,
         )
 
         aioresponse.put(bob_to_device_url, payload={}, repeat=True)
@@ -3808,18 +3687,16 @@ class TestClass:
         assert alice.logged_in
         assert bob.logged_in
 
-        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await alice.receive_response(
+            self.synce_response_for(alice.user_id, bob.user_id)
+        )
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.olm.account.identity_keys
+            alice.user_id, alice.device_id, alice.olm.account.identity_keys
         )
         bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.olm.account.identity_keys
+            bob.user_id, bob.device_id, bob.olm.account.identity_keys
         )
 
         alice.olm.device_store.add(bob_device)
@@ -3865,13 +3742,11 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
             status=200,
-            payload=key_claim_dict
+            payload=key_claim_dict,
         )
 
-        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb,
-                        repeat=True)
-        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb,
-                        repeat=True)
+        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb, repeat=True)
+        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb, repeat=True)
 
         session = alice.olm.session_store.get(bob_device.curve25519)
         assert not session
@@ -3892,10 +3767,7 @@ class TestClass:
         # We deliberatly don't share the message with alice
         message = {
             "type": "m.room.message",
-            "content": {
-                "msgtype": "m.text",
-                "body": "It's a secret to everybody."
-            }
+            "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
         }
         encrypted_content = bob.olm.group_encrypt(TEST_ROOM_ID, message)
 
@@ -3905,13 +3777,13 @@ class TestClass:
             "sender": bob.user_id,
             "origin_server_ts": int(time.time()),
             "content": encrypted_content,
-            "room_id": TEST_ROOM_ID
+            "room_id": TEST_ROOM_ID,
         }
 
         aioresponse.get(
             sync_url,
             status=200,
-            payload=self.sync_with_room_event(encrypted_message, "3")
+            payload=self.sync_with_room_event(encrypted_message, "3"),
         )
 
         bob.invalidate_outbound_session(TEST_ROOM_ID)
@@ -3937,7 +3809,9 @@ class TestClass:
         to_device_for_bob = {
             "messages": {
                 bob_device.user_id: {
-                    bob_device.device_id: to_device_for_bob["messages"][alice_device.user_id]["*"]
+                    bob_device.device_id: to_device_for_bob["messages"][
+                        alice_device.user_id
+                    ]["*"]
                 }
             }
         }
@@ -3946,9 +3820,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.room_key_request"),
-                "4"
-            )
+                self.olm_message_to_event(
+                    to_device_for_bob, bob, alice, "m.room_key_request"
+                ),
+                "4",
+            ),
         )
 
         assert not bob.outgoing_to_device_messages
@@ -3971,18 +3847,16 @@ class TestClass:
         assert alice.logged_in
         assert bob.logged_in
 
-        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await alice.receive_response(
+            self.synce_response_for(alice.user_id, bob.user_id)
+        )
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.olm.account.identity_keys
+            alice.user_id, alice.device_id, alice.olm.account.identity_keys
         )
         bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.olm.account.identity_keys
+            bob.user_id, bob.device_id, bob.olm.account.identity_keys
         )
 
         alice.olm.device_store.add(bob_device)
@@ -4028,13 +3902,11 @@ class TestClass:
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
             status=200,
-            payload=key_claim_dict
+            payload=key_claim_dict,
         )
 
-        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb,
-                        repeat=True)
-        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb,
-                        repeat=True)
+        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb, repeat=True)
+        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb, repeat=True)
 
         session = alice.olm.session_store.get(bob_device.curve25519)
         assert not session
@@ -4055,9 +3927,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_alice, alice, bob, "m.key.verification.start"),
-                "4"
-            )
+                self.olm_message_to_event(
+                    to_device_for_alice, alice, bob, "m.key.verification.start"
+                ),
+                "4",
+            ),
         )
         assert not alice.key_verifications
         await alice.sync()
@@ -4073,9 +3947,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.key.verification.accept"),
-                "5"
-            )
+                self.olm_message_to_event(
+                    to_device_for_bob, bob, alice, "m.key.verification.accept"
+                ),
+                "5",
+            ),
         )
 
         to_device_for_alice = None
@@ -4091,9 +3967,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_alice, alice, bob, "m.key.verification.key"),
-                "6"
-            )
+                self.olm_message_to_event(
+                    to_device_for_alice, alice, bob, "m.key.verification.key"
+                ),
+                "6",
+            ),
         )
 
         assert not bob.outgoing_to_device_messages
@@ -4105,9 +3983,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.key.verification.key"),
-                "7"
-            )
+                self.olm_message_to_event(
+                    to_device_for_bob, bob, alice, "m.key.verification.key"
+                ),
+                "7",
+            ),
         )
 
         await bob.sync()
@@ -4126,9 +4006,11 @@ class TestClass:
             sync_url,
             status=200,
             payload=self.sync_with_to_device_events(
-                self.olm_message_to_event(to_device_for_bob, bob, alice, "m.key.verification.cancel"),
-                "8"
-            )
+                self.olm_message_to_event(
+                    to_device_for_bob, bob, alice, "m.key.verification.cancel"
+                ),
+                "8",
+            ),
         )
 
         await bob.sync()
@@ -4145,7 +4027,9 @@ class TestClass:
         assert alice.logged_in
         assert bob.logged_in
 
-        await alice.receive_response(self.synce_response_for(alice.user_id, bob.user_id))
+        await alice.receive_response(
+            self.synce_response_for(alice.user_id, bob.user_id)
+        )
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
 
         cb_ran = False
@@ -4159,14 +4043,10 @@ class TestClass:
         alice.add_event_callback(alice_event_cb, (RoomMessageText, MegolmEvent))
 
         alice_device = OlmDevice(
-            alice.user_id,
-            alice.device_id,
-            alice.olm.account.identity_keys
+            alice.user_id, alice.device_id, alice.olm.account.identity_keys
         )
         bob_device = OlmDevice(
-            bob.user_id,
-            bob.device_id,
-            bob.olm.account.identity_keys
+            bob.user_id, bob.device_id, bob.olm.account.identity_keys
         )
 
         alice.olm.device_store.add(bob_device)
@@ -4201,7 +4081,9 @@ class TestClass:
         )
 
         bob_room_send_url = re.compile(
-            r"https://example\.org/_matrix/client/r0/rooms/{}/send/m\.room\.encrypted/[0-9]\?access_token=bob_1234".format(TEST_ROOM_ID),
+            r"https://example\.org/_matrix/client/r0/rooms/{}/send/m\.room\.encrypted/[0-9]\?access_token=bob_1234".format(
+                TEST_ROOM_ID
+            ),
         )
 
         def alice_to_device_cb(url, data, **kwargs):
@@ -4223,29 +4105,25 @@ class TestClass:
             f"https://example.org/_matrix/client/r0/rooms/{TEST_ROOM_ID}/"
             f"joined_members?access_token=bob_1234",
             status=200,
-            payload=self.joined_members_response
+            payload=self.joined_members_response,
         )
 
         aioresponse.post(
-            "https://example.org/_matrix/client/r0/keys/query?"
-            "access_token=bob_1234",
+            "https://example.org/_matrix/client/r0/keys/query?" "access_token=bob_1234",
             status=200,
-            payload=self.keys_query_response
+            payload=self.keys_query_response,
         )
 
         aioresponse.post(
             "https://example.org/_matrix/client/r0/keys/claim?access_token=bob_1234",
             status=200,
-            payload=key_claim_dict
+            payload=key_claim_dict,
         )
 
-        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb,
-                        repeat=True)
-        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb,
-                        repeat=True)
+        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb, repeat=True)
+        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb, repeat=True)
 
-        aioresponse.put(bob_room_send_url, callback=alice_room_send_cb,
-                        repeat=True)
+        aioresponse.put(bob_room_send_url, callback=alice_room_send_cb, repeat=True)
 
         session = alice.olm.session_store.get(bob_device.curve25519)
         assert not session
@@ -4253,12 +4131,9 @@ class TestClass:
         await bob.room_send(
             TEST_ROOM_ID,
             "m.room.message",
-            {
-                "msgtype": "m.text",
-                "body": "It's a secret to everybody."
-            },
+            {"msgtype": "m.text", "body": "It's a secret to everybody."},
             "1",
-            ignore_unverified_devices=True
+            ignore_unverified_devices=True,
         )
 
         group_session = bob.olm.outbound_group_sessions[TEST_ROOM_ID]
@@ -4270,7 +4145,7 @@ class TestClass:
             status=200,
             payload=self.sync_with_to_device_events(
                 self.olm_message_to_event(to_device_for_alice, alice, bob)
-            )
+            ),
         )
 
         # Run a sync for Alice, the sync will now contain the to-device message
@@ -4283,9 +4158,7 @@ class TestClass:
 
         # Check that we successfully received the group session as well.
         alice_group_session = alice.olm.inbound_group_store.get(
-            TEST_ROOM_ID,
-            bob_device.curve25519,
-            group_session.id
+            TEST_ROOM_ID, bob_device.curve25519, group_session.id
         )
         assert alice_group_session.id == group_session.id
 
@@ -4295,13 +4168,13 @@ class TestClass:
             "sender": bob.user_id,
             "origin_server_ts": int(time.time()),
             "content": room_event_for_alice,
-            "room_id": TEST_ROOM_ID
+            "room_id": TEST_ROOM_ID,
         }
 
         aioresponse.get(
             sync_url,
             status=200,
-            payload=self.sync_with_room_event(encrypted_message, "3")
+            payload=self.sync_with_room_event(encrypted_message, "3"),
         )
 
         response = await alice.sync()
@@ -4319,19 +4192,17 @@ class TestClass:
         domain = "https://example.org"
 
         aioresponse.post(
-            f"{domain}/_matrix/client/r0/login",
-            status=200,
-            payload=self.login_response
+            f"{domain}/_matrix/client/r0/login", status=200, payload=self.login_response
         )
         await async_client.login("wordpass")
 
         assert async_client.client_session
 
         conn = await connect_wrapper(
-            self    = async_client.client_session.connector,
-            req     = ClientRequest(method="GET", url=URL(domain)),
-            traces  = [],
-            timeout = ClientTimeout(),
+            self=async_client.client_session.connector,
+            req=ClientRequest(method="GET", url=URL(domain)),
+            traces=[],
+            timeout=ClientTimeout(),
         )
 
         # Using conn.transport.get_write_buffer_limits() directly raises
@@ -4353,9 +4224,9 @@ class TestClass:
         )
 
         resp = await async_client.upload_filter(
-            event_fields = ["content.body"],
-            event_format = EventFormat.federation,
-            room = {"timeline": { "limit": 1 }},
+            event_fields=["content.body"],
+            event_format=EventFormat.federation,
+            room={"timeline": {"limit": 1}},
         )
         assert isinstance(resp, UploadFilterResponse)
         assert resp.filter_id == "abc123"
@@ -4409,7 +4280,9 @@ class TestClass:
         )
 
         resp = await async_client.set_pushrule(
-            *override, before="ov1", conditions=[PushContainsDisplayName()],
+            *override,
+            before="ov1",
+            conditions=[PushContainsDisplayName()],
         )
         assert isinstance(resp, SetPushRuleResponse)
 
@@ -4423,7 +4296,10 @@ class TestClass:
         )
 
         resp = await async_client.set_pushrule(
-            *override, after="ov1", actions=[PushNotify()], conditions=[],
+            *override,
+            after="ov1",
+            actions=[PushNotify()],
+            conditions=[],
         )
         assert isinstance(resp, SetPushRuleResponse)
 
@@ -4461,7 +4337,9 @@ class TestClass:
         )
 
         resp = await async_client.delete_pushrule(
-            "global", PushRuleKind.override, "foo",
+            "global",
+            PushRuleKind.override,
+            "foo",
         )
         assert isinstance(resp, DeletePushRuleResponse)
 
@@ -4480,7 +4358,10 @@ class TestClass:
         )
 
         resp = await async_client.enable_pushrule(
-            "global", PushRuleKind.override, "foo", enable=True,
+            "global",
+            PushRuleKind.override,
+            "foo",
+            enable=True,
         )
         assert isinstance(resp, EnablePushRuleResponse)
 
@@ -4500,6 +4381,9 @@ class TestClass:
 
         tweak = PushSetTweak("highlight", True)
         resp = await async_client.set_pushrule_actions(
-            "global", PushRuleKind.override, "foo", [tweak],
+            "global",
+            PushRuleKind.override,
+            "foo",
+            [tweak],
         )
         assert isinstance(resp, SetPushRuleActionsResponse)

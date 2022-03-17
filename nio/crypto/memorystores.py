@@ -15,7 +15,8 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from collections import defaultdict
-from typing import DefaultDict, Dict, Iterator, List, Optional, KeysView
+from typing import DefaultDict, Dict, Iterator, KeysView, List, Optional
+
 from .sessions import InboundGroupSession, Session
 
 
@@ -71,11 +72,15 @@ class GroupSessionStore:
         self._entries[room_id][sender_key][session.id] = session
         return True
 
-    def get(self, room_id: str, sender_key: str, session_id: str) -> Optional[InboundGroupSession]:
+    def get(
+        self, room_id: str, sender_key: str, session_id: str
+    ) -> Optional[InboundGroupSession]:
         if session_id in self._entries[room_id][sender_key]:
             return self._entries[room_id][sender_key][session_id]
 
         return None
 
-    def __getitem__(self, room_id: str) -> DefaultDict[str, Dict[str, InboundGroupSession]]:
+    def __getitem__(
+        self, room_id: str
+    ) -> DefaultDict[str, Dict[str, InboundGroupSession]]:
         return self._entries[room_id]

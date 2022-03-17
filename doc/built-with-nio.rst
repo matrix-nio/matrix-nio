@@ -20,4 +20,3 @@ Projects built with nio
 - `pushmatrix <https://github.com/bonukai/pushmatrix>`_
 
 Are we missing a project? Submit a pull request and we'll get you added! Just edit ``doc/built-with-nio.rst``
-

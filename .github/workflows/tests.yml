@@ -18,7 +18,7 @@ jobs:
       - name: Lint with isort
         run: |
           pip install isort
-          isort --check .
+          isort --check --profile=black .
 
   build:
 

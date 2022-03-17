@@ -91,18 +91,14 @@ class HttpRequest(TransportRequest):
         if data:
             headers.append(("Content-Type", "application/json"))
 
-            headers.append(
-                ("Content-length", "{length}".format(length=len(data)))
-            )
+            headers.append(("Content-length", "{length}".format(length=len(data))))
 
         return headers
 
     @classmethod
     def _post_or_put(cls, method, host, target, data, timeout=0):
         request_data = (
-            json.dumps(data, separators=(",", ":"))
-            if isinstance(data, dict)
-            else data
+            json.dumps(data, separators=(",", ":")) if isinstance(data, dict) else data
         )
 
         request_data = bytes(request_data, "utf-8")
@@ -149,18 +145,14 @@ class Http2Request(TransportRequest):
         if data:
             headers.append(("content-type", "application/json"))
 
-            headers.append(
-                ("content-length", "{length}".format(length=len(data)))
-            )
+            headers.append(("content-length", "{length}".format(length=len(data))))
 
         return headers
 
     @classmethod
     def _post_or_put(cls, method, host, target, data, timeout):
         request_data = (
-            json.dumps(data, separators=(",", ":"))
-            if isinstance(data, dict)
-            else data
+            json.dumps(data, separators=(",", ":")) if isinstance(data, dict) else data
         )
 
         request_data = bytes(request_data, "utf-8")
@@ -184,7 +176,9 @@ class Http2Request(TransportRequest):
     @classmethod
     def get(cls, host, target, timeout=0):
         request = Http2Request._request(
-            method="GET", target=target, headers=Http2Request._headers(host),
+            method="GET",
+            target=target,
+            headers=Http2Request._headers(host),
         )
 
         return cls(request, timeout=timeout)
@@ -340,10 +334,7 @@ class HttpConnection(Connection):
         if not isinstance(request, HttpRequest):
             raise TypeError("Invalid request type for HttpConnection")
 
-        if (
-            self._connection.our_state == h11.IDLE
-            and not self._current_response
-        ):
+        if self._connection.our_state == h11.IDLE and not self._current_response:
             data = data + self._connection.send(request._request)
 
             if request._data:
@@ -407,10 +398,8 @@ class Http2Connection(Connection):
         )
         self._connection = h2.connection.H2Connection(config=config)
         self._connection.max_inbound_frame_size = 64 * 1024
-        self._responses = OrderedDict()  \
-            # type: OrderedDict[int, Http2Response]
-        self._data_to_send = OrderedDict() \
-            # type: OrderedDict[int, bytes]
+        self._responses = OrderedDict()  # type: OrderedDict[int, Http2Response]
+        self._data_to_send = OrderedDict()  # type: OrderedDict[int, bytes]
 
     @property
     def elapsed(self):
@@ -429,20 +418,14 @@ class Http2Connection(Connection):
         # The window changed for a single stream and the stream contains some
         # data to send, send it out now.
         if event.stream_id in self._data_to_send:
-            self._send_data(
-                event.stream_id,
-                self._data_to_send[event.stream_id]
-            )
+            self._send_data(event.stream_id, self._data_to_send[event.stream_id])
             return
 
         # The window changed for the whole connection, try to send out data for
         # every stream we have some data buffered.
         if event.stream_id == 0:
             for stream_id, data in self._data_to_send.items():
-                self._send_data(
-                    stream_id,
-                    data
-                )
+                self._send_data(stream_id, data)
 
     def _send_data(self, stream_id, data):
         window_size = self._connection.local_flow_control_window(stream_id)
@@ -450,13 +433,12 @@ class Http2Connection(Connection):
         request_size = len(data)
 
         bytes_to_send = min(window_size, request_size)
-        logger.debug("Sending data: stream id: {}; request size: {}; "
-                     "window size: {}; max frame size {}".format(
-                         stream_id,
-                         request_size,
-                         window_size,
-                         max_frame_size
-                     ))
+        logger.debug(
+            "Sending data: stream id: {}; request size: {}; "
+            "window size: {}; max frame size {}".format(
+                stream_id, request_size, window_size, max_frame_size
+            )
+        )
 
         while bytes_to_send > 0:
             chunk_size = min(bytes_to_send, max_frame_size)
@@ -464,10 +446,7 @@ class Http2Connection(Connection):
             if chunk_size >= len(data):
                 chunk, data = data, ""
             else:
-                chunk, data = (
-                    data[0:chunk_size],
-                    data[chunk_size:]
-                )
+                chunk, data = (data[0:chunk_size], data[chunk_size:])
 
             bytes_to_send -= chunk_size
             self._connection.send_data(stream_id, chunk)

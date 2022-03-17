@@ -58,10 +58,10 @@ up a bit.
 
 This example requires that the user running it has write permissions to the
 folder they're in. If you copied this repo to your computer, you probably have
-write permissions. Now run the program `restore_login.py` twice. 
-First time around it will ask 
+write permissions. Now run the program `restore_login.py` twice.
+First time around it will ask
 you for credentials like homeserver and password. On the second run, the
-program will log in for you automatically and it will send a "Hello World" 
+program will log in for you automatically and it will send a "Hello World"
 message to the room you specify.
 
 .. literalinclude:: ../examples/restore_login.py
@@ -72,8 +72,8 @@ message to the room you specify.
 Sending an image
 ----------------------------------
 Now that you have sent a first "Hello World" text message, how about
-going one step further and sending an image, like a photo from your last 
-vacation. Run the `send_image.py` program and provide a filename to 
+going one step further and sending an image, like a photo from your last
+vacation. Run the `send_image.py` program and provide a filename to
 the photo. Voila, you have just sent your first image!
 
 .. literalinclude:: ../examples/send_image.py
@@ -147,14 +147,14 @@ One way to interactively verify a device is via emojis. On popular Matrix
 clients you will find that devices are flagged as `trusted` or `untrusted`.
 If a device is `untrusted` you can verify to make it `trusted`. Most
 clients have a red symbol for `untrusted` and a green icon for `trusted`.
-One can select un untrusted device and initiate a `verify by emoji` 
+One can select un untrusted device and initiate a `verify by emoji`
 action. How would that look like in code? How can you add that to your
 application? Next we present a simple application that showcases
 emoji verification. Note, the app only accepts emoji verification. So,
 you have to start it on the other client (e.g. Element). Initiating an
 emoji verification is similar in code, consider doing it as "homework"
 if you feel up to it. But for now, let's have a look how emoji verification
-can be accepted and processed. 
+can be accepted and processed.
 
 .. literalinclude:: ../examples/verify_with_emoji.py
     :language: python
@@ -166,7 +166,7 @@ Further reading and exploration
 
 In an external repo, not maintained by us, is a simple Matix client
 that includes sending, receiving and verification. It gives an example
-of 
+of
 
 - how to send text, images, audio, video, other text files
 - listen to messages forever
@@ -175,10 +175,9 @@ of
 - perform emoji verification
 - etc.
 
-So, if you want more example code and want to explore further have a 
+So, if you want more example code and want to explore further have a
 look at this external repo called
 `matrix-commander <https://github.com/8go/matrix-commander>`_.
 And of course, you should check out all the other projects built
-with `matrix-nio`. To do so, check out our 
+with `matrix-nio`. To do so, check out our
 `built-with-marix-nio list <https://github.com/poljar/matrix-nio/blob/master/doc/built-with-nio.rst>`_.
-

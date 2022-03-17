@@ -1,7 +1,7 @@
 import pytest
+from aioresponses import aioresponses
 
 from nio import AsyncClient, AsyncClientConfig, LoginResponse
-from aioresponses import aioresponses
 
 
 @pytest.fixture
@@ -11,7 +11,7 @@ async def async_client(tempdir, loop):
         "ephemeral",
         "DEVICEID",
         tempdir,
-        config = AsyncClientConfig(max_timeouts=3),
+        config=AsyncClientConfig(max_timeouts=3),
     )
     yield client
 
@@ -28,10 +28,18 @@ async def async_client_pair(tempdir, loop):
 
     config = AsyncClientConfig(max_timeouts=3)
     alice = AsyncClient(
-        "https://example.org", ALICE_ID, ALICE_DEVICE, tempdir, config=config,
+        "https://example.org",
+        ALICE_ID,
+        ALICE_DEVICE,
+        tempdir,
+        config=config,
     )
     bob = AsyncClient(
-        "https://example.org", BOB_ID, BOB_DEVICE, tempdir, config=config,
+        "https://example.org",
+        BOB_ID,
+        BOB_DEVICE,
+        tempdir,
+        config=config,
     )
 
     await alice.receive_response(LoginResponse(ALICE_ID, ALICE_DEVICE, "alice_1234"))

@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
 import asyncio
+import getpass
 import json
 import os
 import sys
-import getpass
-from PIL import Image
+
 import aiofiles.os
 import magic
+from PIL import Image
 
 from nio import AsyncClient, LoginResponse, UploadResponse
 
@@ -32,9 +33,9 @@ def write_details_to_disk(resp: LoginResponse, homeserver) -> None:
                 "homeserver": homeserver,  # e.g. "https://matrix.example.org"
                 "user_id": resp.user_id,  # e.g. "@user:example.org"
                 "device_id": resp.device_id,  # device ID, 10 uppercase letters
-                "access_token": resp.access_token  # cryptogr. access token
+                "access_token": resp.access_token,  # cryptogr. access token
             },
-            f
+            f,
         )
 
 
@@ -83,8 +84,9 @@ async def send_image(client, room_id, image):
             f,
             content_type=mime_type,  # image/jpeg
             filename=os.path.basename(image),
-            filesize=file_stat.st_size)
-    if (isinstance(resp, UploadResponse)):
+            filesize=file_stat.st_size,
+        )
+    if isinstance(resp, UploadResponse):
         print("Image was uploaded successfully to server. ")
     else:
         print(f"Failed to upload image. Failure response: {resp}")
@@ -104,11 +106,7 @@ async def send_image(client, room_id, image):
     }
 
     try:
-        await client.room_send(
-            room_id,
-            message_type="m.room.message",
-            content=content
-        )
+        await client.room_send(room_id, message_type="m.room.message", content=content)
         print("Image was sent successfully")
     except Exception:
         print(f"Image send of file {image} failed.")
@@ -117,13 +115,14 @@ async def send_image(client, room_id, image):
 async def main() -> None:
     # If there are no previously-saved credentials, we'll use the password
     if not os.path.exists(CONFIG_FILE):
-        print("First time use. Did not find credential file. Asking for "
-              "homeserver, user, and password to create credential file.")
+        print(
+            "First time use. Did not find credential file. Asking for "
+            "homeserver, user, and password to create credential file."
+        )
         homeserver = "https://matrix.example.org"
         homeserver = input(f"Enter your homeserver URL: [{homeserver}] ")
 
-        if not (homeserver.startswith("https://")
-                or homeserver.startswith("http://")):
+        if not (homeserver.startswith("https://") or homeserver.startswith("http://")):
             homeserver = "https://" + homeserver
 
         user_id = "@user:example.org"
@@ -138,16 +137,16 @@ async def main() -> None:
         resp = await client.login(pw, device_name=device_name)
 
         # check that we logged in succesfully
-        if (isinstance(resp, LoginResponse)):
+        if isinstance(resp, LoginResponse):
             write_details_to_disk(resp, homeserver)
         else:
-            print(f"homeserver = \"{homeserver}\"; user = \"{user_id}\"")
+            print(f'homeserver = "{homeserver}"; user = "{user_id}"')
             print(f"Failed to log in: {resp}")
             sys.exit(1)
 
         print(
             "Logged in using a password. Credentials were stored.",
-            "Try running the script again to login with credentials."
+            "Try running the script again to login with credentials.",
         )
 
     # Otherwise the config file exists, so we'll use the stored credentials
@@ -155,11 +154,11 @@ async def main() -> None:
         # open the file in read-only mode
         with open(CONFIG_FILE, "r") as f:
             config = json.load(f)
-            client = AsyncClient(config['homeserver'])
+            client = AsyncClient(config["homeserver"])
 
-            client.access_token = config['access_token']
-            client.user_id = config['user_id']
-            client.device_id = config['device_id']
+            client.access_token = config["access_token"]
+            client.user_id = config["user_id"]
+            client.device_id = config["device_id"]
 
         # Now we can send messages as the user
         room_id = "!myfavouriteroomid:example.org"
@@ -173,5 +172,6 @@ async def main() -> None:
 
     # Close the client connection after we are done with it.
     await client.close()
+
 
 asyncio.get_event_loop().run_until_complete(main())

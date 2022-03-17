@@ -14,15 +14,14 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from dataclasses import dataclass, field
 from typing import Optional
 
-from dataclasses import dataclass, field
 from logbook import Logger
-
-from .misc import verify
 
 from ..log import logger_group
 from ..schemas import Schemas
+from .misc import verify
 
 logger = Logger("nio.events")
 logger_group.add_logger(logger)

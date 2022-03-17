@@ -13,10 +13,19 @@ from string import ascii_letters, ascii_uppercase
 from faker import Faker
 from faker.providers import BaseProvider
 from hpack.hpack import Encoder
-from hyperframe.frame import (AltSvcFrame, ContinuationFrame, DataFrame,
-                              GoAwayFrame, HeadersFrame, PingFrame,
-                              PriorityFrame, PushPromiseFrame, RstStreamFrame,
-                              SettingsFrame, WindowUpdateFrame)
+from hyperframe.frame import (
+    AltSvcFrame,
+    ContinuationFrame,
+    DataFrame,
+    GoAwayFrame,
+    HeadersFrame,
+    PingFrame,
+    PriorityFrame,
+    PushPromiseFrame,
+    RstStreamFrame,
+    SettingsFrame,
+    WindowUpdateFrame,
+)
 
 from nio.crypto import OlmAccount, OlmDevice
 from nio.store import Ed25519Key
@@ -30,14 +39,14 @@ SAMPLE_SETTINGS = {
 
 faker = Faker()
 
+
 class Provider(BaseProvider):
     def mx_id(self):
         return "@{}:{}".format(faker.user_name(), faker.hostname())
 
     def avatar_url(self):
         return "mxc://{}/{}#auto".format(
-            faker.hostname(),
-            "".join(choice(ascii_letters) for i in range(24))
+            faker.hostname(), "".join(choice(ascii_letters) for i in range(24))
         )
 
     def device_id(self):
@@ -59,9 +68,7 @@ class Provider(BaseProvider):
 
     def ed25519_key(self):
         return Ed25519Key(
-            faker.mx_id(),
-            faker.device_id(),
-            faker.olm_key_pair()["ed25519"]
+            faker.mx_id(), faker.device_id(), faker.olm_key_pair()["ed25519"]
         )
 
 
@@ -76,11 +83,9 @@ def ephemeral(func):
         try:
             ret = func(*args, **kwargs)
         finally:
-            os.remove(os.path.join(
-                ephemeral_dir,
-                "@ephemeral:example.org_DEVICEID.db"
-            ))
+            os.remove(os.path.join(ephemeral_dir, "@ephemeral:example.org_DEVICEID.db"))
         return ret
+
     return wrapper
 
 
@@ -90,6 +95,7 @@ class FrameFactory:
     allows test cases to easily build correct HTTP/2 frames to feed to
     hyper-h2.
     """
+
     def __init__(self):
         self.encoder = Encoder()
 
@@ -97,19 +103,15 @@ class FrameFactory:
         self.encoder = Encoder()
 
     def preamble(self):
-        return b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'
+        return b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
-    def build_headers_frame(self,
-                            headers,
-                            flags=[],
-                            stream_id=1,
-                            **priority_kwargs):
+    def build_headers_frame(self, headers, flags=[], stream_id=1, **priority_kwargs):
         """
         Builds a single valid headers frame out of the contained headers.
         """
         f = HeadersFrame(stream_id)
         f.data = self.encoder.encode(headers)
-        f.flags.add('END_HEADERS')
+        f.flags.add("END_HEADERS")
         for flag in flags:
             f.flags.add(flag)
 
@@ -138,7 +140,7 @@ class FrameFactory:
         f.flags = flags
 
         if padding_len:
-            flags.add('PADDED')
+            flags.add("PADDED")
             f.pad_length = padding_len
 
         return f
@@ -149,7 +151,7 @@ class FrameFactory:
         """
         f = SettingsFrame(0)
         if ack:
-            f.flags.add('ACK')
+            f.flags.add("ACK")
 
         f.settings = settings
         return f
@@ -173,10 +175,7 @@ class FrameFactory:
 
         return f
 
-    def build_goaway_frame(self,
-                           last_stream_id,
-                           error_code=0,
-                           additional_data=b''):
+    def build_goaway_frame(self, last_stream_id, error_code=0, additional_data=b""):
         """
         Builds a single GOAWAY frame.
         """
@@ -194,11 +193,9 @@ class FrameFactory:
         f.error_code = error_code
         return f
 
-    def build_push_promise_frame(self,
-                                 stream_id,
-                                 promised_stream_id,
-                                 headers,
-                                 flags=[]):
+    def build_push_promise_frame(
+        self, stream_id, promised_stream_id, headers, flags=[]
+    ):
         """
         Builds a single PUSH_PROMISE frame.
         """
@@ -206,14 +203,10 @@ class FrameFactory:
         f.promised_stream_id = promised_stream_id
         f.data = self.encoder.encode(headers)
         f.flags = set(flags)
-        f.flags.add('END_HEADERS')
+        f.flags.add("END_HEADERS")
         return f
 
-    def build_priority_frame(self,
-                             stream_id,
-                             weight,
-                             depends_on=0,
-                             exclusive=False):
+    def build_priority_frame(self, stream_id, weight, depends_on=0, exclusive=False):
         """
         Builds a single priority frame.
         """

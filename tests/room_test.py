@@ -15,20 +15,31 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import pytest
-
 from helpers import faker
-from nio.events import (InviteAliasEvent, InviteMemberEvent, InviteNameEvent,
-                        RoomAvatarEvent,
-                        RoomCreateEvent, RoomGuestAccessEvent,
-                        RoomHistoryVisibilityEvent, RoomJoinRulesEvent,
-                        RoomMemberEvent, RoomNameEvent, TypingNoticeEvent,
-                        Receipt, ReceiptEvent, RoomUpgradeEvent)
+
+from nio.events import (
+    InviteAliasEvent,
+    InviteMemberEvent,
+    InviteNameEvent,
+    Receipt,
+    ReceiptEvent,
+    RoomAvatarEvent,
+    RoomCreateEvent,
+    RoomGuestAccessEvent,
+    RoomHistoryVisibilityEvent,
+    RoomJoinRulesEvent,
+    RoomMemberEvent,
+    RoomNameEvent,
+    RoomUpgradeEvent,
+    TypingNoticeEvent,
+)
 from nio.responses import RoomSummary
 from nio.rooms import MatrixInvitedRoom, MatrixRoom
 
 TEST_ROOM = "!test:example.org"
 BOB_ID = "@bob:example.org"
 ALICE_ID = "@alice:example.org"
+
 
 class TestClass:
     def _create_test_data(self):
@@ -120,47 +131,59 @@ class TestClass:
         room.add_member("@malory:example.org", "Alice", None)
         room.summary.heroes.append("@malory:example.org")
         room.summary.joined_member_count += 1
-        assert (room.display_name ==
-                "Alice (@alice:example.org) and Alice (@malory:example.org)")
+        assert (
+            room.display_name
+            == "Alice (@alice:example.org) and Alice (@malory:example.org)"
+        )
 
         room.add_member("@steve:example.org", "Steve", None)
         room.summary.heroes.append("@steve:example.org")
         room.summary.joined_member_count += 1
-        assert (room.display_name ==
-                "Alice (@alice:example.org), Alice (@malory:example.org) "
-                "and Steve")
+        assert (
+            room.display_name
+            == "Alice (@alice:example.org), Alice (@malory:example.org) "
+            "and Steve"
+        )
 
         room.add_member("@carol:example.org", "Carol", None)
         room.summary.joined_member_count += 1
-        assert (room.display_name ==
-                "Alice (@alice:example.org), Alice (@malory:example.org), "
-                "Steve and 1 other")
+        assert (
+            room.display_name
+            == "Alice (@alice:example.org), Alice (@malory:example.org), "
+            "Steve and 1 other"
+        )
 
         room.add_member("@dave:example.org", "Dave", None)
         room.summary.joined_member_count += 1
-        assert (room.display_name ==
-                "Alice (@alice:example.org), Alice (@malory:example.org), "
-                "Steve and 2 others")
+        assert (
+            room.display_name
+            == "Alice (@alice:example.org), Alice (@malory:example.org), "
+            "Steve and 2 others"
+        )
 
         room.add_member("@erin:example.org", "Eirin", None)
         room.summary.invited_member_count += 1
-        assert (room.display_name ==
-                "Alice (@alice:example.org), Alice (@malory:example.org), "
-                "Steve and 3 others")
+        assert (
+            room.display_name
+            == "Alice (@alice:example.org), Alice (@malory:example.org), "
+            "Steve and 3 others"
+        )
 
         # Members leave
 
         room.summary.joined_member_count = 1
         room.summary.invited_member_count = 0
-        assert (room.display_name ==
-                "Empty Room (had Alice (@alice:example.org), "
-                "Alice (@malory:example.org) and Steve)")
+        assert (
+            room.display_name == "Empty Room (had Alice (@alice:example.org), "
+            "Alice (@malory:example.org) and Steve)"
+        )
 
         room.remove_member("@steve:example.org")
         room.summary.heroes.remove("@steve:example.org")
-        assert (room.display_name ==
-                "Empty Room (had Alice (@alice:example.org) and "
-                "Alice (@malory:example.org))")
+        assert (
+            room.display_name == "Empty Room (had Alice (@alice:example.org) and "
+            "Alice (@malory:example.org))"
+        )
 
         room.remove_member("@malory:example.org")
         room.summary.heroes.remove("@malory:example.org")
@@ -189,30 +212,40 @@ class TestClass:
         assert room.display_name == "Alice"
 
         room.add_member("@malory:example.org", "Alice", None)
-        assert (room.display_name ==
-                "Alice (@alice:example.org) and Alice (@malory:example.org)")
+        assert (
+            room.display_name
+            == "Alice (@alice:example.org) and Alice (@malory:example.org)"
+        )
 
         room.add_member("@steve:example.org", "Steve", None)
         room.add_member("@carol:example.org", "Carol", None)
         room.add_member("@dave:example.org", "Dave", None)
-        assert (room.display_name ==
-                "Alice (@alice:example.org), Alice (@malory:example.org), "
-                "Carol, Dave and Steve")
+        assert (
+            room.display_name
+            == "Alice (@alice:example.org), Alice (@malory:example.org), "
+            "Carol, Dave and Steve"
+        )
 
         room.add_member("@erin:example.org", "Eirin", None)
-        assert (room.display_name ==
-                "Alice (@alice:example.org), Alice (@malory:example.org), "
-                "Carol, Dave, Eirin and 1 other")
+        assert (
+            room.display_name
+            == "Alice (@alice:example.org), Alice (@malory:example.org), "
+            "Carol, Dave, Eirin and 1 other"
+        )
 
         room.add_member("@frank:example.org", "Frank", None)
-        assert (room.display_name ==
-                "Alice (@alice:example.org), Alice (@malory:example.org), "
-                "Carol, Dave, Eirin and 2 others")
+        assert (
+            room.display_name
+            == "Alice (@alice:example.org), Alice (@malory:example.org), "
+            "Carol, Dave, Eirin and 2 others"
+        )
 
         room.add_member("@gregor:example.org", "Gregor", None)
-        assert (room.display_name ==
-                "Alice (@alice:example.org), Alice (@malory:example.org), "
-                "Carol, Dave, Eirin and 3 others")
+        assert (
+            room.display_name
+            == "Alice (@alice:example.org), Alice (@malory:example.org), "
+            "Carol, Dave, Eirin and 3 others"
+        )
 
         # Members leave
 
@@ -307,7 +340,10 @@ class TestClass:
         room.add_member("@malory:example.org", "Alice", None)
         assert room.user_name("@alice:example.org") == "Alice (@alice:example.org)"
         assert room.user_name("@malory:example.org") == "Alice (@malory:example.org)"
-        assert room.user_name_clashes("Alice") == ["@alice:example.org", "@malory:example.org"]
+        assert room.user_name_clashes("Alice") == [
+            "@alice:example.org",
+            "@malory:example.org",
+        ]
 
         room.remove_member("@alice:example.org")
         assert room.user_name("@malory:example.org") == "Alice"
@@ -319,8 +355,14 @@ class TestClass:
 
         room.add_member("@malory:example.org", "@alice:example.org", None)
         assert room.user_name("@alice:example.org") == "@alice:example.org"
-        assert room.user_name("@malory:example.org") == "@alice:example.org (@malory:example.org)"
-        assert room.user_name_clashes("@alice:example.org") == ["@alice:example.org", "@malory:example.org"]
+        assert (
+            room.user_name("@malory:example.org")
+            == "@alice:example.org (@malory:example.org)"
+        )
+        assert room.user_name_clashes("@alice:example.org") == [
+            "@alice:example.org",
+            "@malory:example.org",
+        ]
 
     def test_avatar_url(self):
         room = self.test_room
@@ -359,14 +401,10 @@ class TestClass:
         r2_event = ReceiptEvent([r2])
 
         room.handle_ephemeral_event(r1_event)
-        assert room.read_receipts == {
-            BOB_ID: r1
-        }
+        assert room.read_receipts == {BOB_ID: r1}
 
         room.handle_ephemeral_event(r2_event)
-        assert room.read_receipts == {
-            BOB_ID: r2
-        }
+        assert room.read_receipts == {BOB_ID: r2}
 
     def test_non_read_receipt_event(self):
         """Verify that non-m.read receipts don't leak into a room's read_receipt
@@ -374,9 +412,7 @@ class TestClass:
         """
         room = self.test_room
         room.handle_ephemeral_event(
-            ReceiptEvent([
-                Receipt("event_id", "m.downvoted", BOB_ID, 0)
-            ])
+            ReceiptEvent([Receipt("event_id", "m.downvoted", BOB_ID, 0)])
         )
         assert room.read_receipts == {}
 
@@ -384,14 +420,11 @@ class TestClass:
         room = self.test_room
         assert not room.creator
         room.handle_event(
-                RoomCreateEvent(
-                    {
-                        "event_id": "event_id",
-                        "sender": BOB_ID,
-                        "origin_server_ts": 0
-                    },
-                    BOB_ID, False
-                )
+            RoomCreateEvent(
+                {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
+                BOB_ID,
+                False,
+            )
         )
         assert room.creator == BOB_ID
         assert room.federate is False
@@ -402,12 +435,8 @@ class TestClass:
         assert room.guest_access == "forbidden"
         room.handle_event(
             RoomGuestAccessEvent(
-                {
-                    "event_id": "event_id",
-                    "sender": BOB_ID,
-                    "origin_server_ts": 0
-                },
-                "can_join"
+                {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
+                "can_join",
             )
         )
         assert room.guest_access == "can_join"
@@ -417,12 +446,8 @@ class TestClass:
         assert room.history_visibility == "shared"
         room.handle_event(
             RoomHistoryVisibilityEvent(
-                {
-                    "event_id": "event_id",
-                    "sender": BOB_ID,
-                    "origin_server_ts": 0
-                },
-                "invited"
+                {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
+                "invited",
             )
         )
         assert room.history_visibility == "invited"
@@ -432,12 +457,8 @@ class TestClass:
         assert room.join_rule == "invite"
         room.handle_event(
             RoomJoinRulesEvent(
-                {
-                    "event_id": "event_id",
-                    "sender": BOB_ID,
-                    "origin_server_ts": 0
-                },
-                "public"
+                {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
+                "public",
             )
         )
         assert room.join_rule == "public"
@@ -447,12 +468,8 @@ class TestClass:
         assert not room.name
         room.handle_event(
             RoomNameEvent(
-                {
-                    "event_id": "event_id",
-                    "sender": BOB_ID,
-                    "origin_server_ts": 0
-                },
-                "test name"
+                {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
+                "test name",
             )
         )
         assert room.name == "test name"
@@ -462,12 +479,8 @@ class TestClass:
         assert not room.gen_avatar_url
         room.handle_event(
             RoomAvatarEvent(
-                {
-                    "event_id": "event_id",
-                    "sender": BOB_ID,
-                    "origin_server_ts": 0
-                },
-                "mxc://foo"
+                {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
+                "mxc://foo",
             )
         )
         assert room.gen_avatar_url == "mxc://foo"
@@ -490,16 +503,16 @@ class TestClass:
 
     def test_invited_room(self):
         room = MatrixInvitedRoom(TEST_ROOM, BOB_ID)
-        room.handle_event(InviteMemberEvent(
-            {},
-            "@alice:example.org",
-            BOB_ID,
-            "invite",
-            None,
-            {
-                "membership": "invite"
-            }
-        ))
+        room.handle_event(
+            InviteMemberEvent(
+                {},
+                "@alice:example.org",
+                BOB_ID,
+                "invite",
+                None,
+                {"membership": "invite"},
+            )
+        )
         assert room.inviter == "@alice:example.org"
         assert not room.name
 
@@ -574,7 +587,6 @@ class TestClass:
         assert room.users[ALICE_ID].display_name == "Alice Margatroid"
         assert room.users[ALICE_ID].avatar_url == "mxc://new"
 
-
         room.handle_membership(leaves_event)
         assert not room.users
         assert not room.invited_users
@@ -609,9 +621,14 @@ class TestClass:
         room = self.test_room
         room.handle_event(
             RoomUpgradeEvent(
-                {"event_id": "event5", "sender": ALICE_ID, "origin_server_ts": 4, "state_key": ""},
+                {
+                    "event_id": "event5",
+                    "sender": ALICE_ID,
+                    "origin_server_ts": 4,
+                    "state_key": "",
+                },
                 "This room has been replaced",
-                "!newroom:example.org"
+                "!newroom:example.org",
             )
         )
         assert room.replacement_room == "!newroom:example.org"

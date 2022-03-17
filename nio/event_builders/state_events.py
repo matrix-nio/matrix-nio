@@ -60,11 +60,11 @@ class EnableEncryptionBuilder(EventBuilder):
 
     def as_dict(self):
         return {
-            "type":      "m.room.encryption",
+            "type": "m.room.encryption",
             "state_key": "",
-            "content":   {
-                "algorithm":            self.algorithm,
-                "rotation_period_ms":   self.rotation_ms,
+            "content": {
+                "algorithm": self.algorithm,
+                "rotation_period_ms": self.rotation_ms,
                 "rotation_period_msgs": self.rotation_msgs,
             },
         }
@@ -89,9 +89,9 @@ class ChangeNameBuilder(EventBuilder):
 
     def as_dict(self):
         return {
-            "type":      "m.room.name",
+            "type": "m.room.name",
             "state_key": "",
-            "content":   {"name": self.name},
+            "content": {"name": self.name},
         }
 
 
@@ -107,9 +107,9 @@ class ChangeTopicBuilder(EventBuilder):
 
     def as_dict(self):
         return {
-            "type":      "m.room.topic",
+            "type": "m.room.topic",
             "state_key": "",
-            "content":   {"topic": self.topic},
+            "content": {"topic": self.topic},
         }
 
 
@@ -128,9 +128,9 @@ class ChangeJoinRulesBuilder(EventBuilder):
 
     def as_dict(self):
         return {
-            "type":      "m.room.join_rules",
+            "type": "m.room.join_rules",
             "state_key": "",
-            "content":   {"join_rule": self.rule},
+            "content": {"join_rule": self.rule},
         }
 
 
@@ -147,9 +147,9 @@ class ChangeGuestAccessBuilder(EventBuilder):
 
     def as_dict(self):
         return {
-            "type":      "m.room.guest_access",
+            "type": "m.room.guest_access",
             "state_key": "",
-            "content":   {"guest_access": self.access},
+            "content": {"guest_access": self.access},
         }
 
 
@@ -176,9 +176,10 @@ class ChangeHistoryVisibilityBuilder(EventBuilder):
 
     def as_dict(self):
         return {
-            "type":      "m.room.history_visibility",
+            "type": "m.room.history_visibility",
             "state_key": "",
-            "content":   {"history_visibility": self.visibility},
+            "content": {"history_visibility": self.visibility},
         }
+
 
 # TODO: power_levels, canonical_alias, avatar, pinned_events

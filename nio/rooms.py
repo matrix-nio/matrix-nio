@@ -20,21 +20,37 @@ from __future__ import unicode_literals
 from builtins import super
 from collections import defaultdict
 from enum import Enum
-from typing import (Any, DefaultDict, Dict, List, NamedTuple, Optional, Tuple,
-                    Union)
+from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional, Tuple, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
-from .events import (AccountDataEvent, FullyReadEvent, TagEvent,
-                     EphemeralEvent,
-                     Event, InviteAliasEvent, InviteMemberEvent,
-                     InviteNameEvent, PowerLevels, PowerLevelsEvent,
-                     RoomAliasEvent, RoomCreateEvent, RoomEncryptionEvent,
-                     RoomGuestAccessEvent, RoomHistoryVisibilityEvent,
-                     RoomJoinRulesEvent, RoomMemberEvent, RoomNameEvent,
-                     RoomTopicEvent, RoomAvatarEvent, TypingNoticeEvent,
-                     ReceiptEvent, Receipt, RoomUpgradeEvent)
+from .events import (
+    AccountDataEvent,
+    EphemeralEvent,
+    Event,
+    FullyReadEvent,
+    InviteAliasEvent,
+    InviteMemberEvent,
+    InviteNameEvent,
+    PowerLevels,
+    PowerLevelsEvent,
+    Receipt,
+    ReceiptEvent,
+    RoomAliasEvent,
+    RoomAvatarEvent,
+    RoomCreateEvent,
+    RoomEncryptionEvent,
+    RoomGuestAccessEvent,
+    RoomHistoryVisibilityEvent,
+    RoomJoinRulesEvent,
+    RoomMemberEvent,
+    RoomNameEvent,
+    RoomTopicEvent,
+    RoomUpgradeEvent,
+    TagEvent,
+    TypingNoticeEvent,
+)
 from .log import logger_group
 from .responses import RoomSummary, UnreadNotifications
 
@@ -112,7 +128,9 @@ class MatrixRoom:
 
         if others:
             text = "{} and {} other{}".format(
-                ", ".join(names), others, "" if others == 1 else "s",
+                ", ".join(names),
+                others,
+                "" if others == 1 else "s",
             )
         elif len(names) == 0:
             text = ""
@@ -129,13 +147,13 @@ class MatrixRoom:
         return text
 
     def group_name_structure(self) -> Tuple[bool, List[str], int]:
-        """Get if room is empty, ID for listed users and the N others count.
-        """
+        """Get if room is empty, ID for listed users and the N others count."""
         try:
             heroes, joined, invited = self._summary_details()
         except ValueError:
             users = [
-                u for u in sorted(self.users, key=lambda u: self.user_name(u))
+                u
+                for u in sorted(self.users, key=lambda u: self.user_name(u))
                 if u != self.own_user_id
             ]
             empty = not users
@@ -197,11 +215,13 @@ class MatrixRoom:
             heroes, _, _ = self._summary_details()
         except ValueError:
             if self.is_group and len(self.users) == 2:
-                return self.avatar_url(next(
-                    u for u in sorted(self.users,
-                                      key=lambda u: self.user_name(u))
-                    if u != self.own_user_id
-                ))
+                return self.avatar_url(
+                    next(
+                        u
+                        for u in sorted(self.users, key=lambda u: self.user_name(u))
+                        if u != self.own_user_id
+                    )
+                )
             return None
 
         if self.is_group and self.member_count == 2 and len(heroes) >= 1:
@@ -236,10 +256,10 @@ class MatrixRoom:
 
     def add_member(
         self,
-        user_id:      str,
+        user_id: str,
         display_name: Optional[str],
-        avatar_url:   Optional[str],
-        invited:      bool = False,
+        avatar_url: Optional[str],
+        invited: bool = False,
     ) -> bool:
         if user_id in self.users:
             return False
@@ -277,7 +297,8 @@ class MatrixRoom:
         return bool(user or invited_user)
 
     def handle_membership(
-        self, event: Union[RoomMemberEvent, InviteMemberEvent],
+        self,
+        event: Union[RoomMemberEvent, InviteMemberEvent],
     ) -> bool:
         """Handle a membership event for the room.
 
@@ -289,20 +310,24 @@ class MatrixRoom:
         otherwise.
         """
         target_user = event.state_key
-        invited     = event.membership == "invite"
+        invited = event.membership == "invite"
 
         if event.membership in ("invite", "join"):
             # Add member if not already present in self.users,
             # or the member is invited but not present in self.invited_users
 
-            if (target_user not in self.users or
-                    (invited and target_user not in self.invited_users)):
+            if target_user not in self.users or (
+                invited and target_user not in self.invited_users
+            ):
 
                 display_name = event.content.get("displayname", None)
-                avatar_url   = event.content.get("avatar_url", None)
+                avatar_url = event.content.get("avatar_url", None)
 
                 return self.add_member(
-                    target_user, display_name, avatar_url, invited,
+                    target_user,
+                    display_name,
+                    avatar_url,
+                    invited,
                 )
 
             user = self.users[target_user]
@@ -336,9 +361,7 @@ class MatrixRoom:
             self.typing_users = event.users
 
         if isinstance(event, ReceiptEvent):
-            read_receipts = filter(
-                lambda x: x.receipt_type == "m.read", event.receipts
-            )
+            read_receipts = filter(lambda x: x.receipt_type == "m.read", event.receipts)
 
             for read_receipt in read_receipts:
                 self.read_receipts[read_receipt.user_id] = read_receipt
@@ -390,9 +413,7 @@ class MatrixRoom:
                 if user_id in self.users:
                     logger.info(
                         "Changing power level for user {} from {} to "
-                        "{}".format(
-                            user_id, self.users[user_id].power_level, level
-                        )
+                        "{}".format(user_id, self.users[user_id].power_level, level)
                     )
                     self.users[user_id].power_level = level
 
@@ -427,16 +448,16 @@ class MatrixRoom:
     def _summary_details(self) -> Tuple[List[str], int, int]:
         """Return the summary attributes if it can be used for calculations."""
         valid = bool(
-            self.summary is not None and
-            self.summary.joined_member_count is not None and
-            self.summary.invited_member_count is not None,
+            self.summary is not None
+            and self.summary.joined_member_count is not None
+            and self.summary.invited_member_count is not None,
         )
         if not valid:
             raise ValueError("Unusable summary")
 
         return (  # type: ignore
-            self.summary.heroes or [],          # type: ignore
-            self.summary.joined_member_count,   # type: ignore
+            self.summary.heroes or [],  # type: ignore
+            self.summary.joined_member_count,  # type: ignore
             self.summary.invited_member_count,  # type: ignore
         )
 
@@ -470,7 +491,8 @@ class MatrixInvitedRoom(MatrixRoom):
         super().__init__(room_id, own_user_id)
 
     def handle_membership(
-        self, event: Union[RoomMemberEvent, InviteMemberEvent],
+        self,
+        event: Union[RoomMemberEvent, InviteMemberEvent],
     ) -> bool:
         """Handle a membership event for the invited room.
 
@@ -481,8 +503,7 @@ class MatrixInvitedRoom(MatrixRoom):
         Returns True if the member list of the room has changed False
         otherwise.
         """
-        if (event.membership == "invite"
-                and event.state_key == self.own_user_id):
+        if event.membership == "invite" and event.state_key == self.own_user_id:
             self.inviter = event.sender
 
         return super().handle_membership(event)
@@ -507,15 +528,15 @@ class MatrixInvitedRoom(MatrixRoom):
 class MatrixUser:
     def __init__(
         self,
-        user_id:      str,
+        user_id: str,
         display_name: Optional[str] = None,
-        avatar_url:   Optional[str] = None,
-        power_level:  int  = 0,
-        invited:      bool = False,
-        presence:     str = "offline",
+        avatar_url: Optional[str] = None,
+        power_level: int = 0,
+        invited: bool = False,
+        presence: str = "offline",
         last_active_ago: Optional[int] = None,
         currently_active: Optional[bool] = None,
-        status_msg: Optional[str] = None
+        status_msg: Optional[str] = None,
     ):
         # yapf: disable
         self.user_id = user_id
@@ -537,6 +558,7 @@ class MatrixUser:
     def disambiguated_name(self) -> str:
         # as per https://matrix.org/docs/spec/client_server/r0.4.0.html#id346
         if self.display_name:
-            return "{name} ({user_id})".format(name=self.display_name,
-                                               user_id=self.user_id)
+            return "{name} ({user_id})".format(
+                name=self.display_name, user_id=self.user_id
+            )
         return self.user_id

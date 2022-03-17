@@ -4,23 +4,44 @@ from __future__ import unicode_literals
 
 import json
 
-from nio.responses import (DeleteDevicesAuthResponse, DevicesResponse,
-                           DownloadResponse, DownloadError,
-                           ErrorResponse, JoinedMembersError,
-                           JoinedMembersResponse, JoinResponse,
-                           KeysClaimResponse,
-                           KeysQueryResponse, KeysUploadResponse, LoginError,
-                           LoginResponse, LogoutError, LogoutResponse,
-                           ProfileGetAvatarResponse,
-                           ProfileGetDisplayNameResponse, ProfileGetResponse,
-                           RoomContextError, RoomContextResponse,
-                           RoomCreateResponse, RoomForgetResponse,
-                           RoomKeyRequestError, RoomKeyRequestResponse,
-                           RoomLeaveResponse, RoomMessagesResponse,
-                           RoomTypingResponse, SyncError,
-                           SyncResponse, ThumbnailResponse, ThumbnailError,
-                           ToDeviceError, ToDeviceResponse,
-                           UploadResponse, _ErrorWithRoomId, LoginInfoResponse)
+from nio.responses import (
+    DeleteDevicesAuthResponse,
+    DevicesResponse,
+    DownloadError,
+    DownloadResponse,
+    ErrorResponse,
+    JoinedMembersError,
+    JoinedMembersResponse,
+    JoinResponse,
+    KeysClaimResponse,
+    KeysQueryResponse,
+    KeysUploadResponse,
+    LoginError,
+    LoginInfoResponse,
+    LoginResponse,
+    LogoutError,
+    LogoutResponse,
+    ProfileGetAvatarResponse,
+    ProfileGetDisplayNameResponse,
+    ProfileGetResponse,
+    RoomContextError,
+    RoomContextResponse,
+    RoomCreateResponse,
+    RoomForgetResponse,
+    RoomKeyRequestError,
+    RoomKeyRequestResponse,
+    RoomLeaveResponse,
+    RoomMessagesResponse,
+    RoomTypingResponse,
+    SyncError,
+    SyncResponse,
+    ThumbnailError,
+    ThumbnailResponse,
+    ToDeviceError,
+    ToDeviceResponse,
+    UploadResponse,
+    _ErrorWithRoomId,
+)
 
 TEST_ROOM_ID = "!test:example.org"
 
@@ -37,73 +58,61 @@ class TestClass:
             return json.loads(f.read())
 
     def test_login_parse(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/login_response.json")
+        parsed_dict = TestClass._load_response("tests/data/login_response.json")
         response = LoginResponse.from_dict(parsed_dict)
         assert isinstance(response, LoginResponse)
 
     def test_login_failure_parse(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/login_response_error.json")
+        parsed_dict = TestClass._load_response("tests/data/login_response_error.json")
         response = LoginResponse.from_dict(parsed_dict)
         assert isinstance(response, LoginError)
 
     def test_login_failure_format(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/login_invalid_format.json")
+        parsed_dict = TestClass._load_response("tests/data/login_invalid_format.json")
         response = LoginResponse.from_dict(parsed_dict)
         assert isinstance(response, ErrorResponse)
 
     def test_logout_parse(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/logout_response.json")
+        parsed_dict = TestClass._load_response("tests/data/logout_response.json")
         response = LogoutResponse.from_dict(parsed_dict)
         assert isinstance(response, LogoutResponse)
 
     def test_room_messages(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/room_messages.json")
+        parsed_dict = TestClass._load_response("tests/data/room_messages.json")
         response = RoomMessagesResponse.from_dict(parsed_dict, TEST_ROOM_ID)
         assert isinstance(response, RoomMessagesResponse)
 
     def test_keys_upload(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/keys_upload.json")
+        parsed_dict = TestClass._load_response("tests/data/keys_upload.json")
         response = KeysUploadResponse.from_dict(parsed_dict)
         assert isinstance(response, KeysUploadResponse)
 
     def test_keys_query(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/keys_query.json")
+        parsed_dict = TestClass._load_response("tests/data/keys_query.json")
         response = KeysQueryResponse.from_dict(parsed_dict)
         assert isinstance(response, KeysQueryResponse)
 
     def test_keys_claim(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/keys_claim.json")
-        response = KeysClaimResponse.from_dict(
-            parsed_dict,
-            "!test:example.org"
-        )
+        parsed_dict = TestClass._load_response("tests/data/keys_claim.json")
+        response = KeysClaimResponse.from_dict(parsed_dict, "!test:example.org")
         assert isinstance(response, KeysClaimResponse)
 
     def test_devices(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/devices.json")
+        parsed_dict = TestClass._load_response("tests/data/devices.json")
         response = DevicesResponse.from_dict(parsed_dict)
         assert isinstance(response, DevicesResponse)
         assert response.devices[0].id == "QBUAZIFURK"
 
     def test_delete_devices_auth(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/delete_devices.json")
+        parsed_dict = TestClass._load_response("tests/data/delete_devices.json")
         response = DeleteDevicesAuthResponse.from_dict(parsed_dict)
         assert isinstance(response, DeleteDevicesAuthResponse)
         assert response.session == "xxxxxxyz"
 
     def test_joined_parse(self):
         parsed_dict = TestClass._load_response(
-            "tests/data/joined_members_response.json")
+            "tests/data/joined_members_response.json"
+        )
         response = JoinedMembersResponse.from_dict(parsed_dict, "!testroom")
         assert isinstance(response, JoinedMembersResponse)
 
@@ -113,8 +122,7 @@ class TestClass:
         assert isinstance(response, JoinedMembersError)
 
     def test_upload_parse(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/upload_response.json")
+        parsed_dict = TestClass._load_response("tests/data/upload_response.json")
         response = UploadResponse.from_dict(parsed_dict)
         assert isinstance(response, UploadResponse)
 
@@ -157,8 +165,7 @@ class TestClass:
         assert isinstance(response, SyncError)
 
     def test_sync_parse(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/sync.json")
+        parsed_dict = TestClass._load_response("tests/data/sync.json")
         response = SyncResponse.from_dict(parsed_dict)
         assert type(response) == SyncResponse
 
@@ -166,33 +173,32 @@ class TestClass:
         parsed_dict = {
             "errcode": "M_LIMIT_EXCEEDED",
             "error": "Too many requests",
-            "retry_after_ms": 2000
+            "retry_after_ms": 2000,
         }
         response = RoomKeyRequestResponse.from_dict(
             parsed_dict, "1", "1", TEST_ROOM_ID, "megolm.v1"
         )
         assert isinstance(response, RoomKeyRequestError)
         response = RoomKeyRequestResponse.from_dict(
-                {}, "1", "1", TEST_ROOM_ID, "megolm.v1"
+            {}, "1", "1", TEST_ROOM_ID, "megolm.v1"
         )
         assert isinstance(response, RoomKeyRequestResponse)
 
     def test_get_profile(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/get_profile_response.json")
+        parsed_dict = TestClass._load_response("tests/data/get_profile_response.json")
         response = ProfileGetResponse.from_dict(parsed_dict)
         assert isinstance(response, ProfileGetResponse)
         assert response.other_info == {"something_else": 123}
 
     def test_get_displayname(self):
         parsed_dict = TestClass._load_response(
-            "tests/data/get_displayname_response.json")
+            "tests/data/get_displayname_response.json"
+        )
         response = ProfileGetDisplayNameResponse.from_dict(parsed_dict)
         assert isinstance(response, ProfileGetDisplayNameResponse)
 
     def test_get_avatar(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/get_avatar_response.json")
+        parsed_dict = TestClass._load_response("tests/data/get_avatar_response.json")
         response = ProfileGetAvatarResponse.from_dict(parsed_dict)
         assert isinstance(response, ProfileGetAvatarResponse)
 
@@ -223,8 +229,7 @@ class TestClass:
         assert len(response.state) == 9
 
     def test_limit_exceeded_error(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/limit_exceeded_error.json")
+        parsed_dict = TestClass._load_response("tests/data/limit_exceeded_error.json")
 
         response = ErrorResponse.from_dict(parsed_dict)
         assert isinstance(response, ErrorResponse)
@@ -237,14 +242,12 @@ class TestClass:
         assert response2.room_id == room_id
 
     def test_room_create(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/room_id.json")
+        parsed_dict = TestClass._load_response("tests/data/room_id.json")
         response = RoomCreateResponse.from_dict(parsed_dict)
         assert isinstance(response, RoomCreateResponse)
 
     def test_join(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/room_id.json")
+        parsed_dict = TestClass._load_response("tests/data/room_id.json")
         response = JoinResponse.from_dict(parsed_dict)
         assert isinstance(response, JoinResponse)
 
@@ -261,7 +264,6 @@ class TestClass:
         assert isinstance(response, RoomTypingResponse)
 
     def test_login_info(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/login_info.json")
+        parsed_dict = TestClass._load_response("tests/data/login_info.json")
         response = LoginInfoResponse.from_dict(parsed_dict)
         assert isinstance(response, LoginInfoResponse)

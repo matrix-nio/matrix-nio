@@ -20,9 +20,8 @@ This module contains classes that can be used to send direct events to a Matrix
 homeserver.
 """
 
-from typing import Dict
-
 from dataclasses import dataclass, field
+from typing import Dict
 
 from . import EventBuilder
 
@@ -46,18 +45,13 @@ class ToDeviceMessage(EventBuilder):
     content: Dict = field()
 
     def as_dict(self):
-        return {
-            "messages": {
-                self.recipient: {
-                    self.recipient_device: self.content
-                }
-            }
-        }
+        return {"messages": {self.recipient: {self.recipient_device: self.content}}}
 
 
 @dataclass
 class DummyMessage(ToDeviceMessage):
     """A dummy to-device mssage that is sent to restart a Olm session."""
+
     pass
 
 
@@ -73,6 +67,7 @@ class RoomKeyRequestMessage(ToDeviceMessage):
         algorithm (str): The algorithm of the room key.
 
     """
+
     request_id: str = field()
     session_id: str = field()
     room_id: str = field()

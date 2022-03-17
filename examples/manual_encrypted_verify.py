@@ -1,13 +1,24 @@
 import asyncio
+import json
 import os
 import sys
-import json
-
 from typing import Optional
 
-from nio import (AsyncClient, ClientConfig, DevicesError, Event,InviteEvent, LoginResponse,
-                 LocalProtocolError, MatrixRoom, MatrixUser, RoomMessageText,
-                 crypto, exceptions, RoomSendResponse)
+from nio import (
+    AsyncClient,
+    ClientConfig,
+    DevicesError,
+    Event,
+    InviteEvent,
+    LocalProtocolError,
+    LoginResponse,
+    MatrixRoom,
+    MatrixUser,
+    RoomMessageText,
+    RoomSendResponse,
+    crypto,
+    exceptions,
+)
 
 # This is a fully-documented example of how to do manual verification with nio,
 # for when you already know the device IDs of the users you want to trust. If
@@ -41,7 +52,7 @@ BOB_DEVICE_IDS = [
     # They may also be called "session IDs". You'll want to add ALL of them here
     # for the one other user in your encrypted room
     "URDEVICEID",
-    ]
+]
 
 # the ID of the room you want your bot to join and send commands in.
 # This can be a direct message or room; Matrix treats them the same
@@ -51,12 +62,30 @@ ALICE_USER_ID = "@alice:example.org"
 ALICE_HOMESERVER = "https://matrix.example.org"
 ALICE_PASSWORD = "hunter2"
 
+
 class CustomEncryptedClient(AsyncClient):
-    def __init__(self, homeserver, user='', device_id='', store_path='', config=None, ssl=None, proxy=None):
+    def __init__(
+        self,
+        homeserver,
+        user="",
+        device_id="",
+        store_path="",
+        config=None,
+        ssl=None,
+        proxy=None,
+    ):
         # Calling super.__init__ means we're running the __init__ method
         # defined in AsyncClient, which this class derives from. That does a
         # bunch of setup for us automatically
-        super().__init__(homeserver, user=user, device_id=device_id, store_path=store_path, config=config, ssl=ssl, proxy=proxy)
+        super().__init__(
+            homeserver,
+            user=user,
+            device_id=device_id,
+            store_path=store_path,
+            config=config,
+            ssl=ssl,
+            proxy=proxy,
+        )
 
         # if the store location doesn't exist, we'll make it
         if store_path and not os.path.isdir(store_path):
@@ -79,17 +108,21 @@ class CustomEncryptedClient(AsyncClient):
         """
         # Restore the previous session if we can
         # See the "restore_login.py" example if you're not sure how this works
-        if os.path.exists(SESSION_DETAILS_FILE) and os.path.isfile(SESSION_DETAILS_FILE):
+        if os.path.exists(SESSION_DETAILS_FILE) and os.path.isfile(
+            SESSION_DETAILS_FILE
+        ):
             try:
                 with open(SESSION_DETAILS_FILE, "r") as f:
                     config = json.load(f)
-                    self.access_token = config['access_token']
-                    self.user_id = config['user_id']
-                    self.device_id = config['device_id']
+                    self.access_token = config["access_token"]
+                    self.user_id = config["user_id"]
+                    self.device_id = config["device_id"]
 
                     # This loads our verified/blacklisted devices and our keys
                     self.load_store()
-                    print(f"Logged in using stored credentials: {self.user_id} on {self.device_id}")
+                    print(
+                        f"Logged in using stored credentials: {self.user_id} on {self.device_id}"
+                    )
 
             except IOError as err:
                 print(f"Couldn't load session from file. Logging in. Error: {err}")
@@ -133,7 +166,9 @@ class CustomEncryptedClient(AsyncClient):
             if device_list and device_id not in device_list:
                 # a list of trusted devices was provided, but this ID is not in
                 # that list. That's an issue.
-                print(f"Not trusting {device_id} as it's not in {user_id}'s pre-approved list.")
+                print(
+                    f"Not trusting {device_id} as it's not in {user_id}'s pre-approved list."
+                )
                 continue
 
             if user_id == self.user_id and device_id == self.device_id:
@@ -152,7 +187,7 @@ class CustomEncryptedClient(AsyncClient):
         """
         self.join(room.room_id)
         room = self.rooms[ROOM_ID]
-        print(f"Room {room.name} is encrypted: {room.encrypted}" )
+        print(f"Room {room.name} is encrypted: {room.encrypted}")
 
     async def cb_print_messages(self, room: MatrixRoom, event: RoomMessageText):
         """Callback to print all received messages to stdout.
@@ -165,7 +200,9 @@ class CustomEncryptedClient(AsyncClient):
             encrypted_symbol = "🛡 "
         else:
             encrypted_symbol = "⚠️ "
-        print(f"{room.display_name} |{encrypted_symbol}| {room.user_name(event.sender)}: {event.body}")
+        print(
+            f"{room.display_name} |{encrypted_symbol}| {room.user_name(event.sender)}: {event.body}"
+        )
 
     async def send_hello_world(self):
         # Now we send an encrypted message that @bob can read, although it will
@@ -176,15 +213,20 @@ class CustomEncryptedClient(AsyncClient):
             await self.room_send(
                 room_id=ROOM_ID,
                 message_type="m.room.message",
-                content = {
+                content={
                     "msgtype": "m.text",
-                    "body": "Hello, this message is encrypted"
-                }
+                    "body": "Hello, this message is encrypted",
+                },
             )
         except exceptions.OlmUnverifiedDeviceError as err:
             print("These are all known devices:")
             device_store: crypto.DeviceStore = device_store
-            [print(f"\t{device.user_id}\t {device.device_id}\t {device.trust_state}\t  {device.display_name}") for device in device_store]
+            [
+                print(
+                    f"\t{device.user_id}\t {device.device_id}\t {device.trust_state}\t  {device.display_name}"
+                )
+                for device in device_store
+            ]
             sys.exit(1)
 
     @staticmethod
@@ -196,16 +238,18 @@ class CustomEncryptedClient(AsyncClient):
             resp {LoginResponse} -- the successful client login response.
         """
         with open(SESSION_DETAILS_FILE, "w") as f:
-            json.dump({
-                "access_token": resp.access_token,
-                "device_id": resp.device_id,
-                "user_id": resp.user_id
-            }, f)
+            json.dump(
+                {
+                    "access_token": resp.access_token,
+                    "device_id": resp.device_id,
+                    "user_id": resp.user_id,
+                },
+                f,
+            )
 
 
 async def run_client(client: CustomEncryptedClient) -> None:
-    """A basic encrypted chat application using nio.
-    """
+    """A basic encrypted chat application using nio."""
 
     # This is our own custom login function that looks for a pre-existing config
     # file and, if it exists, logs in using those details. Otherwise it will log
@@ -221,7 +265,6 @@ async def run_client(client: CustomEncryptedClient) -> None:
         # code doesn't run in a loop, so it only fires once
         print("Awaiting sync")
         await client.synced.wait()
-
 
         # In practice, you want to have a list of previously-known device IDs
         # for each user you want ot trust. Here, we require that list as a
@@ -248,14 +291,17 @@ async def run_client(client: CustomEncryptedClient) -> None:
     # We use full_state=True here to pull any room invites that occured or
     # messages sent in rooms _before_ this program connected to the
     # Matrix server
-    sync_forever_task = asyncio.ensure_future(client.sync_forever(30000, full_state=True))
+    sync_forever_task = asyncio.ensure_future(
+        client.sync_forever(30000, full_state=True)
+    )
 
     await asyncio.gather(
         # The order here IS significant! You have to register the task to trust
         # devices FIRST since it awaits the first sync
         after_first_sync_task,
-        sync_forever_task
+        sync_forever_task,
     )
+
 
 async def main():
     # By setting `store_sync_tokens` to true, we'll save sync tokens to our
@@ -277,13 +323,12 @@ async def main():
     except (asyncio.CancelledError, KeyboardInterrupt):
         await client.close()
 
+
 # Run the main coroutine, which instantiates our custom subclass, trusts all the
 # devices, and syncs forever (or until your press Ctrl+C)
 
 if __name__ == "__main__":
     try:
-        asyncio.run(
-            main()
-        )
+        asyncio.run(main())
     except KeyboardInterrupt:
         pass

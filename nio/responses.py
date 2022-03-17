@@ -27,8 +27,14 @@ from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
 from .event_builders import ToDeviceMessage
-from .events import (AccountDataEvent, BadEventType, Event, InviteEvent,
-                     ToDeviceEvent, EphemeralEvent)
+from .events import (
+    AccountDataEvent,
+    BadEventType,
+    EphemeralEvent,
+    Event,
+    InviteEvent,
+    ToDeviceEvent,
+)
 from .events.presence import PresenceEvent
 from .http import TransportResponse
 from .log import logger_group
@@ -180,7 +186,9 @@ def verify(schema, error_class, pass_arguments=True):
                     return error_class.from_dict(parsed_dict)
 
             return f(cls, parsed_dict, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -273,7 +281,7 @@ class Device:
             parsed_dict["device_id"],
             parsed_dict["display_name"],
             parsed_dict["last_seen_ip"],
-            date
+            date,
         )
 
 
@@ -284,7 +292,8 @@ class Response:
     end_time: Optional[float] = field(default=None, init=False)
     timeout: int = field(default=0, init=False)
     transport_response: Optional[TransportResponse] = field(
-        init=False, default=None,
+        init=False,
+        default=None,
     )
 
     @property
@@ -312,9 +321,7 @@ class FileResponse(Response):
 
     def __str__(self):
         return "{} bytes, content type: {}, filename: {}".format(
-            len(self.body),
-            self.content_type,
-            self.filename
+            len(self.body), self.content_type, self.filename
         )
 
     @classmethod
@@ -383,7 +390,7 @@ class _ErrorWithRoomId(ErrorResponse):
             parsed_dict["errcode"],
             parsed_dict.get("retry_after_ms"),
             parsed_dict.get("soft_logout", False),
-            room_id
+            room_id,
         )
 
 
@@ -405,21 +412,25 @@ class RoomSendError(_ErrorWithRoomId):
 
 class RoomGetStateError(_ErrorWithRoomId):
     """A response representing an unsuccessful room state query."""
+
     pass
 
 
 class RoomGetStateEventError(_ErrorWithRoomId):
     """A response representing an unsuccessful room state query."""
+
     pass
 
 
 class RoomGetEventError(ErrorResponse):
     """A response representing an unsuccessful room get event request."""
+
     pass
 
 
 class RoomPutStateError(_ErrorWithRoomId):
     """A response representing an unsuccessful room state sending request."""
+
     pass
 
 
@@ -429,21 +440,25 @@ class RoomRedactError(_ErrorWithRoomId):
 
 class RoomResolveAliasError(ErrorResponse):
     """A response representing an unsuccessful room alias query."""
+
     pass
 
 
 class RoomDeleteAliasError(ErrorResponse):
     """A response representing an unsuccessful room alias delete request."""
+
     pass
 
 
 class RoomPutAliasError(ErrorResponse):
     """A response representing an unsuccessful room alias put request."""
+
     pass
 
 
 class RoomGetVisibilityError(ErrorResponse):
     """A response representing an unsuccessful room get visibility request."""
+
     pass
 
 
@@ -481,6 +496,7 @@ class RoomInviteError(ErrorResponse):
 
 class RoomCreateError(ErrorResponse):
     """A response representing a unsuccessful create room request."""
+
     pass
 
 
@@ -541,8 +557,9 @@ class ShareGroupSessionError(_ErrorWithRoomId):
         except (SchemaError, ValidationError):
             return cls("unknown error")
 
-        return cls(parsed_dict["error"], parsed_dict["errcode"], room_id,
-                   users_shared_with)
+        return cls(
+            parsed_dict["error"], parsed_dict["errcode"], room_id, users_shared_with
+        )
 
 
 class DevicesError(ErrorResponse):
@@ -563,6 +580,7 @@ class JoinedMembersError(_ErrorWithRoomId):
 
 class JoinedRoomsError(ErrorResponse):
     """A response representing an unsuccessful joined rooms query."""
+
     pass
 
 
@@ -584,16 +602,19 @@ class ProfileGetAvatarError(ErrorResponse):
 
 class PresenceGetError(ErrorResponse):
     """Response representing a unsuccessful get presence request."""
+
     pass
 
 
 class PresenceSetError(ErrorResponse):
     """Response representing a unsuccessful set presence request."""
+
     pass
 
 
 class ProfileSetAvatarError(ErrorResponse):
     pass
+
 
 @dataclass
 class DiscoveryInfoError(ErrorResponse):
@@ -618,17 +639,23 @@ class DiscoveryInfoResponse(Response):
     @classmethod
     @verify(Schemas.discovery_info, DiscoveryInfoError)
     def from_dict(
-        cls, parsed_dict: Dict[str, Any],
+        cls,
+        parsed_dict: Dict[str, Any],
     ) -> Union["DiscoveryInfoResponse", DiscoveryInfoError]:
 
         homeserver_url = parsed_dict["m.homeserver"]["base_url"].rstrip("/")
 
-        identity_server_url = parsed_dict.get(
-            "m.identity_server", {},
-        ).get("base_url", "").rstrip("/") or None
+        identity_server_url = (
+            parsed_dict.get(
+                "m.identity_server",
+                {},
+            )
+            .get("base_url", "")
+            .rstrip("/")
+            or None
+        )
 
         return cls(homeserver_url, identity_server_url)
-
 
 
 @dataclass
@@ -644,7 +671,8 @@ class RegisterResponse(Response):
 
     def __str__(self) -> str:
         return "Registered {}, device id {}.".format(
-            self.user_id, self.device_id,
+            self.user_id,
+            self.device_id,
         )
 
     @classmethod
@@ -681,9 +709,7 @@ class LoginResponse(Response):
     access_token: str = field()
 
     def __str__(self) -> str:
-        return "Logged in as {}, device id: {}.".format(
-            self.user_id, self.device_id
-        )
+        return "Logged in as {}, device id: {}.".format(self.user_id, self.device_id)
 
     @classmethod
     @verify(Schemas.login, LoginError)
@@ -728,7 +754,7 @@ class JoinedMembersResponse(Response):
             user = RoomMember(
                 user_id,
                 user_info.get("display_name", None),
-                user_info.get("avatar_url", None)
+                user_info.get("avatar_url", None),
             )
             members.append(user)
 
@@ -795,12 +821,7 @@ class DownloadResponse(FileResponse):
     """A response representing a successful download request."""
 
     @classmethod
-    def from_data(
-            cls,
-            data: bytes,
-            content_type: str,
-            filename: Optional[str] = None
-    ):
+    def from_data(cls, data: bytes, content_type: str, filename: Optional[str] = None):
         # type: (...) -> Union[DownloadResponse, DownloadError]
         if isinstance(data, bytes):
             return cls(body=data, content_type=content_type, filename=filename)
@@ -816,12 +837,7 @@ class ThumbnailResponse(FileResponse):
     """A response representing a successful thumbnail request."""
 
     @classmethod
-    def from_data(
-            cls,
-            data: bytes,
-            content_type: str,
-            filename: Optional[str] = None
-    ):
+    def from_data(cls, data: bytes, content_type: str, filename: Optional[str] = None):
         # type: (...) -> Union[ThumbnailResponse, ThumbnailError]
         if not content_type.startswith("image/"):
             return ThumbnailError(f"invalid content type: {content_type}")
@@ -943,8 +959,7 @@ class RoomGetEventResponse(Response):
         pass_arguments=False,
     )
     def from_dict(
-        cls,
-        parsed_dict: Dict[str, Any]
+        cls, parsed_dict: Dict[str, Any]
     ) -> Union["RoomGetEventResponse", RoomGetEventError]:
         event = Event.parse_event(parsed_dict)
         resp = cls()
@@ -954,6 +969,7 @@ class RoomGetEventResponse(Response):
 
 class RoomPutStateResponse(RoomEventIdResponse):
     """A response indicating successful sending of room state."""
+
     @staticmethod
     def create_error(parsed_dict, room_id):
         return RoomPutStateError.from_dict(parsed_dict, room_id)
@@ -974,6 +990,7 @@ class RoomResolveAliasResponse(Response):
         room_id (str): The resolved id of the room.
         servers (List[str]): Servers participating in the room.
     """
+
     room_alias: str = field()
     room_id: str = field()
     servers: List[str] = field()
@@ -997,8 +1014,8 @@ class RoomResolveAliasResponse(Response):
 
 @dataclass
 class RoomDeleteAliasResponse(Response):
-    """A response containing the result of deleting an alias.
-    """
+    """A response containing the result of deleting an alias."""
+
     room_alias: str = field()
 
     @classmethod
@@ -1009,8 +1026,8 @@ class RoomDeleteAliasResponse(Response):
 
 @dataclass
 class RoomPutAliasResponse(Response):
-    """A response containing the result of adding an alias.
-    """
+    """A response containing the result of adding an alias."""
+
     room_alias: str = field()
     room_id: str = field()
 
@@ -1022,8 +1039,8 @@ class RoomPutAliasResponse(Response):
 
 @dataclass
 class RoomGetVisibilityResponse(Response):
-    """A response containing the result of a get visibility request.
-    """
+    """A response containing the result of a get visibility request."""
+
     room_id: str = field()
     visibility: str = field()
 
@@ -1170,11 +1187,7 @@ class DeleteDevicesAuthResponse(Response):
         parsed_dict: Dict[Any, Any],
     ):
         # type: (...) -> Union[DeleteDevicesAuthResponse, ErrorResponse]
-        return cls(
-            parsed_dict["session"],
-            parsed_dict["flows"],
-            parsed_dict["params"]
-        )
+        return cls(parsed_dict["session"], parsed_dict["flows"], parsed_dict["params"])
 
 
 class DeleteDevicesResponse(EmptyResponse):
@@ -1226,12 +1239,14 @@ class RoomIdResponse(Response):
 @dataclass
 class RoomCreateResponse(Response):
     """Response representing a successful create room request."""
-    room_id: str = field()
 
+    room_id: str = field()
 
     @classmethod
     @verify(
-        Schemas.room_create_response, RoomCreateError, pass_arguments=False,
+        Schemas.room_create_response,
+        RoomCreateError,
+        pass_arguments=False,
     )
     def from_dict(
         cls,
@@ -1255,6 +1270,7 @@ class RoomLeaveResponse(EmptyResponse):
 
 class RoomForgetResponse(_EmptyResponseWithRoomId):
     """Response representing a successful forget room request."""
+
     @staticmethod
     def create_error(parsed_dict, room_id):
         return RoomForgetError.from_dict(parsed_dict, room_id)
@@ -1278,7 +1294,8 @@ class KeysQueryResponse(Response):
     device_keys: Dict = field()
     failures: Dict = field()
     changed: Dict[str, Dict[str, Any]] = field(
-        init=False, default_factory=dict,
+        init=False,
+        default_factory=dict,
     )
 
     @classmethod
@@ -1410,8 +1427,11 @@ class ProfileGetResponse(Response):
         return cls(
             parsed_dict.get("displayname"),
             parsed_dict.get("avatar_url"),
-            {k: v for k, v in parsed_dict.items()
-             if k not in ("displayname", "avatar_url")},
+            {
+                k: v
+                for k, v in parsed_dict.items()
+                if k not in ("displayname", "avatar_url")
+            },
         )
 
 
@@ -1500,16 +1520,14 @@ class PresenceGetResponse(Response):
     @classmethod
     @verify(Schemas.get_presence, PresenceGetError, pass_arguments=False)
     def from_dict(
-        cls,
-        parsed_dict: Dict[Any, Any],
-        user_id: str
+        cls, parsed_dict: Dict[Any, Any], user_id: str
     ) -> Union["PresenceGetResponse", PresenceGetError]:
         return cls(
             user_id,
             parsed_dict.get("presence", "offline"),
             parsed_dict.get("last_active_ago"),
             parsed_dict.get("currently_active"),
-            parsed_dict.get("status_msg")
+            parsed_dict.get("status_msg"),
         )
 
 
@@ -1595,20 +1613,21 @@ class RoomContextResponse(Response):
         room_id: str,
     ):
         # type: (...) -> Union[RoomContextResponse, ErrorResponse]
-        events_before = SyncResponse._get_room_events(
-            parsed_dict["events_before"]
-        )
-        events_after = SyncResponse._get_room_events(
-            parsed_dict["events_after"]
-        )
+        events_before = SyncResponse._get_room_events(parsed_dict["events_before"])
+        events_after = SyncResponse._get_room_events(parsed_dict["events_after"])
         event = Event.parse_event(parsed_dict["event"])
 
-        state = SyncResponse._get_room_events(
-            parsed_dict["state"]
-        )
+        state = SyncResponse._get_room_events(parsed_dict["state"])
 
-        return cls(room_id, parsed_dict["start"], parsed_dict["end"],
-                   event, events_before, events_after, state)
+        return cls(
+            room_id,
+            parsed_dict["start"],
+            parsed_dict["end"],
+            event,
+            events_before,
+            events_after,
+            state,
+        )
 
 
 @dataclass
@@ -1638,13 +1657,13 @@ class SyncResponse(Response):
                 result.append("    {}".format(event))
 
         body = "\n".join(result)
-        string = ("Sync response until batch: {}:\n{}").format(
-            self.next_batch, body
-        )
+        string = ("Sync response until batch: {}:\n{}").format(self.next_batch, body)
         return string
 
     @staticmethod
-    def _get_room_events(parsed_dict: List[Dict[Any, Any]]) -> List[Union[Event, BadEventType]]:
+    def _get_room_events(
+        parsed_dict: List[Dict[Any, Any]]
+    ) -> List[Union[Event, BadEventType]]:
         events: List[Union[Event, BadEventType]] = []
 
         for event_dict in parsed_dict:
@@ -1673,9 +1692,7 @@ class SyncResponse(Response):
 
         events = SyncResponse._get_room_events(parsed_dict.get("events", []))
 
-        return Timeline(
-            events, parsed_dict["limited"], parsed_dict.get("prev_batch")
-        )
+        return Timeline(events, parsed_dict["limited"], parsed_dict.get("prev_batch"))
 
     @staticmethod
     def _get_state(parsed_dict: Dict[Any, Any]) -> List[Union[Event, BadEventType]]:
@@ -1725,9 +1742,7 @@ class SyncResponse(Response):
         events = SyncResponse._get_room_events(timeline_events)
         timeline = Timeline(events, limited, prev_batch)
 
-        ephemeral_event_list = SyncResponse._get_ephemeral_events(
-            ephemeral_events
-        )
+        ephemeral_event_list = SyncResponse._get_ephemeral_events(ephemeral_events)
 
         summary = RoomSummary(
             summary_events.get("m.invited_member_count"),
@@ -1810,8 +1825,7 @@ class SyncResponse(Response):
 
         key_count_dict = parsed_dict.get("device_one_time_keys_count", {})
         key_count = DeviceOneTimeKeyCount(
-            key_count_dict.get("curve25519"),
-            key_count_dict.get("signed_curve25519")
+            key_count_dict.get("curve25519"), key_count_dict.get("signed_curve25519")
         )
 
         devices = DeviceList(
@@ -1847,12 +1861,14 @@ class UploadFilterResponse(Response):
             future requests to restrict which events are returned to the
             client.
     """
+
     filter_id: str = field()
 
     @classmethod
     @verify(Schemas.upload_filter, UploadFilterError)
     def from_dict(
-        cls, parsed_dict: Dict[Any, Any],
+        cls,
+        parsed_dict: Dict[Any, Any],
     ) -> Union["UploadFilterResponse", UploadFilterError]:
         return cls(parsed_dict["filter_id"])
 
@@ -1869,7 +1885,8 @@ class WhoamiResponse(Response):
     @classmethod
     @verify(Schemas.whoami, WhoamiError)
     def from_dict(
-        cls, parsed_dict: Dict[Any, Any],
+        cls,
+        parsed_dict: Dict[Any, Any],
     ) -> Union["WhoamiResponse", WhoamiError]:
         return cls(parsed_dict["user_id"])
 
@@ -1946,6 +1963,7 @@ class RoomUpdateAliasError(ErrorResponse):
 
 class RoomUpdateAliasResponse(EmptyResponse):
     pass
+
 
 class RoomUpgradeError(ErrorResponse):
     pass

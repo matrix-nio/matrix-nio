@@ -1,12 +1,16 @@
 from datetime import timedelta
 
 import pytest
-
 from helpers import faker
+
 from nio.crypto import OlmDevice, Sas, SasState
-from nio.events import (KeyVerificationAccept, KeyVerificationCancel,
-                        KeyVerificationKey, KeyVerificationMac,
-                        KeyVerificationStart)
+from nio.events import (
+    KeyVerificationAccept,
+    KeyVerificationCancel,
+    KeyVerificationKey,
+    KeyVerificationMac,
+    KeyVerificationStart,
+)
 from nio.exceptions import LocalProtocolError
 
 alice_id = "@alice:example.org"
@@ -17,27 +21,14 @@ bob_id = "@bob:example.org"
 bob_device_id = "JLAFKJWSRS"
 bob_keys = faker.olm_key_pair()
 
-alice_device = OlmDevice(
-    alice_id,
-    alice_device_id,
-    alice_keys
-)
+alice_device = OlmDevice(alice_id, alice_device_id, alice_keys)
 
-bob_device = OlmDevice(
-    bob_id,
-    bob_device_id,
-    bob_keys
-)
+bob_device = OlmDevice(bob_id, bob_device_id, bob_keys)
 
 
 class TestClass:
     def test_sas_creation(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys["ed25519"],
-            bob_device
-        )
+        alice = Sas(alice_id, alice_device_id, alice_keys["ed25519"], bob_device)
 
         with pytest.raises(LocalProtocolError):
             alice.accept_verification()
@@ -51,20 +42,13 @@ class TestClass:
         )
         assert alice.state == SasState.created
 
-        start = {
-            "sender": alice_id,
-            "content": alice.start_verification().content
-        }
+        start = {"sender": alice_id, "content": alice.start_verification().content}
 
         start_event = KeyVerificationStart.from_dict(start)
         assert isinstance(start_event, KeyVerificationStart)
 
         bob = Sas.from_key_verification_start(
-            bob_id,
-            bob_device_id,
-            bob_keys["ed25519"],
-            alice_device,
-            start_event
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
 
         with pytest.raises(LocalProtocolError):
@@ -79,24 +63,14 @@ class TestClass:
             alice_keys["ed25519"],
             bob_device,
         )
-        start = {
-            "sender": alice_id,
-            "content": alice.start_verification().content
-        }
+        start = {"sender": alice_id, "content": alice.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
 
         bob = Sas.from_key_verification_start(
-            bob_id,
-            bob_device,
-            bob_keys["ed25519"],
-            alice_device,
-            start_event
+            bob_id, bob_device, bob_keys["ed25519"], alice_device, start_event
         )
 
-        accept = {
-            "sender": bob_id,
-            "content": bob.accept_verification().content
-        }
+        accept = {"sender": bob_id, "content": bob.accept_verification().content}
         accept_event = KeyVerificationAccept.from_dict(accept)
         assert isinstance(accept_event, KeyVerificationAccept)
         alice.receive_accept_event(accept_event)
@@ -109,41 +83,25 @@ class TestClass:
             alice_keys["ed25519"],
             bob_device,
         )
-        start = {
-            "sender": alice_id,
-            "content": alice.start_verification().content
-        }
+        start = {"sender": alice_id, "content": alice.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
 
         bob = Sas.from_key_verification_start(
-            bob_id,
-            bob_device_id,
-            bob_keys["ed25519"],
-            alice_device,
-            start_event
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
 
-        accept = {
-            "sender": bob_id,
-            "content": bob.accept_verification().content
-        }
+        accept = {"sender": bob_id, "content": bob.accept_verification().content}
         accept_event = KeyVerificationAccept.from_dict(accept)
         alice.receive_accept_event(accept_event)
 
-        alice_key = {
-            "sender": alice_id,
-            "content": alice.share_key().content
-        }
+        alice_key = {"sender": alice_id, "content": alice.share_key().content}
 
         key_event = KeyVerificationKey.from_dict(alice_key)
         assert isinstance(key_event, KeyVerificationKey)
         bob.receive_key_event(key_event)
         assert bob.state == SasState.key_received
 
-        bob_key = {
-            "sender": bob_id,
-            "content": bob.share_key().content
-        }
+        bob_key = {"sender": bob_id, "content": bob.share_key().content}
 
         key_event = KeyVerificationKey.from_dict(bob_key)
         assert isinstance(key_event, KeyVerificationKey)
@@ -158,24 +116,14 @@ class TestClass:
             alice_keys["ed25519"],
             bob_device,
         )
-        start = {
-            "sender": alice_id,
-            "content": alice.start_verification().content
-        }
+        start = {"sender": alice_id, "content": alice.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
 
         bob = Sas.from_key_verification_start(
-            bob_id,
-            bob_device_id,
-            bob_keys["ed25519"],
-            alice_device,
-            start_event
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
 
-        accept = {
-            "sender": bob_id,
-            "content": bob.accept_verification().content
-        }
+        accept = {"sender": bob_id, "content": bob.accept_verification().content}
         accept_event = KeyVerificationAccept.from_dict(accept)
         alice.receive_accept_event(accept_event)
 
@@ -191,41 +139,25 @@ class TestClass:
             alice_keys["ed25519"],
             bob_device,
         )
-        start = {
-            "sender": alice_id,
-            "content": alice.start_verification().content
-        }
+        start = {"sender": alice_id, "content": alice.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
 
         bob = Sas.from_key_verification_start(
-            bob_id,
-            bob_device_id,
-            bob_keys["ed25519"],
-            alice_device,
-            start_event
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
 
-        accept = {
-            "sender": bob_id,
-            "content": bob.accept_verification().content
-        }
+        accept = {"sender": bob_id, "content": bob.accept_verification().content}
         accept_event = KeyVerificationAccept.from_dict(accept)
         alice.receive_accept_event(accept_event)
 
-        alice_key = {
-            "sender": alice_id,
-            "content": alice.share_key().content
-        }
+        alice_key = {"sender": alice_id, "content": alice.share_key().content}
 
         key_event = KeyVerificationKey.from_dict(alice_key)
         assert isinstance(key_event, KeyVerificationKey)
         bob.receive_key_event(key_event)
         assert bob.state == SasState.key_received
 
-        bob_key = {
-            "sender": bob_id,
-            "content": bob.share_key().content
-        }
+        bob_key = {"sender": bob_id, "content": bob.share_key().content}
 
         bob_key["content"]["key"] = alice.pubkey
         key_event = KeyVerificationKey.from_dict(bob_key)
@@ -240,18 +172,11 @@ class TestClass:
             alice_keys["ed25519"],
             bob_device,
         )
-        start = {
-            "sender": alice_id,
-            "content": alice.start_verification().content
-        }
+        start = {"sender": alice_id, "content": alice.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
 
         bob = Sas.from_key_verification_start(
-            bob_id,
-            bob_device_id,
-            bob_keys["ed25519"],
-            alice_device,
-            start_event
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
 
         with pytest.raises(LocalProtocolError):
@@ -269,10 +194,7 @@ class TestClass:
             alice.get_mac()
 
         alice.accept_sas()
-        alice_mac = {
-            "sender": alice_id,
-            "content": alice.get_mac().content
-        }
+        alice_mac = {"sender": alice_id, "content": alice.get_mac().content}
 
         mac_event = KeyVerificationMac.from_dict(alice_mac)
         assert isinstance(mac_event, KeyVerificationMac)
@@ -292,19 +214,12 @@ class TestClass:
             alice_keys["ed25519"],
             bob_device,
         )
-        start = {
-            "sender": alice_id,
-            "content": alice.start_verification().content
-        }
+        start = {"sender": alice_id, "content": alice.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
         start_event.message_authentication_codes.remove(Sas._mac_normal)
 
         bob = Sas.from_key_verification_start(
-            bob_id,
-            bob_device_id,
-            bob_keys["ed25519"],
-            alice_device,
-            start_event
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
 
         with pytest.raises(LocalProtocolError):
@@ -322,10 +237,7 @@ class TestClass:
             alice.get_mac()
 
         alice.accept_sas()
-        alice_mac = {
-            "sender": alice_id,
-            "content": alice.get_mac().content
-        }
+        alice_mac = {"sender": alice_id, "content": alice.get_mac().content}
 
         mac_event = KeyVerificationMac.from_dict(alice_mac)
         assert isinstance(mac_event, KeyVerificationMac)
@@ -360,7 +272,7 @@ class TestClass:
         assert cancellation == {
             "transaction_id": alice.transaction_id,
             "code": "m.user",
-            "reason": "Canceled by user"
+            "reason": "Canceled by user",
         }
 
     def test_sas_invalid_start(self):
@@ -371,19 +283,12 @@ class TestClass:
             bob_device,
         )
 
-        start = {
-            "sender": alice_id,
-            "content": alice.start_verification().content
-        }
+        start = {"sender": alice_id, "content": alice.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
         start_event.method = "m.sas.v0"
 
         bob = Sas.from_key_verification_start(
-            bob_id,
-            bob_device_id,
-            bob_keys["ed25519"],
-            alice_device,
-            start_event
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
 
         assert bob.canceled
@@ -396,18 +301,11 @@ class TestClass:
             bob_device,
         )
 
-        start = {
-            "sender": alice_id,
-            "content": alice.start_verification().content
-        }
+        start = {"sender": alice_id, "content": alice.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
 
         bob = Sas.from_key_verification_start(
-            bob_id,
-            bob_device_id,
-            bob_keys["ed25519"],
-            alice_device,
-            start_event
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
 
         with pytest.raises(LocalProtocolError):
@@ -436,7 +334,7 @@ class TestClass:
         alice.creation_time -= minute
 
         assert not alice.timed_out
-        alice.creation_time -= (minute * 4)
+        alice.creation_time -= minute * 4
         assert alice.timed_out
         assert alice.canceled
 
@@ -461,18 +359,11 @@ class TestClass:
             alice_keys["ed25519"],
             bob_device,
         )
-        start = {
-            "sender": alice_id,
-            "content": alice.start_verification().content
-        }
+        start = {"sender": alice_id, "content": alice.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
 
         bob = Sas.from_key_verification_start(
-            bob_id,
-            bob_device_id,
-            bob_keys["ed25519"],
-            alice_device,
-            start_event
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
 
         alice.set_their_pubkey(bob.pubkey)
@@ -497,23 +388,13 @@ class TestClass:
             alice_keys["ed25519"],
             bob_device,
         )
-        start = {
-            "sender": alice_id,
-            "content": alice.start_verification().content
-        }
+        start = {"sender": alice_id, "content": alice.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
 
         bob = Sas.from_key_verification_start(
-            bob_id,
-            bob_device_id,
-            bob_keys["ed25519"],
-            alice_device,
-            start_event
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
-        accept = {
-            "sender": bob_id,
-            "content": bob.accept_verification().content
-        }
+        accept = {"sender": bob_id, "content": bob.accept_verification().content}
         accept_event = KeyVerificationAccept.from_dict(accept)
         accept_event.sender = faker.mx_id()
         alice.receive_accept_event(accept_event)
@@ -537,10 +418,7 @@ class TestClass:
         alice.state = SasState.created
         accept_event.hash = Sas._hash_v1
         alice.receive_accept_event(accept_event)
-        alice_key = {
-            "sender": alice_id,
-            "content": alice.share_key().content
-        }
+        alice_key = {"sender": alice_id, "content": alice.share_key().content}
         alice_key_event = KeyVerificationKey.from_dict(alice_key)
 
         alice_key_event.sender = faker.mx_id()
@@ -556,10 +434,7 @@ class TestClass:
         alice.state = SasState.key_received
 
         bob.accept_sas()
-        bob_mac = {
-            "sender": bob_id,
-            "content": bob.get_mac().content
-        }
+        bob_mac = {"sender": bob_id, "content": bob.get_mac().content}
 
         mac_event = KeyVerificationMac.from_dict(bob_mac)
 
@@ -574,28 +449,18 @@ class TestClass:
             alice_keys["ed25519"],
             bob_device,
         )
-        start = {
-            "sender": alice_id,
-            "content": alice.start_verification().content
-        }
+        start = {"sender": alice_id, "content": alice.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
 
         bob = Sas.from_key_verification_start(
-            bob_id,
-            bob_device_id,
-            bob_keys["ed25519"],
-            alice_device,
-            start_event
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
         bob.set_their_pubkey(alice.pubkey)
         bob.state = SasState.key_received
 
         bob.chosen_mac_method = Sas._mac_normal
         bob.accept_sas()
-        bob_mac = {
-            "sender": bob_id,
-            "content": bob.get_mac().content
-        }
+        bob_mac = {"sender": bob_id, "content": bob.get_mac().content}
 
         mac_event = KeyVerificationMac.from_dict(bob_mac)
 
@@ -610,18 +475,11 @@ class TestClass:
             alice_keys["ed25519"],
             bob_device,
         )
-        start = {
-            "sender": alice_id,
-            "content": alice.start_verification().content
-        }
+        start = {"sender": alice_id, "content": alice.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
 
         bob = Sas.from_key_verification_start(
-            bob_id,
-            bob_device_id,
-            bob_keys["ed25519"],
-            alice_device,
-            start_event
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
 
         with pytest.raises(LocalProtocolError):
@@ -636,10 +494,7 @@ class TestClass:
         bob.chosen_mac_method = Sas._mac_normal
 
         alice.accept_sas()
-        alice_mac = {
-            "sender": alice_id,
-            "content": alice.get_mac().content
-        }
+        alice_mac = {"sender": alice_id, "content": alice.get_mac().content}
 
         mac_event = KeyVerificationMac.from_dict(alice_mac)
         mac_event.keys = "FAKEKEYS"
@@ -663,13 +518,10 @@ class TestClass:
             bob_id,
             bob_device_id,
             olm_machine.account.identity_keys["ed25519"],
-            bob_device
+            bob_device,
         )
 
-        start = {
-            "sender": bob_id,
-            "content": bob_sas.start_verification().content
-        }
+        start = {"sender": bob_id, "content": bob_sas.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
 
         assert olm_machine.device_store[bob_id][bob_device_id]
@@ -684,13 +536,10 @@ class TestClass:
             bob_id,
             bob_device_id,
             olm_machine.account.identity_keys["ed25519"],
-            bob_device
+            bob_device,
         )
 
-        start = {
-            "sender": bob_id,
-            "content": bob_sas.start_verification().content
-        }
+        start = {"sender": bob_id, "content": bob_sas.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
         olm_machine.handle_key_verification(start_event)
         alice_sas = olm_machine.key_verifications[start_event.transaction_id]
@@ -701,15 +550,13 @@ class TestClass:
         alice_sas.creation_time -= timedelta(minutes=25)
         olm_machine.clear_verifications()
         with pytest.raises(KeyError):
-            alice_sas = (
-                olm_machine.key_verifications[start_event.transaction_id]
-            )
+            alice_sas = olm_machine.key_verifications[start_event.transaction_id]
 
     def test_client_full_sas(self, olm_machine):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys
+            olm_machine.account.identity_keys,
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
         bob_sas = Sas(
@@ -719,10 +566,7 @@ class TestClass:
             alice_device,
         )
 
-        start = {
-            "sender": bob_id,
-            "content": bob_sas.start_verification().content
-        }
+        start = {"sender": bob_id, "content": bob_sas.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
 
         assert olm_machine.device_store[bob_id][bob_device_id]
@@ -732,16 +576,13 @@ class TestClass:
 
         accept = {
             "sender": olm_machine.user_id,
-            "content": alice_sas.accept_verification().content
+            "content": alice_sas.accept_verification().content,
         }
         accept_event = KeyVerificationAccept.from_dict(accept)
 
         bob_sas.receive_accept_event(accept_event)
 
-        bob_key = {
-            "sender": bob_id,
-            "content": bob_sas.share_key().content
-        }
+        bob_key = {"sender": bob_id, "content": bob_sas.share_key().content}
         bob_key_event = KeyVerificationKey.from_dict(bob_key)
 
         assert bob_sas.chosen_key_agreement == Sas._key_agreement_v2
@@ -749,10 +590,7 @@ class TestClass:
 
         olm_machine.handle_key_verification(bob_key_event)
 
-        alice_key = {
-            "sender": alice_id,
-            "content": alice_sas.share_key().content
-        }
+        alice_key = {"sender": alice_id, "content": alice_sas.share_key().content}
         alice_key_event = KeyVerificationKey.from_dict(alice_key)
         bob_sas.receive_key_event(alice_key_event)
 
@@ -761,10 +599,7 @@ class TestClass:
 
         bob_sas.accept_sas()
 
-        bob_mac = {
-            "sender": bob_id,
-            "content": bob_sas.get_mac().content
-        }
+        bob_mac = {"sender": bob_id, "content": bob_sas.get_mac().content}
 
         bob_mac_event = KeyVerificationMac.from_dict(bob_mac)
 
@@ -782,7 +617,7 @@ class TestClass:
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys
+            olm_machine.account.identity_keys,
         )
         bob_sas = Sas(
             bob_id,
@@ -791,10 +626,7 @@ class TestClass:
             alice_device,
         )
 
-        start = {
-            "sender": bob_id,
-            "content": bob_sas.start_verification().content
-        }
+        start = {"sender": bob_id, "content": bob_sas.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
 
         assert olm_machine.device_store[bob_id][bob_device_id]
@@ -804,24 +636,18 @@ class TestClass:
 
         accept = {
             "sender": olm_machine.user_id,
-            "content": alice_sas.accept_verification().content
+            "content": alice_sas.accept_verification().content,
         }
         accept_event = KeyVerificationAccept.from_dict(accept)
 
         bob_sas.receive_accept_event(accept_event)
 
-        bob_key = {
-            "sender": bob_id,
-            "content": bob_sas.share_key().content
-        }
+        bob_key = {"sender": bob_id, "content": bob_sas.share_key().content}
         bob_key_event = KeyVerificationKey.from_dict(bob_key)
 
         olm_machine.handle_key_verification(bob_key_event)
 
-        alice_key = {
-            "sender": alice_id,
-            "content": alice_sas.share_key().content
-        }
+        alice_key = {"sender": alice_id, "content": alice_sas.share_key().content}
         alice_key_event = KeyVerificationKey.from_dict(alice_key)
         bob_sas.receive_key_event(alice_key_event)
 
@@ -830,10 +656,7 @@ class TestClass:
 
         bob_sas.accept_sas()
 
-        bob_mac = {
-            "sender": bob_id,
-            "content": bob_sas.get_mac().content
-        }
+        bob_mac = {"sender": bob_id, "content": bob_sas.get_mac().content}
 
         bob_mac_event = KeyVerificationMac.from_dict(bob_mac)
 
@@ -848,13 +671,13 @@ class TestClass:
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys
+            olm_machine.account.identity_keys,
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         start = {
             "sender": alice_device.user_id,
-            "content": olm_machine.create_sas(bob_device).content
+            "content": olm_machine.create_sas(bob_device).content,
         }
         start_event = KeyVerificationStart.from_dict(start)
 
@@ -863,30 +686,21 @@ class TestClass:
             bob_device.id,
             bob_device.ed25519,
             alice_device,
-            start_event
+            start_event,
         )
 
         alice_sas = olm_machine.key_verifications[start_event.transaction_id]
         assert alice_sas
 
-        accept = {
-            "sender": bob_id,
-            "content": bob_sas.accept_verification().content
-        }
+        accept = {"sender": bob_id, "content": bob_sas.accept_verification().content}
         accept_event = KeyVerificationAccept.from_dict(accept)
         olm_machine.handle_key_verification(accept_event)
 
-        alice_key = {
-            "sender": alice_id,
-            "content": alice_sas.share_key().content
-        }
+        alice_key = {"sender": alice_id, "content": alice_sas.share_key().content}
         alice_key_event = KeyVerificationKey.from_dict(alice_key)
         bob_sas.receive_key_event(alice_key_event)
 
-        bob_key = {
-            "sender": bob_id,
-            "content": bob_sas.share_key().content
-        }
+        bob_key = {"sender": bob_id, "content": bob_sas.share_key().content}
         bob_key_event = KeyVerificationKey.from_dict(bob_key)
 
         olm_machine.handle_key_verification(bob_key_event)
@@ -896,10 +710,7 @@ class TestClass:
 
         bob_sas.accept_sas()
 
-        bob_mac = {
-            "sender": bob_id,
-            "content": bob_sas.get_mac().content
-        }
+        bob_mac = {"sender": bob_id, "content": bob_sas.get_mac().content}
 
         bob_mac_event = KeyVerificationMac.from_dict(bob_mac)
 
@@ -914,21 +725,18 @@ class TestClass:
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys
+            olm_machine.account.identity_keys,
         )
 
         bob_device = faker.olm_device()
 
         bob_sas = Sas(
-            bob_device.user_id,
-            bob_device.id,
-            bob_device.ed25519,
-            alice_device
+            bob_device.user_id, bob_device.id, bob_device.ed25519, alice_device
         )
 
         start = {
             "sender": bob_device.user_id,
-            "content": bob_sas.start_verification().content
+            "content": bob_sas.start_verification().content,
         }
         start_event = KeyVerificationStart.from_dict(start)
         olm_machine.handle_key_verification(start_event)
@@ -940,20 +748,17 @@ class TestClass:
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys
+            olm_machine.account.identity_keys,
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         bob_sas = Sas(
-            bob_device.user_id,
-            bob_device.id,
-            bob_device.ed25519,
-            alice_device
+            bob_device.user_id, bob_device.id, bob_device.ed25519, alice_device
         )
 
         start = {
             "sender": bob_device.user_id,
-            "content": bob_sas.start_verification().content
+            "content": bob_sas.start_verification().content,
         }
         start_event = KeyVerificationStart.from_dict(start)
         start_event.method = "unsupported"
@@ -964,36 +769,28 @@ class TestClass:
         assert start_event.transaction_id not in olm_machine.key_verifications
         assert olm_machine.outgoing_to_device_messages
         to_device = olm_machine.outgoing_to_device_messages[0]
-        assert (
-            start_event.transaction_id == to_device.content["transaction_id"]
-        )
+        assert start_event.transaction_id == to_device.content["transaction_id"]
 
     def test_client_unknown_txid(self, olm_machine):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys
+            olm_machine.account.identity_keys,
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         bob_sas = Sas(
-            bob_device.user_id,
-            bob_device.id,
-            bob_device.ed25519,
-            alice_device
+            bob_device.user_id, bob_device.id, bob_device.ed25519, alice_device
         )
 
         start = {
             "sender": bob_device.user_id,
-            "content": bob_sas.start_verification().content
+            "content": bob_sas.start_verification().content,
         }
         start_event = KeyVerificationStart.from_dict(start)
         olm_machine.handle_key_verification(start_event)
 
-        bob_key = {
-            "sender": bob_id,
-            "content": bob_sas.share_key().content
-        }
+        bob_key = {"sender": bob_id, "content": bob_sas.share_key().content}
         bob_key_event = KeyVerificationKey.from_dict(bob_key)
         bob_key_event.transaction_id = "unknown"
         olm_machine.handle_key_verification(bob_key_event)
@@ -1001,21 +798,19 @@ class TestClass:
         assert alice_sas
         assert not alice_sas.other_key_set
 
-        assert (
-            bob_key_event.transaction_id not in olm_machine.key_verifications
-        )
+        assert bob_key_event.transaction_id not in olm_machine.key_verifications
 
     def test_client_accept_cancel(self, olm_machine):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys
+            olm_machine.account.identity_keys,
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         start = {
             "sender": alice_device.user_id,
-            "content": olm_machine.create_sas(bob_device).content
+            "content": olm_machine.create_sas(bob_device).content,
         }
         start_event = KeyVerificationStart.from_dict(start)
 
@@ -1024,16 +819,13 @@ class TestClass:
             bob_device.id,
             bob_device.ed25519,
             alice_device,
-            start_event
+            start_event,
         )
 
         alice_sas = olm_machine.key_verifications[start_event.transaction_id]
         assert alice_sas
 
-        accept = {
-            "sender": bob_id,
-            "content": bob_sas.accept_verification().content
-        }
+        accept = {"sender": bob_id, "content": bob_sas.accept_verification().content}
         accept_event = KeyVerificationAccept.from_dict(accept)
         olm_machine.handle_key_verification(accept_event)
         assert not alice_sas.canceled
@@ -1044,13 +836,13 @@ class TestClass:
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys
+            olm_machine.account.identity_keys,
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         start = {
             "sender": alice_device.user_id,
-            "content": olm_machine.create_sas(bob_device).content
+            "content": olm_machine.create_sas(bob_device).content,
         }
         start_event = KeyVerificationStart.from_dict(start)
 
@@ -1059,17 +851,14 @@ class TestClass:
             bob_device.id,
             bob_device.ed25519,
             alice_device,
-            start_event
+            start_event,
         )
 
         alice_sas = olm_machine.key_verifications[start_event.transaction_id]
         assert alice_sas
 
         bob_sas.cancel()
-        cancel = {
-            "sender": bob_id,
-            "content": bob_sas.get_cancellation().content
-        }
+        cancel = {"sender": bob_id, "content": bob_sas.get_cancellation().content}
         cancel_event = KeyVerificationCancel.from_dict(cancel)
         assert not alice_sas.canceled
         olm_machine.handle_key_verification(cancel_event)
@@ -1080,28 +869,22 @@ class TestClass:
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys
+            olm_machine.account.identity_keys,
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         bob_sas = Sas(
-            bob_device.user_id,
-            bob_device.id,
-            bob_device.ed25519,
-            alice_device
+            bob_device.user_id, bob_device.id, bob_device.ed25519, alice_device
         )
 
         start = {
             "sender": bob_device.user_id,
-            "content": bob_sas.start_verification().content
+            "content": bob_sas.start_verification().content,
         }
         start_event = KeyVerificationStart.from_dict(start)
         olm_machine.handle_key_verification(start_event)
 
-        bob_key = {
-            "sender": bob_id,
-            "content": bob_sas.share_key().content
-        }
+        bob_key = {"sender": bob_id, "content": bob_sas.share_key().content}
         assert not olm_machine.outgoing_to_device_messages
         bob_key_event = KeyVerificationKey.from_dict(bob_key)
         olm_machine.handle_key_verification(bob_key_event)
@@ -1115,27 +898,22 @@ class TestClass:
         assert alice_sas.canceled
         assert olm_machine.outgoing_to_device_messages
         to_device = olm_machine.outgoing_to_device_messages[0]
-        assert (
-            start_event.transaction_id == to_device.content["transaction_id"]
-        )
+        assert start_event.transaction_id == to_device.content["transaction_id"]
 
     def test_duplicate_verification(self, olm_machine):
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys
+            olm_machine.account.identity_keys,
         )
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
 
         bob_sas = Sas(
-            bob_device.user_id,
-            bob_device.id,
-            bob_device.ed25519,
-            alice_device
+            bob_device.user_id, bob_device.id, bob_device.ed25519, alice_device
         )
         start = {
             "sender": bob_device.user_id,
-            "content": bob_sas.start_verification().content
+            "content": bob_sas.start_verification().content,
         }
 
         start_event = KeyVerificationStart.from_dict(start)
@@ -1161,7 +939,7 @@ class TestClass:
 
         assert sas in olm_machine.key_verifications.values()
         minute = timedelta(minutes=1)
-        sas.creation_time -= (minute * 5)
+        sas.creation_time -= minute * 5
 
         olm_machine.clear_verifications()
         assert sas.canceled
@@ -1171,7 +949,7 @@ class TestClass:
         alice_device = OlmDevice(
             olm_machine.user_id,
             olm_machine.device_id,
-            olm_machine.account.identity_keys
+            olm_machine.account.identity_keys,
         )
 
         bob_device = olm_machine.device_store[bob_id][bob_device_id]
@@ -1182,10 +960,7 @@ class TestClass:
             alice_device,
         )
 
-        start = {
-            "sender": bob_id,
-            "content": bob_sas.start_verification().content
-        }
+        start = {"sender": bob_id, "content": bob_sas.start_verification().content}
         start_event = KeyVerificationStart.from_dict(start)
         start_event.key_agreement_protocols = [Sas._key_agreement_v1]
 
@@ -1196,7 +971,7 @@ class TestClass:
 
         accept = {
             "sender": olm_machine.user_id,
-            "content": alice_sas.accept_verification().content
+            "content": alice_sas.accept_verification().content,
         }
         accept_event = KeyVerificationAccept.from_dict(accept)
 
@@ -1205,18 +980,12 @@ class TestClass:
         assert bob_sas.chosen_key_agreement == Sas._key_agreement_v1
         assert alice_sas.chosen_key_agreement == Sas._key_agreement_v1
 
-        bob_key = {
-            "sender": bob_id,
-            "content": bob_sas.share_key().content
-        }
+        bob_key = {"sender": bob_id, "content": bob_sas.share_key().content}
         bob_key_event = KeyVerificationKey.from_dict(bob_key)
 
         olm_machine.handle_key_verification(bob_key_event)
 
-        alice_key = {
-            "sender": alice_id,
-            "content": alice_sas.share_key().content
-        }
+        alice_key = {"sender": alice_id, "content": alice_sas.share_key().content}
         alice_key_event = KeyVerificationKey.from_dict(alice_key)
         bob_sas.receive_key_event(alice_key_event)
 
@@ -1227,10 +996,7 @@ class TestClass:
 
         bob_sas.accept_sas()
 
-        bob_mac = {
-            "sender": bob_id,
-            "content": bob_sas.get_mac().content
-        }
+        bob_mac = {"sender": bob_id, "content": bob_sas.get_mac().content}
 
         bob_mac_event = KeyVerificationMac.from_dict(bob_mac)
 

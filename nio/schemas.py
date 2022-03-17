@@ -18,6 +18,7 @@
 from __future__ import unicode_literals
 
 import re
+
 from jsonschema import Draft4Validator, FormatChecker, validators
 
 RoomRegex = "^!.+:.+$"
@@ -36,9 +37,7 @@ def extend_with_default(validator_class):
             if "default" in subschema:
                 instance.setdefault(property, subschema["default"])
 
-        for error in validate_properties(
-            validator, properties, instance, schema
-        ):
+        for error in validate_properties(validator, properties, instance, schema):
             yield error
 
     return validators.extend(validator_class, {"properties": set_defaults})
@@ -53,9 +52,7 @@ def check_user_id(value: str) -> bool:
         raise ValueError("UserIDs start with @")
 
     if ":" not in value:
-        raise ValueError(
-            "UserIDs must have a domain component, seperated by a :"
-        )
+        raise ValueError("UserIDs must have a domain component, seperated by a :")
 
     return True
 
@@ -82,7 +79,7 @@ class Schemas:
                 "required": ["msgtype"],
             }
         },
-        "not": {"required": ["state_key"]}
+        "not": {"required": ["state_key"]},
     }
 
     room_message_text = {
@@ -168,9 +165,7 @@ class Schemas:
                             "url": {"type": "string"},
                             "hashes": {
                                 "type": "object",
-                                "properties": {
-                                    "sha256": {"type": "string"}
-                                }
+                                "properties": {"sha256": {"type": "string"}},
                             },
                             "iv": {"type": "string"},
                             "key": {
@@ -193,9 +188,7 @@ class Schemas:
                                     "url": {"type": "string"},
                                     "hashes": {
                                         "type": "object",
-                                        "properties": {
-                                            "sha256": {"type": "string"}
-                                        }
+                                        "properties": {"sha256": {"type": "string"}},
                                     },
                                     "iv": {"type": "string"},
                                     "key": {
@@ -290,11 +283,9 @@ class Schemas:
                 "type": "array",
                 "items": {
                     "type": "object",
-                    "properties": {
-                        "type": {"type": "string"}
-                    },
-                    "required": ["type"]
-                }
+                    "properties": {"type": {"type": "string"}},
+                    "required": ["type"],
+                },
             },
         },
         "required": ["flows"],
@@ -329,15 +320,15 @@ class Schemas:
                 "properties": {
                     "curve25519": {"type": "integer"},
                     "signed_curve25519": {"type": "integer"},
-                }
+                },
             },
             "device_lists": {
                 "type": "object",
                 "default": {},
                 "properties": {
                     "changed": {"type": "array", "items": {"type": "string"}},
-                    "left": {"type": "array", "items": {"type": "string"}}
-                }
+                    "left": {"type": "array", "items": {"type": "string"}},
+                },
             },
             "next_batch": {"type": "string"},
             "rooms": {
@@ -404,9 +395,9 @@ class Schemas:
                                             },
                                             "m.heroes": {
                                                 "type": "array",
-                                                "items": {"type": "string"}
+                                                "items": {"type": "string"},
                                             },
-                                        }
+                                        },
                                     },
                                     "account_data": {
                                         "type": "object",
@@ -448,7 +439,7 @@ class Schemas:
                                                 "default": [],
                                             },
                                         },
-                                    }
+                                    },
                                 },
                             }
                         },
@@ -458,9 +449,7 @@ class Schemas:
             "to_device": {
                 "type": "object",
                 "default": {},
-                "properties": {
-                    "events": {"type": "array", "default": []}
-                },
+                "properties": {"events": {"type": "array", "default": []}},
             },
             "presence": {
                 "type": "object",
@@ -468,7 +457,7 @@ class Schemas:
                 "properties": {
                     "events": {"type": "array", "default": []},
                 },
-            }
+            },
         },
         "required": ["next_batch"],
     }
@@ -484,7 +473,7 @@ class Schemas:
                 "type": "object",
                 "properties": {
                     "transaction_id": {"type": "string"},
-                }
+                },
             },
         },
         "required": ["event_id", "sender", "type", "origin_server_ts"],
@@ -502,16 +491,10 @@ class Schemas:
                 "type": "object",
                 "properties": {
                     "transaction_id": {"type": "string"},
-                }
+                },
             },
         },
-        "required": [
-            "event_id",
-            "sender",
-            "type",
-            "state_key",
-            "origin_server_ts"
-        ],
+        "required": ["event_id", "sender", "type", "state_key", "origin_server_ts"],
     }
 
     room_state = {
@@ -542,7 +525,7 @@ class Schemas:
                 "type": "object",
                 "properties": {
                     "sender_key": {"type": "string"},
-                    "algorithm": {"type": "string"}
+                    "algorithm": {"type": "string"},
                 },
                 "required": ["sender_key", "algorithm"],
             }
@@ -560,7 +543,7 @@ class Schemas:
                     "sender_key": {"type": "string"},
                     "algorithm": {
                         "type": "string",
-                        "enum": ["m.olm.v1.curve25519-aes-sha2"]
+                        "enum": ["m.olm.v1.curve25519-aes-sha2"],
                     },
                     "ciphertext": {
                         "type": "object",
@@ -571,12 +554,12 @@ class Schemas:
                                     "body": {"type": "string"},
                                     "type": {"type": "integer"},
                                 },
-                                "required": ["type", "body"]
+                                "required": ["type", "body"],
                             }
                         },
-                    }
+                    },
                 },
-                "required": ["sender_key", "algorithm", "ciphertext"]
+                "required": ["sender_key", "algorithm", "ciphertext"],
             },
         },
         "required": [
@@ -587,10 +570,7 @@ class Schemas:
 
     room_megolm_decrypted = {
         "type": "object",
-        "properties": {
-            "type": {"type": "string"},
-            "content": {"type": "object"}
-        },
+        "properties": {"type": {"type": "string"}, "content": {"type": "object"}},
         "required": [
             "type",
             "content",
@@ -609,10 +589,7 @@ class Schemas:
                 "type": "object",
                 "properties": {
                     "sender_key": {"type": "string"},
-                    "algorithm": {
-                        "type": "string",
-                        "enum": ["m.megolm.v1.aes-sha2"]
-                    },
+                    "algorithm": {"type": "string", "enum": ["m.megolm.v1.aes-sha2"]},
                     "ciphertext": {"type": "string"},
                     "session_id": {"type": "string"},
                     "device_id": {"type": "string"},
@@ -623,16 +600,10 @@ class Schemas:
                     "ciphertext",
                     "session_id",
                     "device_id",
-                ]
+                ],
             },
         },
-        "required": [
-            "type",
-            "content",
-            "event_id",
-            "sender",
-            "origin_server_ts"
-        ],
+        "required": ["type", "content", "event_id", "sender", "origin_server_ts"],
     }
 
     olm_event = {
@@ -696,22 +667,17 @@ class Schemas:
                             "algorithm",
                             "room_id",
                             "sender_key",
-                            "session_id"
-                        ]
+                            "session_id",
+                        ],
                     },
                     "requesting_device_id": {"type": "string"},
                     "action": {
                         "type": "string",
-                        "enum": ["request", "request_cancellation"]
+                        "enum": ["request", "request_cancellation"],
                     },
-                    "request_id": {"type": "string"}
+                    "request_id": {"type": "string"},
                 },
-                "required": [
-                    "requesting_device_id",
-                    "request_id",
-                    "action",
-                    "body"
-                ],
+                "required": ["requesting_device_id", "request_id", "action", "body"],
             },
         },
         "required": ["type", "sender", "content"],
@@ -728,15 +694,11 @@ class Schemas:
                     "requesting_device_id": {"type": "string"},
                     "action": {
                         "type": "string",
-                        "enum": ["request", "request_cancellation"]
+                        "enum": ["request", "request_cancellation"],
                     },
-                    "request_id": {"type": "string"}
+                    "request_id": {"type": "string"},
                 },
-                "required": [
-                    "requesting_device_id",
-                    "request_id",
-                    "action"
-                ],
+                "required": ["requesting_device_id", "request_id", "action"],
             },
         },
         "required": ["type", "sender", "content"],
@@ -783,7 +745,7 @@ class Schemas:
                     "sender_claimed_ed25519_key": {"type": "string"},
                     "forwarding_curve25519_key_chain": {
                         "type": "array",
-                        "items": {"type": "string"}
+                        "items": {"type": "string"},
                     },
                     "session_id": {"type": "string"},
                     "session_key": {"type": "string"},
@@ -815,16 +777,13 @@ class Schemas:
                     "m.federate": {"type": "boolean", "default": True},
                     "room_version": {"type": "string", "default": "1"},
                     "predecessor": {
-                          "type": "object",
-                          "properties": {
-                              "event_id": {"type": "string"},
-                              "room_id": {"type": "string", "format": "room_id"}
-                          },
-                          "required": [
-                              "event_id",
-                              "room_id"
-                          ]
-                    }
+                        "type": "object",
+                        "properties": {
+                            "event_id": {"type": "string"},
+                            "room_id": {"type": "string", "format": "room_id"},
+                        },
+                        "required": ["event_id", "room_id"],
+                    },
                 },
                 "required": ["creator"],
             },
@@ -844,7 +803,7 @@ class Schemas:
                     "guest_access": {
                         "type": "string",
                         "enum": ["can_join", "forbidden"],
-                        "default": "forbidden"
+                        "default": "forbidden",
                     },
                 },
                 "required": ["guest_access"],
@@ -975,10 +934,10 @@ class Schemas:
                     },
                     "url": {"type": "string"},
                 },
-                "required": ["url"]
+                "required": ["url"],
             },
         },
-        "required": ["type", "sender", "content", "state_key"]
+        "required": ["type", "sender", "content", "state_key"],
     }
 
     room_power_levels = {
@@ -1000,16 +959,12 @@ class Schemas:
                     "events": {
                         "type": "object",
                         "default": {},
-                        "patternProperties": {
-                            EventTypeRegex: {"type": "integer"}
-                        },
+                        "patternProperties": {EventTypeRegex: {"type": "integer"}},
                     },
                     "users": {
                         "type": "object",
                         "default": {},
-                        "patternProperties": {
-                            UserIdRegex: {"type": "integer"}
-                        },
+                        "patternProperties": {UserIdRegex: {"type": "integer"}},
                     },
                     "notifications": {
                         "type": "object",
@@ -1156,19 +1111,13 @@ class Schemas:
 
     invite_event = {
         "type": "object",
-        "properties": {
-            "content": {"type": "object"},
-            "type": {"type": "string"}
-        },
+        "properties": {"content": {"type": "object"}, "type": {"type": "string"}},
         "required": ["content", "type"],
     }
 
     ephemeral_event = {
         "type": "object",
-        "properties": {
-            "content": {"type": "object"},
-            "type": {"type": "string"}
-        },
+        "properties": {"content": {"type": "object"}, "type": {"type": "string"}},
         "required": ["content", "type"],
     }
 
@@ -1178,15 +1127,12 @@ class Schemas:
             "content": {
                 "type": "object",
                 "properties": {
-                    "user_ids": {
-                        "type": "array",
-                        "items": {"type": "string"}
-                    }
+                    "user_ids": {"type": "array", "items": {"type": "string"}}
                 },
-                "required": ["user_ids"]
+                "required": ["user_ids"],
             },
             "type": {"type": "string"},
-            "room_id": {"type": "string"}
+            "room_id": {"type": "string"},
         },
         "required": ["content", "type"],
     }
@@ -1205,19 +1151,17 @@ class Schemas:
                                 "patternProperties": {
                                     UserIdRegex: {
                                         "type": ["object", "string"],
-                                        "properties": {
-                                            "ts": {"type" : "integer"}
-                                        },
-                                        "required": ["ts"]
+                                        "properties": {"ts": {"type": "integer"}},
+                                        "required": ["ts"],
                                     }
-                                }
+                                },
                             }
-                        }
+                        },
                     }
-                }
+                },
             },
             "type": {"type": "string"},
-            "room_id": {"type": "string"}
+            "room_id": {"type": "string"},
         },
         "required": ["content", "type"],
     }
@@ -1241,46 +1185,44 @@ class Schemas:
         "properties": {
             "device_keys": {
                 "type": "object",
-                "patternProperties": {UserIdRegex: {
-                    "type": "object",
-                    "patternProperties": {r".+": {
+                "patternProperties": {
+                    UserIdRegex: {
                         "type": "object",
-                        "properties": {
-                            "algorithms": {
-                                "type": "array",
-                                "items": {"type": "string"}
-                            },
-                            "device_id": {"type": "string"},
-                            "user_id": {"type": "string"},
-                            "keys": {
+                        "patternProperties": {
+                            r".+": {
                                 "type": "object",
-                                "patternProperties": {
-                                    KeyRegex: {"type": "string"}
-                                },
-                            },
-                            "signatures": {
-                                "type": "object",
-                                "patternProperties": {
-                                    UserIdRegex: {
+                                "properties": {
+                                    "algorithms": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                    },
+                                    "device_id": {"type": "string"},
+                                    "user_id": {"type": "string"},
+                                    "keys": {
                                         "type": "object",
                                         "patternProperties": {
                                             KeyRegex: {"type": "string"}
-                                        }
-                                    }
+                                        },
+                                    },
+                                    "signatures": {
+                                        "type": "object",
+                                        "patternProperties": {
+                                            UserIdRegex: {
+                                                "type": "object",
+                                                "patternProperties": {
+                                                    KeyRegex: {"type": "string"}
+                                                },
+                                            }
+                                        },
+                                    },
                                 },
-                            },
+                                "required": ["algorithms", "device_id", "keys"],
+                            }
                         },
-                        "required": [
-                            "algorithms",
-                            "device_id",
-                            "keys"
-                        ]
-                    }}
-                }},
+                    }
+                },
             },
-            "failures": {
-                "type": "object"
-            }
+            "failures": {"type": "object"},
         },
         "required": ["device_keys", "failures"],
     }
@@ -1290,37 +1232,42 @@ class Schemas:
         "properties": {
             "one_time_keys": {
                 "type": "object",
-                "patternProperties": {UserIdRegex: {
-                    "type": "object",
-                    "patternProperties": {r".+": {
+                "patternProperties": {
+                    UserIdRegex: {
                         "type": "object",
-                        "properties": {
-                            "patternProperties": {SignedCurveRegex: {
+                        "patternProperties": {
+                            r".+": {
                                 "type": "object",
                                 "properties": {
-                                    "key": {"type": "str"},
-                                    "signatures": {
-                                        "type": "object",
-                                        "patternProperties": {UserIdRegex: {
+                                    "patternProperties": {
+                                        SignedCurveRegex: {
                                             "type": "object",
-                                            "patternProperties": {KeyRegex: {
-                                                "type": "string"
-                                            }}
-                                        }},
+                                            "properties": {
+                                                "key": {"type": "str"},
+                                                "signatures": {
+                                                    "type": "object",
+                                                    "patternProperties": {
+                                                        UserIdRegex: {
+                                                            "type": "object",
+                                                            "patternProperties": {
+                                                                KeyRegex: {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                        }
+                                                    },
+                                                },
+                                            },
+                                            "required": ["key", "signatures"],
+                                        }
                                     },
                                 },
-                                "required": [
-                                    "key",
-                                    "signatures"
-                                ]
-                            }},
-                        }
-                    }}
-                }}
+                            }
+                        },
+                    }
+                },
             },
-            "failures": {
-                "type": "object"
-            }
+            "failures": {"type": "object"},
         },
         "required": ["one_time_keys", "failures"],
     }
@@ -1342,12 +1289,12 @@ class Schemas:
                         "device_id",
                         "display_name",
                         "last_seen_ip",
-                        "last_seen_ts"
-                    ]
-                }
+                        "last_seen_ts",
+                    ],
+                },
             },
         },
-        "required": ["devices"]
+        "required": ["devices"],
     }
 
     delete_devices = {
@@ -1359,22 +1306,21 @@ class Schemas:
                 "items": {
                     "type": "object",
                     "properties": {
-                        "stages": {
-                            "type": "array",
-                            "items": {"type": "string"}
-                        },
-                        "required": ["stages"]
+                        "stages": {"type": "array", "items": {"type": "string"}},
+                        "required": ["stages"],
                     },
-                }
+                },
             },
             "params": {
                 "type": "object",
-                "patternProperties": {r".+": {
-                    "type": "object",
-                    "patternProperties": {r".+": {"type": "string"}}
-                }},
+                "patternProperties": {
+                    r".+": {
+                        "type": "object",
+                        "patternProperties": {r".+": {"type": "string"}},
+                    }
+                },
             },
-            "required": ["session", "flows", "params"]
+            "required": ["session", "flows", "params"],
         },
     }
 
@@ -1383,28 +1329,25 @@ class Schemas:
         "properties": {
             "joined": {
                 "type": "object",
-                "patternProperties": {UserIdRegex: {
-                    "type": "object",
-                    "properties": {
-                        "avatar_url": {"type": ["string", "null"]},
-                        "display_name": {"type": ["string", "null"]},
-                    },
-                    "required": ["display_name"]
-                }}
+                "patternProperties": {
+                    UserIdRegex: {
+                        "type": "object",
+                        "properties": {
+                            "avatar_url": {"type": ["string", "null"]},
+                            "display_name": {"type": ["string", "null"]},
+                        },
+                        "required": ["display_name"],
+                    }
+                },
             }
         },
-        "required": ["joined"]
+        "required": ["joined"],
     }
 
     joined_rooms = {
         "type": "object",
-        "properties": {
-            "joined_rooms": {
-                "type": "array",
-                "items": {"type": "string"}
-            }
-        },
-        "required": ["joined_rooms"]
+        "properties": {"joined_rooms": {"type": "array", "items": {"type": "string"}}},
+        "required": ["joined_rooms"],
     }
 
     call_invite = {
@@ -1423,7 +1366,7 @@ class Schemas:
                             "type": {"type": "string", "enum": ["offer"]},
                             "sdp": {"type": "string"},
                         },
-                        "required": ["type", "sdp"]
+                        "required": ["type", "sdp"],
                     },
                 },
                 "required": [
@@ -1431,8 +1374,8 @@ class Schemas:
                     "lifetime",
                     "version",
                     "offer",
-                ]
-            }
+                ],
+            },
         },
         "required": [
             "type",
@@ -1455,15 +1398,15 @@ class Schemas:
                             "type": {"type": "string", "enum": ["answer"]},
                             "sdp": {"type": "string"},
                         },
-                        "required": ["type", "sdp"]
+                        "required": ["type", "sdp"],
                     },
                 },
                 "required": [
                     "call_id",
                     "version",
                     "answer",
-                ]
-            }
+                ],
+            },
         },
         "required": [
             "type",
@@ -1484,8 +1427,8 @@ class Schemas:
                 "required": [
                     "call_id",
                     "version",
-                ]
-            }
+                ],
+            },
         },
         "required": [
             "type",
@@ -1511,20 +1454,12 @@ class Schemas:
                                 "sdpMLineIndex": {"type": "integer"},
                                 "sdpMid": {"type": "string"},
                             },
-                            "required": [
-                                "candidate",
-                                "sdpMLineIndex",
-                                "sdpMid"
-                            ]
-                        }
-                    }
+                            "required": ["candidate", "sdpMLineIndex", "sdpMid"],
+                        },
+                    },
                 },
-                "required": [
-                    "call_id",
-                    "version",
-                    "candidates"
-                ]
-            }
+                "required": ["call_id", "version", "candidates"],
+            },
         },
         "required": [
             "type",
@@ -1534,10 +1469,7 @@ class Schemas:
 
     account_data = {
         "type": "object",
-        "properties": {
-            "type": {"type": "string"},
-            "content": {"type": "object"}
-        },
+        "properties": {"type": {"type": "string"}, "content": {"type": "object"}},
         "required": [
             "type",
             "content",
@@ -1555,8 +1487,8 @@ class Schemas:
                 },
                 "required": [
                     "event_id",
-                ]
-            }
+                ],
+            },
         },
         "required": [
             "type",
@@ -1576,16 +1508,12 @@ class Schemas:
                         "patternProperties": {
                             r".*": {
                                 "type": "object",
-                                "properties": {
-                                    "order": {"type": "number"}
-                                },
+                                "properties": {"order": {"type": "number"}},
                             },
                         },
                     },
                 },
-                "required": [
-                    "tags"
-                ],
+                "required": ["tags"],
             },
         },
         "required": [
@@ -1680,11 +1608,11 @@ class Schemas:
                     "properties": {
                         "ed25519": {"type": "string"},
                     },
-                    "required": ["ed25519"]
+                    "required": ["ed25519"],
                 },
                 "forwarding_curve25519_key_chain": {
                     "type": "array",
-                    "items": {"type": "string"}
+                    "items": {"type": "string"},
                 },
             },
             "required": [
@@ -1693,9 +1621,9 @@ class Schemas:
                 "sender_key",
                 "room_id",
                 "sender_claimed_keys",
-                "forwarding_curve25519_key_chain"
-            ]
-        }
+                "forwarding_curve25519_key_chain",
+            ],
+        },
     }
 
     get_profile = {
@@ -1704,7 +1632,7 @@ class Schemas:
             "displayname": {"type": "string"},
             "avatar_url": {"type": "string"},
         },
-        "not": {"required": ["errcode"]}
+        "not": {"required": ["errcode"]},
     }
 
     get_displayname = {
@@ -1712,7 +1640,7 @@ class Schemas:
         "properties": {
             "displayname": {"type": ["string", "null"]},
         },
-        "required": ["displayname"]
+        "required": ["displayname"],
     }
 
     get_avatar = {
@@ -1720,7 +1648,7 @@ class Schemas:
         "properties": {
             "avatar_url": {"type": ["string", "null"]},
         },
-        "required": ["avatar_url"]
+        "required": ["avatar_url"],
     }
 
     key_verification_start = {
@@ -1735,19 +1663,16 @@ class Schemas:
                     "method": {"type": "string"},
                     "key_agreement_protocols": {
                         "type": "array",
-                        "items": {"type": "string"}
+                        "items": {"type": "string"},
                     },
-                    "hashes": {
-                        "type": "array",
-                        "items": {"type": "string"}
-                    },
+                    "hashes": {"type": "array", "items": {"type": "string"}},
                     "message_authentication_codes": {
                         "type": "array",
-                        "items": {"type": "string"}
+                        "items": {"type": "string"},
                     },
                     "short_authentication_string": {
                         "type": "array",
-                        "items": {"type": "string"}
+                        "items": {"type": "string"},
                     },
                 },
                 "required": [
@@ -1758,8 +1683,8 @@ class Schemas:
                     "hashes",
                     "message_authentication_codes",
                     "short_authentication_string",
-                ]
-            }
+                ],
+            },
         },
         "required": [
             "sender",
@@ -1781,7 +1706,7 @@ class Schemas:
                     "message_authentication_code": {"type": "string"},
                     "short_authentication_string": {
                         "type": "array",
-                        "items": {"type": "string"}
+                        "items": {"type": "string"},
                     },
                 },
                 "required": [
@@ -1791,8 +1716,8 @@ class Schemas:
                     "hash",
                     "message_authentication_code",
                     "short_authentication_string",
-                ]
-            }
+                ],
+            },
         },
         "required": [
             "sender",
@@ -1813,8 +1738,8 @@ class Schemas:
                 "required": [
                     "transaction_id",
                     "key",
-                ]
-            }
+                ],
+            },
         },
         "required": [
             "sender",
@@ -1831,9 +1756,7 @@ class Schemas:
                 "properties": {
                     "mac": {
                         "type": "object",
-                        "patternProperties": {
-                            r".+": {"type": "string"}
-                        }
+                        "patternProperties": {r".+": {"type": "string"}},
                     },
                     "keys": {"type": "string"},
                 },
@@ -1841,8 +1764,8 @@ class Schemas:
                     "transaction_id",
                     "mac",
                     "keys",
-                ]
-            }
+                ],
+            },
         },
         "required": [
             "sender",
@@ -1865,13 +1788,10 @@ class Schemas:
                     "transaction_id",
                     "code",
                     "reason",
-                ]
-            }
+                ],
+            },
         },
-        "required": [
-            "sender",
-            "content"
-        ],
+        "required": ["sender", "content"],
     }
 
     presence = {
@@ -1889,14 +1809,10 @@ class Schemas:
                 },
                 "required": [
                     "presence",
-                ]
-            }
+                ],
+            },
         },
-        "required": [
-            "sender",
-            "type",
-            "content"
-        ],
+        "required": ["sender", "type", "content"],
     }
 
     get_presence = {
@@ -1940,8 +1856,8 @@ class Schemas:
                 "required": [
                     "body",
                     "replacement_room",
-                ]
-            }
+                ],
+            },
         },
         "required": [
             "sender",

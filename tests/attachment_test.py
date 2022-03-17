@@ -17,10 +17,7 @@ class TestClass:
         cyphertext, keys = encrypt_attachment(data)
 
         plaintext = decrypt_attachment(
-            cyphertext,
-            keys["key"]["k"],
-            keys["hashes"]["sha256"],
-            keys["iv"]
+            cyphertext, keys["key"]["k"], keys["hashes"]["sha256"], keys["iv"]
         )
 
         assert data == plaintext
@@ -31,12 +28,7 @@ class TestClass:
         cyphertext, keys = encrypt_attachment(data)
 
         with pytest.raises(EncryptionError):
-            decrypt_attachment(
-                cyphertext,
-                keys["key"]["k"],
-                "Fake hash",
-                keys["iv"]
-            )
+            decrypt_attachment(cyphertext, keys["key"]["k"], "Fake hash", keys["iv"])
 
     def test_invalid_key(self):
         data = b"Test bytes"
@@ -45,10 +37,7 @@ class TestClass:
 
         with pytest.raises(EncryptionError):
             decrypt_attachment(
-                cyphertext,
-                "Fake key",
-                keys["hashes"]["sha256"],
-                keys["iv"]
+                cyphertext, "Fake key", keys["hashes"]["sha256"], keys["iv"]
             )
 
     def test_invalid_iv(self):
@@ -58,10 +47,7 @@ class TestClass:
 
         with pytest.raises(EncryptionError):
             decrypt_attachment(
-                cyphertext,
-                keys["key"]["k"],
-                keys["hashes"]["sha256"],
-                "Fake iv"
+                cyphertext, keys["key"]["k"], keys["hashes"]["sha256"], "Fake iv"
             )
 
     def test_short_key(self):
@@ -74,7 +60,7 @@ class TestClass:
                 cyphertext,
                 unpaddedbase64.encode_base64(b"Fake key", urlsafe=True),
                 keys["hashes"]["sha256"],
-                keys["iv"]
+                keys["iv"],
             )
 
     def test_short_iv(self):
@@ -101,6 +87,6 @@ class TestClass:
             cyphertext,
             unpaddedbase64.encode_base64(fake_key, urlsafe=True),
             keys["hashes"]["sha256"],
-            keys["iv"]
+            keys["iv"],
         )
         assert plaintext != data

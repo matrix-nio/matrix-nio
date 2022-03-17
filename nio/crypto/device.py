@@ -15,11 +15,10 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-from dataclasses import dataclass, field, asdict
-
-from enum import Enum
 from collections import defaultdict
-from typing import DefaultDict, Dict, KeysView, Iterator, Optional
+from dataclasses import asdict, dataclass, field
+from enum import Enum
+from typing import DefaultDict, Dict, Iterator, KeysView, Optional
 
 
 # TODO document the values better.
@@ -170,7 +169,9 @@ class DeviceStore:
             if not device.deleted:
                 yield device
 
-    def device_from_sender_key(self, user_id: str, sender_key: str) -> Optional[OlmDevice]:
+    def device_from_sender_key(
+        self, user_id: str, sender_key: str
+    ) -> Optional[OlmDevice]:
         """Get a non-deleted device of a user with the matching sender key.
 
         Args:

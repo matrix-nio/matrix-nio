@@ -3,10 +3,10 @@ import shutil
 import sys
 import tempfile
 
+import helpers
 import pytest
 from olm import Account
 
-import helpers
 from nio import Client, ClientConfig, HttpClient
 from nio.crypto import Olm, OlmDevice
 from nio.store import SqliteMemoryStore
@@ -36,16 +36,11 @@ def client_no_e2e(tempdir):
     return Client("ephemeral", "DEVICEID", tempdir, config)
 
 
-
 @pytest.fixture
 def olm_machine():
     key_pair = Account().identity_keys
 
-    bob_device = OlmDevice(
-            BOB_DEVICE,
-            BOB_DEVICE_ID,
-            key_pair
-        )
+    bob_device = OlmDevice(BOB_DEVICE, BOB_DEVICE_ID, key_pair)
 
     store = SqliteMemoryStore(ALICE_ID, ALICE_DEVICE_ID)
     client = Olm(ALICE_ID, ALICE_DEVICE_ID, store)
@@ -62,9 +57,10 @@ def alice_client(tempdir):
 
 
 if sys.version_info >= (3, 5):
-    from conftest_async import async_client, aioresponse, async_client_pair
+    from conftest_async import aioresponse, async_client, async_client_pair
 
 if sys.version_info <= (3, 4):
+
     def pytest_ignore_collect(path, config):
         basename = path.basename
 

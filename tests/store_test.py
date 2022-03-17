@@ -7,14 +7,27 @@ from collections import defaultdict
 from shutil import copyfile
 
 import pytest
-
 from helpers import ephemeral, ephemeral_dir, faker
-from nio.crypto import (InboundGroupSession, OlmAccount, OlmDevice,
-                        OutboundGroupSession, OutboundSession,
-                        OutgoingKeyRequest, TrustState)
+
+from nio.crypto import (
+    InboundGroupSession,
+    OlmAccount,
+    OlmDevice,
+    OutboundGroupSession,
+    OutboundSession,
+    OutgoingKeyRequest,
+    TrustState,
+)
 from nio.exceptions import OlmTrustError
-from nio.store import (Ed25519Key, Key, KeyStore, MatrixStore, DefaultStore,
-                       SqliteMemoryStore, SqliteStore)
+from nio.store import (
+    DefaultStore,
+    Ed25519Key,
+    Key,
+    KeyStore,
+    MatrixStore,
+    SqliteMemoryStore,
+    SqliteStore,
+)
 
 BOB_ID = "@bob:example.org"
 BOB_DEVICE = "AGMTSWVYML"
@@ -58,11 +71,7 @@ def sqlmemorystore():
 class TestClass:
     @property
     def ephemeral_store(self):
-        return MatrixStore(
-            "@ephemeral:example.org",
-            "DEVICEID",
-            ephemeral_dir
-        )
+        return MatrixStore("@ephemeral:example.org", "DEVICEID", ephemeral_dir)
 
     @property
     def example_devices(self):
@@ -73,10 +82,7 @@ class TestClass:
             devices[device.user_id][device.id] = device
 
         bob_device = OlmDevice(
-            BOB_ID,
-            BOB_DEVICE,
-            {"ed25519": BOB_ONETIME,
-             "curve25519": BOB_CURVE}
+            BOB_ID, BOB_DEVICE, {"ed25519": BOB_ONETIME, "curve25519": BOB_CURVE}
         )
 
         devices[BOB_ID][BOB_DEVICE] = bob_device
@@ -84,11 +90,7 @@ class TestClass:
         return devices
 
     def copy_store(self, old_store):
-        return MatrixStore(
-            old_store.user_id,
-            old_store.device_id,
-            old_store.store_path
-        )
+        return MatrixStore(old_store.user_id, old_store.device_id, old_store.store_path)
 
     def _create_ephemeral_account(self):
         store = self.ephemeral_store
@@ -102,12 +104,8 @@ class TestClass:
         fp_key = faker.olm_key_pair()["ed25519"]
         key = Ed25519Key(user_id, device_id, fp_key)
 
-        assert (
-            key.to_line() == "{} {} matrix-ed25519 {}\n".format(
-                user_id,
-                device_id,
-                fp_key
-            )
+        assert key.to_line() == "{} {} matrix-ed25519 {}\n".format(
+            user_id, device_id, fp_key
         )
 
         loaded_key = Key.from_line(key.to_line())
@@ -236,7 +234,7 @@ class TestClass:
             account.identity_keys["ed25519"],
             account.identity_keys["curve25519"],
             TEST_ROOM,
-            TEST_FORWARDING_CHAIN
+            TEST_FORWARDING_CHAIN,
         )
         store.save_inbound_group_session(in_group)
 
@@ -244,15 +242,12 @@ class TestClass:
         session_store = store2.load_inbound_group_sessions()
 
         loaded_session = session_store.get(
-            TEST_ROOM,
-            account.identity_keys["curve25519"],
-            in_group.id
+            TEST_ROOM, account.identity_keys["curve25519"], in_group.id
         )
 
         assert loaded_session
         assert in_group.id == loaded_session.id
-        assert (sorted(loaded_session.forwarding_chain) ==
-                sorted(TEST_FORWARDING_CHAIN))
+        assert sorted(loaded_session.forwarding_chain) == sorted(TEST_FORWARDING_CHAIN)
 
     @ephemeral
     def test_store_device_keys(self):
@@ -291,10 +286,7 @@ class TestClass:
             assert account.identity_keys == loaded_account.identity_keys
 
         finally:
-            os.remove(os.path.join(
-                ephemeral_dir,
-                "ephemeral2_DEVICEID2.db"
-            ))
+            os.remove(os.path.join(ephemeral_dir, "ephemeral2_DEVICEID2.db"))
 
     @ephemeral
     def test_empty_device_keys(self):
@@ -358,9 +350,7 @@ class TestClass:
         matrix_store.save_account(account)
 
         store2 = MatrixStore(
-            matrix_store.user_id,
-            matrix_store.device_id,
-            matrix_store.store_path
+            matrix_store.user_id, matrix_store.device_id, matrix_store.store_path
         )
         loaded_account = store2.load_account()
 
@@ -389,7 +379,7 @@ class TestClass:
             account.identity_keys["ed25519"],
             account.identity_keys["curve25519"],
             TEST_ROOM,
-            TEST_FORWARDING_CHAIN
+            TEST_FORWARDING_CHAIN,
         )
         store.save_inbound_group_session(in_group)
 
@@ -397,15 +387,12 @@ class TestClass:
         session_store = store2.load_inbound_group_sessions()
 
         loaded_session = session_store.get(
-            TEST_ROOM,
-            account.identity_keys["curve25519"],
-            in_group.id
+            TEST_ROOM, account.identity_keys["curve25519"], in_group.id
         )
 
         assert loaded_session
         assert in_group.id == loaded_session.id
-        assert (sorted(loaded_session.forwarding_chain) ==
-                sorted(TEST_FORWARDING_CHAIN))
+        assert sorted(loaded_session.forwarding_chain) == sorted(TEST_FORWARDING_CHAIN)
 
     def test_new_store_device_keys(self, store):
         account = store.load_account()
@@ -492,8 +479,7 @@ class TestClass:
         user2 = "alice"
         device_id2 = "ALICE_ID"
 
-        store = MatrixStore(user, device_id, tempdir,
-                                  database_name="test.db")
+        store = MatrixStore(user, device_id, tempdir, database_name="test.db")
         account = OlmAccount()
         session = OutboundSession(account, BOB_CURVE, BOB_ONETIME)
         out_group = OutboundGroupSession()
@@ -502,7 +488,7 @@ class TestClass:
             account.identity_keys["ed25519"],
             account.identity_keys["curve25519"],
             TEST_ROOM,
-            TEST_FORWARDING_CHAIN
+            TEST_FORWARDING_CHAIN,
         )
         devices = self.example_devices
         assert len(devices) == 11
@@ -512,8 +498,7 @@ class TestClass:
         store.save_inbound_group_session(in_group)
         store.save_device_keys(devices)
 
-        store2 = MatrixStore(user2, device_id2, tempdir,
-                                   database_name="test.db")
+        store2 = MatrixStore(user2, device_id2, tempdir, database_name="test.db")
         account2 = OlmAccount()
         store2.save_account(account2)
         del store
@@ -530,9 +515,7 @@ class TestClass:
         assert session.id == loaded_session.id
 
         loaded_session = session_store.get(
-            TEST_ROOM,
-            account.identity_keys["curve25519"],
-            in_group.id
+            TEST_ROOM, account.identity_keys["curve25519"], in_group.id
         )
         device_store = store.load_device_keys()
 
@@ -540,8 +523,7 @@ class TestClass:
 
         assert loaded_session
         assert in_group.id == loaded_session.id
-        assert (sorted(loaded_session.forwarding_chain) ==
-                sorted(TEST_FORWARDING_CHAIN))
+        assert sorted(loaded_session.forwarding_chain) == sorted(TEST_FORWARDING_CHAIN)
         bob_device = device_store[BOB_ID][BOB_DEVICE]
         assert bob_device
         assert bob_device.user_id == BOB_ID
@@ -632,9 +614,7 @@ class TestClass:
     def test_ignoring_many(self, store):
         devices = self.example_devices
 
-        device_list = [
-            device for d in devices.values() for device in d.values()
-        ]
+        device_list = [device for d in devices.values() for device in d.values()]
 
         store.save_device_keys(devices)
         store.ignore_devices(device_list)
@@ -645,9 +625,7 @@ class TestClass:
     def test_ignoring_many_sqlite(self, sqlstore):
         devices = self.example_devices
 
-        device_list = [
-            device for d in devices.values() for device in d.values()
-        ]
+        device_list = [device for d in devices.values() for device in d.values()]
 
         sqlstore.save_device_keys(devices)
         sqlstore.ignore_devices(device_list)
@@ -659,9 +637,7 @@ class TestClass:
         devices = self.example_devices
         bob_device = devices[BOB_ID][BOB_DEVICE]
 
-        device_list = [
-            device for d in devices.values() for device in d.values()
-        ]
+        device_list = [device for d in devices.values() for device in d.values()]
 
         sqlstore.save_device_keys(devices)
 
@@ -689,9 +665,7 @@ class TestClass:
         devices = self.example_devices
         bob_device = devices[BOB_ID][BOB_DEVICE]
 
-        device_list = [
-            device for d in devices.values() for device in d.values()
-        ]
+        device_list = [device for d in devices.values() for device in d.values()]
 
         store.save_device_keys(devices)
 
@@ -745,11 +719,7 @@ class TestClass:
         sqlstore.verify_device(bob_device)
         assert bob_device.verified
 
-        store2 = SqliteStore(
-            sqlstore.user_id,
-            sqlstore.device_id,
-            sqlstore.store_path
-        )
+        store2 = SqliteStore(sqlstore.user_id, sqlstore.device_id, sqlstore.store_path)
         loaded_devices = store2.load_device_keys()
 
         bob_device = loaded_devices[BOB_ID][BOB_DEVICE]

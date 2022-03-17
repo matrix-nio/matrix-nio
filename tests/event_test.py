@@ -7,69 +7,69 @@ import pdb
 
 from nio.api import PushRuleKind
 from nio.events import (
+    AccountDataEvent,
     BadEvent,
+    CallAnswerEvent,
+    CallCandidatesEvent,
+    CallEvent,
+    CallHangupEvent,
+    CallInviteEvent,
+    DummyEvent,
+    EphemeralEvent,
+    Event,
+    ForwardedRoomKeyEvent,
+    FullyReadEvent,
+    InviteAliasEvent,
+    InviteEvent,
+    InviteMemberEvent,
+    InviteNameEvent,
+    KeyVerificationAccept,
+    KeyVerificationCancel,
+    KeyVerificationKey,
+    KeyVerificationMac,
+    KeyVerificationStart,
+    MegolmEvent,
     OlmEvent,
     PowerLevelsEvent,
+    PushContainsDisplayName,
+    PushEventMatch,
+    PushRoomMemberCount,
+    PushRule,
+    PushRuleset,
+    PushRulesEvent,
+    PushSenderNotificationPermission,
+    PushUnknownCondition,
+    Receipt,
+    ReceiptEvent,
     RedactedEvent,
     RedactionEvent,
-    StickerEvent,
     RoomAliasEvent,
+    RoomAvatarEvent,
     RoomCreateEvent,
+    RoomEncryptedImage,
+    RoomEncryptionEvent,
     RoomGuestAccessEvent,
     RoomHistoryVisibilityEvent,
     RoomJoinRulesEvent,
+    RoomKeyEvent,
+    RoomKeyRequest,
+    RoomKeyRequestCancellation,
     RoomMemberEvent,
     RoomMessageEmote,
     RoomMessageNotice,
     RoomMessageText,
     RoomNameEvent,
     RoomTopicEvent,
-    RoomAvatarEvent,
-    ToDeviceEvent,
-    UnknownBadEvent,
-    Event,
-    RoomEncryptionEvent,
-    InviteEvent,
-    RoomKeyEvent,
-    ForwardedRoomKeyEvent,
-    MegolmEvent,
-    UnknownEncryptedEvent,
-    InviteMemberEvent,
-    InviteAliasEvent,
-    InviteNameEvent,
-    EphemeralEvent,
-    TypingNoticeEvent,
-    Receipt,
-    ReceiptEvent,
-    AccountDataEvent,
-    UnknownAccountDataEvent,
-    FullyReadEvent,
-    CallEvent,
-    CallAnswerEvent,
-    CallHangupEvent,
-    CallInviteEvent,
-    CallCandidatesEvent,
-    KeyVerificationStart,
-    KeyVerificationAccept,
-    KeyVerificationCancel,
-    RoomEncryptedImage,
-    KeyVerificationKey,
-    KeyVerificationMac,
+    StickerEvent,
     TagEvent,
-    DummyEvent,
-    RoomKeyRequest,
-    RoomKeyRequestCancellation,
-    PushRule,
-    PushRuleset,
-    PushRulesEvent,
-    PushEventMatch,
-    PushContainsDisplayName,
-    PushRoomMemberCount,
-    PushSenderNotificationPermission,
-    PushUnknownCondition,
+    ToDeviceEvent,
+    TypingNoticeEvent,
+    UnknownAccountDataEvent,
+    UnknownBadEvent,
+    UnknownEncryptedEvent,
 )
-from nio.rooms import MatrixRoom
 from nio.responses import RoomSummary
+from nio.rooms import MatrixRoom
 
 
 class TestClass:
@@ -359,10 +359,7 @@ class TestClass:
         # Warning: this is directly tied to the above file; any changes below
         # need to be reflected there too.
         receipt = Receipt(
-            "$152037280074GZeOm:localhost",
-            "m.read",
-            "@bob:example.com",
-            1520372804619
+            "$152037280074GZeOm:localhost", "m.read", "@bob:example.com", 1520372804619
         )
 
         assert isinstance(event, ReceiptEvent)
@@ -381,15 +378,11 @@ class TestClass:
         # Warning: this is directly tied to the above file; any changes below
         # need to be reflected there too.
         receipt = Receipt(
-            "$152037280074GZeOm:localhost",
-            "m.read",
-            "@bob:example.com",
-            1520372804619
+            "$152037280074GZeOm:localhost", "m.read", "@bob:example.com", 1520372804619
         )
 
         assert isinstance(event, ReceiptEvent)
         assert receipt in event.receipts
-
 
     def test_account_data_event(self):
         event = AccountDataEvent.parse_event({})
@@ -545,16 +538,18 @@ class TestClass:
         room = MatrixRoom("!test:example.org", "@alice:example.com")
         name = "Alice"
 
-        event = Event.from_dict({
-            "event_id": "!test:example.org",
-            "room_id": room.room_id,
-            "origin_server_ts": 0,
-            "sender": "@alice:example.org",
-            "type": "m.test",
-            "words": "foo bar",
-            "int": 0,
-            "content": { "body": "a,here c" },
-        })
+        event = Event.from_dict(
+            {
+                "event_id": "!test:example.org",
+                "room_id": room.room_id,
+                "origin_server_ts": 0,
+                "sender": "@alice:example.org",
+                "type": "m.test",
+                "words": "foo bar",
+                "int": 0,
+                "content": {"body": "a,here c"},
+            }
+        )
 
         args = (event, room, name)
 
@@ -562,16 +557,16 @@ class TestClass:
 
         must_succeed = [
             ("type", "m.test"),
-            ("type", "M*T"),              # glob + ignoring case
-            ("content.body", "heRe"),     # word boundaries + ignoring case
-            ("content.body", "a"),        # word at the start of the string
-            ("content.body", "c"),        # word at the end of the string
+            ("type", "M*T"),  # glob + ignoring case
+            ("content.body", "heRe"),  # word boundaries + ignoring case
+            ("content.body", "a"),  # word at the start of the string
+            ("content.body", "c"),  # word at the end of the string
             ("content.body", "[a-z]*c"),  # more glob patterns
         ]
 
         must_fail = [
-            ("int", "0"),             # only match string values
-            ("words", "foo"),         # match words only for content.body
+            ("int", "0"),  # only match string values
+            ("words", "foo"),  # match words only for content.body
             ("content.body", "her"),  # not a full word match
         ]
 

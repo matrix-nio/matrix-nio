@@ -17,8 +17,9 @@
 from dataclasses import dataclass, field
 from typing import Dict
 
-from ..event_builders import ToDeviceMessage, RoomKeyRequestMessage
+from ..event_builders import RoomKeyRequestMessage, ToDeviceMessage
 from ..responses import RoomKeyRequestResponse
+
 
 @dataclass
 class OutgoingKeyRequest:
@@ -37,7 +38,7 @@ class OutgoingKeyRequest:
             response.request_id,
             response.session_id,
             response.room_id,
-            response.algorithm
+            response.algorithm,
         )
 
     @classmethod
@@ -64,9 +65,4 @@ class OutgoingKeyRequest:
             "requesting_device_id": requesting_device_id,
         }
 
-        return ToDeviceMessage(
-            "m.room_key_request",
-            user_id,
-            "*",
-            content
-        )
+        return ToDeviceMessage("m.room_key_request", user_id, "*", content)

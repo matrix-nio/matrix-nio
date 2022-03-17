@@ -13,34 +13,30 @@ documented here.
 import sys
 
 from .._compat import package_installed
-from .attachments import encrypt_attachment, decrypt_attachment
+from .attachments import decrypt_attachment, encrypt_attachment
 
 if sys.version_info >= (3, 5):
-    from .async_attachments import (AsyncDataT, async_encrypt_attachment,
-                                    async_generator_from_data,)
+    from .async_attachments import (
+        AsyncDataT,
+        async_encrypt_attachment,
+        async_generator_from_data,
+    )
 
 if package_installed("olm"):
-    from .sessions import (
-        OlmAccount,
-        Session,
-        OutboundSession,
-        InboundSession,
-        OutboundGroupSession,
-        InboundGroupSession,
-    )
     from .device import DeviceStore, OlmDevice, TrustState
     from .key_request import OutgoingKeyRequest
-
-    from .memorystores import (
-        SessionStore,
-        GroupSessionStore,
-    )
-
     from .log import logger
-
+    from .memorystores import GroupSessionStore, SessionStore
     from .olm_machine import Olm
-
     from .sas import Sas, SasState
+    from .sessions import (
+        InboundGroupSession,
+        InboundSession,
+        OlmAccount,
+        OutboundGroupSession,
+        OutboundSession,
+        Session,
+    )
 
     ENCRYPTION_ENABLED = True
 

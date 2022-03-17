@@ -14,11 +14,14 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from collections import defaultdict
+from dataclasses import dataclass, field
 from functools import wraps
 from typing import (
     Any,
     Awaitable,
     Callable,
+    Coroutine,
     Dict,
     List,
     Optional,
@@ -26,55 +29,50 @@ from typing import (
     Tuple,
     Type,
     Union,
-    Coroutine,
 )
 
-from dataclasses import dataclass, field
 from logbook import Logger
-from collections import defaultdict
 
-from ..crypto import ENCRYPTION_ENABLED
+from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OlmDevice, OutgoingKeyRequest
 from ..events import (
     AccountDataEvent,
-    BadEventType,
     BadEvent,
-    UnknownBadEvent,
+    BadEventType,
     EphemeralEvent,
     Event,
     MegolmEvent,
+    PresenceEvent,
     RoomEncryptionEvent,
-    RoomMemberEvent,
-    ToDeviceEvent,
     RoomKeyRequest,
     RoomKeyRequestCancellation,
-    PresenceEvent,
+    RoomMemberEvent,
+    ToDeviceEvent,
+    UnknownBadEvent,
 )
-from ..exceptions import LocalProtocolError, MembersSyncError, EncryptionError
+from ..exceptions import EncryptionError, LocalProtocolError, MembersSyncError
 from ..log import logger_group
 from ..responses import (
     ErrorResponse,
     JoinedMembersResponse,
-    RoomInfo,
     KeysClaimResponse,
     KeysQueryResponse,
     KeysUploadResponse,
     LoginResponse,
     LogoutResponse,
+    PresenceGetResponse,
     RegisterResponse,
     Response,
     RoomContextResponse,
     RoomForgetResponse,
+    RoomGetEventResponse,
+    RoomInfo,
     RoomKeyRequestResponse,
     RoomMessagesResponse,
-    RoomGetEventResponse,
     ShareGroupSessionResponse,
     SyncResponse,
     ToDeviceResponse,
-    PresenceGetResponse,
 )
 from ..rooms import MatrixInvitedRoom, MatrixRoom
-
-from ..crypto import DeviceStore, OlmDevice, OutgoingKeyRequest
 
 if ENCRYPTION_ENABLED:
     from ..crypto import Olm
@@ -109,9 +107,7 @@ def store_loaded(fn):
     @wraps(fn)
     def inner(self, *args, **kwargs):
         if not self.store or not self.olm:
-            raise LocalProtocolError(
-                "Matrix store and olm account is not loaded."
-            )
+            raise LocalProtocolError("Matrix store and olm account is not loaded.")
         return fn(self, *args, **kwargs)
 
     return inner
@@ -147,8 +143,7 @@ class ClientConfig:
 
     """
 
-    store: Optional[Type["MatrixStore"]] = \
-        DefaultStore if ENCRYPTION_ENABLED else None
+    store: Optional[Type["MatrixStore"]] = DefaultStore if ENCRYPTION_ENABLED else None
 
     encryption_enabled: bool = ENCRYPTION_ENABLED
 
@@ -300,9 +295,7 @@ class Client:
         if not self.olm:
             return False
 
-        return bool(
-            self.olm.wedged_devices or self.olm.key_request_devices_no_session
-        )
+        return bool(self.olm.wedged_devices or self.olm.key_request_devices_no_session)
 
     @property
     def outgoing_key_requests(self) -> Dict[str, OutgoingKeyRequest]:
@@ -359,9 +352,7 @@ class Client:
             raise LocalProtocolError("Device id is not set")
 
         if not self.config.store:
-            raise LocalProtocolError(
-                "No store class was provided in the config."
-            )
+            raise LocalProtocolError("No store class was provided in the config.")
 
         if self.config.encryption_enabled:
             if self.config.store is SqliteMemoryStore:
@@ -422,9 +413,7 @@ class Client:
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError(
-                "No room found with room id {}".format(room_id)
-            )
+            raise LocalProtocolError("No room found with room id {}".format(room_id))
 
         if not room.encrypted:
             return False
@@ -602,21 +591,13 @@ class Client:
         if isinstance(response, ErrorResponse):
             return
 
-        self.restore_login(
-            response.user_id,
-            response.device_id,
-            response.access_token
-        )
+        self.restore_login(response.user_id, response.device_id, response.access_token)
 
     def _handle_login(self, response: Union[LoginResponse, ErrorResponse]):
         if isinstance(response, ErrorResponse):
             return
 
-        self.restore_login(
-            response.user_id,
-            response.device_id,
-            response.access_token
-        )
+        self.restore_login(response.user_id, response.device_id, response.access_token)
 
     def _handle_logout(self, response: Union[LogoutResponse, ErrorResponse]):
         if not isinstance(response, ErrorResponse):
@@ -688,9 +669,7 @@ class Client:
     def _get_invited_room(self, room_id: str) -> MatrixInvitedRoom:
         if room_id not in self.invited_rooms:
             logger.info("New invited room {}".format(room_id))
-            self.invited_rooms[room_id] = MatrixInvitedRoom(
-                room_id, self.user_id
-            )
+            self.invited_rooms[room_id] = MatrixInvitedRoom(room_id, self.user_id)
 
         return self.invited_rooms[room_id]
 
@@ -821,8 +800,12 @@ class Client:
                     continue
 
                 self.rooms[room_id].users[event.user_id].presence = event.presence
-                self.rooms[room_id].users[event.user_id].last_active_ago = event.last_active_ago
-                self.rooms[room_id].users[event.user_id].currently_active = event.currently_active
+                self.rooms[room_id].users[
+                    event.user_id
+                ].last_active_ago = event.last_active_ago
+                self.rooms[room_id].users[
+                    event.user_id
+                ].currently_active = event.currently_active
                 self.rooms[room_id].users[event.user_id].status_msg = event.status_msg
 
             for cb in self.presence_callbacks:
@@ -830,7 +813,8 @@ class Client:
                     cb.func(event)
 
     def _handle_global_account_data_events(
-        self, response: SyncResponse,
+        self,
+        response: SyncResponse,
     ) -> None:
         for event in response.account_data_events:
             for cb in self.global_account_data_callbacks:
@@ -850,9 +834,7 @@ class Client:
 
         changed_users = set()
         if response.device_key_count.signed_curve25519:
-            self.olm.uploaded_key_count = (
-                response.device_key_count.signed_curve25519
-            )
+            self.olm.uploaded_key_count = response.device_key_count.signed_curve25519
 
         for user in response.device_list.changed:
             for room in self.rooms.values():
@@ -925,9 +907,7 @@ class Client:
     def _handle_context_response(self, response: RoomContextResponse):
         if isinstance(response.event, MegolmEvent):
             if self.olm:
-                decrypted_event = self.olm._decrypt_megolm_no_error(
-                    response.event
-                )
+                decrypted_event = self.olm._decrypt_megolm_no_error(response.event)
                 response.event = decrypted_event
 
         self._decrypt_event_array(response.events_after)
@@ -1008,9 +988,7 @@ class Client:
                 room.remove_member(user_id)
 
         for member in response.members:
-            room.add_member(
-                member.user_id, member.display_name, member.avatar_url
-            )
+            room.add_member(member.user_id, member.display_name, member.avatar_url)
 
         room.members_synced = True
 
@@ -1035,8 +1013,12 @@ class Client:
                 continue
 
             self.rooms[room_id].users[response.user_id].presence = response.presence
-            self.rooms[room_id].users[response.user_id].last_active_ago = response.last_active_ago
-            self.rooms[room_id].users[response.user_id].currently_active = response.currently_active or False
+            self.rooms[room_id].users[
+                response.user_id
+            ].last_active_ago = response.last_active_ago
+            self.rooms[room_id].users[response.user_id].currently_active = (
+                response.currently_active or False
+            )
             self.rooms[room_id].users[response.user_id].status_msg = response.status_msg
 
     def receive_response(
@@ -1148,15 +1130,11 @@ class Client:
         assert self.olm
 
         if room_id not in self.rooms:
-            raise LocalProtocolError(
-                "No room found with room id {}".format(room_id)
-            )
+            raise LocalProtocolError("No room found with room id {}".format(room_id))
         room = self.rooms[room_id]
 
         if not room.encrypted:
-            raise LocalProtocolError(
-                "Room with id {} is not encrypted".format(room_id)
-            )
+            raise LocalProtocolError("Room with id {} is not encrypted".format(room_id))
 
         return self.olm.get_missing_sessions(list(room.users))
 
@@ -1199,14 +1177,10 @@ class Client:
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError(
-                "No such room with id {} found.".format(room_id)
-            )
+            raise LocalProtocolError("No such room with id {} found.".format(room_id))
 
         if not room.encrypted:
-            raise LocalProtocolError(
-                "Room {} is not encrypted".format(room_id)
-            )
+            raise LocalProtocolError("Room {} is not encrypted".format(room_id))
 
         if not room.members_synced:
             raise MembersSyncError(
@@ -1214,7 +1188,8 @@ class Client:
             )
 
         encrypted_content = self.olm.group_encrypt(
-            room_id, {"content": content, "type": message_type},
+            room_id,
+            {"content": content, "type": message_type},
         )
 
         # The relationship needs to be sent unencrypted, so put it in the
@@ -1428,9 +1403,7 @@ class Client:
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError(
-                "No room found with room id {}".format(room_id)
-            )
+            raise LocalProtocolError("No room found with room id {}".format(room_id))
 
         if not room.encrypted:
             return devices

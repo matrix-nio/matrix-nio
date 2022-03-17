@@ -18,14 +18,12 @@
 from __future__ import unicode_literals
 
 import time
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
-from dataclasses import dataclass, field
-
-from ..schemas import Schemas
-from .misc import (BadEventType, UnknownBadEvent, validate_or_badevent, verify,
-                   BadEvent)
 from ..event_builders import RoomKeyRequestMessage
+from ..schemas import Schemas
+from .misc import BadEvent, BadEventType, UnknownBadEvent, validate_or_badevent, verify
 
 
 @dataclass
@@ -234,6 +232,7 @@ class UnknownEvent(Event):
         type (str): The type of the event.
 
     """
+
     type: str = field()
 
     @classmethod
@@ -303,6 +302,7 @@ class MegolmEvent(Event):
             our own device, otherwise None.
 
     """
+
     device_id: str = field()
     ciphertext: str = field()
     algorithm: str = field()
@@ -328,8 +328,11 @@ class MegolmEvent(Event):
         algorithm = content["algorithm"]
 
         room_id = event_dict.get("room_id", None)
-        tx_id = (event_dict["unsigned"].get("transaction_id", None)
-                 if "unsigned" in event_dict else None)
+        tx_id = (
+            event_dict["unsigned"].get("transaction_id", None)
+            if "unsigned" in event_dict
+            else None
+        )
 
         event = cls(
             event_dict,
@@ -381,7 +384,7 @@ class MegolmEvent(Event):
                 "algorithm": self.algorithm,
                 "session_id": self.session_id,
                 "room_id": self.room_id,
-                "sender_key": self.sender_key
+                "sender_key": self.sender_key,
             },
             "request_id": request_id,
             "requesting_device_id": requesting_device_id,
@@ -622,6 +625,7 @@ class RoomCreateEvent(Event):
             this too much unless they want to perform room upgrades.
 
     """
+
     creator: str = field()
     federate: bool = True
     room_version: str = "1"
@@ -714,9 +718,10 @@ class RoomHistoryVisibilityEvent(Event):
 
     @classmethod
     @verify(Schemas.room_history_visibility)
-    def from_dict(cls,
-                  parsed_dict,  # type: Dict[Any, Any]
-                  ):
+    def from_dict(
+        cls,
+        parsed_dict,  # type: Dict[Any, Any]
+    ):
         # type: (...) -> Union[RoomHistoryVisibilityEvent, BadEventType]
         history_visibility = parsed_dict["content"]["history_visibility"]
 
@@ -942,7 +947,9 @@ class RoomEncryptedMedia(RoomMessage):
         thumbnail_hashes = thumbnail_file.get("hashes")
         thumbnail_iv = thumbnail_file.get("iv")
 
-        mimetype = info.get("mimetype") or parsed_dict["content"]["file"].get("mimetype")
+        mimetype = info.get("mimetype") or parsed_dict["content"]["file"].get(
+            "mimetype"
+        )
 
         return cls(
             parsed_dict,
@@ -1302,7 +1309,9 @@ class PowerLevels:
         return self.get_user_level(user_id) >= self.defaults.invite
 
     def can_user_kick(
-        self, user_id: str, target_user_id: Optional[str] = None,
+        self,
+        user_id: str,
+        target_user_id: Optional[str] = None,
     ) -> bool:
         """Return whether a user has enough power to kick another.
 
@@ -1318,7 +1327,9 @@ class PowerLevels:
         return can_kick_lower and level > self.get_user_level(target_user_id)
 
     def can_user_ban(
-        self, user_id: str, target_user_id: Optional[str] = None,
+        self,
+        user_id: str,
+        target_user_id: Optional[str] = None,
     ) -> bool:
         """Return whether a user has enough power to ban another.
 
@@ -1334,13 +1345,11 @@ class PowerLevels:
         return can_ban_lower and level > self.get_user_level(target_user_id)
 
     def can_user_redact(self, user_id: str):
-        """Return whether a user has enough power to redact other user's events.
-        """
+        """Return whether a user has enough power to redact other user's events."""
         return self.get_user_level(user_id) >= self.defaults.redact
 
     def can_user_notify(self, user_id: str, notification_type: str):
-        """Return whether user has enough power to send a type of notification.
-        """
+        """Return whether user has enough power to send a type of notification."""
         required = self.get_notification_required_level(notification_type)
         return self.get_user_level(user_id) >= required
 
@@ -1371,6 +1380,7 @@ class PowerLevelsEvent(Event):
             of the power levels of the room.
 
     """
+
     power_levels: PowerLevels = field()
 
     @classmethod
@@ -1454,9 +1464,7 @@ class RoomMemberEvent(Event):
         prev_content = unsigned.get("prev_content", None)
 
         membership = content["membership"]
-        prev_membership = (
-            prev_content.get("membership") if prev_content else None
-        )
+        prev_membership = prev_content.get("membership") if prev_content else None
 
         return cls(
             parsed_dict,

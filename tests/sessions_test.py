@@ -1,9 +1,16 @@
-import pytest
 import time
 
+import pytest
+
 from nio import EncryptionError
-from nio.crypto import (InboundGroupSession, OlmAccount, OutboundGroupSession,
-                        OutboundSession, Session, InboundSession)
+from nio.crypto import (
+    InboundGroupSession,
+    InboundSession,
+    OlmAccount,
+    OutboundGroupSession,
+    OutboundSession,
+    Session,
+)
 
 BOB_ID = "@bob:example.org"
 BOB_DEVICE = "AGMTSWVYML"
@@ -11,21 +18,24 @@ BOB_CURVE = "T9tOKF+TShsn6mk1zisW2IBsBbTtzDNvw99RBFMJOgI"
 BOB_ONETIME = "6QlQw3mGUveS735k/JDaviuoaih5eEi6S1J65iHjfgU"
 TEST_ROOM = "!test:example.org"
 
+
 class TestClass:
     def test_account(self):
         account = OlmAccount()
 
-        assert (account.identity_keys ==
-                OlmAccount.from_pickle(account.pickle()).identity_keys)
+        assert (
+            account.identity_keys
+            == OlmAccount.from_pickle(account.pickle()).identity_keys
+        )
 
     def test_session(self):
         account = OlmAccount()
         session = OutboundSession(account, BOB_CURVE, BOB_ONETIME)
 
-        assert session.id == Session.from_pickle(
-            session.pickle(),
-            session.creation_time
-        ).id
+        assert (
+            session.id
+            == Session.from_pickle(session.pickle(), session.creation_time).id
+        )
         assert not session.expired
 
     def test_olm_session_encryption(self):
@@ -55,8 +65,9 @@ class TestClass:
 
         pickle = inbound.pickle("")
 
-        unpickled = Session.from_pickle(pickle, inbound.creation_time, "",
-                                        inbound.use_time)
+        unpickled = Session.from_pickle(
+            pickle, inbound.creation_time, "", inbound.use_time
+        )
 
         use_time = unpickled.use_time
         message = unpickled.encrypt(plaintext)
@@ -64,8 +75,9 @@ class TestClass:
         assert unpickled.use_time > use_time
 
         pickle = session.pickle("")
-        unpickled = Session.from_pickle(pickle, session.creation_time, "",
-                                        session.use_time)
+        unpickled = Session.from_pickle(
+            pickle, session.creation_time, "", session.use_time
+        )
         use_time = unpickled.use_time
         decrypted_plaintext = unpickled.decrypt(message)
         assert unpickled.use_time >= use_time

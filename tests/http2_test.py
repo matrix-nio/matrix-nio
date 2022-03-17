@@ -12,10 +12,7 @@ from nio.responses import LoginResponse, SyncResponse
 
 
 class TestClass:
-    example_response_headers = [
-        (':status', '200'),
-        ('server', 'fake-serv/0.1.0')
-    ]
+    example_response_headers = [(":status", "200"), ("server", "fake-serv/0.1.0")]
 
     @staticmethod
     def _load_response(filename):
@@ -30,9 +27,7 @@ class TestClass:
         login_body = self._load_response("tests/data/login_response.json")
 
         data = frame_factory.build_data_frame(
-            data=login_body,
-            stream_id=stream_id,
-            flags=['END_STREAM']
+            data=login_body, stream_id=stream_id, flags=["END_STREAM"]
         )
         return f.serialize() + data.serialize()
 
@@ -44,9 +39,7 @@ class TestClass:
         body = self._load_response("tests/data/sync.json")
 
         data = frame_factory.build_data_frame(
-            data=body,
-            stream_id=stream_id,
-            flags=['END_STREAM']
+            data=body, stream_id=stream_id, flags=["END_STREAM"]
         )
         return f.serialize() + data.serialize()
 
@@ -121,15 +114,10 @@ class TestClass:
 
         server.receive_data(request)
 
-        content = {
-            "body": "test",
-            "msgtype": "m.text"
-        }
+        content = {"body": "test", "msgtype": "m.text"}
 
         send_uuid, send_request = client.room_send(
-            "!test:localhost",
-            "m.room.message",
-            content
+            "!test:localhost", "m.room.message", content
         )
 
     def test_frame_splitting(self, frame_factory):

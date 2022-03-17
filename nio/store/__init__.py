@@ -15,28 +15,28 @@ provided in the MatrixStore base class.
 from .._compat import package_installed
 
 if package_installed("olm"):
-    from .log import logger
-    from .file_trustdb import Key, KeyStore, Ed25519Key
-    from .models import (
-        DeviceKeys_v1,
-        Accounts,
-        OlmSessions,
-        DeviceKeys,
-        MegolmInboundSessions,
-        ForwardedChains,
-        EncryptedRooms,
-        OutgoingKeyRequests,
-        DeviceTrustState,
-        DeviceTrustField,
-        StoreVersion,
-        Keys,
-        SyncTokens
-    )
     from .database import (
         DefaultStore,
         MatrixStore,
-        SqliteStore,
         SqliteMemoryStore,
+        SqliteStore,
         use_database,
-        use_database_atomic
+        use_database_atomic,
+    )
+    from .file_trustdb import Ed25519Key, Key, KeyStore
+    from .log import logger
+    from .models import (
+        Accounts,
+        DeviceKeys,
+        DeviceKeys_v1,
+        DeviceTrustField,
+        DeviceTrustState,
+        EncryptedRooms,
+        ForwardedChains,
+        Keys,
+        MegolmInboundSessions,
+        OlmSessions,
+        OutgoingKeyRequests,
+        StoreVersion,
+        SyncTokens,
     )

@@ -29,6 +29,7 @@ if sys.version_info >= (3, 5):
         if spec is None:
             return False
         return True
+
 else:
     import imp
 

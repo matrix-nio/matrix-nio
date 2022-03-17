@@ -24,21 +24,20 @@ of a user.
 
 """
 
-from typing import Any, Dict, Optional, Union
 from copy import deepcopy
-
 from dataclasses import dataclass, field
+from typing import Any, Dict, Optional, Union
 
 from ..schemas import Schemas
-from .misc import BadEventType, verify, logger
 from .common import (
-    KeyVerificationEventMixin,
     KeyVerificationAcceptMixin,
     KeyVerificationCancelMixin,
+    KeyVerificationEventMixin,
     KeyVerificationKeyMixin,
     KeyVerificationMacMixin,
     KeyVerificationStartMixin,
 )
+from .misc import BadEventType, logger, verify
 
 
 @dataclass
@@ -138,9 +137,9 @@ class ToDeviceEvent:
 @dataclass
 class BaseRoomKeyRequest(ToDeviceEvent):
     """Base class for room key requests.
-        requesting_device_id (str): The id of the device that is requesting the
-            key.
-        request_id (str): A unique identifier for the request.
+    requesting_device_id (str): The id of the device that is requesting the
+        key.
+    request_id (str): A unique identifier for the request.
     """
 
     requesting_device_id: str = field()
@@ -416,9 +415,7 @@ class OlmEvent(EncryptedToDeviceEvent):
             else None
         )
 
-        return cls(
-            event_dict, event_dict["sender"], sender_key, ciphertext, tx_id
-        )
+        return cls(event_dict, event_dict["sender"], sender_key, ciphertext, tx_id)
 
 
 @dataclass

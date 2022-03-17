@@ -16,10 +16,10 @@
 
 
 from builtins import super
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import List, Optional, Set, Tuple
 
-from dataclasses import dataclass, field
 import olm
 
 from ..exceptions import EncryptionError
@@ -37,9 +37,9 @@ class OlmAccount(olm.Account):
     @classmethod
     def from_pickle(
         cls,
-        pickle,                 # type: bytes
-        passphrase='',          # type: str
-        shared=False            # type: bool
+        pickle,  # type: bytes
+        passphrase="",  # type: str
+        shared=False,  # type: bool
     ):
         # type: (...) -> OlmAccount
         account = super().from_pickle(pickle, passphrase)
@@ -120,9 +120,9 @@ class InboundGroupSession(olm.InboundGroupSession):
         self,
         session_key,  # type: str
         signing_key,  # type: str
-        sender_key,   # type: str
-        room_id,      # type: str
-        forwarding_chains=None  # type: Optional[List[str]]
+        sender_key,  # type: str
+        room_id,  # type: str
+        forwarding_chains=None,  # type: Optional[List[str]]
     ):
         # type: (...) -> None
         self.ed25519 = signing_key
@@ -137,12 +137,12 @@ class InboundGroupSession(olm.InboundGroupSession):
     @classmethod
     def from_pickle(
         cls,
-        pickle,                 # type: bytes
-        signing_key,            # type: str
-        sender_key,             # type: str
-        room_id,                # type: str
-        passphrase='',          # type: str
-        forwarding_chain=None   # type: List[str]
+        pickle,  # type: bytes
+        signing_key,  # type: str
+        sender_key,  # type: str
+        room_id,  # type: str
+        passphrase="",  # type: str
+        forwarding_chain=None,  # type: List[str]
     ):
         # type: (...) -> InboundGroupSession
         session = super().from_pickle(pickle, passphrase)
@@ -157,9 +157,9 @@ class InboundGroupSession(olm.InboundGroupSession):
         cls,
         session_key,  # type: str
         signing_key,  # type: str
-        sender_key,   # type: str
-        room_id,      # type: str
-        forwarding_chain=None  # type: Optional[List[str]]
+        sender_key,  # type: str
+        room_id,  # type: str
+        forwarding_chain=None,  # type: Optional[List[str]]
     ):
         session = super().import_session(session_key)
         session.ed25519 = signing_key
@@ -187,7 +187,7 @@ class OutboundGroupSession(olm.OutboundGroupSession):
         self.creation_time = datetime.now()
         self.message_count = 0
         self.users_shared_with = set()  # type: Set[Tuple[str, str]]
-        self.users_ignored = set()      # type: Set[Tuple[str, str]]
+        self.users_ignored = set()  # type: Set[Tuple[str, str]]
         self.shared = False
         super().__init__()
 
@@ -206,8 +206,10 @@ class OutboundGroupSession(olm.OutboundGroupSession):
         Returns:
             True if it should, False if not.
         """
-        if (self.message_count >= self.max_messages
-                or datetime.now() - self.creation_time >= self.max_age):
+        if (
+            self.message_count >= self.max_messages
+            or datetime.now() - self.creation_time >= self.max_age
+        ):
             return True
         return False
 

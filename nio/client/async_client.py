@@ -16,12 +16,11 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import asyncio
-from aiofiles.threadpool.binary import AsyncBufferedReader
-from aiofiles.threadpool.text import AsyncTextIOWrapper
 import io
 import json
 import warnings
 from asyncio import Event as AsyncioEvent
+from dataclasses import dataclass, field
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
 from pathlib import Path
@@ -30,20 +29,21 @@ from typing import (
     AsyncIterable,
     BinaryIO,
     Callable,
-    Set,
     Coroutine,
     Dict,
     Iterable,
     List,
     Optional,
     Sequence,
+    Set,
     Tuple,
     Type,
     Union,
 )
 from uuid import UUID, uuid4
 
-from dataclasses import dataclass, field
+from aiofiles.threadpool.binary import AsyncBufferedReader
+from aiofiles.threadpool.text import AsyncTextIOWrapper
 from aiohttp import (
     ClientResponse,
     ClientSession,
@@ -55,23 +55,32 @@ from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.connector import Connection
 from aiohttp_socks import ProxyConnector
 
-from . import Client, ClientConfig
-from .base_client import logged_in, store_loaded
 from ..api import (
-    _FilterT,
     Api,
     EventFormat,
     MessageDirection,
-    ResizingMethod,
-    RoomVisibility,
-    RoomPreset,
     PushRuleKind,
+    ResizingMethod,
+    RoomPreset,
+    RoomVisibility,
+    _FilterT,
 )
 from ..crypto import (
-    OlmDevice,
     AsyncDataT,
+    OlmDevice,
     async_encrypt_attachment,
     async_generator_from_data,
+)
+from ..event_builders import ToDeviceMessage
+from ..events import (
+    BadEventType,
+    Event,
+    MegolmEvent,
+    PushAction,
+    PushCondition,
+    RoomKeyRequest,
+    RoomKeyRequestCancellation,
+    ToDeviceEvent,
 )
 from ..exceptions import (
     GroupEncryptionError,
@@ -80,26 +89,15 @@ from ..exceptions import (
     SendRetryError,
     TransferCancelledError,
 )
-from ..events import (
-    Event,
-    BadEventType,
-    RoomKeyRequest,
-    RoomKeyRequestCancellation,
-    ToDeviceEvent,
-    MegolmEvent,
-    PushAction,
-    PushCondition,
-)
-from ..event_builders import ToDeviceMessage
 from ..monitors import TransferMonitor
 from ..responses import (
     ContentRepositoryConfigError,
-    KeysUploadError,
-    KeysQueryError,
     ContentRepositoryConfigResponse,
+    DeleteAliasError,
+    DeleteAliasResponse,
+    DeleteDevicesAuthResponse,
     DeleteDevicesError,
     DeleteDevicesResponse,
-    DeleteDevicesAuthResponse,
     DeletePushRuleError,
     DeletePushRuleResponse,
     DevicesError,
@@ -112,85 +110,93 @@ from ..responses import (
     EnablePushRuleResponse,
     ErrorResponse,
     FileResponse,
-    JoinResponse,
-    JoinError,
     JoinedMembersError,
     JoinedMembersResponse,
     JoinedRoomsError,
     JoinedRoomsResponse,
+    JoinError,
+    JoinResponse,
     KeysClaimError,
     KeysClaimResponse,
+    KeysQueryError,
     KeysQueryResponse,
+    KeysUploadError,
     KeysUploadResponse,
-    RegisterResponse,
     LoginError,
-    LoginResponse,
-    LoginInfoResponse,
     LoginInfoError,
+    LoginInfoResponse,
+    LoginResponse,
     LogoutError,
     LogoutResponse,
-    ProfileGetAvatarResponse,
-    ProfileGetAvatarError,
-    ProfileGetDisplayNameResponse,
-    ProfileGetDisplayNameError,
-    ProfileGetResponse,
-    ProfileGetError,
-    ProfileSetAvatarResponse,
-    ProfileSetAvatarError,
-    ProfileSetDisplayNameResponse,
-    ProfileSetDisplayNameError,
-    PresenceGetResponse,
     PresenceGetError,
-    PresenceSetResponse,
+    PresenceGetResponse,
     PresenceSetError,
+    PresenceSetResponse,
+    ProfileGetAvatarError,
+    ProfileGetAvatarResponse,
+    ProfileGetDisplayNameError,
+    ProfileGetDisplayNameResponse,
+    ProfileGetError,
+    ProfileGetResponse,
+    ProfileSetAvatarError,
+    ProfileSetAvatarResponse,
+    ProfileSetDisplayNameError,
+    ProfileSetDisplayNameResponse,
+    PutAliasError,
+    PutAliasResponse,
+    RegisterResponse,
     Response,
     RoomBanError,
     RoomBanResponse,
     RoomContextError,
     RoomContextResponse,
-    RoomCreateResponse,
     RoomCreateError,
+    RoomCreateResponse,
     RoomDeleteAliasError,
     RoomDeleteAliasResponse,
-    RoomForgetResponse,
     RoomForgetError,
+    RoomForgetResponse,
+    RoomGetEventError,
+    RoomGetEventResponse,
+    RoomGetStateError,
+    RoomGetStateEventError,
+    RoomGetStateEventResponse,
+    RoomGetStateResponse,
     RoomGetVisibilityError,
     RoomGetVisibilityResponse,
-    RoomInviteResponse,
     RoomInviteError,
+    RoomInviteResponse,
     RoomKeyRequestError,
     RoomKeyRequestResponse,
     RoomKickError,
     RoomKickResponse,
-    RoomLeaveResponse,
     RoomLeaveError,
+    RoomLeaveResponse,
     RoomMessagesError,
     RoomMessagesResponse,
-    RoomGetStateError,
-    RoomGetStateResponse,
-    RoomGetStateEventError,
-    RoomGetStateEventResponse,
-    RoomGetEventError,
-    RoomGetEventResponse,
     RoomPutAliasError,
     RoomPutAliasResponse,
     RoomPutStateError,
     RoomPutStateResponse,
+    RoomReadMarkersError,
+    RoomReadMarkersResponse,
     RoomRedactError,
     RoomRedactResponse,
     RoomResolveAliasError,
     RoomResolveAliasResponse,
     RoomSendResponse,
-    RoomTypingResponse,
     RoomTypingError,
-    RoomReadMarkersResponse,
-    RoomReadMarkersError,
+    RoomTypingResponse,
     RoomUnbanError,
     RoomUnbanResponse,
-    SetPushRuleResponse,
-    SetPushRuleError,
-    SetPushRuleActionsResponse,
+    RoomUpdateAliasError,
+    RoomUpdateAliasResponse,
+    RoomUpgradeError,
+    RoomUpgradeResponse,
     SetPushRuleActionsError,
+    SetPushRuleActionsResponse,
+    SetPushRuleError,
+    SetPushRuleResponse,
     ShareGroupSessionError,
     ShareGroupSessionResponse,
     SyncError,
@@ -199,24 +205,18 @@ from ..responses import (
     ThumbnailResponse,
     ToDeviceError,
     ToDeviceResponse,
-    UploadError,
-    UploadResponse,
-    UpdateDeviceResponse,
     UpdateDeviceError,
+    UpdateDeviceResponse,
     UpdateReceiptMarkerResponse,
+    UploadError,
     UploadFilterError,
     UploadFilterResponse,
-    WhoamiResponse,
+    UploadResponse,
     WhoamiError,
-    DeleteAliasResponse,
-    DeleteAliasError,
-    PutAliasResponse,
-    PutAliasError,
-    RoomUpdateAliasError,
-    RoomUpdateAliasResponse,
-    RoomUpgradeResponse,
-    RoomUpgradeError
+    WhoamiResponse,
 )
+from . import Client, ClientConfig
+from .base_client import logged_in, store_loaded
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
 
@@ -233,9 +233,10 @@ SynchronousFile = (
     io.BufferedReader,
     io.BufferedRandom,
     io.BytesIO,
-    io.FileIO
+    io.FileIO,
 )
 AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
+
 
 @dataclass
 class ResponseCb:
@@ -269,8 +270,7 @@ def client_session(func):
             trace = TraceConfig()
             trace.on_request_chunk_sent.append(on_request_chunk_sent)
 
-            connector = ProxyConnector.from_url(self.proxy) if self.proxy \
-                else None
+            connector = ProxyConnector.from_url(self.proxy) if self.proxy else None
             self.client_session = ClientSession(
                 timeout=ClientTimeout(total=self.config.request_timeout),
                 trace_configs=[trace],
@@ -278,7 +278,8 @@ def client_session(func):
             )
 
             self.client_session.connector.connect = partial(
-                connect_wrapper, self.client_session.connector,
+                connect_wrapper,
+                self.client_session.connector,
             )
 
         return await func(self, *args, **kwargs)
@@ -453,9 +454,7 @@ class AsyncClient(Client):
         cb = ResponseCb(func, cb_filter)  # type: ignore
         self.response_callbacks.append(cb)
 
-    async def parse_body(
-        self, transport_response: ClientResponse
-    ) -> Dict[Any, Any]:
+    async def parse_body(self, transport_response: ClientResponse) -> Dict[Any, Any]:
         """Parse the body of the response.
 
         Low-level function which is normally only used by other methods of
@@ -517,15 +516,14 @@ class AsyncClient(Client):
             body = await transport_response.read()
             resp = response_class.from_data(body, content_type, name)
         elif (
-            issubclass(response_class, RoomGetStateEventResponse) and
-            transport_response.status == 404
+            issubclass(response_class, RoomGetStateEventResponse)
+            and transport_response.status == 404
         ):
             parsed_dict = await self.parse_body(transport_response)
             resp = response_class.create_error(parsed_dict, data[-1])
 
         elif (
-            transport_response.status == 401
-            and response_class == DeleteDevicesResponse
+            transport_response.status == 401 and response_class == DeleteDevicesResponse
         ):
             parsed_dict = await self.parse_body(transport_response)
             resp = DeleteDevicesAuthResponse.from_dict(parsed_dict)
@@ -630,8 +628,12 @@ class AsyncClient(Client):
                     continue
 
                 self.rooms[room_id].users[event.user_id].presence = event.presence
-                self.rooms[room_id].users[event.user_id].last_active_ago = event.last_active_ago
-                self.rooms[room_id].users[event.user_id].currently_active = event.currently_active
+                self.rooms[room_id].users[
+                    event.user_id
+                ].last_active_ago = event.last_active_ago
+                self.rooms[room_id].users[
+                    event.user_id
+                ].currently_active = event.currently_active
                 self.rooms[room_id].users[event.user_id].status_msg = event.status_msg
 
             for cb in self.presence_callbacks:
@@ -639,7 +641,8 @@ class AsyncClient(Client):
                     await asyncio.coroutine(cb.func)(event)
 
     async def _handle_global_account_data_events(  # type: ignore
-        self, response: SyncResponse,
+        self,
+        response: SyncResponse,
     ) -> None:
         for event in response.account_data_events:
             for cb in self.global_account_data_callbacks:
@@ -751,22 +754,27 @@ class AsyncClient(Client):
                 # method generated during runtime that may or may not be
                 # Awaitable. The actual type is a union of the types that we
                 # can receive from reading files.
-                data = await data_provider(got_429, got_timeouts) # type: ignore
+                data = await data_provider(got_429, got_timeouts)  # type: ignore
 
             try:
                 transport_resp = await self.send(
-                    method, path, data, headers, trace_context, timeout,
+                    method,
+                    path,
+                    data,
+                    headers,
+                    trace_context,
+                    timeout,
                 )
 
                 resp = await self.create_matrix_response(
-                    response_class, transport_resp, response_data,
+                    response_class,
+                    transport_resp,
+                    response_data,
                 )
 
-                if (
-                    transport_resp.status == 429 or (
-                        isinstance(resp, ErrorResponse) and
-                        resp.status_code in ("M_LIMIT_EXCEEDED", 429)
-                    )
+                if transport_resp.status == 429 or (
+                    isinstance(resp, ErrorResponse)
+                    and resp.status_code in ("M_LIMIT_EXCEEDED", 429)
                 ):
                     got_429 += 1
 
@@ -828,13 +836,13 @@ class AsyncClient(Client):
             ssl=self.ssl,
             headers=headers,
             trace_request_ctx=trace_context,
-            timeout=self.config.request_timeout
-            if timeout is None
-            else timeout,
+            timeout=self.config.request_timeout if timeout is None else timeout,
         )
 
     async def mxc_to_http(
-        self, mxc: str, homeserver: Optional[str] = None,
+        self,
+        mxc: str,
+        homeserver: Optional[str] = None,
     ) -> Optional[str]:
         """Convert a matrix content URI to a HTTP URI."""
         return Api.mxc_to_http(mxc, homeserver or self.homeserver)
@@ -959,9 +967,7 @@ class AsyncClient(Client):
         """
 
         if password is None and token is None:
-            raise ValueError(
-                "Either a password or a token needs to be provided"
-            )
+            raise ValueError("Either a password or a token needs to be provided")
 
         method, path, data = Api.login(
             self.user,
@@ -1049,10 +1055,7 @@ class AsyncClient(Client):
             path,
             # 0 if full_state: server doesn't respect timeout if full_state
             # + 15: give server a chance to naturally return before we timeout
-            timeout =
-                0 if full_state else
-                timeout / 1000 + 15 if timeout else
-                timeout,
+            timeout=0 if full_state else timeout / 1000 + 15 if timeout else timeout,
         )
 
         return response
@@ -1170,14 +1173,18 @@ class AsyncClient(Client):
                 # fired synced event the state is indeed fully synced.
                 if first_sync:
                     presence = set_presence or self._presence
-                    sync_response = await self.sync(use_timeout, use_filter, since, full_state, presence)
+                    sync_response = await self.sync(
+                        use_timeout, use_filter, since, full_state, presence
+                    )
                     await self.run_response_callbacks([sync_response])
                 else:
                     presence = set_presence or self._presence
                     tasks = [
                         asyncio.ensure_future(coro)
                         for coro in (
-                            self.sync(use_timeout, use_filter, since, full_state, presence),
+                            self.sync(
+                                use_timeout, use_filter, since, full_state, presence
+                            ),
                             self.send_to_device_messages(),
                         )
                     ]
@@ -1317,7 +1324,9 @@ class AsyncClient(Client):
 
     @logged_in
     async def to_device(
-        self, message: ToDeviceMessage, tx_id: Optional[str] = None,
+        self,
+        message: ToDeviceMessage,
+        tx_id: Optional[str] = None,
     ) -> Union[ToDeviceResponse, ToDeviceError]:
         """Send a to-device message.
 
@@ -1407,9 +1416,7 @@ class AsyncClient(Client):
 
     @logged_in
     async def update_device(
-            self,
-            device_id: str,
-            content: Dict[str, str]
+        self, device_id: str, content: Dict[str, str]
     ) -> Union[UpdateDeviceResponse, UpdateDeviceError]:
         """Update the metadata of the given device.
 
@@ -1427,9 +1434,7 @@ class AsyncClient(Client):
             >>> await client.update_device(device_id, content)
 
         """
-        method, path, data = Api.update_device(
-            self.access_token, device_id, content
-        )
+        method, path, data = Api.update_device(self.access_token, device_id, content)
 
         return await self._send(UpdateDeviceResponse, method, path, data)
 
@@ -1551,9 +1556,7 @@ class AsyncClient(Client):
             try:
                 room = self.rooms[room_id]
             except KeyError:
-                raise LocalProtocolError(
-                    f"No such room with id {room_id} found."
-                )
+                raise LocalProtocolError(f"No such room with id {room_id} found.")
 
             if room.encrypted:
                 # Check if the members are synced, otherwise users might not get
@@ -1581,9 +1584,7 @@ class AsyncClient(Client):
                 # Relevant spec proposal https://github.com/matrix-org/matrix-doc/pull/1849
                 if message_type != "m.reaction":
                     # Encrypt our content and change the message type.
-                    message_type, content = self.encrypt(
-                        room_id, message_type, content
-                    )
+                    message_type, content = self.encrypt(room_id, message_type, content)
 
         method, path, data = Api.room_send(
             self.access_token, room_id, message_type, content, uuid
@@ -1593,9 +1594,7 @@ class AsyncClient(Client):
 
     @logged_in
     async def room_get_event(
-        self,
-        room_id: str,
-        event_id: str
+        self, room_id: str, event_id: str
     ) -> Union[RoomGetEventResponse, RoomGetEventError]:
         """Get a single event based on roomId/eventId.
 
@@ -1608,15 +1607,9 @@ class AsyncClient(Client):
             room_id (str): The room id of the room where the event is in.
             event_id (str): The event id to get.
         """
-        method, path = Api.room_get_event(
-            self.access_token,
-            room_id,
-            event_id
-        )
+        method, path = Api.room_get_event(self.access_token, room_id, event_id)
 
-        return await self._send(
-            RoomGetEventResponse, method, path
-        )
+        return await self._send(RoomGetEventResponse, method, path)
 
     @logged_in
     async def room_put_state(
@@ -1649,12 +1642,17 @@ class AsyncClient(Client):
         )
 
         return await self._send(
-            RoomPutStateResponse, method, path, data, response_data=(room_id,),
+            RoomPutStateResponse,
+            method,
+            path,
+            data,
+            response_data=(room_id,),
         )
 
     @logged_in
     async def room_get_state(
-        self, room_id: str,
+        self,
+        room_id: str,
     ) -> Union[RoomGetStateResponse, RoomGetStateError]:
         """Fetch state for a room.
 
@@ -1667,10 +1665,16 @@ class AsyncClient(Client):
             room_id (str): The room id of the room to fetch state from.
         """
 
-        method, path = Api.room_get_state(self.access_token, room_id,)
+        method, path = Api.room_get_state(
+            self.access_token,
+            room_id,
+        )
 
         return await self._send(
-            RoomGetStateResponse, method, path, response_data=(room_id,),
+            RoomGetStateResponse,
+            method,
+            path,
+            response_data=(room_id,),
         )
 
     @logged_in
@@ -1699,7 +1703,11 @@ class AsyncClient(Client):
             RoomGetStateEventResponse,
             method,
             path,
-            response_data=(event_type, state_key, room_id,),
+            response_data=(
+                event_type,
+                state_key,
+                room_id,
+            ),
         )
 
     @logged_in
@@ -1734,11 +1742,16 @@ class AsyncClient(Client):
         )
 
         return await self._send(
-            RoomRedactResponse, method, path, data, response_data=(room_id,),
+            RoomRedactResponse,
+            method,
+            path,
+            data,
+            response_data=(room_id,),
         )
 
     async def room_resolve_alias(
-        self, room_alias: str,
+        self,
+        room_alias: str,
     ) -> Union[RoomResolveAliasResponse, RoomResolveAliasError]:
         """Resolve a room alias to a room ID.
 
@@ -1762,7 +1775,8 @@ class AsyncClient(Client):
 
     @logged_in
     async def room_delete_alias(
-        self, room_alias: str,
+        self,
+        room_alias: str,
     ) -> Union[RoomDeleteAliasResponse, RoomDeleteAliasError]:
         """Delete a room alias.
 
@@ -1789,7 +1803,9 @@ class AsyncClient(Client):
 
     @logged_in
     async def room_put_alias(
-        self, room_alias: str, room_id: str,
+        self,
+        room_alias: str,
+        room_id: str,
     ) -> Union[RoomPutAliasResponse, RoomPutAliasError]:
         """Add a room alias.
 
@@ -1818,7 +1834,8 @@ class AsyncClient(Client):
         )
 
     async def room_get_visibility(
-        self, room_id: str,
+        self,
+        room_id: str,
     ) -> Union[RoomGetVisibilityResponse, RoomGetVisibilityError]:
         """Get visibility for a room.
 
@@ -1901,9 +1918,7 @@ class AsyncClient(Client):
             raise LocalProtocolError("No such room with id {}".format(room_id))
 
         if not room.encrypted:
-            raise LocalProtocolError(
-                "Room with id {} is not encrypted".format(room_id)
-            )
+            raise LocalProtocolError("Room with id {} is not encrypted".format(room_id))
 
         if room_id in self.sharing_session:
             raise LocalProtocolError(
@@ -1925,17 +1940,21 @@ class AsyncClient(Client):
             for sharing_with, to_device_dict in self.olm.share_group_session_parallel(
                 room_id,
                 list(room.users.keys()),
-                ignore_unverified_devices=ignore_unverified_devices
+                ignore_unverified_devices=ignore_unverified_devices,
             ):
                 method, path, data = Api.to_device(
-                    self.access_token, "m.room.encrypted", to_device_dict,
-                    uuid4()
+                    self.access_token, "m.room.encrypted", to_device_dict, uuid4()
                 )
 
-                requests.append(self._send(
-                    ShareGroupSessionResponse, method, path, data,
-                    response_data=(room_id, sharing_with)
-                ))
+                requests.append(
+                    self._send(
+                        ShareGroupSessionResponse,
+                        method,
+                        path,
+                        data,
+                        response_data=(room_id, sharing_with),
+                    )
+                )
 
             for response in await asyncio.gather(*requests, return_exceptions=True):
                 if isinstance(response, ShareGroupSessionResponse):
@@ -1957,7 +1976,9 @@ class AsyncClient(Client):
     @logged_in
     @store_loaded
     async def request_room_key(
-        self, event: MegolmEvent, tx_id: Optional[str] = None,
+        self,
+        event: MegolmEvent,
+        tx_id: Optional[str] = None,
     ) -> Union[RoomKeyRequestResponse, RoomKeyRequestError]:
         """Request a missing room key.
 
@@ -1979,8 +2000,7 @@ class AsyncClient(Client):
 
         if event.session_id in self.outgoing_key_requests:
             raise LocalProtocolError(
-                "A key sharing request is already sent"
-                " out for this session id."
+                "A key sharing request is already sent" " out for this session id."
             )
 
         assert self.user_id
@@ -2012,9 +2032,7 @@ class AsyncClient(Client):
             self.client_session = None
 
     @store_loaded
-    async def export_keys(
-        self, outfile: str, passphrase: str, count: int = 10000
-    ):
+    async def export_keys(self, outfile: str, passphrase: str, count: int = 10000):
         """Export all the Megolm decryption keys of this device.
 
         The keys will be encrypted using the passphrase.
@@ -2196,7 +2214,9 @@ class AsyncClient(Client):
 
     @logged_in
     async def room_invite(
-        self, room_id: str, user_id: str,
+        self,
+        room_id: str,
+        user_id: str,
     ) -> Union[RoomInviteResponse, RoomInviteError]:
         """Invite a user to a room.
 
@@ -2211,7 +2231,9 @@ class AsyncClient(Client):
             user_id (str): The user id of the user that should be invited.
         """
         method, path, data = Api.room_invite(
-            self.access_token, room_id, user_id,
+            self.access_token,
+            room_id,
+            user_id,
         )
         return await self._send(RoomInviteResponse, method, path, data)
 
@@ -2260,7 +2282,10 @@ class AsyncClient(Client):
 
     @logged_in
     async def room_kick(
-        self, room_id: str, user_id: str, reason: Optional[str] = None,
+        self,
+        room_id: str,
+        user_id: str,
+        reason: Optional[str] = None,
     ) -> Union[RoomKickResponse, RoomKickError]:
         """Kick a user from a room, or withdraw their invitation.
 
@@ -2280,13 +2305,19 @@ class AsyncClient(Client):
         """
 
         method, path, data = Api.room_kick(
-            self.access_token, room_id, user_id, reason,
+            self.access_token,
+            room_id,
+            user_id,
+            reason,
         )
         return await self._send(RoomKickResponse, method, path, data)
 
     @logged_in
     async def room_ban(
-        self, room_id: str, user_id: str, reason: Optional[str] = None,
+        self,
+        room_id: str,
+        user_id: str,
+        reason: Optional[str] = None,
     ) -> Union[RoomBanResponse, RoomBanError]:
         """Ban a user from a room.
 
@@ -2308,13 +2339,18 @@ class AsyncClient(Client):
         """
 
         method, path, data = Api.room_ban(
-            self.access_token, room_id, user_id, reason,
+            self.access_token,
+            room_id,
+            user_id,
+            reason,
         )
         return await self._send(RoomBanResponse, method, path, data)
 
     @logged_in
     async def room_unban(
-        self, room_id: str, user_id: str,
+        self,
+        room_id: str,
+        user_id: str,
     ) -> Union[RoomBanResponse, RoomBanError]:
         """Unban a user from a room.
 
@@ -2332,13 +2368,18 @@ class AsyncClient(Client):
         """
 
         method, path, data = Api.room_unban(
-            self.access_token, room_id, user_id,
+            self.access_token,
+            room_id,
+            user_id,
         )
         return await self._send(RoomUnbanResponse, method, path, data)
 
     @logged_in
     async def room_context(
-        self, room_id: str, event_id: str, limit: Optional[int] = None,
+        self,
+        room_id: str,
+        event_id: str,
+        limit: Optional[int] = None,
     ) -> Union[RoomContextResponse, RoomContextError]:
         """Fetch a number of events that happened before and after an event.
 
@@ -2357,9 +2398,7 @@ class AsyncClient(Client):
             limit(int, optional): The maximum number of events to request.
         """
 
-        method, path = Api.room_context(
-            self.access_token, room_id, event_id, limit
-        )
+        method, path = Api.room_context(self.access_token, room_id, event_id, limit)
 
         return await self._send(
             RoomContextResponse, method, path, response_data=(room_id,)
@@ -2426,7 +2465,10 @@ class AsyncClient(Client):
 
     @logged_in
     async def room_typing(
-        self, room_id: str, typing_state: bool = True, timeout: int = 30000,
+        self,
+        room_id: str,
+        typing_state: bool = True,
+        timeout: int = 30000,
     ) -> Union[RoomTypingResponse, RoomTypingError]:
         """Send a typing notice to the server.
 
@@ -2476,7 +2518,10 @@ class AsyncClient(Client):
                 `m.read` is supported by the Matrix specification.
         """
         method, path = Api.update_receipt_marker(
-            self.access_token, room_id, event_id, receipt_type,
+            self.access_token,
+            room_id,
+            event_id,
+            receipt_type,
         )
 
         return await self._send(
@@ -2488,10 +2533,7 @@ class AsyncClient(Client):
 
     @logged_in
     async def room_read_markers(
-        self,
-        room_id: str,
-        fully_read_event: str,
-        read_event: Optional[str] = None
+        self, room_id: str, fully_read_event: str, read_event: Optional[str] = None
     ):
         """Update the fully read marker (and optionally the read receipt) for
         a room.
@@ -2534,7 +2576,6 @@ class AsyncClient(Client):
             RoomReadMarkersResponse, method, path, data, response_data=(room_id,)
         )
 
-
     @logged_in
     async def content_repository_config(
         self,
@@ -2574,7 +2615,10 @@ class AsyncClient(Client):
             yield await self._process_data_chunk(value, monitor)
 
     async def _encrypted_data_generator(
-        self, data, decryption_dict, monitor=None,
+        self,
+        data,
+        decryption_dict,
+        monitor=None,
     ):
         """Yield encrypted chunks of bytes from data.
 
@@ -2724,11 +2768,13 @@ class AsyncClient(Client):
                     f"data_provider type {type(data_provider)} "
                     "is not of a usable type "
                     f"(Callable, {SynchronousFile}, {AsyncFile})"
-            )
+                )
 
             if encrypt:
                 return self._encrypted_data_generator(
-                    data, decryption_dict, monitor,
+                    data,
+                    decryption_dict,
+                    monitor,
                 )
 
             return self._plain_data_generator(data, monitor)
@@ -2738,9 +2784,7 @@ class AsyncClient(Client):
             http_method,
             path,
             data_provider=provider,
-            content_type="application/octet-stream"
-            if encrypt
-            else content_type,
+            content_type="application/octet-stream" if encrypt else content_type,
             trace_context=monitor,
             timeout=0,
             content_length=filesize,
@@ -2781,12 +2825,13 @@ class AsyncClient(Client):
         """
         # TODO: support TransferMonitor
 
-        http_method, path = Api.download(
-            server_name, media_id, filename, allow_remote
-        )
+        http_method, path = Api.download(server_name, media_id, filename, allow_remote)
 
         return await self._send(
-            DownloadResponse, http_method, path, timeout=0,
+            DownloadResponse,
+            http_method,
+            path,
+            timeout=0,
         )
 
     @client_session
@@ -2825,7 +2870,10 @@ class AsyncClient(Client):
         )
 
         return await self._send(
-            ThumbnailResponse, http_method, path, timeout=0,
+            ThumbnailResponse,
+            http_method,
+            path,
+            timeout=0,
         )
 
     @client_session
@@ -2848,14 +2896,19 @@ class AsyncClient(Client):
             user_id (str): User id of the user to get the profile for.
         """
         method, path = Api.profile_get(
-            user_id or self.user_id,
-            access_token=self.access_token or None
+            user_id or self.user_id, access_token=self.access_token or None
         )
 
-        return await self._send(ProfileGetResponse, method, path,)
+        return await self._send(
+            ProfileGetResponse,
+            method,
+            path,
+        )
 
     @client_session
-    async def get_presence(self, user_id: str) -> Union[PresenceGetResponse, PresenceGetError]:
+    async def get_presence(
+        self, user_id: str
+    ) -> Union[PresenceGetResponse, PresenceGetError]:
         """Get a user's presence state.
 
         This queries the presence state of a user from the server.
@@ -2870,10 +2923,7 @@ class AsyncClient(Client):
             user_id (str): User id of the user to get the presence state for.
         """
 
-        method, path = Api.get_presence(
-            self.access_token,
-            user_id
-        )
+        method, path = Api.get_presence(self.access_token, user_id)
 
         return await self._send(
             PresenceGetResponse, method, path, response_data=(user_id,)
@@ -2881,9 +2931,7 @@ class AsyncClient(Client):
 
     @client_session
     async def set_presence(
-        self,
-        presence: str,
-        status_msg: str = None
+        self, presence: str, status_msg: str = None
     ) -> Union[PresenceSetResponse, PresenceSetError]:
         """Set our user's presence state.
 
@@ -2902,15 +2950,10 @@ class AsyncClient(Client):
         """
 
         method, path, data = Api.set_presence(
-            self.access_token,
-            self.user_id,
-            presence,
-            status_msg
+            self.access_token, self.user_id, presence, status_msg
         )
 
-        resp = await self._send(
-            PresenceSetResponse, method, path, data
-        )
+        resp = await self._send(PresenceSetResponse, method, path, data)
         if isinstance(resp, PresenceSetResponse):
             self._presence = presence
 
@@ -2935,16 +2978,17 @@ class AsyncClient(Client):
             user_id (str): User id of the user to get the display name for.
         """
         method, path = Api.profile_get_displayname(
-            user_id or self.user_id,
-            access_token=self.access_token or None
+            user_id or self.user_id, access_token=self.access_token or None
         )
 
-        return await self._send(ProfileGetDisplayNameResponse, method, path,)
+        return await self._send(
+            ProfileGetDisplayNameResponse,
+            method,
+            path,
+        )
 
     @logged_in
-    async def set_displayname(
-        self, displayname: str
-    ) -> _ProfileSetDisplayNameT:
+    async def set_displayname(self, displayname: str) -> _ProfileSetDisplayNameT:
         """Set user's display name.
 
         This tells the server to set display name of the currently logged
@@ -2964,7 +3008,10 @@ class AsyncClient(Client):
         )
 
         return await self._send(
-            ProfileSetDisplayNameResponse, method, path, data,
+            ProfileSetDisplayNameResponse,
+            method,
+            path,
+            data,
         )
 
     @client_session
@@ -2986,11 +3033,14 @@ class AsyncClient(Client):
             user_id (str): User id of the user to get the avatar for.
         """
         method, path = Api.profile_get_avatar(
-            user_id or self.user_id,
-            access_token=self.access_token or None
+            user_id or self.user_id, access_token=self.access_token or None
         )
 
-        return await self._send(ProfileGetAvatarResponse, method, path,)
+        return await self._send(
+            ProfileGetAvatarResponse,
+            method,
+            path,
+        )
 
     @logged_in
     async def set_avatar(
@@ -3014,7 +3064,12 @@ class AsyncClient(Client):
             self.access_token, self.user_id, avatar_url
         )
 
-        return await self._send(ProfileSetAvatarResponse, method, path, data,)
+        return await self._send(
+            ProfileSetAvatarResponse,
+            method,
+            path,
+            data,
+        )
 
     @logged_in
     async def upload_filter(
@@ -3162,14 +3217,24 @@ class AsyncClient(Client):
 
         method, path, data = Api.set_pushrule(
             self.access_token,
-            scope, kind, rule_id, before, after, actions, conditions, pattern,
+            scope,
+            kind,
+            rule_id,
+            before,
+            after,
+            actions,
+            conditions,
+            pattern,
         )
 
         return await self._send(SetPushRuleResponse, method, path, data)
 
     @logged_in
     async def delete_pushrule(
-        self, scope: str, kind: PushRuleKind, rule_id: str,
+        self,
+        scope: str,
+        kind: PushRuleKind,
+        rule_id: str,
     ) -> Union[DeletePushRuleResponse, DeletePushRuleError]:
         """Delete an existing push rule.
 
@@ -3190,7 +3255,10 @@ class AsyncClient(Client):
         """
 
         method, path = Api.delete_pushrule(
-            self.access_token, scope, kind, rule_id,
+            self.access_token,
+            scope,
+            kind,
+            rule_id,
         )
 
         return await self._send(DeletePushRuleResponse, method, path)
@@ -3224,7 +3292,11 @@ class AsyncClient(Client):
         """
 
         method, path, data = Api.enable_pushrule(
-            self.access_token, scope, kind, rule_id, enable,
+            self.access_token,
+            scope,
+            kind,
+            rule_id,
+            enable,
         )
 
         return await self._send(EnablePushRuleResponse, method, path, data)
@@ -3263,16 +3335,22 @@ class AsyncClient(Client):
         """
 
         method, path, data = Api.set_pushrule_actions(
-            self.access_token, scope, kind, rule_id, actions,
+            self.access_token,
+            scope,
+            kind,
+            rule_id,
+            actions,
         )
 
         return await self._send(SetPushRuleActionsResponse, method, path, data)
 
     @logged_in
-    async def room_update_aliases(self,
-                                  room_id: str,
-                                  canonical_alias: Union[str, None] = None,
-                                  alt_aliases: List[str] = []):
+    async def room_update_aliases(
+        self,
+        room_id: str,
+        canonical_alias: Union[str, None] = None,
+        alt_aliases: List[str] = [],
+    ):
         """Update the aliases of an existing room.
            This method will not transfer aliases from one room to another!
            Remove the old alias before trying to assign it again
@@ -3295,52 +3373,62 @@ class AsyncClient(Client):
 
         # Get current aliases
         current_aliases = list()
-        current_alias_event = await self.room_get_state_event(room_id, "m.room.canonical_alias")
+        current_alias_event = await self.room_get_state_event(
+            room_id, "m.room.canonical_alias"
+        )
         if isinstance(current_alias_event, RoomGetStateEventResponse):
-            current_aliases.append(current_alias_event.content['alias'])
-            if 'alt_aliases' in current_alias_event.content:
-                alt_aliases = current_alias_event.content['alt_aliases']
+            current_aliases.append(current_alias_event.content["alias"])
+            if "alt_aliases" in current_alias_event.content:
+                alt_aliases = current_alias_event.content["alt_aliases"]
                 for alias in alt_aliases:
                     current_aliases.append(alias)
 
         # Unregister old aliases
         for alias in current_aliases:
             if alias not in new_aliases:
-                if isinstance(await self.room_delete_alias(alias), RoomDeleteAliasError):
-                    return RoomUpdateAliasError("Could not delete alias {}".format(alias))
+                if isinstance(
+                    await self.room_delete_alias(alias), RoomDeleteAliasError
+                ):
+                    return RoomUpdateAliasError(
+                        "Could not delete alias {}".format(alias)
+                    )
 
         # Register new aliases
         for alias in new_aliases:
-            if isinstance(await self.room_put_alias(alias, room_id), RoomDeleteAliasError):
+            if isinstance(
+                await self.room_put_alias(alias, room_id), RoomDeleteAliasError
+            ):
                 return RoomUpdateAliasError("Could not put alias {}".format(alias))
 
         # Send m.room.canonical_alias event
-        put_alias_event = await self.room_put_state(room_id,
-                                                    "m.room.canonical_alias",
-                                                       {
-                                                           "alias": canonical_alias,
-                                                           "alt_aliases": alt_aliases
-                                                       })
+        put_alias_event = await self.room_put_state(
+            room_id,
+            "m.room.canonical_alias",
+            {"alias": canonical_alias, "alt_aliases": alt_aliases},
+        )
         if isinstance(put_alias_event, RoomPutStateError):
             return RoomUpdateAliasError("Failed to put m.room.canonical_alias")
         return RoomUpdateAliasResponse()
 
     @logged_in
-    async def room_upgrade(self,
-                           old_room_id: str,
-                           new_room_version: str,
-                           copy_events: list = ['m.room.server_acl',
-                                                'm.room.encryption',
-                                                'm.room.name',
-                                                'm.room.avatar',
-                                                'm.room.topic',
-                                                'm.room.guest_access',
-                                                'm.room.history_visibility',
-                                                'm.room.join_rules',
-                                                'm.room.power_levels'],
-                           room_upgrade_message: str = "This room has been replaced",
-                           room_power_level_overwrite: Optional[Dict[str, Any]] = None
-                           ) -> Union[RoomUpgradeResponse, RoomUpgradeError]:
+    async def room_upgrade(
+        self,
+        old_room_id: str,
+        new_room_version: str,
+        copy_events: list = [
+            "m.room.server_acl",
+            "m.room.encryption",
+            "m.room.name",
+            "m.room.avatar",
+            "m.room.topic",
+            "m.room.guest_access",
+            "m.room.history_visibility",
+            "m.room.join_rules",
+            "m.room.power_levels",
+        ],
+        room_upgrade_message: str = "This room has been replaced",
+        room_power_level_overwrite: Optional[Dict[str, Any]] = None,
+    ) -> Union[RoomUpgradeResponse, RoomUpgradeError]:
         """Upgrade an existing room.
 
         Args:
@@ -3364,7 +3452,6 @@ class AsyncClient(Client):
         if not await self.has_event_permission(old_room_id, "m.room.tombstone"):
             return RoomUpgradeError("Not allowed to upgrade room")
 
-
         # Get state events for the old room
         old_room_state_events = await self.room_get_state(old_room_id)
         if isinstance(old_room_state_events, RoomGetStateError):
@@ -3374,17 +3461,17 @@ class AsyncClient(Client):
         old_room_power_levels = None
         new_room_initial_state = list()
         for event in old_room_state_events.events:
-            if event['type'] in copy_events \
-               and not event['type'] == 'm.room.power_levels':
+            if (
+                event["type"] in copy_events
+                and not event["type"] == "m.room.power_levels"
+            ):
                 new_room_initial_state.append(event)
-            if event['type'] == 'm.room.power_levels':
-                old_room_power_levels = event['content']
+            if event["type"] == "m.room.power_levels":
+                old_room_power_levels = event["content"]
 
         # Get last known event from the old room
         old_room_event = await self.room_messages(
-                                                start="",
-                                                room_id=old_room_id,
-                                                limit=1
+            start="", room_id=old_room_id, limit=1
         )
         if isinstance(old_room_event, RoomMessagesError):
             return RoomUpgradeError("Failed to get last known event")
@@ -3402,41 +3489,51 @@ class AsyncClient(Client):
             initial_state=new_room_initial_state,
             predecessor={
                 "event_id": old_room_last_event.event_id,
-                "room_id": old_room_id
-            })
+                "room_id": old_room_id,
+            },
+        )
 
         if isinstance(new_room, RoomCreateError):
             return RoomUpgradeError("Room creation failed")
 
         # Send tombstone event to the old room
-        old_room_tombstone = await self.room_put_state(old_room_id, "m.room.tombstone",
-                                                       {"body": room_upgrade_message,
-                                                        "replacement_room": new_room.room_id
-                                                       })
+        old_room_tombstone = await self.room_put_state(
+            old_room_id,
+            "m.room.tombstone",
+            {"body": room_upgrade_message, "replacement_room": new_room.room_id},
+        )
         if isinstance(old_room_tombstone, RoomPutStateError):
             return RoomUpgradeError("Failed to put m.room.tombstone")
 
         # Get the old rooms aliases
-        old_room_alias = await self.room_get_state_event(old_room_id, "m.room.canonical_alias")
+        old_room_alias = await self.room_get_state_event(
+            old_room_id, "m.room.canonical_alias"
+        )
         if isinstance(old_room_alias, RoomGetStateEventResponse):
             aliases = list()
-            aliases.append(old_room_alias.content['alias'])
-            if 'alt_aliases' in old_room_alias.content:
-                alt_aliases = old_room_alias.content['alt_aliases']
+            aliases.append(old_room_alias.content["alias"])
+            if "alt_aliases" in old_room_alias.content:
+                alt_aliases = old_room_alias.content["alt_aliases"]
                 for alias in alt_aliases:
                     aliases.append(alias)
             else:
                 alt_aliases = []
 
             # Remove the old aliases
-            if isinstance(await self.room_update_aliases(old_room_id), RoomDeleteAliasError):
+            if isinstance(
+                await self.room_update_aliases(old_room_id), RoomDeleteAliasError
+            ):
                 return RoomUpgradeError("Could update the old rooms aliases")
 
             # Assign new aliases
-            if isinstance(await self.room_update_aliases(new_room.room_id,
-                                                         canonical_alias=old_room_alias.content['alias'],
-                                                         alt_aliases=alt_aliases)
-                          , RoomDeleteAliasError):
+            if isinstance(
+                await self.room_update_aliases(
+                    new_room.room_id,
+                    canonical_alias=old_room_alias.content["alias"],
+                    alt_aliases=alt_aliases,
+                ),
+                RoomDeleteAliasError,
+            ):
                 return RoomUpgradeError("Could update the new rooms aliases")
 
         return RoomUpgradeResponse(new_room.room_id)
@@ -3466,27 +3563,26 @@ class AsyncClient(Client):
         )
 
     @logged_in
-    async def has_event_permission(self,
-                                   room_id: str,
-                                   event_name: str,
-                                   event_type: str = "event") -> Union[bool, ErrorResponse]:
+    async def has_event_permission(
+        self, room_id: str, event_name: str, event_type: str = "event"
+    ) -> Union[bool, ErrorResponse]:
         who_am_i = await self.whoami()
         power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
 
         try:
-            user_power_level = power_levels.content['users'][who_am_i.user_id]
+            user_power_level = power_levels.content["users"][who_am_i.user_id]
         except KeyError:
-            user_power_level = power_levels.content['users_default']
+            user_power_level = power_levels.content["users_default"]
         else:
             return ErrorResponse("Couldn't get user power levels")
 
         try:
-            event_power_level = power_levels.content['events'][event_name]
+            event_power_level = power_levels.content["events"][event_name]
         except KeyError:
             if event_type == "event":
-                event_power_level = power_levels.content['events_default']
+                event_power_level = power_levels.content["events_default"]
             elif event_type == "state":
-                event_power_level = power_levels.content['state_default']
+                event_power_level = power_levels.content["state_default"]
             else:
                 return ErrorResponse("event_type {} unknown".format(event_type))
         else:
@@ -3494,16 +3590,16 @@ class AsyncClient(Client):
 
         return user_power_level >= event_power_level
 
-    async def has_permission(self,
-                             room_id: str,
-                             permission_type: str) -> Union[bool, ErrorResponse]:
+    async def has_permission(
+        self, room_id: str, permission_type: str
+    ) -> Union[bool, ErrorResponse]:
         who_am_i = await self.whoami()
         power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
 
         try:
-            user_power_level = power_levels.content['users'][who_am_i.user_id]
+            user_power_level = power_levels.content["users"][who_am_i.user_id]
         except KeyError:
-            user_power_level = power_levels.content['users_default']
+            user_power_level = power_levels.content["users_default"]
         else:
             return ErrorResponse("Couldn't get user power levels")
 

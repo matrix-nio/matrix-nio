@@ -23,9 +23,8 @@ Ephemeral events are used for typing notifications and read receipts.
 
 """
 
-from typing import List, Dict
-
 from dataclasses import dataclass, field
+from typing import Dict, List
 
 from ..schemas import Schemas
 from .misc import verify_or_none
@@ -91,7 +90,7 @@ class TypingNoticeEvent(EphemeralEvent):
 @dataclass
 class Receipt:
     """Receipt of a user acknowledging an event.
-    
+
     If `receipt_type` is "m.read", then it is a read receipt and shows the last
     event that a user has read.
 
@@ -102,10 +101,12 @@ class Receipt:
         user_id (str): the ID of the user who is acknowledging the event.
         timestamp (int): The timestamp the receipt was sent at.
     """
+
     event_id: str = field()
     receipt_type: str = field()
     user_id: str = field()
     timestamp: int = field()
+
 
 @dataclass
 class ReceiptEvent(EphemeralEvent):
@@ -118,6 +119,7 @@ class ReceiptEvent(EphemeralEvent):
     Attributes:
         receipts (List[Receipt]): The list of `Receipt`s in this event.
     """
+
     receipts: List[Receipt] = field()
 
     @classmethod

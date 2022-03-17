@@ -14,10 +14,10 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from dataclasses import dataclass, field
 from functools import wraps
 from typing import Any, Dict, Optional, Union
 
-from dataclasses import dataclass, field
 from jsonschema.exceptions import SchemaError, ValidationError
 from logbook import Logger
 
@@ -30,7 +30,7 @@ logger_group.add_logger(logger)
 
 def validate_or_badevent(
     parsed_dict,  # type: Dict[Any, Any]
-    schema        # type: Dict[Any, Any]
+    schema,  # type: Dict[Any, Any]
 ):
     # type: (...) -> Optional[Union[BadEvent, UnknownBadEvent]]
     try:
@@ -56,7 +56,9 @@ def verify(schema):
                 return bad
 
             return f(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -73,7 +75,9 @@ def verify_or_none(schema):
                 return None
 
             return f(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 

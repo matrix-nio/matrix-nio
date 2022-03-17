@@ -61,25 +61,25 @@ from another device or room.
 
 """
 
+import asyncio
+import getpass
+import json
+import os
+import sys
+import traceback
+
 from nio import (
     AsyncClient,
     AsyncClientConfig,
-    LoginResponse,
-    KeyVerificationEvent,
-    KeyVerificationStart,
     KeyVerificationCancel,
+    KeyVerificationEvent,
     KeyVerificationKey,
     KeyVerificationMac,
-    ToDeviceError,
+    KeyVerificationStart,
     LocalProtocolError,
+    LoginResponse,
+    ToDeviceError,
 )
-import traceback
-import getpass
-import sys
-import os
-import json
-import asyncio
-
 
 # file to store credentials in case you want to run program multiple times
 CONFIG_FILE = "credentials.json"  # login credentials JSON file
@@ -100,7 +100,7 @@ class Callbacks(object):
             client = self.client
 
             if isinstance(event, KeyVerificationStart):  # first step
-                """ first step: receive KeyVerificationStart
+                """first step: receive KeyVerificationStart
                 KeyVerificationStart(
                     source={'content':
                             {'method': 'm.sas.v1',
@@ -130,11 +130,12 @@ class Callbacks(object):
                 """
 
                 if "emoji" not in event.short_authentication_string:
-                    print("Other device does not support emoji verification "
-                          f"{event.short_authentication_string}.")
+                    print(
+                        "Other device does not support emoji verification "
+                        f"{event.short_authentication_string}."
+                    )
                     return
-                resp = await client.accept_key_verification(
-                    event.transaction_id)
+                resp = await client.accept_key_verification(event.transaction_id)
                 if isinstance(resp, ToDeviceError):
                     print(f"accept_key_verification failed with {resp}")
 
@@ -146,7 +147,7 @@ class Callbacks(object):
                     print(f"to_device failed with {resp}")
 
             elif isinstance(event, KeyVerificationCancel):  # anytime
-                """ at any time: receive KeyVerificationCancel
+                """at any time: receive KeyVerificationCancel
                 KeyVerificationCancel(source={
                     'content': {'code': 'm.mismatched_sas',
                                 'reason': 'Mismatched authentication string',
@@ -163,11 +164,13 @@ class Callbacks(object):
                 # client.cancel_key_verification(tx_id, reject=False)
                 # here. The SAS flow is already cancelled.
                 # We only need to inform the user.
-                print(f"Verification has been cancelled by {event.sender} "
-                      f"for reason \"{event.reason}\".")
+                print(
+                    f"Verification has been cancelled by {event.sender} "
+                    f'for reason "{event.reason}".'
+                )
 
             elif isinstance(event, KeyVerificationKey):  # second step
-                """ Second step is to receive KeyVerificationKey
+                """Second step is to receive KeyVerificationKey
                 KeyVerificationKey(
                     source={'content': {
                             'key': 'SomeCryptoKey',
@@ -185,29 +188,32 @@ class Callbacks(object):
 
                 yn = input("Do the emojis match? (Y/N) (C for Cancel) ")
                 if yn.lower() == "y":
-                    print("Match! The verification for this "
-                          "device will be accepted.")
-                    resp = await client.confirm_short_auth_string(
-                        event.transaction_id)
+                    print(
+                        "Match! The verification for this " "device will be accepted."
+                    )
+                    resp = await client.confirm_short_auth_string(event.transaction_id)
                     if isinstance(resp, ToDeviceError):
                         print(f"confirm_short_auth_string failed with {resp}")
                 elif yn.lower() == "n":  # no, don't match, reject
-                    print("No match! Device will NOT be verified "
-                          "by rejecting verification.")
+                    print(
+                        "No match! Device will NOT be verified "
+                        "by rejecting verification."
+                    )
                     resp = await client.cancel_key_verification(
-                        event.transaction_id, reject=True)
+                        event.transaction_id, reject=True
+                    )
                     if isinstance(resp, ToDeviceError):
                         print(f"cancel_key_verification failed with {resp}")
                 else:  # C or anything for cancel
-                    print("Cancelled by user! Verification will be "
-                          "cancelled.")
+                    print("Cancelled by user! Verification will be " "cancelled.")
                     resp = await client.cancel_key_verification(
-                        event.transaction_id, reject=False)
+                        event.transaction_id, reject=False
+                    )
                     if isinstance(resp, ToDeviceError):
                         print(f"cancel_key_verification failed with {resp}")
 
             elif isinstance(event, KeyVerificationMac):  # third step
-                """ Third step is to receive KeyVerificationMac
+                """Third step is to receive KeyVerificationMac
                 KeyVerificationMac(
                     source={'content': {
                         'mac': {'ed25519:DEVICEIDXY': 'SomeKey1',
@@ -227,26 +233,34 @@ class Callbacks(object):
                     todevice_msg = sas.get_mac()
                 except LocalProtocolError as e:
                     # e.g. it might have been cancelled by ourselves
-                    print(f"Cancelled or protocol error: Reason: {e}.\n"
-                          f"Verification with {event.sender} not concluded. "
-                          "Try again?")
+                    print(
+                        f"Cancelled or protocol error: Reason: {e}.\n"
+                        f"Verification with {event.sender} not concluded. "
+                        "Try again?"
+                    )
                 else:
                     resp = await client.to_device(todevice_msg)
                     if isinstance(resp, ToDeviceError):
                         print(f"to_device failed with {resp}")
-                    print(f"sas.we_started_it = {sas.we_started_it}\n"
-                          f"sas.sas_accepted = {sas.sas_accepted}\n"
-                          f"sas.canceled = {sas.canceled}\n"
-                          f"sas.timed_out = {sas.timed_out}\n"
-                          f"sas.verified = {sas.verified}\n"
-                          f"sas.verified_devices = {sas.verified_devices}\n")
-                    print("Emoji verification was successful!\n"
-                          "Hit Control-C to stop the program or "
-                          "initiate another Emoji verification from "
-                          "another device or room.")
+                    print(
+                        f"sas.we_started_it = {sas.we_started_it}\n"
+                        f"sas.sas_accepted = {sas.sas_accepted}\n"
+                        f"sas.canceled = {sas.canceled}\n"
+                        f"sas.timed_out = {sas.timed_out}\n"
+                        f"sas.verified = {sas.verified}\n"
+                        f"sas.verified_devices = {sas.verified_devices}\n"
+                    )
+                    print(
+                        "Emoji verification was successful!\n"
+                        "Hit Control-C to stop the program or "
+                        "initiate another Emoji verification from "
+                        "another device or room."
+                    )
             else:
-                print(f"Received unexpected event type {type(event)}. "
-                      f"Event is {event}. Event will be ignored.")
+                print(
+                    f"Received unexpected event type {type(event)}. "
+                    f"Event is {event}. Event will be ignored."
+                )
         except BaseException:
             print(traceback.format_exc())
 
@@ -270,9 +284,9 @@ def write_details_to_disk(resp: LoginResponse, homeserver) -> None:
                 "homeserver": homeserver,  # e.g. "https://matrix.example.org"
                 "user_id": resp.user_id,  # e.g. "@user:example.org"
                 "device_id": resp.device_id,  # device ID, 10 uppercase letters
-                "access_token": resp.access_token  # cryptogr. access token
+                "access_token": resp.access_token,  # cryptogr. access token
             },
-            f
+            f,
         )
 
 
@@ -288,13 +302,14 @@ async def login() -> AsyncClient:
 
     # If there are no previously-saved credentials, we'll use the password
     if not os.path.exists(CONFIG_FILE):
-        print("First time use. Did not find credential file. Asking for "
-              "homeserver, user, and password to create credential file.")
+        print(
+            "First time use. Did not find credential file. Asking for "
+            "homeserver, user, and password to create credential file."
+        )
         homeserver = "https://matrix.example.org"
         homeserver = input(f"Enter your homeserver URL: [{homeserver}] ")
 
-        if not (homeserver.startswith("https://")
-                or homeserver.startswith("http://")):
+        if not (homeserver.startswith("https://") or homeserver.startswith("http://")):
             homeserver = "https://" + homeserver
 
         user_id = "@user:example.org"
@@ -318,15 +333,17 @@ async def login() -> AsyncClient:
         resp = await client.login(password=pw, device_name=device_name)
 
         # check that we logged in succesfully
-        if (isinstance(resp, LoginResponse)):
+        if isinstance(resp, LoginResponse):
             write_details_to_disk(resp, homeserver)
         else:
-            print(f"homeserver = \"{homeserver}\"; user = \"{user_id}\"")
+            print(f'homeserver = "{homeserver}"; user = "{user_id}"')
             print(f"Failed to log in: {resp}")
             sys.exit(1)
 
-        print("Logged in using a password. Credentials were stored. "
-              "On next execution the stored login credentials will be used.")
+        print(
+            "Logged in using a password. Credentials were stored. "
+            "On next execution the stored login credentials will be used."
+        )
 
     # Otherwise the config file exists, so we'll use the stored credentials
     else:
@@ -335,17 +352,17 @@ async def login() -> AsyncClient:
             config = json.load(f)
             # Initialize the matrix client based on credentials from file
             client = AsyncClient(
-                config['homeserver'],
-                config['user_id'],
-                device_id=config['device_id'],
+                config["homeserver"],
+                config["user_id"],
+                device_id=config["device_id"],
                 store_path=STORE_PATH,
                 config=client_config,
             )
 
             client.restore_login(
-                user_id=config['user_id'],
-                device_id=config['device_id'],
-                access_token=config['access_token']
+                user_id=config["user_id"],
+                device_id=config["device_id"],
+                access_token=config["access_token"],
             )
         print("Logged in using stored credentials.")
 
@@ -357,16 +374,18 @@ async def main() -> None:
     client = await login()
     # Set up event callbacks
     callbacks = Callbacks(client)
-    client.add_to_device_callback(
-        callbacks.to_device_callback, (KeyVerificationEvent,))
+    client.add_to_device_callback(callbacks.to_device_callback, (KeyVerificationEvent,))
     # Sync encryption keys with the server
     # Required for participating in encrypted rooms
     if client.should_upload_keys:
         await client.keys_upload()
-    print("This program is ready and waiting for the other party to initiate "
-          "an emoji verification with us by selecting \"Verify by Emoji\" "
-          "in their Matrix client.")
+    print(
+        "This program is ready and waiting for the other party to initiate "
+        'an emoji verification with us by selecting "Verify by Emoji" '
+        "in their Matrix client."
+    )
     await client.sync_forever(timeout=30000, full_state=True)
+
 
 try:
     asyncio.get_event_loop().run_until_complete(main())

@@ -21,8 +21,8 @@ to-device part of a sync response or in a room timeline of a sync response.
 
 """
 
-from typing import List, Dict
 from dataclasses import dataclass, field
+from typing import Dict, List
 
 
 @dataclass
