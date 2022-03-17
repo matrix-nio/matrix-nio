@@ -574,6 +574,17 @@ class AsyncClient(Client):
                 for cb in self.event_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
                         await asyncio.coroutine(cb.func)(room, event)
+    
+    async def _handle_left_rooms(self, response: SyncResponse):
+        for room_id, info in response.rooms.leave.items():
+            room = self._get_left_room(room_id)
+
+            for event in info.state:
+                room.handle_event(event)
+
+                for cb in self.event_callbacks:
+                    if cb.filter is None or isinstance(event, cb.filter):
+                        await asyncio.coroutine(cb.func)(room, event)
 
     async def _handle_joined_rooms(self, response: SyncResponse) -> None:
         encrypted_rooms: Set[str] = set()
@@ -667,6 +678,8 @@ class AsyncClient(Client):
         await self._handle_to_device(response)
 
         await self._handle_invited_rooms(response)
+
+        await self._handle_left_rooms(response)
 
         await self._handle_joined_rooms(response)
 

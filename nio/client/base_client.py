@@ -715,6 +715,17 @@ class Client:
 
         return self.left_rooms[room_id]
 
+    def _handle_left_rooms(self, response: SyncResponse):
+        for room_id, info in response.rooms.leave.items():
+            room = self._get_left_room(room_id)
+
+            for event in info.state:
+                room.handle_event(event)
+
+                for cb in self.event_callbacks:
+                    if cb.filter is None or isinstance(event, cb.filter):
+                        cb.func(room, event)
+
     def _handle_joined_state(
         self, room_id: str, join_info: RoomInfo, encrypted_rooms: Set[str]
     ):
@@ -900,6 +911,8 @@ class Client:
         self._handle_to_device(response)
 
         self._handle_invited_rooms(response)
+
+        self._handle_left_rooms(response)
 
         self._handle_joined_rooms(response)
 
