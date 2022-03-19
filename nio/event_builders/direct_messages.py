@@ -23,7 +23,7 @@ homeserver.
 from dataclasses import dataclass, field
 from typing import Dict
 
-from . import EventBuilder
+from .event_builder import EventBuilder
 
 
 @dataclass

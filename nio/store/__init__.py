@@ -10,21 +10,14 @@ pure Sqlite database and one that stores the Sqlite database in memory.
 User provided store types can be implemented by overriding the methods
 provided in the MatrixStore base class.
 
+isort:skip_file
 """
 
 from .._compat import package_installed
 
 if package_installed("olm"):
-    from .database import (
-        DefaultStore,
-        MatrixStore,
-        SqliteMemoryStore,
-        SqliteStore,
-        use_database,
-        use_database_atomic,
-    )
-    from .file_trustdb import Ed25519Key, Key, KeyStore
     from .log import logger
+    from .file_trustdb import Ed25519Key, Key, KeyStore
     from .models import (
         Accounts,
         DeviceKeys,
@@ -39,4 +32,12 @@ if package_installed("olm"):
         OutgoingKeyRequests,
         StoreVersion,
         SyncTokens,
+    )
+    from .database import (
+        DefaultStore,
+        MatrixStore,
+        SqliteMemoryStore,
+        SqliteStore,
+        use_database,
+        use_database_atomic,
     )

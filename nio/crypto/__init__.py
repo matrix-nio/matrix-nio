@@ -23,13 +23,7 @@ if sys.version_info >= (3, 5):
     )
 
 if package_installed("olm"):
-    from .device import DeviceStore, OlmDevice, TrustState
-    from .key_request import OutgoingKeyRequest
-    from .log import logger
-    from .memorystores import GroupSessionStore, SessionStore
-    from .olm_machine import Olm
-    from .sas import Sas, SasState
-    from .sessions import (
+    from .sessions import (  # isort:skip
         InboundGroupSession,
         InboundSession,
         OlmAccount,
@@ -37,6 +31,12 @@ if package_installed("olm"):
         OutboundSession,
         Session,
     )
+    from .device import DeviceStore, OlmDevice, TrustState
+    from .key_request import OutgoingKeyRequest
+    from .log import logger
+    from .memorystores import GroupSessionStore, SessionStore
+    from .olm_machine import Olm
+    from .sas import Sas, SasState
 
     ENCRYPTION_ENABLED = True
 
