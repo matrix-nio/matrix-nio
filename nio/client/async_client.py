@@ -40,6 +40,7 @@ from typing import (
     Type,
     Union,
 )
+from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 from aiofiles.threadpool.binary import AsyncBufferedReader
@@ -2798,10 +2799,11 @@ class AsyncClient(Client):
     @client_session
     async def download(
         self,
-        server_name: str,
-        media_id: str,
+        mxc: Optional[str] = None,
         filename: Optional[str] = None,
         allow_remote: bool = True,
+        server_name: Optional[str] = None,
+        media_id: Optional[str] = None,
     ) -> Union[DownloadResponse, DownloadError]:
         """Get the content of a file from the content repository.
 
@@ -2812,9 +2814,11 @@ class AsyncClient(Client):
         Returns either a `DownloadResponse` if the request was successful or
         a `DownloadError` if there was an error with the request.
 
+        The parameters `server_name` and `media_id` are deprecated and will be removed in a future release.
+        Use `mxc` instead.
+
         Args:
-            server_name (str): The server name from the mxc:// URI.
-            media_id (str): The media ID from the mxc:// URI.
+            mxc (str, optional): The mxc:// URI.
             filename (str, optional): A filename to be returned in the response
                 by the server. If None (default), the original name of the
                 file will be returned instead, if there is one.
@@ -2822,10 +2826,43 @@ class AsyncClient(Client):
                 attempt to fetch the media if it is deemed remote.
                 This is to prevent routing loops where the server contacts
                 itself.
+            server_name (str, optional): [deprecated] The server name from the mxc:// URI.
+            media_id (str, optional): [deprecated] The media ID from the mxc:// URI.
         """
         # TODO: support TransferMonitor
 
-        http_method, path = Api.download(server_name, media_id, filename, allow_remote)
+        if mxc is None:
+            if server_name is None or media_id is None:
+                # Too few parameters are passed.
+                raise TypeError(
+                    "Either `mxc` or both the `server_name` and `media_id` are required"
+                )
+            if server_name is not None or media_id is not None:
+                # Deprecated parameters are passed.
+                warnings.warn(
+                    "The parameters `server_name` and `media_id` are deprecated "
+                    "and will be removed in a future release. Use `mxc` instead",
+                    DeprecationWarning,
+                )
+        else:
+            if server_name is not None or media_id is not None:
+                # Potentially clashing parameters are passed.
+                raise TypeError(
+                    "The parameters `server_name` and `media_id` are deprecated "
+                    "and will be removed in a future release. Use `mxc` instead"
+                )
+            else:
+                # `mxc` is passed; expected behavior
+                url = urlparse(mxc)
+                server_name = url.netloc
+                media_id = url.path.replace("/", "")
+
+        http_method, path = Api.download(
+            filename=filename,
+            allow_remote=allow_remote,
+            server_name=server_name,
+            media_id=media_id,
+        )
 
         return await self._send(
             DownloadResponse,
