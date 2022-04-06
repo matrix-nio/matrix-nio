@@ -2856,10 +2856,10 @@ class AsyncClient(Client):
                 media_id = url.path.replace("/", "")
 
         http_method, path = Api.download(
-            filename=filename,
-            allow_remote=allow_remote,
-            server_name=server_name,
-            media_id=media_id,
+            server_name,
+            media_id,
+            filename,
+            allow_remote,
         )
 
         return await self._send(
