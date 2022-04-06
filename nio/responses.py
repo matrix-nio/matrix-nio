@@ -65,6 +65,8 @@ __all__ = [
     "EnablePushRuleResponse",
     "EnablePushRuleError",
     "ErrorResponse",
+    "GetOpenIDTokenError",
+    "GetOpenIDTokenResponse",
     "InviteInfo",
     "JoinResponse",
     "JoinError",
@@ -513,6 +515,10 @@ class RoomForgetError(_ErrorWithRoomId):
 
 
 class RoomMessagesError(_ErrorWithRoomId):
+    pass
+
+
+class GetOpenIDTokenError(ErrorResponse):
     pass
 
 
@@ -1274,6 +1280,25 @@ class RoomForgetResponse(_EmptyResponseWithRoomId):
     @staticmethod
     def create_error(parsed_dict, room_id):
         return RoomForgetError.from_dict(parsed_dict, room_id)
+
+
+@dataclass
+class GetOpenIDTokenResponse(Response):
+    access_token: str = field()
+    expires_in: int = field()
+    matrix_server_name: str = field()
+    token_type: str = field()
+
+    @classmethod
+    @verify(Schemas.get_openid_token, GetOpenIDTokenError)
+    def from_dict(cls, parsed_dict: Dict[Any, Any]):
+        # type: (...) -> Union[GetOpenIDTokenResponse, ErrorResponse]
+        access_token = parsed_dict["access_token"]
+        expires_in = parsed_dict["expires_in"]
+        matrix_server_name = parsed_dict["matrix_server_name"]
+        token_type = parsed_dict["token_type"]
+
+        return cls(access_token, expires_in, matrix_server_name, token_type)
 
 
 @dataclass

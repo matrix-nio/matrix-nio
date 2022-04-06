@@ -110,6 +110,8 @@ from ..responses import (
     EnablePushRuleResponse,
     ErrorResponse,
     FileResponse,
+    GetOpenIDTokenError,
+    GetOpenIDTokenResponse,
     JoinedMembersError,
     JoinedMembersResponse,
     JoinedRoomsError,
@@ -3070,6 +3072,25 @@ class AsyncClient(Client):
             path,
             data,
         )
+
+    @logged_in
+    async def get_openid_token(
+        self, user_id: str
+    ) -> Union[GetOpenIDTokenResponse, GetOpenIDTokenError]:
+        """Gets an OpenID token object that the requester may supply to another service
+        to verify their identity in matrix.
+
+        Returns either a `GetOpenIDTokenResponse` if the request was
+        successful or a `GetOpenIDTokenError` if there was an error
+        with the request.
+
+        Args:
+            user_id (str): The user who requested the OpenID token
+        """
+
+        method, path, data = Api.get_openid_token(self.access_token, user_id)
+
+        return await self._send(GetOpenIDTokenResponse, method, path, data)
 
     @logged_in
     async def upload_filter(
