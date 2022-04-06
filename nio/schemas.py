@@ -1166,6 +1166,17 @@ class Schemas:
         "required": ["content", "type"],
     }
 
+    get_openid_token = {
+        "type": "object",
+        "properties": {
+            "access_token": {"type": "string"},
+            "expires_in": {"type": "integer"},
+            "matrix_server_name": {"type": "string"},
+            "token_type": {"type": "string"},
+        },
+        "required": ["access_token", "expires_in", "matrix_server_name", "token_type"],
+    }
+
     keys_upload = {
         "type": "object",
         "properties": {

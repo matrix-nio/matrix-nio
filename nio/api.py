@@ -1724,6 +1724,28 @@ class Api:
         )
 
     @staticmethod
+    def get_openid_token(access_token: str, user_id: str):
+        """Gets an OpenID token object that the requester may supply to another service
+        to verify their identity in matrix.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            user_id (str): The user who requested the OpenID token
+        """
+
+        path = ["user", user_id, "openid", "request_token"]
+        query_parameters = {"access_token": access_token}
+        body = {}
+
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body),
+        )
+
+    @staticmethod
     def set_pushrule(
         access_token: str,
         scope: str,
