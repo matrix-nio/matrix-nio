@@ -6,7 +6,8 @@ import time
 from datetime import datetime, timedelta
 from os import path
 from pathlib import Path
-from urllib.parse import quote
+from typing import Tuple
+from urllib.parse import quote, urlparse
 from uuid import uuid4
 
 import aiofiles
@@ -2113,9 +2114,16 @@ class TestClass:
         assert monitor.done is True
 
     async def test_download(self, async_client, aioresponse):
-        server_name = "example.org"
-        media_id = "ascERGshawAWawugaAcauga"
+        def _extract_parts(_mxc: str) -> Tuple[str, str]:
+            url = urlparse(mxc)
+            _server_name = url.netloc
+            _media_id = url.path.replace("/", "")
+            return _server_name, _media_id
+
+        mxc = "mxc://example.org/ascERGshawAWawugaAcauga"
         filename = "example&.png"  # has unsafe character to test % encoding
+
+        server_name, media_id = _extract_parts(mxc)
 
         aioresponse.get(
             "https://example.org/_matrix/media/r0/download/{}/{}"
@@ -2127,7 +2135,7 @@ class TestClass:
             content_type="image/png",
             body=self.file_response,
         )
-        resp = await async_client.download(server_name, media_id)
+        resp = await async_client.download(mxc=mxc)
         assert isinstance(resp, DownloadResponse)
         assert resp.body == self.file_response
         assert resp.filename is None
@@ -2144,13 +2152,12 @@ class TestClass:
             headers={"content-disposition": 'inline; filename="{}"'.format(filename)},
             body=self.file_response,
         )
-        resp = await async_client.download(server_name, media_id, filename)
+        resp = await async_client.download(mxc=mxc, filename=filename)
         assert isinstance(resp, DownloadResponse)
         assert resp.body == self.file_response
         assert resp.filename == filename
 
         async_client.config = AsyncClientConfig(max_limit_exceeded=0)
-
         aioresponse.get(
             "https://example.org/_matrix/media/r0/download/{}/{}"
             "?allow_remote=true".format(
@@ -2162,7 +2169,7 @@ class TestClass:
             body=b'{"errcode": "M_LIMIT_EXCEEDED", "retry_after_ms": 1}',
             repeat=True,
         )
-        resp = await async_client.download(server_name, media_id)
+        resp = await async_client.download(mxc=mxc)
         assert isinstance(resp, DownloadError)
 
     async def test_thumbnail(self, async_client, aioresponse):
