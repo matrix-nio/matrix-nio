@@ -36,6 +36,8 @@ from nio import (
     EnablePushRuleResponse,
     ErrorResponse,
     FullyReadEvent,
+    GetOpenIDTokenError,
+    GetOpenIDTokenResponse,
     GroupEncryptionError,
     JoinedMembersResponse,
     JoinedRoomsResponse,
@@ -191,6 +193,15 @@ class TestClass:
     @property
     def messages_response(self):
         return self._load_response("tests/data/room_messages.json")
+
+    @property
+    def get_openid_token_response(self):
+        return {
+            "access_token": "SomeT0kenHere",
+            "expires_in": 3600,
+            "matrix_server_name": "example.com",
+            "token_type": "Bearer",
+        }
 
     @property
     def keys_query_response(self):
@@ -1251,6 +1262,22 @@ class TestClass:
         assert isinstance(response, ShareGroupSessionResponse)
         assert not async_client.get_missing_sessions(TEST_ROOM_ID)
         assert async_client.olm.session_store.get(alice_device.curve25519)
+
+    async def test_get_openid_token(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/user/{}/openid/request_token"
+            "?access_token=abc123".format(ALICE_ID),
+            status=200,
+            payload=self.get_openid_token_response,
+        )
+
+        resp = await async_client.get_openid_token(ALICE_ID)
+        assert isinstance(resp, GetOpenIDTokenResponse)
 
     async def test_joined_members(self, async_client, aioresponse):
         await async_client.receive_response(
