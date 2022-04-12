@@ -139,7 +139,7 @@ class HttpClient(Client):
     @staticmethod
     def _parse_homeserver(homeserver):
         if not homeserver.startswith("http"):
-            homeserver = "https://{}".format(homeserver)
+            homeserver = f"https://{homeserver}"
 
         homeserver = urlparse(homeserver)
 
@@ -153,7 +153,7 @@ class HttpClient(Client):
             else:
                 raise ValueError("Invalid URI scheme for Homeserver")
 
-        host = "{}:{}".format(homeserver.hostname, port)
+        host = f"{homeserver.hostname}:{port}"
         extra_path = homeserver.path.strip("/")
 
         return host, extra_path
@@ -174,7 +174,7 @@ class HttpClient(Client):
 
     def _add_extra_path(self, path):
         if self.extra_path:
-            return "/{}{}".format(self.extra_path, path)
+            return f"/{self.extra_path}{path}"
         return path
 
     def _build_request(self, api_response, timeout=0):
@@ -305,9 +305,7 @@ class HttpClient(Client):
             try:
                 room = self.rooms[room_id]
             except KeyError:
-                raise LocalProtocolError(
-                    "No such room with id {} found.".format(room_id)
-                )
+                raise LocalProtocolError(f"No such room with id {room_id} found.")
 
             if room.encrypted:
                 message_type, content = self.encrypt(
@@ -763,10 +761,10 @@ class HttpClient(Client):
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError("No such room with id {}".format(room_id))
+            raise LocalProtocolError(f"No such room with id {room_id}")
 
         if not room.encrypted:
-            raise LocalProtocolError("Room with id {} is not encrypted".format(room_id))
+            raise LocalProtocolError(f"Room with id {room_id} is not encrypted")
 
         user_map, to_device_dict = self.olm.share_group_session(
             room_id,
@@ -1017,8 +1015,7 @@ class HttpClient(Client):
         """
         if transaction_id not in self.key_verifications:
             raise LocalProtocolError(
-                "Key verification with the transaction "
-                "id {} does not exist.".format(transaction_id)
+                f"Key verification with the transaction id {transaction_id} does not exist."
             )
 
         sas = self.key_verifications[transaction_id]
@@ -1043,8 +1040,7 @@ class HttpClient(Client):
         """
         if transaction_id not in self.key_verifications:
             raise LocalProtocolError(
-                "Key verification with the transaction "
-                "id {} does not exist.".format(transaction_id)
+                f"Key verification with the transaction id {transaction_id} does not exist."
             )
 
         sas = self.key_verifications[transaction_id]
@@ -1151,9 +1147,7 @@ class HttpClient(Client):
 
         assert response
 
-        logger.info(
-            "Received new response of type {}".format(response.__class__.__name__)
-        )
+        logger.info(f"Received new response of type {response.__class__.__name__}")
 
         response.start_time = transport_response.send_time
         response.end_time = transport_response.receive_time
@@ -1186,13 +1180,11 @@ class HttpClient(Client):
             try:
                 request_info = self.requests_made.pop(response.uuid)
             except KeyError:
-                logger.error("{}".format(pprint.pformat(self.requests_made)))
+                logger.error(f"{pprint.pformat(self.requests_made)}")
                 raise
 
             if response.is_ok:
-                logger.info(
-                    "Received response of type: {}".format(request_info.request_class)
-                )
+                logger.info(f"Received response of type: {request_info.request_class}")
             else:
                 logger.info(
                     ("Error with response of type type: {}, " "error code {}").format(

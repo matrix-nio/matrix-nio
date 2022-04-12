@@ -507,7 +507,7 @@ class TestClass:
         assert not bob.canceled
 
         mac_event = KeyVerificationMac.from_dict(alice_mac)
-        mac_event.mac["ed25519:{}".format(alice_device_id)] = "FAKEKEYS"
+        mac_event.mac[f"ed25519:{alice_device_id}"] = "FAKEKEYS"
 
         bob.receive_mac_event(mac_event)
         assert bob.canceled

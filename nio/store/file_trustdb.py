@@ -40,11 +40,9 @@ class Key:
         if isinstance(self, Ed25519Key):
             key_type = "matrix-ed25519"
         else:  # pragma: no cover
-            raise NotImplementedError("Invalid key type {}".format(type(self.key)))
+            raise NotImplementedError(f"Invalid key type {type(self.key)}")
 
-        line = "{} {} {} {}\n".format(
-            self.user_id, self.device_id, key_type, str(self.key)
-        )
+        line = f"{self.user_id} {self.device_id} {key_type} {str(self.key)}\n"
         return line
 
     @classmethod
@@ -82,7 +80,7 @@ class KeyStore:
             yield entry
 
     def __repr__(self) -> str:
-        return "KeyStore object, file: {}".format(self._filename)
+        return f"KeyStore object, file: {self._filename}"
 
     def _load(self, filename: str):
         try:
@@ -140,10 +138,8 @@ class KeyStore:
             ):
                 if existing_key.key != key.key:
                     message = (
-                        "Error: adding existing device to trust store "
-                        "with mismatching fingerprint {} {}".format(
-                            key.key, existing_key.key
-                        )
+                        f"Error: adding existing device to trust store with "
+                        f"mismatching fingerprint {key.key} {existing_key.key}"
                     )
                     logger.error(message)
                     raise OlmTrustError(message)

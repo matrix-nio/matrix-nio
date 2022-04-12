@@ -413,7 +413,7 @@ class Client:
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError("No room found with room id {}".format(room_id))
+            raise LocalProtocolError(f"No room found with room id {room_id}")
 
         if not room.encrypted:
             return False
@@ -448,7 +448,7 @@ class Client:
         if session and not session.shared:
             self.olm.outbound_group_sessions[room_id] = session
         elif session:
-            logger.info("Invalidating session for {}".format(room_id))
+            logger.info(f"Invalidating session for {room_id}")
 
     def _invalidate_outbound_sessions(self, device):
         # type: (OlmDevice) -> None
@@ -668,7 +668,7 @@ class Client:
 
     def _get_invited_room(self, room_id: str) -> MatrixInvitedRoom:
         if room_id not in self.invited_rooms:
-            logger.info("New invited room {}".format(room_id))
+            logger.info(f"New invited room {room_id}")
             self.invited_rooms[room_id] = MatrixInvitedRoom(room_id, self.user_id)
 
         return self.invited_rooms[room_id]
@@ -691,7 +691,7 @@ class Client:
             del self.invited_rooms[room_id]
 
         if room_id not in self.rooms:
-            logger.info("New joined room {}".format(room_id))
+            logger.info(f"New joined room {room_id}")
             self.rooms[room_id] = MatrixRoom(
                 room_id, self.user_id, room_id in self.encrypted_rooms
             )
@@ -961,10 +961,7 @@ class Client:
                     ):
                         return
 
-            logger.info(
-                "Marking outbound group session for room {} "
-                "as shared".format(room_id)
-            )
+            logger.info(f"Marking outbound group session for room {room_id} as shared")
             session.shared = True
 
         elif isinstance(response, KeysQueryResponse):
@@ -1130,11 +1127,11 @@ class Client:
         assert self.olm
 
         if room_id not in self.rooms:
-            raise LocalProtocolError("No room found with room id {}".format(room_id))
+            raise LocalProtocolError(f"No room found with room id {room_id}")
         room = self.rooms[room_id]
 
         if not room.encrypted:
-            raise LocalProtocolError("Room with id {} is not encrypted".format(room_id))
+            raise LocalProtocolError(f"Room with id {room_id} is not encrypted")
 
         return self.olm.get_missing_sessions(list(room.users))
 
@@ -1177,10 +1174,10 @@ class Client:
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError("No such room with id {} found.".format(room_id))
+            raise LocalProtocolError(f"No such room with id {room_id} found.")
 
         if not room.encrypted:
-            raise LocalProtocolError("Room {} is not encrypted".format(room_id))
+            raise LocalProtocolError(f"Room {room_id} is not encrypted")
 
         if not room.members_synced:
             raise MembersSyncError(
@@ -1369,8 +1366,7 @@ class Client:
         """
         if transaction_id not in self.key_verifications:
             raise LocalProtocolError(
-                "Key verification with the transaction "
-                "id {} does not exist.".format(transaction_id)
+                f"Key verification with the transaction id {transaction_id} does not exist."
             )
 
         sas = self.key_verifications[transaction_id]
@@ -1403,7 +1399,7 @@ class Client:
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError("No room found with room id {}".format(room_id))
+            raise LocalProtocolError(f"No room found with room id {room_id}")
 
         if not room.encrypted:
             return devices

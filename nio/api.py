@@ -194,7 +194,7 @@ class Api:
             homeserver=(
                 parsed_homeserver.geturl()
                 if parsed_homeserver
-                else "https://{}".format(url.netloc)
+                else f"https://{url.netloc}"
             ),
             server_name=url.hostname,
             mediaId=url.path,
@@ -253,7 +253,7 @@ class Api:
         plumb_url = (
             "{homeserver}/_matrix/media/r0/download/" "{server_name}{mediaId}"
         ).format(
-            homeserver=host if host else "emxc://{}".format(url.netloc),
+            homeserver=host if host else f"emxc://{url.netloc}",
             server_name=url.hostname,
             mediaId=url.path,
         )
@@ -266,7 +266,7 @@ class Api:
         if mimetype is not None:
             query_parameters["mimetype"] = mimetype
 
-        plumb_url += "?{}".format(urlencode(query_parameters))
+        plumb_url += f"?{urlencode(query_parameters)}"
 
         return plumb_url
 
@@ -299,12 +299,12 @@ class Api:
                 f"'path' must be of type List[str] or str, got {type(path)}"
             )
 
-        built_path = "{base}/{path}".format(base=base_path, path=quoted_path)
+        built_path = f"{base_path}/{quoted_path}"
 
         built_path = built_path.rstrip("/")
 
         if query_parameters:
-            built_path += "?{}".format(urlencode(query_parameters))
+            built_path += f"?{urlencode(query_parameters)}"
 
         return built_path
 

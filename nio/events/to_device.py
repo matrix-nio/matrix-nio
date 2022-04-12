@@ -117,8 +117,7 @@ class ToDeviceEvent:
             return OlmEvent.from_dict(event_dict)
 
         logger.warn(
-            "Received an encrypted event with an unknown "
-            "algorithm {}.".format(content["algorithm"])
+            f"Received an encrypted event with an unknown algorithm {content['algorithm']}."
         )
 
         return None

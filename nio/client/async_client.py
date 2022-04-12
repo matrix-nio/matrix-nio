@@ -1266,8 +1266,7 @@ class AsyncClient(Client):
         """
         if transaction_id not in self.key_verifications:
             raise LocalProtocolError(
-                "Key verification with the transaction "
-                "id {} does not exist.".format(transaction_id)
+                f"Key verification with the transaction id {transaction_id} does not exist."
             )
 
         sas = self.key_verifications[transaction_id]
@@ -1297,8 +1296,7 @@ class AsyncClient(Client):
         """
         if transaction_id not in self.key_verifications:
             raise LocalProtocolError(
-                "Key verification with the transaction "
-                "id {} does not exist.".format(transaction_id)
+                f"Key verification with the transaction id {transaction_id} does not exist."
             )
 
         sas = self.key_verifications[transaction_id]
@@ -1917,15 +1915,13 @@ class AsyncClient(Client):
         try:
             room = self.rooms[room_id]
         except KeyError:
-            raise LocalProtocolError("No such room with id {}".format(room_id))
+            raise LocalProtocolError(f"No such room with id {room_id}")
 
         if not room.encrypted:
-            raise LocalProtocolError("Room with id {} is not encrypted".format(room_id))
+            raise LocalProtocolError(f"Room with id {room_id} is not encrypted")
 
         if room_id in self.sharing_session:
-            raise LocalProtocolError(
-                "Already sharing a group session for {}".format(room_id)
-            )
+            raise LocalProtocolError(f"Already sharing a group session for {room_id}")
 
         self.sharing_session[room_id] = AsyncioEvent()
 
@@ -3410,16 +3406,14 @@ class AsyncClient(Client):
                 if isinstance(
                     await self.room_delete_alias(alias), RoomDeleteAliasError
                 ):
-                    return RoomUpdateAliasError(
-                        "Could not delete alias {}".format(alias)
-                    )
+                    return RoomUpdateAliasError(f"Could not delete alias {alias}")
 
         # Register new aliases
         for alias in new_aliases:
             if isinstance(
                 await self.room_put_alias(alias, room_id), RoomDeleteAliasError
             ):
-                return RoomUpdateAliasError("Could not put alias {}".format(alias))
+                return RoomUpdateAliasError(f"Could not put alias {alias}")
 
         # Send m.room.canonical_alias event
         put_alias_event = await self.room_put_state(
@@ -3605,7 +3599,7 @@ class AsyncClient(Client):
             elif event_type == "state":
                 event_power_level = power_levels.content["state_default"]
             else:
-                return ErrorResponse("event_type {} unknown".format(event_type))
+                return ErrorResponse(f"event_type {event_type} unknown")
         else:
             return ErrorResponse("Couldn't get event power levels")
 
@@ -3627,6 +3621,6 @@ class AsyncClient(Client):
         try:
             permission_power_level = power_levels.content[permission_type]
         except KeyError:
-            return ErrorResponse("permission_type {} unknown".format(permission_type))
+            return ErrorResponse(f"permission_type {permission_type} unknown")
 
         return user_power_level >= permission_power_level

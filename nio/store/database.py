@@ -132,9 +132,7 @@ class MatrixStore:
         self._update_version(2)
 
     def __post_init__(self):
-        self.database_name = self.database_name or "{}_{}.db".format(
-            self.user_id, self.device_id
-        )
+        self.database_name = self.database_name or f"{self.user_id}_{self.device_id}.db"
         self.database_path = os.path.join(self.store_path, self.database_name)
         self.database = self._create_database()
         self.database.connect()
@@ -637,15 +635,13 @@ class DefaultStore(MatrixStore):
     def __post_init__(self):
         super().__post_init__()
 
-        trust_file_path = "{}_{}.trusted_devices".format(self.user_id, self.device_id)
+        trust_file_path = f"{self.user_id}_{self.device_id}.trusted_devices"
         self.trust_db = KeyStore(os.path.join(self.store_path, trust_file_path))
 
-        blacklist_file_path = "{}_{}.blacklisted_devices".format(
-            self.user_id, self.device_id
-        )
+        blacklist_file_path = f"{self.user_id}_{self.device_id}.blacklisted_devices"
         self.blacklist_db = KeyStore(os.path.join(self.store_path, blacklist_file_path))
 
-        ignore_file_path = "{}_{}.ignored_devices".format(self.user_id, self.device_id)
+        ignore_file_path = f"{self.user_id}_{self.device_id}.ignored_devices"
         self.ignore_db = KeyStore(os.path.join(self.store_path, ignore_file_path))
 
     def blacklist_device(self, device):
@@ -949,7 +945,7 @@ class SqliteStore(MatrixStore):
                 "JOIN accounts ON devicekeys.account_id=accounts.id "
                 "WHERE accounts.id == ? AND "
                 "(devicekeys.user_id, devicekeys.device_id) IN "
-                "(VALUES {})".format(",".join(["(?, ?)"] * (len(data) // 2)))
+                f"(VALUES {','.join(['(?, ?)'] * (len(data) // 2))})"
             )
 
             query = DeviceKeys.raw(query_string, account.id, *data)

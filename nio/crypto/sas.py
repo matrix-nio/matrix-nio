@@ -523,7 +523,7 @@ class Sas(olm.Sas):
                 "SAS verification was canceled, can't " "generate MAC."
             )
 
-        key_id = "ed25519:{}".format(self.own_device)
+        key_id = f"ed25519:{self.own_device}"
 
         assert self.chosen_mac_method
         if self.chosen_mac_method == self._mac_normal:
@@ -533,14 +533,8 @@ class Sas(olm.Sas):
 
         info = (
             "MATRIX_KEY_VERIFICATION_MAC"
-            "{first_user}{first_device}"
-            "{second_user}{second_device}{transaction_id}".format(
-                first_user=self.own_user,
-                first_device=self.own_device,
-                second_user=self.other_olm_device.user_id,
-                second_device=self.other_olm_device.id,
-                transaction_id=self.transaction_id,
-            )
+            f"{self.own_user}{self.own_device}"
+            f"{self.other_olm_device.user_id}{self.other_olm_device.id}{self.transaction_id}"
         )
 
         mac = {key_id: calculate_mac(self.own_fp_key, info + key_id)}
@@ -681,15 +675,8 @@ class Sas(olm.Sas):
             return
 
         info = (
-            "MATRIX_KEY_VERIFICATION_MAC"
-            "{first_user}{first_device}"
-            "{second_user}{second_device}{transaction_id}".format(
-                first_user=self.other_olm_device.user_id,
-                first_device=self.other_olm_device.id,
-                second_user=self.own_user,
-                second_device=self.own_device,
-                transaction_id=self.transaction_id,
-            )
+            f"MATRIX_KEY_VERIFICATION_MAC{self.other_olm_device.user_id}{self.other_olm_device.id}"
+            f"{self.own_user}{self.own_device}{self.transaction_id}"
         )
 
         key_ids = ",".join(sorted(event.mac.keys()))

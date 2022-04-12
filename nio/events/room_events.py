@@ -576,10 +576,8 @@ class RedactedEvent(Event):
     reason: Optional[str] = field()
 
     def __str__(self):
-        reason = ", reason: {}".format(self.reason) if self.reason else ""
-        return "Redacted event of type {}, by {}{}.".format(
-            self.type, self.redacter, reason
-        )
+        reason = f", reason: {self.reason}" if self.reason else ""
+        return f"Redacted event of type {self.type}, by {self.redacter}{reason}."
 
     @property
     def event_type(self):
@@ -1062,7 +1060,7 @@ class RoomMessageFormatted(RoomMessage):
 
     def __str__(self):
         # type: () -> str
-        return "{}: {}".format(self.sender, self.body)
+        return f"{self.sender}: {self.body}"
 
     @staticmethod
     def _validate(parsed_dict):

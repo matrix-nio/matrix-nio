@@ -127,17 +127,13 @@ class MatrixRoom:
         names = [self.user_name(u) or u for u in user_ids]
 
         if others:
-            text = "{} and {} other{}".format(
-                ", ".join(names),
-                others,
-                "" if others == 1 else "s",
-            )
+            text = f"{', '.join(names)} and {others} other{'' if others == 1 else 's'}"
         elif len(names) == 0:
             text = ""
         elif len(names) == 1:
             text = names[0]
         else:
-            text = "{} and {}".format(", ".join(names[:-1]), names[-1])
+            text = f"{', '.join(names[:-1])} and {names[-1]}"
 
         if empty and text:
             text = f"Empty Room (had {text})"
@@ -368,9 +364,7 @@ class MatrixRoom:
 
     def handle_event(self, event: Event) -> None:
         logger.info(
-            "Room {} handling event of type {}".format(
-                self.room_id, type(event).__name__
-            )
+            f"Room {self.room_id} handling event of type {type(event).__name__}"
         )
 
         if isinstance(event, RoomCreateEvent):
@@ -412,8 +406,7 @@ class MatrixRoom:
             for user_id, level in self.power_levels.users.items():
                 if user_id in self.users:
                     logger.info(
-                        "Changing power level for user {} from {} to "
-                        "{}".format(user_id, self.users[user_id].power_level, level)
+                        f"Changing power level for user {user_id} from {self.users[user_id].power_level} to {level}"
                     )
                     self.users[user_id].power_level = level
 
@@ -510,9 +503,7 @@ class MatrixInvitedRoom(MatrixRoom):
 
     def handle_event(self, event: Event) -> None:
         logger.info(
-            "Room {} handling event of type {}".format(
-                self.room_id, type(event).__name__
-            )
+            f"Room {self.room_id} handling event of type {type(event).__name__}"
         )
 
         if isinstance(event, InviteMemberEvent):
@@ -558,7 +549,5 @@ class MatrixUser:
     def disambiguated_name(self) -> str:
         # as per https://matrix.org/docs/spec/client_server/r0.4.0.html#id346
         if self.display_name:
-            return "{name} ({user_id})".format(
-                name=self.display_name, user_id=self.user_id
-            )
+            return f"{self.display_name} ({self.user_id})"
         return self.user_id

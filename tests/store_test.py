@@ -104,9 +104,7 @@ class TestClass:
         fp_key = faker.olm_key_pair()["ed25519"]
         key = Ed25519Key(user_id, device_id, fp_key)
 
-        assert key.to_line() == "{} {} matrix-ed25519 {}\n".format(
-            user_id, device_id, fp_key
-        )
+        assert key.to_line() == f"{user_id} {device_id} matrix-ed25519 {fp_key}\n"
 
         loaded_key = Key.from_line(key.to_line())
         assert isinstance(loaded_key, Ed25519Key)
@@ -119,7 +117,7 @@ class TestClass:
     def test_key_store(self, tempdir):
         store_path = os.path.join(tempdir, "test_store")
         store = KeyStore(os.path.join(tempdir, "test_store"))
-        assert repr(store) == "KeyStore object, file: {}".format(store_path)
+        assert repr(store) == f"KeyStore object, file: {store_path}"
 
         key = faker.ed25519_key()
 

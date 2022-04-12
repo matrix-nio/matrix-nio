@@ -262,9 +262,7 @@ class TestClass:
             ("m.room.power_levels", "power_levels.json"),
             ("m.room.encryption", "room_encryption.json"),
         ]:
-            parsed_dict = TestClass._load_response(
-                "tests/data/events/{}".format(event_file)
-            )
+            parsed_dict = TestClass._load_response(f"tests/data/events/{event_file}")
             parsed_dict.pop("state_key")
 
             event = Event.parse_event(parsed_dict)
@@ -278,9 +276,7 @@ class TestClass:
             ("m.room.canonical_alias", "alias.json"),
             ("m.room.name", "name.json"),
         ]:
-            parsed_dict = TestClass._load_response(
-                "tests/data/events/{}".format(event_file)
-            )
+            parsed_dict = TestClass._load_response(f"tests/data/events/{event_file}")
             parsed_dict.pop("state_key")
 
             event = InviteEvent.parse_event(parsed_dict)
@@ -293,9 +289,7 @@ class TestClass:
             ("m.room.canonical_alias", "alias.json"),
             ("m.room.name", "name.json"),
         ]:
-            parsed_dict = TestClass._load_response(
-                "tests/data/events/{}".format(event_file)
-            )
+            parsed_dict = TestClass._load_response(f"tests/data/events/{event_file}")
             parsed_dict.pop("type")
 
             event = InviteEvent.parse_event(parsed_dict)
@@ -307,9 +301,7 @@ class TestClass:
             (InviteAliasEvent, "alias.json"),
             (InviteNameEvent, "name.json"),
         ]:
-            parsed_dict = TestClass._load_response(
-                "tests/data/events/{}".format(event_file)
-            )
+            parsed_dict = TestClass._load_response(f"tests/data/events/{event_file}")
             event = InviteEvent.parse_event(parsed_dict)
             assert isinstance(event, event_type)
 
@@ -406,9 +398,7 @@ class TestClass:
             (CallCandidatesEvent, "call_candidates.json"),
             (CallHangupEvent, "call_hangup.json"),
         ]:
-            parsed_dict = TestClass._load_response(
-                "tests/data/events/{}".format(event_file)
-            )
+            parsed_dict = TestClass._load_response(f"tests/data/events/{event_file}")
             parsed_dict["content"].pop("call_id")
             event = CallEvent.parse_event(parsed_dict)
             assert isinstance(event, BadEvent)
@@ -420,9 +410,7 @@ class TestClass:
             (CallCandidatesEvent, "call_candidates.json"),
             (CallHangupEvent, "call_hangup.json"),
         ]:
-            parsed_dict = TestClass._load_response(
-                "tests/data/events/{}".format(event_file)
-            )
+            parsed_dict = TestClass._load_response(f"tests/data/events/{event_file}")
             event = CallEvent.parse_event(parsed_dict)
             assert isinstance(event, event_type)
 
@@ -434,9 +422,7 @@ class TestClass:
             (KeyVerificationMac, "key_mac.json"),
             (KeyVerificationCancel, "key_cancel.json"),
         ]:
-            parsed_dict = TestClass._load_response(
-                "tests/data/events/{}".format(event_file)
-            )
+            parsed_dict = TestClass._load_response(f"tests/data/events/{event_file}")
             event = ToDeviceEvent.parse_event(parsed_dict)
             assert isinstance(event, event_type)
 
@@ -448,9 +434,7 @@ class TestClass:
             (KeyVerificationMac, "key_mac.json"),
             (KeyVerificationCancel, "key_cancel.json"),
         ]:
-            parsed_dict = TestClass._load_response(
-                "tests/data/events/{}".format(event_file)
-            )
+            parsed_dict = TestClass._load_response(f"tests/data/events/{event_file}")
             parsed_dict["content"].pop("transaction_id")
             event = ToDeviceEvent.parse_event(parsed_dict)
             assert isinstance(event, UnknownBadEvent)

@@ -156,7 +156,7 @@ class TestClass:
             headers.append(
                 (
                     "content-disposition",
-                    'inline; filename="{}"'.format(header_filename),
+                    f'inline; filename="{header_filename}"',
                 ),
             )
 
