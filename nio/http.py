@@ -82,8 +82,8 @@ class HttpRequest(TransportRequest):
     def _headers(host, data=None):
         # type (str, bytes) -> List[Tuple[str, str]]
         headers = [
-            ("User-Agent", "{agent}".format(agent=USER_AGENT)),
-            ("Host", "{host}".format(host=host)),
+            ("User-Agent", f"{USER_AGENT}"),
+            ("Host", f"{host}"),
             ("Connection", "keep-alive"),
             ("Accept", "*/*"),
         ]
@@ -91,7 +91,7 @@ class HttpRequest(TransportRequest):
         if data:
             headers.append(("Content-Type", "application/json"))
 
-            headers.append(("Content-length", "{length}".format(length=len(data))))
+            headers.append(("Content-length", f"{len(data)}"))
 
         return headers
 
@@ -135,9 +135,9 @@ class Http2Request(TransportRequest):
     def _headers(host, data=None):
         # type (str, bytes) -> List[Tuple[str, str]]
         headers = [
-            (":authority", "{host}".format(host=host)),
+            (":authority", f"{host}"),
             (":scheme", "https"),
-            ("user-agent", "{agent}".format(agent=USER_AGENT)),
+            ("user-agent", f"{USER_AGENT}"),
         ]
 
         headers.append(("accept", "application/json"))
@@ -145,7 +145,7 @@ class Http2Request(TransportRequest):
         if data:
             headers.append(("content-type", "application/json"))
 
-            headers.append(("content-length", "{length}".format(length=len(data))))
+            headers.append(("content-length", f"{len(data)}"))
 
         return headers
 
@@ -253,7 +253,7 @@ class HttpResponse(TransportResponse):
             name, value = header
             name = name.decode("utf-8")
             value = value.decode("utf-8")
-            logger.debug("Got http header {}: {}".format(name, value))
+            logger.debug(f"Got http header {name}: {value}")
             self.headers[name] = value
 
 
@@ -267,7 +267,7 @@ class Http2Response(TransportResponse):
         # type: (h2.events.ResponseReceived) -> None
         for header in headers:
             name, value = header
-            logger.debug("Got http2 header {}: {}".format(name, value))
+            logger.debug(f"Got http2 header {name}: {value}")
 
             if name == b":status" or name == ":status":
                 self.status_code = int(value)
@@ -434,10 +434,8 @@ class Http2Connection(Connection):
 
         bytes_to_send = min(window_size, request_size)
         logger.debug(
-            "Sending data: stream id: {}; request size: {}; "
-            "window size: {}; max frame size {}".format(
-                stream_id, request_size, window_size, max_frame_size
-            )
+            f"Sending data: stream id: {stream_id}; request size: {request_size}; "
+            f"window size: {window_size}; max frame size {max_frame_size}"
         )
 
         while bytes_to_send > 0:
@@ -463,13 +461,11 @@ class Http2Connection(Connection):
             raise TypeError("Invalid request type for HttpConnection")
 
         logger.debug(
-            "Making Http2 request {} {}.".format(
-                pprint.pformat(request._request), pprint.pformat(request._data)
-            )
+            f"Making Http2 request {pprint.pformat(request._request)} {pprint.pformat(request._data)}."
         )
 
         stream_id = self._connection.get_next_available_stream_id()
-        logger.debug("New stream id {}".format(stream_id))
+        logger.debug(f"New stream id {stream_id}")
 
         self._connection.send_headers(stream_id, request._request)
         self._send_data(stream_id, request._data)
@@ -531,7 +527,7 @@ class Http2Connection(Connection):
     def _handle_events(self, events):
         # type: (h2.events.Event) -> Optional[Http2Response]
         for event in events:
-            logger.info("Handling Http2 event: {}".format(repr(event)))
+            logger.info(f"Handling Http2 event: {repr(event)}")
 
             if isinstance(event, h2.events.ResponseReceived):
                 self._handle_response(event)

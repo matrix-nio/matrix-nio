@@ -42,12 +42,10 @@ faker = Faker()
 
 class Provider(BaseProvider):
     def mx_id(self):
-        return "@{}:{}".format(faker.user_name(), faker.hostname())
+        return f"@{faker.user_name()}:{faker.hostname()}"
 
     def avatar_url(self):
-        return "mxc://{}/{}#auto".format(
-            faker.hostname(), "".join(choice(ascii_letters) for i in range(24))
-        )
+        return f"mxc://{faker.hostname()}/{''.join(choice(ascii_letters) for i in range(24))}#auto"
 
     def device_id(self):
         return "".join(choice(ascii_uppercase) for i in range(10))

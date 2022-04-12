@@ -322,9 +322,7 @@ class FileResponse(Response):
     filename: Optional[str] = field()
 
     def __str__(self):
-        return "{} bytes, content type: {}, filename: {}".format(
-            len(self.body), self.content_type, self.filename
-        )
+        return f"{len(self.body)} bytes, content type: {self.content_type}, filename: {self.filename}"
 
     @classmethod
     def from_data(cls, data, content_type, filename=None):
@@ -347,18 +345,18 @@ class ErrorResponse(Response):
 
     def __str__(self) -> str:
         if self.status_code and self.message:
-            e = "{} {}".format(self.status_code, self.message)
+            e = f"{self.status_code} {self.message}"
         elif self.message:
             e = self.message
         elif self.status_code:
-            e = "{} unknown error".format(self.status_code)
+            e = f"{self.status_code} unknown error"
         else:
             e = "unknown error"
 
         if self.retry_after_ms:
-            e = "{} - retry after {}ms".format(e, self.retry_after_ms)
+            e = f"{e} - retry after {self.retry_after_ms}ms"
 
-        return "{}: {}".format(self.__class__.__name__, e)
+        return f"{self.__class__.__name__}: {e}"
 
     @classmethod
     def from_dict(cls, parsed_dict: Dict[Any, Any]):
@@ -676,10 +674,7 @@ class RegisterResponse(Response):
     access_token: str = field()
 
     def __str__(self) -> str:
-        return "Registered {}, device id {}.".format(
-            self.user_id,
-            self.device_id,
-        )
+        return f"Registered {self.user_id}, device id {self.device_id}."
 
     @classmethod
     @verify(Schemas.register, RegisterErrorResponse)
@@ -715,7 +710,7 @@ class LoginResponse(Response):
     access_token: str = field()
 
     def __str__(self) -> str:
-        return "Logged in as {}, device id: {}.".format(self.user_id, self.device_id)
+        return f"Logged in as {self.user_id}, device id: {self.device_id}."
 
     @classmethod
     @verify(Schemas.login, LoginError)
@@ -1439,11 +1434,7 @@ class ProfileGetResponse(Response):
     other_info: Dict[Any, Any] = field(default_factory=dict)
 
     def __str__(self) -> str:
-        return "Display name: {}, avatar URL: {}, other info: {}".format(
-            self.displayname,
-            self.avatar_url,
-            self.other_info,
-        )
+        return f"Display name: {self.displayname}, avatar URL: {self.avatar_url}, other info: {self.other_info}"
 
     @classmethod
     @verify(Schemas.get_profile, ProfileGetError)
@@ -1472,7 +1463,7 @@ class ProfileGetDisplayNameResponse(Response):
     displayname: Optional[str] = None
 
     def __str__(self) -> str:
-        return "Display name: {}".format(self.displayname)
+        return f"Display name: {self.displayname}"
 
     @classmethod
     @verify(Schemas.get_displayname, ProfileGetDisplayNameError)
@@ -1502,7 +1493,7 @@ class ProfileGetAvatarResponse(Response):
     avatar_url: Optional[str] = None
 
     def __str__(self) -> str:
-        return "Avatar URL: {}".format(self.avatar_url)
+        return f"Avatar URL: {self.avatar_url}"
 
     @classmethod
     @verify(Schemas.get_avatar, ProfileGetAvatarError)
@@ -1668,7 +1659,7 @@ class SyncResponse(Response):
     def __str__(self) -> str:
         result = []
         for room_id, room_info in self.rooms.join.items():
-            room_header = "  Messages for room {}:\n    ".format(room_id)
+            room_header = f"  Messages for room {room_id}:\n    "
             messages = []
             for event in room_info.timeline.events:
                 messages.append(str(event))
@@ -1679,7 +1670,7 @@ class SyncResponse(Response):
         if len(self.to_device_events) > 0:
             result.append("  Device messages:")
             for event in self.to_device_events:
-                result.append("    {}".format(event))
+                result.append(f"    {event}")
 
         body = "\n".join(result)
         string = ("Sync response until batch: {}:\n{}").format(self.next_batch, body)

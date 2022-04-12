@@ -84,7 +84,7 @@ class ChangeNameBuilder(EventBuilder):
     def __post_init__(self):
         if len(self.name) > 255:
             raise ValueError(
-                "Room names exceeds 255 characters: {}".format(self.name),
+                f"Room names exceeds 255 characters: {self.name}",
             )
 
     def as_dict(self):

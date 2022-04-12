@@ -36,7 +36,7 @@ def validate_or_badevent(
     try:
         validate_json(parsed_dict, schema)
     except (ValidationError, SchemaError) as e:
-        logger.warn("Error validating event: {}".format(str(e)))
+        logger.warn(f"Error validating event: {str(e)}")
         try:
             return BadEvent.from_dict(parsed_dict)
         except KeyError:
@@ -71,7 +71,7 @@ def verify_or_none(schema):
             try:
                 validate_json(event_dict, schema)
             except (ValidationError, SchemaError) as e:
-                logger.error("Error validating event: {}".format(str(e)))
+                logger.error(f"Error validating event: {str(e)}")
                 return None
 
             return f(*args, **kwargs)
@@ -163,7 +163,7 @@ class BadEvent:
     transaction_id: Optional[str] = field(default=None, init=False)
 
     def __str__(self):
-        return "Bad event of type {}, from {}.".format(self.type, self.sender)
+        return f"Bad event of type {self.type}, from {self.sender}."
 
     @classmethod
     def from_dict(cls, parsed_dict):

@@ -416,10 +416,8 @@ class TestClass:
         finally:
             # remove the databases, the known devices store is handled by
             # monkeypatching
-            os.remove(
-                os.path.join(ephemeral_dir, "{}_{}.db".format(AliceId, Alice_device))
-            )
-            os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(BobId, Bob_device)))
+            os.remove(os.path.join(ephemeral_dir, f"{AliceId}_{Alice_device}.db"))
+            os.remove(os.path.join(ephemeral_dir, f"{BobId}_{Bob_device}.db"))
 
     def test_group_session_sharing(self, monkeypatch):
         def mocksave(self):
@@ -475,8 +473,8 @@ class TestClass:
 
         assert len(sharing_with) == 1
 
-        os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(AliceId, Alice_device)))
-        os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(BobId, Bob_device)))
+        os.remove(os.path.join(ephemeral_dir, f"{AliceId}_{Alice_device}.db"))
+        os.remove(os.path.join(ephemeral_dir, f"{BobId}_{Bob_device}.db"))
 
     @ephemeral
     def test_room_key_event(self):
@@ -596,8 +594,8 @@ class TestClass:
         alice.verify_device(bob2_device)
         assert alice.user_fully_verified(BobId)
 
-        os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(AliceId, Alice_device)))
-        os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(BobId, Bob_device)))
+        os.remove(os.path.join(ephemeral_dir, f"{AliceId}_{Alice_device}.db"))
+        os.remove(os.path.join(ephemeral_dir, f"{BobId}_{Bob_device}.db"))
 
     @ephemeral
     def test_group_decryption(self):
@@ -730,8 +728,8 @@ class TestClass:
         assert not alice.get_missing_sessions([BobId])
         assert alice.session_store.get(bob_device.curve25519)
 
-        os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(AliceId, Alice_device)))
-        os.remove(os.path.join(ephemeral_dir, "{}_{}.db".format(BobId, Bob_device)))
+        os.remove(os.path.join(ephemeral_dir, f"{AliceId}_{Alice_device}.db"))
+        os.remove(os.path.join(ephemeral_dir, f"{BobId}_{Bob_device}.db"))
 
     def test_group_session_sharing_new(self, olm_account, bob_account):
         alice = olm_account
