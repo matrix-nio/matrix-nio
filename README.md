@@ -39,6 +39,7 @@ nio has most of the features you'd expect in a Matrix library, but it's still a 
 - ✅ `m.tag`s
 - ❌ python 2.7 support
 - ❌ cross-signing support
+- ❌ server-side key backups (room key backup, "Secure Backup")
 - ❌ user deactivation ([#112](https://github.com/poljar/matrix-nio/issues/112))
 - ❌ in-room emoji verification
 - ❌ room upgrades and `m.room.tombstone` events ([#47](https://github.com/poljar/matrix-nio/issues/47))
