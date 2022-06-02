@@ -2711,7 +2711,7 @@ class AsyncClient(Client):
         for more details.
 
         Example:
-            >>> file_stat = await aiofiles.stat("sample.py")
+            >>> file_stat = await aiofiles.os.stat("sample.py")
             >>> async with aiofiles.open("sample.py", "r+b") as f:
             >>>    resp, maybe_keys = await client.upload(
             ...        f,
