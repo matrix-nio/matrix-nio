@@ -113,6 +113,7 @@ __all__ = [
     "RoomGetEventResponse",
     "RoomGetEventError",
     "RoomGetVisibilityResponse",
+    "RoomGetVisibilityError",
     "RoomPutAliasResponse",
     "RoomPutStateResponse",
     "RoomPutStateError",
