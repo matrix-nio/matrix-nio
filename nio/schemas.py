@@ -823,7 +823,14 @@ class Schemas:
                 "properties": {
                     "join_rule": {
                         "type": "string",
-                        "enum": ["public", "knock", "invite", "private"],
+                        "enum": [
+                            "public",
+                            "knock",
+                            "invite",
+                            "private",
+                            "restricted",
+                            "knock_restricted",
+                        ],
                         "default": "invite",
                     },
                 },
