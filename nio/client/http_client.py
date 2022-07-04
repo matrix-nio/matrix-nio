@@ -388,6 +388,7 @@ class HttpClient(Client):
         name=None,  # type: Optional[str]
         topic=None,  # type: Optional[str]
         room_version=None,  # type: Optional[str]
+        room_type=None,  # type: Optional[str]
         federate=True,  # type: bool
         is_direct=False,  # type: bool
         preset=None,  # type: Optional[RoomPreset]
@@ -419,6 +420,12 @@ class HttpClient(Client):
                 If not specified, the homeserver will use its default setting.
                 If a version not supported by the homeserver is specified,
                 a 400 ``M_UNSUPPORTED_ROOM_VERSION`` error will be returned.
+                
+            room_type (str, optional): The room type to set.
+                If not specified, the homeserver will use its default setting.
+                In spec v1.2 the following room types are specified:
+                    - ``m.space``
+                Unspecified room types are permitted through the use of Namespaced Identifiers.
 
             federate (bool): Whether to allow users from other homeservers from
                 joining the room. Defaults to ``True``.
@@ -459,6 +466,7 @@ class HttpClient(Client):
                 name=name,
                 topic=topic,
                 room_version=room_version,
+                room_type=room_type,
                 federate=federate,
                 is_direct=is_direct,
                 preset=preset,

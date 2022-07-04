@@ -804,6 +804,7 @@ class Api:
         name=None,  # type: Optional[str]
         topic=None,  # type: Optional[str]
         room_version=None,  # type: Optional[str]
+        room_type=None,  # type: Optional[str]
         federate=True,  # type: bool
         is_direct=False,  # type: bool
         preset=None,  # type: Optional[RoomPreset]
@@ -838,6 +839,12 @@ class Api:
                 If not specified, the homeserver will use its default setting.
                 If a version not supported by the homeserver is specified,
                 a 400 ``M_UNSUPPORTED_ROOM_VERSION`` error will be returned.
+                
+            room_type (str, optional): The room type to set.
+                If not specified, the homeserver will use its default setting.
+                In spec v1.2 the following room types are specified:
+                    - ``m.space``
+                Unspecified room types are permitted through the use of Namespaced Identifiers.
 
             federate (bool): Whether to allow users from other homeservers from
                 joining the room. Defaults to ``True``.
@@ -891,6 +898,9 @@ class Api:
 
         if room_version:
             body["room_version"] = room_version
+            
+        if room_type:
+            body["creation_content"]["type"] = room_type
 
         if preset:
             body["preset"] = preset.value

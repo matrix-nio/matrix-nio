@@ -776,6 +776,7 @@ class Schemas:
                     "creator": {"type": "string", "format": "user_id"},
                     "m.federate": {"type": "boolean", "default": True},
                     "room_version": {"type": "string", "default": "1"},
+                    "type": {"type": "string", "default": ""},
                     "predecessor": {
                         "type": "object",
                         "properties": {
