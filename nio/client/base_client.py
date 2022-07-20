@@ -1115,7 +1115,7 @@ class Client:
 
     @store_loaded
     def get_missing_sessions(self, room_id: str) -> Dict[str, List[str]]:
-        """Get users and devices for wich we don't have active Olm sessions.
+        """Get users and devices for which we don't have active Olm sessions.
 
         Args:
             room_id (str): The room id of the room for which we should get the
