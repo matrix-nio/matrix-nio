@@ -1789,26 +1789,26 @@ class SyncResponse(Response):
         left_rooms: Dict[str, RoomInfo] = {}
 
         for room_id, room_dict in parsed_dict.get("invite", {}).items():
-            state = SyncResponse._get_invite_state(room_dict["invite_state"])
+            state = SyncResponse._get_invite_state(room_dict.get("invite_state", {}))
             invite_info = InviteInfo(state)
             invited_rooms[room_id] = invite_info
 
         for room_id, room_dict in parsed_dict.get("leave", {}).items():
-            state = SyncResponse._get_state(room_dict["state"])
-            timeline = SyncResponse._get_timeline(room_dict["timeline"])
+            state = SyncResponse._get_state(room_dict.get("state", {}))
+            timeline = SyncResponse._get_timeline(room_dict.get("timeline", {}))
             leave_info = RoomInfo(timeline, state, [], [])
             left_rooms[room_id] = leave_info
 
         for room_id, room_dict in parsed_dict.get("join", {}).items():
             join_info = SyncResponse._get_join_info(
-                room_dict["state"]["events"],
-                room_dict["timeline"]["events"],
-                room_dict["timeline"].get("prev_batch"),
-                room_dict["timeline"]["limited"],
-                room_dict["ephemeral"]["events"],
+                room_dict.get("state", {}).get("events", []),
+                room_dict.get("timeline", {}).get("events", []),
+                room_dict.get("timeline", {}).get("prev_batch"),
+                room_dict.get("timeline", {}).get("limited", False),
+                room_dict.get("ephemeral", {}).get("events", []),
                 room_dict.get("summary", {}),
                 room_dict.get("unread_notifications", {}),
-                room_dict["account_data"]["events"],
+                room_dict.get("account_data", {}).get("events", []),
             )
 
             joined_rooms[room_id] = join_info
