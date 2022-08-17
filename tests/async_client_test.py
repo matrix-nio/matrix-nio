@@ -760,6 +760,16 @@ class TestClass:
         resp4 = await async_client.sync(sync_filter={})
         assert isinstance(resp4, SyncResponse)
 
+        # Test with timeout
+
+        aioresponse.get(
+            re.compile(rf"{url}&since=[\w\d_]*&timeout=60000"),
+            status=200,
+            payload=self.sync_response,
+        )
+        resp5 = await async_client.sync(timeout=None)
+        assert isinstance(resp5, SyncResponse)
+
     async def test_sync_presence(self, async_client, aioresponse):
         """Test if prsences info in sync events are parsed correctly"""
         await async_client.receive_response(
