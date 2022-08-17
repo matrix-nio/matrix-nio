@@ -1053,7 +1053,10 @@ class AsyncClient(Client):
         method, path = Api.sync(
             self.access_token,
             since=sync_token or self.loaded_sync_token,
-            timeout=timeout or None,
+            timeout=(
+                int(self.config.request_timeout) * 1000 if timeout is None
+                else timeout or None
+            ),
             filter=sync_filter,
             full_state=full_state,
             set_presence=presence,
