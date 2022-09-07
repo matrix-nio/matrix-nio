@@ -308,7 +308,7 @@ class Schemas:
             "limited": {"type": "boolean"},
             "prev_batch": {"type": "string"},
         },
-        "required": ["events", "limited"],
+        "required": ["events"],
     }
 
     sync = {
