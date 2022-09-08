@@ -14,28 +14,12 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import sys
+from importlib import util
 
-if sys.version_info >= (3, 5):
-    from importlib import util
 
-    # The imp module is deprecated by importlib but importlib doesn't have the
-    # find_spec function on python2. Use the imp module for py2 until we
-    # deprecate python2 support.
+def package_installed(package_name):
+    spec = util.find_spec(package_name)
 
-    def package_installed(package_name):
-        spec = util.find_spec(package_name)
-
-        if spec is None:
-            return False
-        return True
-
-else:
-    import imp
-
-    def package_installed(package_name):
-        try:
-            imp.find_module(package_name)
-            return True
-        except ImportError:
-            return False
+    if spec is None:
+        return False
+    return True
