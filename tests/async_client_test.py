@@ -1,7 +1,7 @@
+import asyncio
 import json
 import math
 import re
-import asyncio
 import time
 from datetime import datetime, timedelta
 from os import path
@@ -23,6 +23,8 @@ from helpers import faker
 from yarl import URL
 
 from nio import (
+    AsyncClient,
+    AsyncClientConfig,
     ContentRepositoryConfigResponse,
     DeleteDevicesAuthResponse,
     DeleteDevicesResponse,
@@ -121,7 +123,6 @@ from nio import (
 from nio.api import EventFormat, ResizingMethod, RoomPreset, RoomVisibility
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
 from nio.crypto import OlmDevice, Session, decrypt_attachment
-from nio import AsyncClient, AsyncClientConfig
 
 TEST_ROOM_ID = "!testroom:example.org"
 
