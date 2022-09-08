@@ -16,6 +16,7 @@ FILEPATH = "tests/data/test_bytes"
     sys.version_info < (3, 5),
     reason="Python 3 specific asyncio tests",
 )
+@pytest.mark.asyncio
 class TestClass:
     async def _get_data_cypher_keys(self, data=b"Test bytes"):
         *chunks, keys = [i async for i in async_encrypt_attachment(data)]
