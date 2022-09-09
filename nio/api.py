@@ -515,7 +515,7 @@ class Api:
                 true, then all state events will be returned, even if since is
                 non-empty. The timeline will still be limited by the since
                 parameter.
-            set_presence (str, optinal): Controls whether the client is automatically
+            set_presence (str, optional): Controls whether the client is automatically
                 marked as online by polling this API. If this parameter is omitted
                 then the client is automatically marked as online when it uses this API.
                 Otherwise if the parameter is set to "offline" then the client is not
@@ -861,7 +861,7 @@ class Api:
 
             initial_state (list): A list of state event dicts to send when
                 the room is created.
-                For example, a room could be made encrypted immediatly by
+                For example, a room could be made encrypted immediately by
                 having a ``m.room.encryption`` event dict.
 
             power_level_override (dict): A ``m.room.power_levels content`` dict
@@ -1499,7 +1499,7 @@ class Api:
         Args:
             user_id (str): User id to get the profile for.
             access_token (str): The access token to be used with the request. If
-                                omitted, an unauthenticated request is perfomed.
+                                omitted, an unauthenticated request is performed.
         """
         assert user_id
 
@@ -1521,7 +1521,7 @@ class Api:
         Args:
             user_id (str): User id to get display name for.
             access_token (str): The access token to be used with the request. If
-                                omitted, an unauthenticated request is perfomed.
+                                omitted, an unauthenticated request is performed.
         """
         query_parameters = {}
         if access_token is not None:
@@ -1559,7 +1559,7 @@ class Api:
         Args:
             user_id (str): User id to get avatar for.
             access_token (str): The access token to be used with the request. If
-                                omitted, an unauthenticated request is perfomed.
+                                omitted, an unauthenticated request is performed.
         """
         query_parameters = {}
         if access_token is not None:

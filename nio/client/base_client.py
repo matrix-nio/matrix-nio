@@ -183,7 +183,7 @@ class Client:
            this client instance. If not set the server will provide one after
            log in.
        store_dir (str, optional): The directory that should be used for state
-           storeage.
+           storage.
        config (ClientConfig, optional): Configuration for the client.
 
     """
@@ -434,7 +434,7 @@ class Client:
 
     @store_loaded
     def invalidate_outbound_session(self, room_id: str):
-        """Explicitely remove encryption keys for a room.
+        """Explicitly remove encryption keys for a room.
 
         Args:
             room_id (str): Room id for the room the encryption keys should be
@@ -857,7 +857,7 @@ class Client:
     def _handle_sync(
         self, response: SyncResponse
     ) -> Union[None, Coroutine[Any, Any, None]]:
-        # We already recieved such a sync response, do nothing in that case.
+        # We already received such a sync response, do nothing in that case.
         if self.next_batch == response.next_batch:
             return None
 

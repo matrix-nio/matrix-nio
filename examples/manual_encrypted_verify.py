@@ -172,7 +172,7 @@ class CustomEncryptedClient(AsyncClient):
                 continue
 
             if user_id == self.user_id and device_id == self.device_id:
-                # We cannot explictly trust the device @alice is using
+                # We cannot explicitly trust the device @alice is using
                 continue
 
             self.verify_device(olm_device)
@@ -208,7 +208,7 @@ class CustomEncryptedClient(AsyncClient):
         # Now we send an encrypted message that @bob can read, although it will
         # appear to be "unverified" when they see it, because @bob has not verified
         # the device @alice is sending from.
-        # We'll leave that as an excercise for the reader.
+        # We'll leave that as an exercise for the reader.
         try:
             await self.room_send(
                 room_id=ROOM_ID,
@@ -267,7 +267,7 @@ async def run_client(client: CustomEncryptedClient) -> None:
         await client.synced.wait()
 
         # In practice, you want to have a list of previously-known device IDs
-        # for each user you want ot trust. Here, we require that list as a
+        # for each user you want to trust. Here, we require that list as a
         # global variable
         client.trust_devices(BOB_ID, BOB_DEVICE_IDS)
 
@@ -284,11 +284,11 @@ async def run_client(client: CustomEncryptedClient) -> None:
     # library. All of these Tasks will be run concurrently.
     # For more details, check out https://docs.python.org/3/library/asyncio-task.html
 
-    # ensure_future() is for Python 3.5 and 3.6 compatability. For 3.7+, use
+    # ensure_future() is for Python 3.5 and 3.6 compatibility. For 3.7+, use
     # asyncio.create_task()
     after_first_sync_task = asyncio.ensure_future(after_first_sync())
 
-    # We use full_state=True here to pull any room invites that occured or
+    # We use full_state=True here to pull any room invites that occurred or
     # messages sent in rooms _before_ this program connected to the
     # Matrix server
     sync_forever_task = asyncio.ensure_future(

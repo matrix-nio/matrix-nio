@@ -278,7 +278,7 @@ class PushSenderNotificationPermission(PushCondition):
         key (str): Which key from the ``notifications`` dict in
         power levels event
         (https://matrix.org/docs/spec/client_server/latest#m-room-power-levels)
-        should be refered to as the required level for the event's sender,
+        should be referred to as the required level for the event's sender,
         e.g. ``room``.
     """
 
@@ -401,7 +401,7 @@ class PushSetTweak(PushAction):
 
     Attributes:
         tweak (str): The name of the tweak to set
-        valeu (Any): The tweak's value.
+        value (Any): The tweak's value.
     """
 
     tweak: str = field()
@@ -441,7 +441,7 @@ class PushRule:
             For rules of ``sender`` kind, this will be the user ID to match.
 
         default (bool): Whether this is a default rule set by the server,
-            or one that the user created explicitely.
+            or one that the user created explicitly.
 
         enabled (bool): Whether this rule is currently enabled, or
             disabled and to be ignored.

@@ -96,7 +96,7 @@ in our own handlers for a few things, namely:
 - automatically restoring login details from disk instead of creating new sessions each time we restart the process
 - callback for printing out any message we receive to stdout
 - callback for automatically joining any room @alice is invited to
-- a method for trusting devices using a user ID and (optionall) their list of trusted device IDs
+- a method for trusting devices using a user ID and (optionally) their list of trusted device IDs
 - a sample "hello world" encrypted message method
 
 In main, we make an instance of that subclass, attempt to login, then create an
@@ -162,7 +162,7 @@ can be accepted and processed.
 Further reading and exploration
 ---------------------------------------
 
-In an external repo, not maintained by us, is a simple Matix client
+In an external repo, not maintained by us, is a simple Matrix client
 that includes sending, receiving and verification. It gives an example
 of
 

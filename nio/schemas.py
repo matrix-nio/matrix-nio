@@ -52,7 +52,7 @@ def check_user_id(value: str) -> bool:
         raise ValueError("UserIDs start with @")
 
     if ":" not in value:
-        raise ValueError("UserIDs must have a domain component, seperated by a :")
+        raise ValueError("UserIDs must have a domain component, separated by a :")
 
     return True
 

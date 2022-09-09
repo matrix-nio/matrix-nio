@@ -174,7 +174,7 @@ class TestClass:
         assert levels.get_message_event_required_level("m.room.message") == 25
         assert levels.get_message_event_required_level("m.room.undefined") == 0
         assert levels.get_notification_required_level("room") == 60
-        assert levels.get_notification_required_level("non_existant") == 50
+        assert levels.get_notification_required_level("non_existent") == 50
 
         assert levels.get_user_level(admin) == 100
         assert levels.get_user_level(user) == 0

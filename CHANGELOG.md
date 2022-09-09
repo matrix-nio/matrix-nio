@@ -149,7 +149,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [[4b6ea92]] Fix the `SqliteMemoryStore` constructor
 - [[4654c7a]] Wait for current session sharing operation to finish before
   starting a new one
-- [[fc9f5e3]] Fix `OverflowError` occuring in
+- [[fc9f5e3]] Fix `OverflowError` occurring in
   `AsyncClient.get_timeout_retry_wait_time()` after a thousand retries
 
 [#194]: https://github.com/poljar/matrix-nio/pull/194

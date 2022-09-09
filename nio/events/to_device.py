@@ -16,7 +16,7 @@
 
 """nio to-device events.
 
-To-device events are events that are sent dirrectly between two devices instead
+To-device events are events that are sent directly between two devices instead
 of normally sending events in a room.
 
 To-device events can be sent to a specific device of a user or to all devices

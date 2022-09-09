@@ -442,7 +442,7 @@ class HttpClient(Client):
 
             initial_state (list): A list of state event dicts to send when
                 the room is created.
-                For example, a room could be made encrypted immediatly by
+                For example, a room could be made encrypted immediately by
                 having a ``m.room.encryption`` event dict.
 
             power_level_override (dict): A ``m.room.power_levels content`` dict

@@ -202,7 +202,7 @@ class OutboundGroupSession(olm.OutboundGroupSession):
         return self.should_rotate()
 
     def should_rotate(self):
-        """Wether the session should be rotated.
+        """Should the session be rotated?
         Returns:
             True if it should, False if not.
         """

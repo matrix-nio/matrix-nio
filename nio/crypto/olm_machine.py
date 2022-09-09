@@ -162,7 +162,7 @@ class Olm:
 
         # This store holds all the encryption keys that are used to decrypt
         # room messages. An encryption key gets added to the store either if we
-        # add our own locally or if it gets shared usin 1on1 Olm sessions with
+        # add our own locally or if it gets shared using 1on1 Olm sessions with
         # a to-device message with the m.room.encrypted type.
         self.inbound_group_store = GroupSessionStore()
 
@@ -415,7 +415,7 @@ class Olm:
         Args:
             event (ToDeviceEvent): The to-device event that should be handled.
 
-        Returns a new event if the event was encrypted and succesfully
+        Returns a new event if the event was encrypted and successfully
         decrypted, otherwise None.
         """
         decrypted_event = None
@@ -2100,7 +2100,7 @@ class Olm:
         stream of our caller.
 
         """
-        acitve_sas = dict()
+        active_sas = dict()
         events = []
 
         now = datetime.now()
@@ -2115,11 +2115,11 @@ class Olm:
             elif sas.canceled or sas.verified:
                 if now - sas.creation_time > self._max_sas_life:
                     continue
-                acitve_sas[transaction_id] = sas
+                active_sas[transaction_id] = sas
             else:
-                acitve_sas[transaction_id] = sas
+                active_sas[transaction_id] = sas
 
-        self.key_verifications = acitve_sas
+        self.key_verifications = active_sas
 
         return events
 

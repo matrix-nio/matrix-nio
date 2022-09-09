@@ -95,7 +95,7 @@ class Receipt:
     event that a user has read.
 
     Attributes:
-        event_id (str): the ID of the event being acknowleged
+        event_id (str): the ID of the event being acknowledged
         receipt_type (str): the type of receipt being received; this is
             commonly "m.read" for read receipts.
         user_id (str): the ID of the user who is acknowledging the event.

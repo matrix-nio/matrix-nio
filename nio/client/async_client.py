@@ -446,7 +446,7 @@ class AsyncClient(Client):
         Example:
 
             >>> # A callback that will be called every time our `sync_forever`
-            >>> # method succesfully syncs with the server.
+            >>> # method successfully syncs with the server.
             >>> async def sync_cb(response):
             ...    print(f"We synced, token: {response.next_batch}")
             ...
@@ -661,7 +661,7 @@ class AsyncClient(Client):
                     await asyncio.coroutine(cb.func)(event)
 
     async def _handle_sync(self, response: SyncResponse) -> None:
-        # We already recieved such a sync response, do nothing in that case.
+        # We already received such a sync response, do nothing in that case.
         if self.next_batch == response.next_batch:
             return
 
@@ -1870,7 +1870,7 @@ class AsyncClient(Client):
         Calls receive_response() to update the client state if necessary.
 
         Args:
-            user_set(Dict[str, Iterator[str]]): A dictionary maping from a user
+            user_set(Dict[str, Iterator[str]]): A dictionary mapping from a user
                 id to a iterator of device ids. If a user set for a specific
                 room is required it can be obtained using the
                 `get_missing_sessions()` method.
@@ -2157,7 +2157,7 @@ class AsyncClient(Client):
 
             initial_state (list): A list of state event dicts to send when
                 the room is created.
-                For example, a room could be made encrypted immediatly by
+                For example, a room could be made encrypted immediately by
                 having a ``m.room.encryption`` event dict.
 
             power_level_override (dict): A ``m.room.power_levels content`` dict
@@ -2677,8 +2677,8 @@ class AsyncClient(Client):
                 due to a server timeout, in which case it must restart
                 from the beginning.
                 Callables receive two arguments: the total number of
-                429 "Too many request" errors that occured, and the total
-                number of server timeout exceptions that occured, thus
+                429 "Too many request" errors that occurred, and the total
+                number of server timeout exceptions that occurred, thus
                 cleanup operations can be performed for retries if necessary.
 
             content_type (str): The content MIME type of the file,

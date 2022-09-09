@@ -46,8 +46,8 @@ class OlmDevice:
     Note that the trust state should never be moddified directly on an
     OlmDevice, all the attributes here are read only.
 
-    The trust state can be changed by pasing the OlmDevice to a nio Client or a
-    MatrixStore class.
+    The trust state can be changed by passing the OlmDevice to a nio Client or
+    a MatrixStore class.
 
     Attributes:
         user_id (str): The id of the user that the device belongs to.
@@ -122,7 +122,7 @@ class DeviceStore:
     """A store that holds olm devices in memory.
 
     The DeviceStore class implements the iter method, devices can be iterated
-    over normaly using:
+    over normally using:
 
     >>> for device in device_store:
     ...    print(device.user_id, device.device_id)

@@ -40,7 +40,7 @@ def write_details_to_disk(resp: LoginResponse, homeserver) -> None:
 
 
 async def send_image(client, room_id, image):
-    """Send image to toom.
+    """Send image to room.
 
     Arguments:
     ---------
@@ -136,7 +136,7 @@ async def main() -> None:
 
         resp = await client.login(pw, device_name=device_name)
 
-        # check that we logged in succesfully
+        # check that we logged in successfully
         if isinstance(resp, LoginResponse):
             write_details_to_disk(resp, homeserver)
         else:

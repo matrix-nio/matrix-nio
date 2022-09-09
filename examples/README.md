@@ -16,7 +16,7 @@ It is recommended that you work through the examples *in a specific order*:
    verify interactively with emojis
 
 Download the examples today and start playing with them in only a couple of minutes!
-Enjoy! Find more in the [matrix-nio documentaion](
+Enjoy! Find more in the [matrix-nio documentation](
 https://matrix-nio.readthedocs.io/en/latest/index.html).
 
 If you desire more sample code and want to do additional reading and exploration

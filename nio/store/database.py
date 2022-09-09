@@ -117,7 +117,7 @@ class MatrixStore:
             },
         )
 
-    def upgrate_to_v2(self):
+    def upgrade_to_v2(self):
         with self.database.bind_ctx([DeviceKeys_v1]):
             self.database.drop_tables(
                 [
@@ -141,7 +141,7 @@ class MatrixStore:
 
         # Update the store if it's an old version here.
         if store_version == 1:
-            self.upgrate_to_v2()
+            self.upgrade_to_v2()
 
         with self.database.bind_ctx(self.models):
             self.database.create_tables(self.models)

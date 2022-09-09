@@ -17,8 +17,8 @@ class TestClass:
     @given(binary())
     def test_encrypt(self, data):
         passphrase = "A secret"
-        cyphertext = encrypt(data, passphrase, count=10)
-        plaintext = decrypt(cyphertext, passphrase)
+        ciphertext = encrypt(data, passphrase, count=10)
+        plaintext = decrypt(ciphertext, passphrase)
 
         assert data == plaintext
 
@@ -30,10 +30,10 @@ class TestClass:
     def test_decrypt_failure(self):
         data = b"data"
         passphrase = "A secret"
-        cyphertext = encrypt(data, passphrase, count=10)
+        ciphertext = encrypt(data, passphrase, count=10)
 
         with pytest.raises(ValueError):
-            plaintext = decrypt(cyphertext, "Fake key")
+            plaintext = decrypt(ciphertext, "Fake key")
 
     def test_encrypt_file(self, tempdir):
         data = b"data"

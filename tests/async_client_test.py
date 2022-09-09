@@ -1771,7 +1771,7 @@ class TestClass:
         """Test that files upload correctly after receiving a 429 or timeout.
 
         Uses an internal helper function check_content to verify that the file
-        will be seeked back to the start after receiving a 429 message from the
+        will be sought back to the start after receiving a 429 message from the
         server.
         """
         await async_client.receive_response(
@@ -1859,7 +1859,7 @@ class TestClass:
 
         # aioresponse doesn't do anything with the data_generator() in
         # upload(), so the decryption dict doesn't get updated and
-        # we can't test wether it works as intended here.
+        # we can't test whether it works as intended here.
         # Ditto for the monitor stats.
 
     async def test_traceconfig_callbacks(self):
@@ -2959,7 +2959,7 @@ class TestClass:
         to_device_for_alice = None
         to_device_for_bob = None
 
-        # We deliberatly don't share the message with alice
+        # We deliberately don't share the message with alice
         message = {
             "type": "m.room.message",
             "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
@@ -3249,7 +3249,7 @@ class TestClass:
         to_device_for_alice = None
         to_device_for_bob = None
 
-        # We deliberatly don't share the message with alice
+        # We deliberately don't share the message with alice
         message = {
             "type": "m.room.message",
             "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
@@ -3437,7 +3437,7 @@ class TestClass:
         to_device_for_alice = None
         to_device_for_bob = None
 
-        # We deliberatly don't share the message with alice
+        # We deliberately don't share the message with alice
         message = {
             "type": "m.room.message",
             "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
@@ -3677,7 +3677,7 @@ class TestClass:
         to_device_for_alice = None
         to_device_for_bob = None
 
-        # We deliberatly don't share the message with alice
+        # We deliberately don't share the message with alice
         message = {
             "type": "m.room.message",
             "content": {"msgtype": "m.text", "body": "It's a secret to everybody."},
