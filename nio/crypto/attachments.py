@@ -88,9 +88,9 @@ def encrypt_attachment(plaintext: bytes) -> Tuple[bytes, Dict[str, Any]]:
     """
 
     values = list(encrypted_attachment_generator(plaintext))
-    encrytped_bytes: bytes = b"".join(values[:-1])  # type: ignore
+    encrypted_bytes: bytes = b"".join(values[:-1])  # type: ignore
     keys: Dict[str, Any] = values[-1]  # type: ignore
-    return (encrytped_bytes, keys)
+    return (encrypted_bytes, keys)
 
 
 def encrypted_attachment_generator(

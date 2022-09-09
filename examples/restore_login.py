@@ -59,7 +59,7 @@ async def main() -> None:
 
         resp = await client.login(pw, device_name=device_name)
 
-        # check that we logged in succesfully
+        # check that we logged in successfully
         if isinstance(resp, LoginResponse):
             write_details_to_disk(resp, homeserver)
         else:

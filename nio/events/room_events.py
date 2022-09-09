@@ -1116,7 +1116,7 @@ class RoomMessageText(RoomMessageFormatted):
 
 @dataclass
 class RoomMessageEmote(RoomMessageFormatted):
-    """A room message coresponding to the m.emote msgtype.
+    """A room message corresponding to the m.emote msgtype.
 
     This message is similar to m.text except that the sender is 'performing'
     the action contained in the body key, similar to /me in IRC.

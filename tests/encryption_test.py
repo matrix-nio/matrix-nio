@@ -1544,7 +1544,7 @@ class TestClass:
         # Bob receives the event and queues it up for collection.
         bob.handle_to_device_event(key_request_event)
         assert key_request_event in bob.received_key_requests.values()
-        # Cancel the request immediatelly.
+        # Cancel the request immediately.
         bob.handle_to_device_event(cancellation)
         assert key_request_event not in bob.received_key_requests.values()
 

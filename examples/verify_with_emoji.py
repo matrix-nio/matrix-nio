@@ -15,7 +15,7 @@
 - You must have created a Matrix account already,
     and have username and password ready
 - You must have already joined a Matrix room with someone, e.g. yourself
-- This other party initiates an emoji verifiaction with you
+- This other party initiates an emoji verification with you
 - You are using this sample program to accept this incoming emoji verification
     and follow the protocol to successfully verify the other party's device
 
@@ -332,7 +332,7 @@ async def login() -> AsyncClient:
 
         resp = await client.login(password=pw, device_name=device_name)
 
-        # check that we logged in succesfully
+        # check that we logged in successfully
         if isinstance(resp, LoginResponse):
             write_details_to_disk(resp, homeserver)
         else:

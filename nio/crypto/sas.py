@@ -90,7 +90,7 @@ class Sas(olm.Sas):
     _user_cancel_error = ("m.user", "Canceled by user")
     _timeout_error = ("m.timeout", "Timed out")
     _txid_error = ("m.unknown_transaction", "Unknown transaction")
-    _unknonw_method_error = ("m.unknown_method", "Unknown method")
+    _unknown_method_error = ("m.unknown_method", "Unknown method")
     _unexpected_message_error = ("m.unexpected_message", "Unexpected message")
     _key_mismatch_error = ("m.key_mismatch", "Key mismatch")
     _user_mismatch_error = ("m.user_error", "User mismatch")
@@ -263,7 +263,7 @@ class Sas(olm.Sas):
             )
         ):
             obj.state = SasState.canceled
-            obj.cancel_code, obj.cancel_reason = obj._unknonw_method_error
+            obj.cancel_code, obj.cancel_reason = obj._unknown_method_error
 
         return obj
 
@@ -616,7 +616,7 @@ class Sas(olm.Sas):
             )
         ):
             self.state = SasState.canceled
-            self.cancel_code, self.cancel_reason = Sas._unknonw_method_error
+            self.cancel_code, self.cancel_reason = Sas._unknown_method_error
             return
 
         self.commitment = event.commitment
