@@ -2993,9 +2993,7 @@ class TestClass:
         to_device_for_bob = {
             "messages": {
                 bob.user_id: {
-                    bob.device_id: to_device_for_bob["messages"][
-                        alice.user_id
-                    ]["*"]
+                    bob.device_id: to_device_for_bob["messages"][alice.user_id]["*"]
                 }
             }
         }
@@ -3234,7 +3232,9 @@ class TestClass:
 
         await bob.share_group_session(TEST_ROOM_ID)
 
-    async def test_key_sharing_callbacks(self, async_client_pair_same_user, aioresponse):
+    async def test_key_sharing_callbacks(
+        self, async_client_pair_same_user, aioresponse
+    ):
         alice, bob = async_client_pair_same_user
 
         assert alice.logged_in
