@@ -11,6 +11,14 @@ from nio import Client, ClientConfig, HttpClient
 from nio.crypto import Olm, OlmDevice
 from nio.store import SqliteMemoryStore
 
+from conftest_async import (
+    aioresponse,
+    async_client,
+    async_client_pair,
+    async_client_pair_same_user,
+)
+
+
 ALICE_ID = "@alice:example.org"
 ALICE_DEVICE_ID = "JLAFKJWSCS"
 
@@ -54,20 +62,6 @@ def alice_client(tempdir):
     client = Client(ALICE_ID, ALICE_DEVICE_ID, tempdir)
     client.user_id = ALICE_ID
     return client
-
-
-if sys.version_info >= (3, 5):
-    from conftest_async import aioresponse, async_client, async_client_pair
-
-if sys.version_info <= (3, 4):
-
-    def pytest_ignore_collect(path, config):
-        basename = path.basename
-
-        if "async" in basename:
-            return True
-
-        return False
 
 
 @pytest.fixture

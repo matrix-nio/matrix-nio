@@ -122,7 +122,7 @@ from nio import (
 )
 from nio.api import EventFormat, ResizingMethod, RoomPreset, RoomVisibility
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
-from nio.crypto import OlmDevice, Session, decrypt_attachment
+from nio.crypto import OlmDevice, Session, decrypt_attachment, TrustState
 
 TEST_ROOM_ID = "!testroom:example.org"
 
@@ -2876,8 +2876,8 @@ class TestClass:
         assert new_session != wedged_session
         assert new_session.use_time > wedged_session.use_time
 
-    async def test_key_sharing(self, async_client_pair, aioresponse):
-        alice, bob = async_client_pair
+    async def test_key_sharing(self, async_client_pair_same_user, aioresponse):
+        alice, bob = async_client_pair_same_user
 
         assert alice.logged_in
         assert bob.logged_in
@@ -2886,16 +2886,6 @@ class TestClass:
             self.synce_response_for(alice.user_id, bob.user_id)
         )
         await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
-
-        alice_device = OlmDevice(
-            alice.user_id, alice.device_id, alice.olm.account.identity_keys
-        )
-        bob_device = OlmDevice(
-            bob.user_id, bob.device_id, bob.olm.account.identity_keys
-        )
-
-        alice.olm.device_store.add(bob_device)
-        bob.olm.device_store.add(alice_device)
 
         alice_to_share = alice.olm.share_keys()
         alice_one_time = list(alice_to_share["one_time_keys"].items())[0]
@@ -2942,6 +2932,8 @@ class TestClass:
 
         aioresponse.put(bob_to_device_url, callback=alice_to_device_cb, repeat=True)
         aioresponse.put(alice_to_device_url, callback=bob_to_device_cb, repeat=True)
+
+        bob_device = alice.device_store[bob.user_id][bob.device_id]
 
         session = alice.olm.session_store.get(bob_device.curve25519)
         assert not session
@@ -3000,9 +2992,9 @@ class TestClass:
         # modify the message here.
         to_device_for_bob = {
             "messages": {
-                bob_device.user_id: {
-                    bob_device.device_id: to_device_for_bob["messages"][
-                        alice_device.user_id
+                bob.user_id: {
+                    bob.device_id: to_device_for_bob["messages"][
+                        alice.user_id
                     ]["*"]
                 }
             }
@@ -3242,8 +3234,8 @@ class TestClass:
 
         await bob.share_group_session(TEST_ROOM_ID)
 
-    async def test_key_sharing_callbacks(self, async_client_pair, aioresponse):
-        alice, bob = async_client_pair
+    async def test_key_sharing_callbacks(self, async_client_pair_same_user, aioresponse):
+        alice, bob = async_client_pair_same_user
 
         assert alice.logged_in
         assert bob.logged_in
@@ -3264,6 +3256,9 @@ class TestClass:
         bob_device = OlmDevice(
             bob.user_id, bob.device_id, bob.olm.account.identity_keys
         )
+
+        bob.olm.verify_device(alice_device)
+        alice.olm.verify_device(bob_device)
 
         def key_request_cb(event):
             print(event)
