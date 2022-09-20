@@ -1574,7 +1574,7 @@ class Schemas:
         "type": "object",
         "properties": {
             "rule_id": {"type": "string"},
-            "default": {"type": "boolean"},
+            "default": {"type": "boolean", "default": False},
             "enabled": {"type": "boolean"},
             "pattern": {"type": "string"},
             "conditions": {
