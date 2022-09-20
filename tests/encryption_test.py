@@ -94,7 +94,9 @@ def alice_account_pair(tempdir):
     first_device = OlmDevice(
         first.user_id, first.device_id, first.account.identity_keys
     )
-    second_device = OlmDevice(second.user_id, second.device_id, second.account.identity_keys)
+    second_device = OlmDevice(
+        second.user_id, second.device_id, second.account.identity_keys
+    )
 
     first.device_store.add(second_device)
     second.device_store.add(first_device)
