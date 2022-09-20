@@ -122,7 +122,7 @@ from nio import (
 )
 from nio.api import EventFormat, ResizingMethod, RoomPreset, RoomVisibility
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
-from nio.crypto import OlmDevice, Session, decrypt_attachment, TrustState
+from nio.crypto import OlmDevice, Session, TrustState, decrypt_attachment
 
 TEST_ROOM_ID = "!testroom:example.org"
 
