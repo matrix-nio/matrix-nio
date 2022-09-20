@@ -5,19 +5,17 @@ import tempfile
 
 import helpers
 import pytest
-from olm import Account
-
-from nio import Client, ClientConfig, HttpClient
-from nio.crypto import Olm, OlmDevice
-from nio.store import SqliteMemoryStore
-
 from conftest_async import (
     aioresponse,
     async_client,
     async_client_pair,
     async_client_pair_same_user,
 )
+from olm import Account
 
+from nio import Client, ClientConfig, HttpClient
+from nio.crypto import Olm, OlmDevice
+from nio.store import SqliteMemoryStore
 
 ALICE_ID = "@alice:example.org"
 ALICE_DEVICE_ID = "JLAFKJWSCS"
