@@ -499,77 +499,6 @@ class Olm:
             "m.room.encrypted", device.user_id, device.device_id, olm_dict
         )
 
-    def reshare_key(self, event):
-        # type: (RoomKeyRequest) -> None
-        """Try to reshare an outgoing group session.
-
-        Args:
-            event (RoomKeyRequest): The event of the key request.
-
-        If the key share request is valid this will queue up a to-device
-        message that holds the room key.
-
-        Raises EncryptionError if no Olm session was found to encrypt
-        the key. Raises a KeyShareError if the request was invalid and can't be
-        handled.
-
-        """
-        logger.debug(f"Trying to reshare key {event.session_id} with {event.sender}")
-
-        outbound_session = self.outbound_group_sessions.get(event.room_id)
-
-        if not outbound_session or outbound_session.id != event.session_id:
-            raise KeyShareError(
-                f"Failed to re-share key {event.session_id} with {event.sender}: No outbound session found"
-            )
-
-        user_tuple = (event.sender, event.requesting_device_id)
-
-        if user_tuple not in outbound_session.users_shared_with:
-            raise KeyShareError(
-                f"Failed to re-share key {event.session_id} with {event.sender}: "
-                f"Session wasn't shared with the device {event.requesting_device_id}"
-            )
-
-        sender_key = self.account.identity_keys["curve25519"]
-
-        group_session = self.inbound_group_store.get(
-            event.room_id, sender_key, outbound_session.id
-        )
-
-        # If there is an outbound group session, we are guaranteed to have the
-        # inbound one as well.
-        assert group_session
-
-        try:
-            device = self.device_store[event.sender][event.requesting_device_id]
-        except KeyError:
-            raise KeyShareError(
-                f"Failed to re-share key {event.session_id} with {event.sender}: "
-                f"Unknown requesting device {event.requesting_device_id}."
-            )
-
-        if device.deleted:
-            raise KeyShareError(
-                f"Failed to re-share key {event.session_id} with {event.sender}: "
-                f"Request from a deleted device {event.requesting_device_id}."
-            )
-
-        session = self.session_store.get(device.curve25519)
-
-        if not session:
-            raise EncryptionError(
-                f"No Olm session found for {device.user_id} and device {device.id}"
-            )
-
-        logger.debug(
-            f"Successfully re-shared key {event.session_id} with {event.sender}"
-        )
-
-        self.outgoing_to_device_messages.append(
-            self._encrypt_forwarding_key(event.room_id, group_session, session, device)
-        )
-
     def share_with_ourselves(self, event):
         # type: (RoomKeyRequest) -> None
         """Share a room key with some other device owned by our own user.
@@ -604,7 +533,6 @@ class Olm:
                 f"Failed to re-share key {event.session_id} with {event.sender}: "
                 f"Unknown requesting device {event.requesting_device_id}."
             )
-
         session = self.session_store.get(device.curve25519)
 
         if not session:
@@ -699,14 +627,6 @@ class Olm:
                 logger.warn(error)
             except OlmTrustError:
                 return False
-
-        # The sender is someone else, we share only the current
-        # outbound group session.
-        else:
-            try:
-                self.reshare_key(event)
-            except (KeyShareError, EncryptionError) as error:
-                logger.warn(error)
 
         return True
 
