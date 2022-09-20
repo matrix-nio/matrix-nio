@@ -1182,6 +1182,48 @@ class Olm:
 
         return event
 
+    def _should_accept_forward(
+        self,
+        sender: str,
+        sender_key: str,
+        event: ForwardedRoomKeyEvent,
+    ) -> bool:
+        if event.algorithm != "m.megolm.v1.aes-sha2":
+            logger.error(
+                f"Error: unsupported forwarded room key of type {event.algorithm}"
+            )
+            return False
+        elif event.session_id not in self.outgoing_key_requests:
+            logger.info(
+                "Ignoring session key we have not requested from device {}.", sender_key
+            )
+            return False
+
+        key_request = self.outgoing_key_requests[event.session_id]
+
+        if (
+            event.algorithm != key_request.algorithm
+            or event.room_id != key_request.room_id
+            or event.session_id != key_request.session_id
+        ):
+            logger.info(
+                "Ignoring session key with mismatched algorithm, room_id, or "
+                "session id."
+            )
+            return False
+
+        device = self.device_store.device_from_sender_key(event.sender, sender_key)
+
+        # Only accept forwarded room keys from our own trusted devices
+        if not device or not device.verified or not device.user_id == self.user_id:
+            logger.warn(
+                "Received a forwarded room key from a untrusted device "
+                f"{event.sender}, {sender_key}"
+            )
+            return False
+
+        return True
+
     # This function is copyrighted under the Apache 2.0 license Zil0
     def _handle_forwarded_room_key_event(
         self,
@@ -1195,29 +1237,7 @@ class Olm:
         if isinstance(event, (BadEvent, UnknownBadEvent)):
             return event
 
-        if event.algorithm != "m.megolm.v1.aes-sha2":
-            logger.error(
-                f"Error: unsupported forwarded room key of type {event.algorithm}"
-            )
-            return None
-
-        if event.session_id not in self.outgoing_key_requests:
-            logger.info(
-                "Ignoring session key we have not requested from device {}.", sender_key
-            )
-            return None
-
-        key_request = self.outgoing_key_requests[event.session_id]
-
-        if (
-            event.algorithm != key_request.algorithm
-            or event.room_id != key_request.room_id
-            or event.session_id != key_request.session_id
-        ):
-            logger.info(
-                "Ignoring session key with mismatched algorithm, room_id, or "
-                "session id."
-            )
+        if not self._should_accept_forward(sender, sender_key, event):
             return None
 
         content = payload["content"]
@@ -1241,7 +1261,7 @@ class Olm:
         if self.inbound_group_store.add(session):
             self.save_inbound_group_session(session)
 
-        key_request = self.outgoing_key_requests.pop(key_request.request_id)
+        key_request = self.outgoing_key_requests.pop(event.session_id)
         self.store.remove_outgoing_key_request(key_request)
         self.outgoing_to_device_messages.append(
             key_request.as_cancellation(self.user_id, self.device_id)
