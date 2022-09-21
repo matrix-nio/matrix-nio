@@ -39,6 +39,7 @@ from nio.events import (
     PushRulesEvent,
     PushSenderNotificationPermission,
     PushUnknownCondition,
+    ReactionEvent,
     Receipt,
     ReceiptEvent,
     RedactedEvent,
@@ -223,6 +224,11 @@ class TestClass:
         parsed_dict = TestClass._load_response("tests/data/events/sticker.json")
         event = StickerEvent.from_dict(parsed_dict)
         assert isinstance(event, StickerEvent)
+
+    def test_reaction(self):
+        parsed_dict = TestClass._load_response("tests/data/events/reaction.json")
+        event = ReactionEvent.from_dict(parsed_dict)
+        assert isinstance(event, ReactionEvent)
 
     def test_empty_event(self):
         parsed_dict = {}
