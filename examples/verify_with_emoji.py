@@ -388,7 +388,7 @@ async def main() -> None:
 
 
 try:
-    asyncio.get_event_loop().run_until_complete(main())
+    asyncio.run(main())
 except Exception:
     print(traceback.format_exc())
     sys.exit(1)

@@ -98,4 +98,4 @@ async def main() -> None:
     await client.close()
 
 
-asyncio.get_event_loop().run_until_complete(main())
+asyncio.run(main())
