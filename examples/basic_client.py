@@ -29,4 +29,4 @@ async def main() -> None:
     await client.sync_forever(timeout=30000)  # milliseconds
 
 
-asyncio.get_event_loop().run_until_complete(main())
+asyncio.run(main())
