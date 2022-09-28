@@ -2,8 +2,53 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.20.0] - 2022-09-28
+
+### Bug Fixes
+
+- Fix import sequence errors.
+- Exclude `tests/data/` from pre-commit workflow.
+- Only accept forwarded room keys from our own trusted devices
+
+### Documentation
+
+- Mention that room key backups are unsupported.
+- Add matrix-webhook to built-with-nio
+- Add matrix-asgi to built-with-nio
+
+### Features
+
+- Add `mxc` URI parameter to `AsyncClient.download` and deprecate `server_name` and `media_id`.
+
+### Miscellaneous Tasks
+
+- Remove the usage of the imp module
+- Fix our import order
+- Fix a bunch of typos
+- Remove key re-sharing
+- Remove some unnecessary test code
+- Add poetry to the test requirements
+- Style fixes
+- Sort our imports
+
+### Refactor
+
+- Clean up and make a bunch of tests more consistent
+
+### Styling
+
+- Add config for `pre-commit`.
+- Fix formatting using `black` and `isort`.
+- Convert from `str.format` to f-strings.
+
+### Testing
+
+- Update test for `AsyncClient.download`.
+- Fix our async tests
+
+### Ci
+
+- Add `black` and `isort`.
 
 ## 0.19.0 - 2022-02-04
 
