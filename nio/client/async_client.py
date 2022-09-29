@@ -1176,7 +1176,7 @@ class AsyncClient(Client):
 
         while True:
             try:
-                use_filter = first_sync_filter if first_sync else sync_filter
+                use_filter = first_sync_filter if first_sync and first_sync_filter is not None else sync_filter
                 use_timeout = 0 if first_sync else timeout
 
                 tasks = []
