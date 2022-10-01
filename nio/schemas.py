@@ -1376,8 +1376,9 @@ class Schemas:
                 "type": "object",
                 "properties": {
                     "call_id": {"type": "string"},
+                    "party_id": {"type": "string"},
                     "lifetime": {"type": "integer"},
-                    "version": {"type": "integer"},
+                    "version": {"type": "string"},
                     "offer": {
                         "type": "object",
                         "properties": {
@@ -1409,7 +1410,8 @@ class Schemas:
                 "type": "object",
                 "properties": {
                     "call_id": {"type": "string"},
-                    "version": {"type": "integer"},
+                    "version": {"type": "string"},
+                    "party_id": {"type": "string"},
                     "answer": {
                         "type": "object",
                         "properties": {
@@ -1440,7 +1442,8 @@ class Schemas:
                 "type": "object",
                 "properties": {
                     "call_id": {"type": "string"},
-                    "version": {"type": "integer"},
+                    "version": {"type": "string"},
+                    "party_id": {"type": "string"},
                 },
                 "required": [
                     "call_id",
@@ -1462,7 +1465,8 @@ class Schemas:
                 "type": "object",
                 "properties": {
                     "call_id": {"type": "string"},
-                    "version": {"type": "integer"},
+                    "version": {"type": "string"},
+                    "party_id": {"type": "string"},
                     "candidates": {
                         "type": "array",
                         "items": {

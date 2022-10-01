@@ -414,7 +414,8 @@ class CallEvent(Event):
     """
 
     call_id: str = field()
-    version: int = field()
+    party_id: str = field()
+    version: str = field()
 
     @staticmethod
     def parse_event(event_dict):
@@ -468,6 +469,7 @@ class CallCandidatesEvent(CallEvent):
         return cls(
             event_dict,
             content["call_id"],
+            content["party_id"],
             content["version"],
             content["candidates"],
         )
@@ -504,6 +506,7 @@ class CallInviteEvent(CallEvent):
         return cls(
             event_dict,
             content["call_id"],
+            content["party_id"],
             content["version"],
             content["lifetime"],
             content["offer"],
@@ -532,6 +535,7 @@ class CallAnswerEvent(CallEvent):
         return cls(
             event_dict,
             content["call_id"],
+            content["party_id"],
             content["version"],
             content["answer"],
         )
@@ -554,6 +558,7 @@ class CallHangupEvent(CallEvent):
         return cls(
             event_dict,
             content["call_id"],
+            content["party_id"],
             content["version"],
         )
 
