@@ -1984,7 +1984,7 @@ class Olm:
         try:
             session_list_all = json.loads(data)
         except JSONDecodeError as e:
-            raise EncryptionError("Error parsing key file: {}".format(str(e)))
+            raise EncryptionError(f"Error parsing key file: {str(e)}")
 
         session_list = []
         count_missing = 0
