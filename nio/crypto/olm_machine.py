@@ -1982,9 +1982,22 @@ class Olm:
             raise EncryptionError(e)
 
         try:
-            session_list = json.loads(data)
+            session_list_all = json.loads(data)
         except JSONDecodeError as e:
-            raise EncryptionError(f"Error parsing key file: {str(e)}")
+            raise EncryptionError("Error parsing key file: {}".format(str(e)))
+
+        session_list = []
+        count_missing = 0
+        for session in session_list_all:
+            if 'sender_claimed_keys' in session:
+                session_list.append(session)
+            else:
+                count_missing += 1
+        if count_missing > 0:
+            logger.warning('Warning! Could only import {} from {} keys'.format(
+                count_having,
+                len(session_list_all)
+            ))
 
         try:
             validate_json(session_list, Schemas.megolm_key_import)
