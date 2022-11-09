@@ -4020,9 +4020,13 @@ class TestClass:
             timeout=ClientTimeout(),
         )
 
-        # Using conn.transport.get_write_buffer_limits() directly raises
-        # "AttributeError: _low_water", but the set... method works?
-        ssl_transport = conn.transport._ssl_protocol._transport
+        # Python 3.9 fixes [a bug](https://bugs.python.org/issue46487) for correctly accessing buffer limits
+        # from SSL transport
+        ssl_transport = (
+            conn.transport
+            if sys.version_info[0:2] >= (3, 9)
+            else conn.transport._ssl_protocol._transport
+        )
         assert ssl_transport.get_write_buffer_limits() == (4 * 1024, 16 * 1024)
 
     async def test_upload_filter(self, async_client, aioresponse):
