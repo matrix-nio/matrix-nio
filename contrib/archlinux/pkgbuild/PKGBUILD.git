@@ -3,14 +3,14 @@
 
 pkgbase=matrix-nio
 pkgname='python-matrix-nio-git'
-pkgver=0.18.7
-_pkgver=0.18.7
+pkgver=0.20.0
+_pkgver=0.20.0
 pkgrel=1
 pkgdesc='python no-IO library for the matrix chat protocol'
 arch=('any')
 url='https://github.com/poljar/matrix-nio'
 license=('ISC')
-makedepends=('python-setuptools' 'python-dephell')
+makedepends=('python-setuptools')
 conflicts=('python-matrix-nio')
 provides=('python-matrix-nio')
 depends=('python' 'python-olm' 'python-h11' 'python-h2'
