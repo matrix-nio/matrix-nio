@@ -244,7 +244,7 @@ AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
 async def execute_callback(func, *args):
     if asyncio.iscoroutinefunction(func):
         return await func(*args)
-    
+
     return func(*args)
 
 
