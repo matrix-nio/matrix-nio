@@ -4000,7 +4000,9 @@ class TestClass:
         assert event.body == "It's a secret to everybody."
         assert cb_ran
 
-    @pytest.mark.skipif(sys.version_info[0:2] == (3, 11), reason="fails due to cpython bug #99277")
+    @pytest.mark.skipif(
+        sys.version_info[0:2] == (3, 11), reason="fails due to cpython bug #99277"
+    )
     async def test_connect_wrapper(self, async_client, aioresponse):
         domain = "https://example.org"
 
