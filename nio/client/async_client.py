@@ -241,6 +241,13 @@ SynchronousFile = (
 AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
 
 
+async def execute_callback(func, *args):
+    if asyncio.iscoroutinefunction(func):
+        return await func(*args)
+    
+    return func(*args)
+
+
 @dataclass
 class ResponseCb:
     """Response callback."""
@@ -541,7 +548,7 @@ class AsyncClient(Client):
     async def _run_to_device_callbacks(self, event: Union[ToDeviceEvent]):
         for cb in self.to_device_callbacks:
             if cb.filter is None or isinstance(event, cb.filter):
-                await asyncio.coroutine(cb.func)(event)
+                await execute_callback(cb.func, event)
 
     async def _handle_to_device(self, response: SyncResponse):
         decrypted_to_device = []
@@ -574,7 +581,7 @@ class AsyncClient(Client):
 
                 for cb in self.event_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
-                        await asyncio.coroutine(cb.func)(room, event)
+                        await execute_callback(cb.func, room, event)
 
     async def _handle_joined_rooms(self, response: SyncResponse) -> None:
         encrypted_rooms: Set[str] = set()
@@ -596,7 +603,7 @@ class AsyncClient(Client):
 
                 for cb in self.event_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
-                        await asyncio.coroutine(cb.func)(room, event)
+                        await execute_callback(cb.func, room, event)
 
             # Replace the Megolm events with decrypted ones
             for index, event in decrypted_events:
@@ -607,14 +614,14 @@ class AsyncClient(Client):
 
                 for cb in self.ephemeral_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
-                        await asyncio.coroutine(cb.func)(room, event)
+                        await execute_callback(cb.func, room, event)
 
             for event in join_info.account_data:
                 room.handle_account_data(event)
 
                 for cb in self.room_account_data_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
-                        await asyncio.coroutine(cb.func)(room, event)
+                        await execute_callback(cb.func, room, event)
 
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)
@@ -641,7 +648,7 @@ class AsyncClient(Client):
 
             for cb in self.presence_callbacks:
                 if cb.filter is None or isinstance(event, cb.filter):
-                    await asyncio.coroutine(cb.func)(event)
+                    await execute_callback(cb.func, event)
 
     async def _handle_global_account_data_events(  # type: ignore
         self,
@@ -650,7 +657,7 @@ class AsyncClient(Client):
         for event in response.account_data_events:
             for cb in self.global_account_data_callbacks:
                 if cb.filter is None or isinstance(event, cb.filter):
-                    await asyncio.coroutine(cb.func)(event)
+                    await execute_callback(cb.func, event)
 
     async def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()
@@ -658,7 +665,7 @@ class AsyncClient(Client):
         for event in expired_verifications:
             for cb in self.to_device_callbacks:
                 if cb.filter is None or isinstance(event, cb.filter):
-                    await asyncio.coroutine(cb.func)(event)
+                    await execute_callback(cb.func, event)
 
     async def _handle_sync(self, response: SyncResponse) -> None:
         # We already received such a sync response, do nothing in that case.
@@ -1094,7 +1101,7 @@ class AsyncClient(Client):
         for response in responses:
             for cb in self.response_callbacks:
                 if cb.filter is None or isinstance(response, cb.filter):
-                    await asyncio.coroutine(cb.func)(response)
+                    await execute_callback(cb.func, response)
 
     @logged_in
     async def sync_forever(

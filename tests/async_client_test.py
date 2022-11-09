@@ -2,6 +2,7 @@ import asyncio
 import json
 import math
 import re
+import sys
 import time
 from datetime import datetime, timedelta
 from os import path
@@ -3999,6 +4000,7 @@ class TestClass:
         assert event.body == "It's a secret to everybody."
         assert cb_ran
 
+    @pytest.mark.skipif(sys.version_info[0:2] == (3, 11), reason="fails due to cpython bug #99277")
     async def test_connect_wrapper(self, async_client, aioresponse):
         domain = "https://example.org"
 
@@ -4019,7 +4021,7 @@ class TestClass:
         # Using conn.transport.get_write_buffer_limits() directly raises
         # "AttributeError: _low_water", but the set... method works?
         ssl_transport = conn.transport._ssl_protocol._transport
-        assert ssl_transport.get_write_buffer_limits()[1] == 16 * 1024
+        assert ssl_transport.get_write_buffer_limits() == (4 * 1024, 16 * 1024)
 
     async def test_upload_filter(self, async_client, aioresponse):
         await async_client.receive_response(
