@@ -4020,7 +4020,7 @@ class TestClass:
             timeout=ClientTimeout(),
         )
 
-        # Python 3.9 fixes [a bug](https://bugs.python.org/issue46487) for correctly accessing buffer limits
+        # Python 3.9 fixes [a bug](https://github.com/python/cpython/issues/90645) for correctly accessing buffer limits
         # from SSL transport
         ssl_transport = (
             conn.transport
