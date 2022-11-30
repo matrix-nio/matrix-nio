@@ -18,10 +18,10 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.7.0"
 future = "^0.18.2"
-aiohttp = "^3.7.4"
-aiofiles = "^0.6.0"
+aiohttp = "^3.8.3"
+aiofiles = "^22.1.0"
 dataclasses = { version = "^0.7", python = ">= 3.6, <3.7" }
-h11 = "^0.12.0"
+h11 = "^0.14.0"
 h2 = "^4.0.0"
 logbook = "^1.5.3"
 jsonschema = "^4.4.0"
