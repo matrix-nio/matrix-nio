@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 import math
 import re
@@ -8,6 +9,7 @@ from datetime import datetime, timedelta
 from os import path
 from pathlib import Path
 from typing import Tuple
+from unittest.mock import AsyncMock
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -4216,3 +4218,14 @@ class TestClass:
             [tweak],
         )
         assert isinstance(resp, SetPushRuleActionsResponse)
+
+    async def test_async_mockable(self):
+        mock = AsyncMock(spec=AsyncClient)
+
+        assert inspect.iscoroutinefunction(
+            mock.room_send
+        ), "logged_in method should be awaitable"
+
+        assert not inspect.iscoroutinefunction(
+            mock.restore_login
+        ), "not logged_in method should not be awaitable"
