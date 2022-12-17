@@ -103,6 +103,16 @@ def logged_in(func):
     return wrapper
 
 
+def logged_in_async(func):
+    @wraps(func)
+    async def wrapper(self, *args, **kwargs):
+        if not self.logged_in:
+            raise LocalProtocolError("Not logged in.")
+        return await func(self, *args, **kwargs)
+
+    return wrapper
+
+
 def store_loaded(fn):
     @wraps(fn)
     def inner(self, *args, **kwargs):
