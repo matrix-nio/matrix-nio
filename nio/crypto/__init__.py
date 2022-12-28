@@ -18,6 +18,7 @@ from .attachments import decrypt_attachment, encrypt_attachment
 if sys.version_info >= (3, 5):
     from .async_attachments import (
         AsyncDataT,
+        async_decrypt_attachment,
         async_encrypt_attachment,
         async_generator_from_data,
     )
