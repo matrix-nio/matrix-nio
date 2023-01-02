@@ -145,7 +145,7 @@ One way to interactively verify a device is via emojis. On popular Matrix
 clients you will find that devices are flagged as `trusted` or `untrusted`.
 If a device is `untrusted` you can verify to make it `trusted`. Most
 clients have a red symbol for `untrusted` and a green icon for `trusted`.
-One can select un untrusted device and initiate a `verify by emoji`
+One can select an untrusted device and initiate a `verify by emoji`
 action. How would that look like in code? How can you add that to your
 application? Next we present a simple application that showcases
 emoji verification. Note, the app only accepts emoji verification. So,
