@@ -1,7 +1,7 @@
 {
     "content": {
         "call_id": "12345",
-        "version": 0
+        "version": "0"
     },
     "event_id": "$143273582443PhrSn:example.org",
     "origin_server_ts": 1432735824653,
