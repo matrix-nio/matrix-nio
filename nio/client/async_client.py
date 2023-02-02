@@ -238,7 +238,15 @@ SynchronousFile = (
     io.BytesIO,
     io.FileIO,
 )
+SynchronousFileType = Union[
+    io.TextIOBase,
+    io.BufferedReader,
+    io.BufferedRandom,
+    io.BytesIO,
+    io.FileIO,
+]
 AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
+AsyncFileType = Union[AsyncBufferedReader, AsyncTextIOWrapper]
 
 
 async def execute_callback(func, *args):
@@ -2648,7 +2656,7 @@ class AsyncClient(Client):
     @logged_in_async
     async def upload(
         self,
-        data_provider: DataProvider,
+        data_provider: Union[DataProvider, SynchronousFileType, AsyncFileType],
         content_type: str = "application/octet-stream",
         filename: Optional[str] = None,
         encrypt: bool = False,
