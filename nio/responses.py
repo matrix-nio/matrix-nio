@@ -170,6 +170,8 @@ __all__ = [
     "UploadFilterResponse",
     "UpdateReceiptMarkerError",
     "UpdateReceiptMarkerResponse",
+    "WhoamiError",
+    "WhoamiResponse",
 ]
 
 
