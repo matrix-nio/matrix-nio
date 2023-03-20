@@ -1711,7 +1711,7 @@ class SyncResponse(Response):
 
         events = SyncResponse._get_room_events(parsed_dict.get("events", []))
 
-        return Timeline(events, parsed_dict["limited"], parsed_dict.get("prev_batch"))
+        return Timeline(events, parsed_dict.get("limited", False), parsed_dict.get("prev_batch"))
 
     @staticmethod
     def _get_state(parsed_dict: Dict[Any, Any]) -> List[Union[Event, BadEventType]]:
