@@ -315,7 +315,6 @@ class MatrixRoom:
             if target_user not in self.users or (
                 invited and target_user not in self.invited_users
             ):
-
                 display_name = event.content.get("displayname", None)
                 avatar_url = event.content.get("avatar_url", None)
 

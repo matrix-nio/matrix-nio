@@ -1737,7 +1737,6 @@ class Olm:
             sharing_with = set()
 
             for user_id, device, session in user_map_chunk:
-
                 olm_dict = self._olm_encrypt(session, device, "m.room_key", key_content)
                 sharing_with.add((user_id, device.id))
 
@@ -1989,15 +1988,16 @@ class Olm:
         session_list = []
         count_missing = 0
         for session in session_list_all:
-            if 'sender_claimed_keys' in session:
+            if "sender_claimed_keys" in session:
                 session_list.append(session)
             else:
                 count_missing += 1
         if count_missing > 0:
-            logger.warning('Warning! Could only import {} from {} keys'.format(
-                count_missing,
-                len(session_list_all)
-            ))
+            logger.warning(
+                "Warning! Could only import {} from {} keys".format(
+                    count_missing, len(session_list_all)
+                )
+            )
 
         try:
             validate_json(session_list, Schemas.megolm_key_import)
