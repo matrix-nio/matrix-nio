@@ -1986,18 +1986,13 @@ class Olm:
             raise EncryptionError(f"Error parsing key file: {str(e)}")
 
         session_list = []
-        count_missing = 0
+        missing = False
+
         for session in session_list_all:
             if "sender_claimed_keys" in session:
                 session_list.append(session)
             else:
-                count_missing += 1
-        if count_missing > 0:
-            logger.warning(
-                "Warning! Could only import {} from {} keys".format(
-                    count_missing, len(session_list_all)
-                )
-            )
+                missing = True
 
         try:
             validate_json(session_list, Schemas.megolm_key_import)
@@ -2019,9 +2014,16 @@ class Olm:
             )
 
             if not session:
+                missing = False
                 continue
 
             sessions.append(session)
+
+        if missing:
+            total = len(session_list_all)
+            imported = len(session_list_all) - len(sessions)
+
+            logger.warning(f"Warning! Could only import {imported} out of {total} keys")
 
         return sessions
 
