@@ -649,7 +649,6 @@ class DiscoveryInfoResponse(Response):
         cls,
         parsed_dict: Dict[str, Any],
     ) -> Union["DiscoveryInfoResponse", DiscoveryInfoError]:
-
         homeserver_url = parsed_dict["m.homeserver"]["base_url"].rstrip("/")
 
         identity_server_url = (
@@ -1711,7 +1710,9 @@ class SyncResponse(Response):
 
         events = SyncResponse._get_room_events(parsed_dict.get("events", []))
 
-        return Timeline(events, parsed_dict.get("limited", False), parsed_dict.get("prev_batch"))
+        return Timeline(
+            events, parsed_dict.get("limited", False), parsed_dict.get("prev_batch")
+        )
 
     @staticmethod
     def _get_state(parsed_dict: Dict[Any, Any]) -> List[Union[Event, BadEventType]]:
@@ -1898,7 +1899,6 @@ class WhoamiError(ErrorResponse):
 
 @dataclass
 class WhoamiResponse(Response):
-
     user_id: str = field()
 
     @classmethod

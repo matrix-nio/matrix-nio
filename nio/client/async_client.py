@@ -1062,7 +1062,8 @@ class AsyncClient(Client):
             self.access_token,
             since=sync_token or self.loaded_sync_token,
             timeout=(
-                int(self.config.request_timeout) * 1000 if timeout is None
+                int(self.config.request_timeout) * 1000
+                if timeout is None
                 else timeout or None
             ),
             filter=sync_filter,
@@ -1184,7 +1185,11 @@ class AsyncClient(Client):
 
         while True:
             try:
-                use_filter = first_sync_filter if first_sync and first_sync_filter is not None else sync_filter
+                use_filter = (
+                    first_sync_filter
+                    if first_sync and first_sync_filter is not None
+                    else sync_filter
+                )
                 use_timeout = 0 if first_sync else timeout
 
                 tasks = []

@@ -49,7 +49,6 @@ class AccountDataEvent:
         cls,
         event_dict,  # type: Dict[Any, Any]
     ):
-
         if event_dict["type"] == "m.fully_read":
             return FullyReadEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.tag":
@@ -185,7 +184,6 @@ class PushEventMatch(PushCondition):
         room: "MatrixRoom",
         display_name: str,
     ) -> bool:
-
         if self.key == "room_id":
             return fnmatchcase(room.room_id, self.pattern)
 
