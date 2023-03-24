@@ -2023,9 +2023,7 @@ class Olm:
             total = len(session_list_all)
             imported = len(session_list_all) - len(sessions)
 
-            logger.warning(
-                f"Warning! Could only import {imported} out of {total} keys"
-            )
+            logger.warning(f"Warning! Could only import {imported} out of {total} keys")
 
         return sessions
 
