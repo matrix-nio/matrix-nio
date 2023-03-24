@@ -1995,7 +1995,7 @@ class Olm:
                 count_missing += 1
         if count_missing > 0:
             logger.warning('Warning! Could only import {} from {} keys'.format(
-                count_having,
+                count_missing,
                 len(session_list_all)
             ))
 
