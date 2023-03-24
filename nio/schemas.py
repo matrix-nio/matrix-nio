@@ -28,7 +28,6 @@ Base64Regex = r"[^-A-Za-z0-9+/=]|=[^=]|={3,}$"
 KeyRegex = r"(ed25519|curve25519):.+"
 SignedCurveRegex = r"(signed_curve25519|curve25519):.+"
 
-checker = FormatChecker()
 
 def extend_with_default(validator_class):
     validate_properties = validator_class.VALIDATORS["properties"]
@@ -47,7 +46,7 @@ def extend_with_default(validator_class):
 Validator = extend_with_default(Draft4Validator)
 
 
-@checker.checks("user_id", ValueError)
+@FormatChecker.cls_checks("user_id", ValueError)
 def check_user_id(value: str) -> bool:
     if not value.startswith("@"):
         raise ValueError("UserIDs start with @")
@@ -58,7 +57,7 @@ def check_user_id(value: str) -> bool:
     return True
 
 
-@checker.checks("http_url", ValueError)
+@FormatChecker.cls_checks("http_url", ValueError)
 def check_http_url(value: str) -> bool:
     if not re.match(r"^https?://.+", value):
         raise ValueError("Must be http://... or https://... URL")
