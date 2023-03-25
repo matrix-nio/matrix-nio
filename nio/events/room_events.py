@@ -414,7 +414,7 @@ class CallEvent(Event):
     """
 
     call_id: str = field()
-    party_id: str = field()
+    party_id: str | None = field()
     version: str = field()
 
     @staticmethod
