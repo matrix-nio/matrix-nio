@@ -7,6 +7,16 @@ All notable changes to this project will be documented in this file.
 ### Miscellaneous Tasks
 
 - Upgrade dependencies
+- Various test, formatting, type hinting fixes
+- Update GitHub Workflow Actions versions for CI
+- [[#384]] Add content to `built-with-nio`
+
+### Bug Fixes
+
+- [[#335]] Default to the configured request timeout when syncing
+- [[#354]] Fix `first_sync_filter` parameter of `AsyncClient.sync_forever`
+- [[#357]] Element exports keys without required fields
+- [[#396]] Fix `timeline->limited` being required
 
 ## [0.20.1] - 2022-11-09
 
