@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.20.2] - 2022-11-30
+## [0.20.2] - 2023-3-26
 
 ### Miscellaneous Tasks
 
