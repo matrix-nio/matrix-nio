@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.20.2] - 2023-3-26
+
+### Miscellaneous Tasks
+
+- Upgrade dependencies
+- Various test, formatting, type hinting fixes
+- Update GitHub Workflow Actions versions for CI
+- [[#384]] Add content to `built-with-nio`
+
+### Bug Fixes
+
+- [[#335]] Default to the configured request timeout when syncing
+- [[#354]] Fix `first_sync_filter` parameter of `AsyncClient.sync_forever`
+- [[#357]] Element exports keys without required fields
+- [[#396]] Fix `timeline->limited` being required
+
+
+[#384]: https://github.com/poljar/matrix-nio/pull/384
+[#335]: https://github.com/poljar/matrix-nio/pull/335
+[#354]: https://github.com/poljar/matrix-nio/pull/354
+[#357]: https://github.com/poljar/matrix-nio/pull/357
+[#396]: https://github.com/poljar/matrix-nio/pull/396
+
 ## [0.20.1] - 2022-11-09
 
 ### Bug Fixes
