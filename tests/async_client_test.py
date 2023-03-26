@@ -4222,10 +4222,10 @@ class TestClass:
     async def test_async_mockable(self):
         mock = AsyncMock(spec=AsyncClient)
 
-        assert inspect.iscoroutinefunction(
+        assert asyncio.iscoroutinefunction(
             mock.room_send
         ), "logged_in method should be awaitable"
 
-        assert not inspect.iscoroutinefunction(
+        assert not asyncio.iscoroutinefunction(
             mock.restore_login
         ), "not logged_in method should not be awaitable"
