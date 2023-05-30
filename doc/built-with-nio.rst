@@ -15,6 +15,7 @@ Projects built with nio
 - `matrix-commander <https://github.com/8go/matrix-commander>`_ - CLI-oriented integratable client
 - `matrix-archive <https://github.com/russelldavies/matrix-archive>`_ - creates a YAML log of all room messages and media
 - `matrix-eno-bot <https://github.com/8go/matrix-eno-bot>`_ - admin and personal assistence bot
+- `infinigpt-matrix <https://github.com/h1ddenpr0cess20/infinigpt-matrix>`_ - OpenAI GPT chatbot with infinite personalities
 - `matrix-discord-bridge <https://github.com/git-bruh/matrix-discord-bridge>`_
 - `Simple-Matrix-Bot-Lib <https://github.com/KrazyKirby99999/simple-matrix-bot-lib>`_
 - `pushmatrix <https://github.com/bonukai/pushmatrix>`_
