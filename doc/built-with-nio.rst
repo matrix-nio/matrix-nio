@@ -16,6 +16,7 @@ Projects built with nio
 - `matrix-archive <https://github.com/russelldavies/matrix-archive>`_ - creates a YAML log of all room messages and media
 - `matrix-eno-bot <https://github.com/8go/matrix-eno-bot>`_ - admin and personal assistence bot
 - `matrix-discord-bridge <https://github.com/git-bruh/matrix-discord-bridge>`_
+- `Matrix Nio - HACS <https://github.com/PaarthShah/matrix-nio-hacs>`_ - A HACS Integration to replace the core matrix Home Assistant integration
 - `Simple-Matrix-Bot-Lib <https://github.com/KrazyKirby99999/simple-matrix-bot-lib>`_
 - `pushmatrix <https://github.com/bonukai/pushmatrix>`_
 - `matrix-webhook <https://github.com/nim65s/matrix-webhook>`_
