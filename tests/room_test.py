@@ -489,7 +489,7 @@ class TestClass:
 
     def test_space_child(self):
         room = self.test_room
-        assert room.children == []
+        assert room.children == set()
         room.handle_event(
             RoomSpaceChildEvent(
                 {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
