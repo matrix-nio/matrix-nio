@@ -815,6 +815,48 @@ class RoomAvatarEvent(Event):
 
 
 @dataclass
+class RoomSpaceParentEvent(Event):
+    """Event holding the parent space of a room.
+
+    Attributes:
+        state_key (str): The parent space's room
+
+    """
+
+    state_key: str = field()
+    canonical: bool = False
+
+    @classmethod
+    @verify(Schemas.room_space_parent)
+    def from_dict(cls, parsed_dict):
+        content_dict = parsed_dict["content"]
+        return cls(
+            parsed_dict, parsed_dict["state_key"], content_dict.get("canonical", False)
+        )
+
+
+@dataclass
+class RoomSpaceChildEvent(Event):
+    """Event holding the child space of a room.
+
+    Attributes:
+        state_key (str): The child room of a space
+
+    """
+
+    state_key: str = field()
+    suggested: bool = False
+
+    @classmethod
+    @verify(Schemas.room_space_child)
+    def from_dict(cls, parsed_dict):
+        content_dict = parsed_dict["content"]
+        return cls(
+            parsed_dict, parsed_dict["state_key"], content_dict.get("suggested", False)
+        )
+
+
+@dataclass
 class RoomMessage(Event):
     """Abstract room message class.
 
