@@ -161,6 +161,10 @@ class Event:
             return RedactionEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.tombstone":
             return RoomUpgradeEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.space.parent":
+            return RoomSpaceParentEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.space.child":
+            return RoomSpaceChildEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.encrypted":
             return Event.parse_encrypted_event(event_dict)
         elif event_dict["type"] == "m.sticker":
