@@ -84,7 +84,7 @@ class MatrixRoom:
         self.canonical_alias = None   # type: Optional[str]
         self.topic = None             # type: Optional[str]
         self.name = None              # type: Optional[str]
-        self.parent = None            # type: Optional[str]
+        self.parent = set()           # type: Set[str]
         self.children = set()         # type: Set[str]
         self.users = dict()           # type: Dict[str, MatrixUser]
         self.invited_users = dict()   # type: Dict[str, MatrixUser]
@@ -414,7 +414,7 @@ class MatrixRoom:
                     self.users[user_id].power_level = level
 
         elif isinstance(event, RoomSpaceParentEvent):
-            self.parent = event.state_key
+            self.parent.add(event.state_key)
 
         elif isinstance(event, RoomSpaceChildEvent):
             self.children.add(event.state_key)

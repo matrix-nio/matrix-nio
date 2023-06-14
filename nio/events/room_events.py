@@ -841,7 +841,7 @@ class RoomSpaceParentEvent(Event):
 
 @dataclass
 class RoomSpaceChildEvent(Event):
-    """Event holding the child space of a room.
+    """Event holding the child rooms of a space.
 
     Attributes:
         state_key (str): The child room of a space
