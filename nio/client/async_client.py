@@ -611,7 +611,7 @@ class AsyncClient(Client):
 
                 for cb in self.event_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
-                        await execute_callback(cb.func, room, event)
+                        await execute_callback(cb.func, room_id, event)
 
             # Replace the Megolm events with decrypted ones
             for index, event in decrypted_events:
