@@ -1075,6 +1075,20 @@ class TestClass:
         with pytest.raises(CallbackException):
             client.receive_response(self.sync_response)
 
+    def test_event_callback_arguments(self, client):
+        class CallbackException(Exception):
+            pass
+
+        def cb(room, _):
+            print(type(room))
+            if isinstance(room, str):
+                raise CallbackException()
+
+        client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
+
+        with pytest.raises(CallbackException):
+            client.receive_response(self.sync_response)
+
     def test_to_device_cb(self, client):
         client.receive_response(self.login_response)
 

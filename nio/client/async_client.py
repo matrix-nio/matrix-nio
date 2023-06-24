@@ -589,7 +589,7 @@ class AsyncClient(Client):
 
                 for cb in self.event_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
-                        await execute_callback(cb.func, room, event)
+                        await execute_callback(cb.func, room_id, event)
 
     async def _handle_joined_rooms(self, response: SyncResponse) -> None:
         encrypted_rooms: Set[str] = set()
@@ -622,14 +622,14 @@ class AsyncClient(Client):
 
                 for cb in self.ephemeral_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
-                        await execute_callback(cb.func, room, event)
+                        await execute_callback(cb.func, room_id, event)
 
             for event in join_info.account_data:
                 room.handle_account_data(event)
 
                 for cb in self.room_account_data_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
-                        await execute_callback(cb.func, room, event)
+                        await execute_callback(cb.func, room_id, event)
 
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)

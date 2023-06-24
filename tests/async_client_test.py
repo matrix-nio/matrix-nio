@@ -2185,6 +2185,19 @@ class TestClass:
             await async_client.receive_response(
                 SyncResponse.from_dict(self.sync_response)
             )
+            
+    async def test_event_callback_arguments(self, async_client):
+        class CallbackException(Exception):
+            pass 
+            
+        async def cb(room, _):
+            if isinstance(room, str):
+                raise CallbackException()
+            
+        async_client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))    
+            
+        with pytest.raises(CallbackException):
+            await async_client.receive_response(self.encryption_sync_response)
 
     async def test_handle_account_data(self, async_client):
         await async_client.receive_response(
