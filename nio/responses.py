@@ -17,6 +17,7 @@
 
 from __future__ import unicode_literals
 
+import logging
 from builtins import str
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -24,7 +25,6 @@ from functools import wraps
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
-from logbook import Logger
 
 from .event_builders import ToDeviceMessage
 from .events import (
@@ -37,11 +37,9 @@ from .events import (
 )
 from .events.presence import PresenceEvent
 from .http import TransportResponse
-from .log import logger_group
 from .schemas import Schemas, validate_json
 
-logger = Logger("nio.responses")
-logger_group.add_logger(logger)
+logger = logging.getLogger("nio.responses")
 
 
 __all__ = [

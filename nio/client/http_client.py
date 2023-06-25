@@ -16,6 +16,7 @@
 
 import cgi
 import json
+import logging
 import pprint
 from builtins import str, super
 from collections import deque
@@ -26,7 +27,6 @@ from uuid import UUID, uuid4
 
 import h2
 import h11
-from logbook import Logger
 
 try:
     from urllib.parse import urlparse
@@ -45,7 +45,6 @@ from ..http import (
     TransportResponse,
     TransportType,
 )
-from ..log import logger_group
 from ..responses import (
     DeleteDevicesAuthResponse,
     DeleteDevicesResponse,
@@ -88,18 +87,13 @@ from ..responses import (
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
 
-if False:
-    from .crypto import OlmDevice
-    from .event_builders import ToDeviceMessage
-
 try:
     from json.decoder import JSONDecodeError
 except ImportError:
     JSONDecodeError = ValueError  # type: ignore
 
 
-logger = Logger("nio.client")
-logger_group.add_logger(logger)
+logger = logging.getLogger("nio.client")
 
 
 def connected(func):
@@ -1187,7 +1181,7 @@ class HttpClient(Client):
                 logger.info(f"Received response of type: {request_info.request_class}")
             else:
                 logger.info(
-                    ("Error with response of type type: {}, " "error code {}").format(
+                    "Error with response of type type: {}, error code {}".format(
                         request_info.request_class, response.status_code
                     )
                 )

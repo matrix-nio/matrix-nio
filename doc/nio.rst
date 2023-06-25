@@ -3,6 +3,36 @@ API
 
 This document details the API of nio.
 
+Logging
+-------
+
+matrix-nio writes logs using python's standard `logging` module. In order to see these logs, you will need to configure
+`logging`. In order to see all logs matrix-nio produces, you can build off of the following snippet::
+
+    import logging
+
+    logging.basicConfig(level=logging.DEBUG)
+
+This snippet is very loud, and will produce a lot of output. If you want to see less output, you can set the logging
+level to `INFO` or `WARNING`. For example::
+
+    import logging
+
+    logging.basicConfig(level=logging.INFO)
+
+In production, it is recommended to use WARNING or higher, as INFO may still be too noisy.
+
+You can also attach your own logs to this system::
+
+    import logging
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    logger = logging.getLogger("my-app")
+    logger.info("Hello, world!")
+
+For more information, seek the documentation for the `logging` module at https://docs.python.org/3/library/logging.html
+
 Api
 ---
 

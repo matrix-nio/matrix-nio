@@ -14,6 +14,7 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import wraps
@@ -30,8 +31,6 @@ from typing import (
     Type,
     Union,
 )
-
-from logbook import Logger
 
 from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OlmDevice, OutgoingKeyRequest
 from ..events import (
@@ -50,7 +49,6 @@ from ..events import (
     UnknownBadEvent,
 )
 from ..exceptions import EncryptionError, LocalProtocolError, MembersSyncError
-from ..log import logger_group
 from ..responses import (
     ErrorResponse,
     JoinedMembersResponse,
@@ -80,17 +78,13 @@ if ENCRYPTION_ENABLED:
 
 from ..event_builders import ToDeviceMessage
 
-if False:
-    from ..crypto import Sas
-
 try:
     from json.decoder import JSONDecodeError
 except ImportError:
     JSONDecodeError = ValueError  # type: ignore
 
 
-logger = Logger("nio.client")
-logger_group.add_logger(logger)
+logger = logging.getLogger("nio.client")
 
 
 def logged_in(func):

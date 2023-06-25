@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import logging
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -19,13 +19,10 @@ from functools import wraps
 from typing import Any, Dict, Optional, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
-from logbook import Logger
 
-from ..log import logger_group
 from ..schemas import validate_json
 
-logger = Logger("nio.events")
-logger_group.add_logger(logger)
+logger = logging.getLogger("nio.events")
 
 
 def validate_or_badevent(

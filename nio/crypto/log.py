@@ -14,9 +14,6 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from logbook import Logger
+import logging
 
-from ..log import logger_group
-
-logger = Logger("nio.encryption")
-logger_group.add_logger(logger)
+logger = logging.getLogger("nio.encryption")
