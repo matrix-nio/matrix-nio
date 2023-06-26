@@ -23,7 +23,6 @@ aiofiles = "^23.1.0"
 dataclasses = { version = "^0.7", python = ">= 3.6, <3.7" }
 h11 = "^0.14.0"
 h2 = "^4.0.0"
-logbook = "^1.5.3"
 jsonschema = "^4.4.0"
 unpaddedbase64 = "^2.1.0"
 pycryptodome = "^3.10.1"
