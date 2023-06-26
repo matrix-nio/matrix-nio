@@ -3,7 +3,6 @@ peewee
 aiohttp
 h11
 h2
-logbook
 jsonschema
 atomicwrites
 cachetools

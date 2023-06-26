@@ -17,13 +17,13 @@
 
 from __future__ import unicode_literals
 
+import logging
 from builtins import super
 from collections import defaultdict
 from enum import Enum
 from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional, Tuple, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
-from logbook import Logger
 
 from .events import (
     AccountDataEvent,
@@ -51,11 +51,9 @@ from .events import (
     TagEvent,
     TypingNoticeEvent,
 )
-from .log import logger_group
 from .responses import RoomSummary, UnreadNotifications
 
-logger = Logger("nio.rooms")
-logger_group.add_logger(logger)
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "MatrixRoom",

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 
 # Copyright © 2019 Damir Jelić <poljar@termina.org.uk>
 #
@@ -14,9 +15,5 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from logbook import Logger
 
-from ..log import logger_group
-
-logger = Logger("nio.cryptostore")
-logger_group.add_logger(logger)
+logger = logging.getLogger(__name__)

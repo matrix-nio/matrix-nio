@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+import logging
+from dataclasses import dataclass, field
+from typing import Optional
+
+from ..schemas import Schemas
+from .misc import verify
 
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
 #
@@ -14,17 +20,8 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from dataclasses import dataclass, field
-from typing import Optional
 
-from logbook import Logger
-
-from ..log import logger_group
-from ..schemas import Schemas
-from .misc import verify
-
-logger = Logger("nio.events")
-logger_group.add_logger(logger)
+logger = logging.getLogger(__name__)
 
 
 @dataclass

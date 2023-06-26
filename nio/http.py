@@ -17,6 +17,7 @@
 from __future__ import unicode_literals
 
 import json
+import logging
 import pprint
 import time
 from builtins import bytes, super
@@ -28,12 +29,8 @@ from uuid import UUID, uuid4
 import h2.connection
 import h2.events
 import h11
-from logbook import Logger
 
-from .log import logger_group
-
-logger = Logger("nio.http")
-logger_group.add_logger(logger)
+logger = logging.getLogger(__name__)
 
 USER_AGENT = "nio"
 
