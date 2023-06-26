@@ -1514,7 +1514,9 @@ class Olm:
             elif own_ciphertext["type"] == 1:
                 message = OlmMessage(own_ciphertext["body"])
             else:
-                logger.warning(f"Unsupported olm message type: {own_ciphertext['type']}")
+                logger.warning(
+                    f"Unsupported olm message type: {own_ciphertext['type']}"
+                )
                 return None
 
             return self.decrypt(event.sender, event.sender_key, message)
