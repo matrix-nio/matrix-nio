@@ -438,7 +438,7 @@ class Olm:
             if event.algorithm == Olm._megolm_algorithm:
                 self.received_key_requests[event.request_id] = event
             else:
-                logger.warn(
+                logger.warning(
                     f"Received key request from {event.sender} via {event.requesting_device_id} "
                     f"with an unknown algorithm: {event.algorithm}"
                 )
@@ -618,13 +618,13 @@ class Olm:
             try:
                 self.share_with_ourselves(event)
             except KeyShareError as error:
-                logger.warn(error)
+                logger.warning(error)
             except EncryptionError as error:
                 # We can safely ignore this, the share_with_ourselves
                 # method will queue up the device for a key claiming
                 # request when that is done the event will be put back
                 # in the received_key_requests queue.
-                logger.warn(error)
+                logger.warning(error)
             except OlmTrustError:
                 return False
 
@@ -672,7 +672,7 @@ class Olm:
                 try:
                     device = self.device_store[user_id][device_id]
                 except KeyError:
-                    logger.warn(
+                    logger.warning(
                         f"Curve key for user {user_id} and device {device_id} not found, failed to start Olm session"
                     )
                     continue
@@ -708,7 +708,7 @@ class Olm:
                         self.received_key_requests.update(events)
 
                 else:
-                    logger.warn(
+                    logger.warning(
                         "Signature verification for one-time key of "
                         f"device {device_id} of user {user_id} failed, could not start "
                         "Olm session."
@@ -732,7 +732,7 @@ class Olm:
                     continue
 
                 if payload["user_id"] != user_id or payload["device_id"] != device_id:
-                    logger.warn(
+                    logger.warning(
                         "Mismatch in keys payload of device "
                         f"{payload['device_id']} "
                         f"({device_id}) of user {payload['user_id']} "
@@ -976,7 +976,7 @@ class Olm:
                 )
 
         except OlmSessionError as e:
-            logger.warn(e)
+            logger.warning(e)
             return
 
         self.inbound_group_store.add(session)
@@ -1007,7 +1007,7 @@ class Olm:
                     continue
 
                 if not self.session_store.get(device.curve25519):
-                    logger.warn(f"Missing session for device {device.id}")
+                    logger.warning(f"Missing session for device {device.id}")
                     missing[user_id].append(device.id)
 
         return missing
@@ -1042,7 +1042,7 @@ class Olm:
 
         if not device:
             # TODO we should probably mark this user for a key query.
-            logger.warn(
+            logger.warning(
                 "Attempted to mark a device for Olm session "
                 f"unwedging, but no device was found for user {sender} with "
                 f"sender key {sender_key}"
@@ -1056,7 +1056,7 @@ class Olm:
         if session:
             session_age = datetime.now() - session.creation_time
             if session_age < self._unwedging_interval:
-                logger.warn(
+                logger.warning(
                     f"Attempted to mark device {device.device_id} of user "
                     f"{device.user_id} for Olm session unwedging, but a new "
                     "session was created recently."
@@ -1216,7 +1216,7 @@ class Olm:
 
         # Only accept forwarded room keys from our own trusted devices
         if not device or not device.verified or not device.user_id == self.user_id:
-            logger.warn(
+            logger.warning(
                 "Received a forwarded room key from a untrusted device "
                 f"{event.sender}, {sender_key}"
             )
@@ -1291,7 +1291,7 @@ class Olm:
             return DummyEvent.from_dict(payload, sender, sender_key)
 
         else:
-            logger.warn(f"Received unsupported Olm event of type {payload['type']}")
+            logger.warning(f"Received unsupported Olm event of type {payload['type']}")
             return None
 
     def message_index_ok(self, message_index, event):
@@ -1332,7 +1332,7 @@ class Olm:
         try:
             device = self.device_store[event.sender][event.device_id]
         except KeyError:
-            logger.warn(
+            logger.warning(
                 f"Received a undecryptable Megolm event from a unknown "
                 f"device: {event.sender} {event.device_id}"
             )
@@ -1342,7 +1342,7 @@ class Olm:
         session = self.session_store.get(device.curve25519)
 
         if not session:
-            logger.warn(
+            logger.warning(
                 f"Received a undecryptable Megolm event from a device "
                 f"with no Olm sessions: {event.sender} {event.device_id}"
             )
@@ -1405,14 +1405,14 @@ class Olm:
                 f"with session id {event.session_id} for room {room_id}"
             )
             self.check_if_wedged(event)
-            logger.warn(message)
+            logger.warning(message)
             raise EncryptionError(message)
 
         try:
             plaintext, message_index = session.decrypt(event.ciphertext)
         except OlmGroupSessionError as e:
             message = f"Error decrypting megolm event: {str(e)}"
-            logger.warn(message)
+            logger.warning(message)
             raise EncryptionError(message)
 
         if not self.message_index_ok(message_index, event):
@@ -1449,7 +1449,7 @@ class Olm:
                         message = (
                             f"Device keys mismatch in event sent by device {device.id}."
                         )
-                        logger.warn(message)
+                        logger.warning(message)
                         raise EncryptionError(message)
 
                     logger.info(f"Event {event.event_id} successfully verified")
@@ -1506,7 +1506,7 @@ class Olm:
                 own_key = self.account.identity_keys["curve25519"]
                 own_ciphertext = event.ciphertext[own_key]
             except KeyError:
-                logger.warn("Olm event doesn't contain ciphertext for our key")
+                logger.warning("Olm event doesn't contain ciphertext for our key")
                 return None
 
             if own_ciphertext["type"] == 0:
@@ -1514,7 +1514,7 @@ class Olm:
             elif own_ciphertext["type"] == 1:
                 message = OlmMessage(own_ciphertext["body"])
             else:
-                logger.warn(f"Unsupported olm message type: {own_ciphertext['type']}")
+                logger.warning(f"Unsupported olm message type: {own_ciphertext['type']}")
                 return None
 
             return self.decrypt(event.sender, event.sender_key, message)
@@ -1709,7 +1709,7 @@ class Olm:
                 session = self.session_store.get(device.curve25519)
 
                 if not session:
-                    logger.warn(
+                    logger.warning(
                         f"Missing Olm session for user {user_id} and device "
                         f"{device.id}, skipping"
                     )
@@ -1967,7 +1967,7 @@ class Olm:
                 forwarding_chain,
             )
         except OlmSessionError as e:
-            logger.warn(f"Error importing inbound group session: {e}")
+            logger.warning(f"Error importing inbound group session: {e}")
             return None
 
     @staticmethod
@@ -2120,7 +2120,7 @@ class Olm:
             try:
                 device = self.device_store[event.sender][event.from_device]
             except KeyError:
-                logger.warn(
+                logger.warning(
                     f"Received key verification event from unknown device: {event.sender} {event.from_device}"
                 )
                 self.users_for_key_query.add(event.sender)
@@ -2135,7 +2135,7 @@ class Olm:
             )
 
             if new_sas.canceled:
-                logger.warn(
+                logger.warning(
                     f"Received malformed key verification event from {event.sender} {event.from_device}"
                 )
                 message = new_sas.get_cancellation()
@@ -2165,7 +2165,7 @@ class Olm:
             sas = self.key_verifications.get(event.transaction_id, None)
 
             if not sas:
-                logger.warn(
+                logger.warning(
                     "Received key verification event with an unknown "
                     f"transaction id from {event.sender}"
                 )

@@ -116,7 +116,7 @@ class ToDeviceEvent:
         if content["algorithm"] == "m.olm.v1.curve25519-aes-sha2":
             return OlmEvent.from_dict(event_dict)
 
-        logger.warn(
+        logger.warning(
             f"Received an encrypted event with an unknown algorithm {content['algorithm']}."
         )
 
