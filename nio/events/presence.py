@@ -21,7 +21,6 @@ from .misc import verify
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-
 logger = logging.getLogger(__name__)
 
 

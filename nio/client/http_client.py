@@ -22,8 +22,7 @@ from builtins import str, super
 from collections import deque
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import (Any, Deque, Dict, List, Optional, Sequence, Tuple, Type,
-                    Union)
+from typing import Any, Deque, Dict, List, Optional, Sequence, Tuple, Type, Union
 from uuid import UUID, uuid4
 
 import h2
@@ -34,30 +33,57 @@ try:
 except ImportError:
     from urlparse import urlparse  # type: ignore
 
-from ..api import (Api, MessageDirection, ResizingMethod, RoomPreset,
-                   RoomVisibility)
+from ..api import Api, MessageDirection, ResizingMethod, RoomPreset, RoomVisibility
 from ..events import MegolmEvent
 from ..exceptions import LocalProtocolError, RemoteTransportError
-from ..http import (Http2Connection, Http2Request, HttpConnection, HttpRequest,
-                    TransportRequest, TransportResponse, TransportType)
-from ..responses import (DeleteDevicesAuthResponse, DeleteDevicesResponse,
-                         DevicesResponse, DownloadResponse, FileResponse,
-                         JoinedMembersResponse, JoinResponse,
-                         KeysClaimResponse, KeysQueryResponse, KeysUploadError,
-                         KeysUploadResponse, LoginInfoResponse, LoginResponse,
-                         LogoutResponse, ProfileGetAvatarResponse,
-                         ProfileGetDisplayNameResponse, ProfileGetResponse,
-                         ProfileSetAvatarResponse,
-                         ProfileSetDisplayNameResponse, Response,
-                         RoomCreateResponse, RoomForgetResponse,
-                         RoomInviteResponse, RoomKeyRequestResponse,
-                         RoomKickResponse, RoomLeaveResponse,
-                         RoomMessagesResponse, RoomPutStateResponse,
-                         RoomReadMarkersResponse, RoomRedactResponse,
-                         RoomSendResponse, RoomTypingResponse,
-                         ShareGroupSessionResponse, SyncResponse,
-                         ThumbnailResponse, ToDeviceResponse,
-                         UpdateDeviceResponse)
+from ..http import (
+    Http2Connection,
+    Http2Request,
+    HttpConnection,
+    HttpRequest,
+    TransportRequest,
+    TransportResponse,
+    TransportType,
+)
+from ..responses import (
+    DeleteDevicesAuthResponse,
+    DeleteDevicesResponse,
+    DevicesResponse,
+    DownloadResponse,
+    FileResponse,
+    JoinedMembersResponse,
+    JoinResponse,
+    KeysClaimResponse,
+    KeysQueryResponse,
+    KeysUploadError,
+    KeysUploadResponse,
+    LoginInfoResponse,
+    LoginResponse,
+    LogoutResponse,
+    ProfileGetAvatarResponse,
+    ProfileGetDisplayNameResponse,
+    ProfileGetResponse,
+    ProfileSetAvatarResponse,
+    ProfileSetDisplayNameResponse,
+    Response,
+    RoomCreateResponse,
+    RoomForgetResponse,
+    RoomInviteResponse,
+    RoomKeyRequestResponse,
+    RoomKickResponse,
+    RoomLeaveResponse,
+    RoomMessagesResponse,
+    RoomPutStateResponse,
+    RoomReadMarkersResponse,
+    RoomRedactResponse,
+    RoomSendResponse,
+    RoomTypingResponse,
+    ShareGroupSessionResponse,
+    SyncResponse,
+    ThumbnailResponse,
+    ToDeviceResponse,
+    UpdateDeviceResponse,
+)
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
 

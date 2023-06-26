@@ -16,8 +16,11 @@ from .._compat import package_installed
 from .attachments import decrypt_attachment, encrypt_attachment
 
 if sys.version_info >= (3, 5):
-    from .async_attachments import (AsyncDataT, async_encrypt_attachment,
-                                    async_generator_from_data)
+    from .async_attachments import (
+        AsyncDataT,
+        async_encrypt_attachment,
+        async_generator_from_data,
+    )
 
 if package_installed("olm"):
     from .sessions import (  # isort:skip

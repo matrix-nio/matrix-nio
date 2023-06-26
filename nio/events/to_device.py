@@ -29,9 +29,14 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Union
 
 from ..schemas import Schemas
-from .common import (KeyVerificationAcceptMixin, KeyVerificationCancelMixin,
-                     KeyVerificationEventMixin, KeyVerificationKeyMixin,
-                     KeyVerificationMacMixin, KeyVerificationStartMixin)
+from .common import (
+    KeyVerificationAcceptMixin,
+    KeyVerificationCancelMixin,
+    KeyVerificationEventMixin,
+    KeyVerificationKeyMixin,
+    KeyVerificationMacMixin,
+    KeyVerificationStartMixin,
+)
 from .misc import BadEventType, logger, verify
 
 

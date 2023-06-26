@@ -23,8 +23,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from ..event_builders import RoomKeyRequestMessage
 from ..schemas import Schemas
-from .misc import (BadEvent, BadEventType, UnknownBadEvent,
-                   validate_or_badevent, verify)
+from .misc import BadEvent, BadEventType, UnknownBadEvent, validate_or_badevent, verify
 
 
 @dataclass

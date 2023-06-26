@@ -1,5 +1,11 @@
-from .api import (Api, MessageDirection, PushRuleKind, ResizingMethod,
-                  RoomPreset, RoomVisibility)
+from .api import (
+    Api,
+    MessageDirection,
+    PushRuleKind,
+    ResizingMethod,
+    RoomPreset,
+    RoomVisibility,
+)
 from .client import *
 from .event_builders import *
 from .events import *

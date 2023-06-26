@@ -21,19 +21,36 @@ import logging
 from builtins import super
 from collections import defaultdict
 from enum import Enum
-from typing import (Any, DefaultDict, Dict, List, NamedTuple, Optional, Tuple,
-                    Union)
+from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional, Tuple, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
 
-from .events import (AccountDataEvent, EphemeralEvent, Event, FullyReadEvent,
-                     InviteAliasEvent, InviteMemberEvent, InviteNameEvent,
-                     PowerLevels, PowerLevelsEvent, Receipt, ReceiptEvent,
-                     RoomAliasEvent, RoomAvatarEvent, RoomCreateEvent,
-                     RoomEncryptionEvent, RoomGuestAccessEvent,
-                     RoomHistoryVisibilityEvent, RoomJoinRulesEvent,
-                     RoomMemberEvent, RoomNameEvent, RoomTopicEvent,
-                     RoomUpgradeEvent, TagEvent, TypingNoticeEvent)
+from .events import (
+    AccountDataEvent,
+    EphemeralEvent,
+    Event,
+    FullyReadEvent,
+    InviteAliasEvent,
+    InviteMemberEvent,
+    InviteNameEvent,
+    PowerLevels,
+    PowerLevelsEvent,
+    Receipt,
+    ReceiptEvent,
+    RoomAliasEvent,
+    RoomAvatarEvent,
+    RoomCreateEvent,
+    RoomEncryptionEvent,
+    RoomGuestAccessEvent,
+    RoomHistoryVisibilityEvent,
+    RoomJoinRulesEvent,
+    RoomMemberEvent,
+    RoomNameEvent,
+    RoomTopicEvent,
+    RoomUpgradeEvent,
+    TagEvent,
+    TypingNoticeEvent,
+)
 from .responses import RoomSummary, UnreadNotifications
 
 logger = logging.getLogger(__name__)

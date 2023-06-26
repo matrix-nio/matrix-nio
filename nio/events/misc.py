@@ -23,8 +23,6 @@ from ..schemas import validate_json
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-
-
 logger = logging.getLogger(__name__)
 
 

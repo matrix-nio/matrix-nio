@@ -15,8 +15,16 @@ import time
 from builtins import bytes
 from datetime import datetime
 
-from peewee import (SQL, BlobField, BooleanField, CompositeKey,
-                    ForeignKeyField, IntegerField, Model, TextField)
+from peewee import (
+    SQL,
+    BlobField,
+    BooleanField,
+    CompositeKey,
+    ForeignKeyField,
+    IntegerField,
+    Model,
+    TextField,
+)
 
 from ..crypto import TrustState
 

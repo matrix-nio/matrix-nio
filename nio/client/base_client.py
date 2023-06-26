@@ -18,25 +18,58 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
-                    Set, Tuple, Type, Union)
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Coroutine,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 
-from ..crypto import (ENCRYPTION_ENABLED, DeviceStore, OlmDevice,
-                      OutgoingKeyRequest)
-from ..events import (AccountDataEvent, BadEvent, BadEventType, EphemeralEvent,
-                      Event, MegolmEvent, PresenceEvent, RoomEncryptionEvent,
-                      RoomKeyRequest, RoomKeyRequestCancellation,
-                      RoomMemberEvent, ToDeviceEvent, UnknownBadEvent)
+from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OlmDevice, OutgoingKeyRequest
+from ..events import (
+    AccountDataEvent,
+    BadEvent,
+    BadEventType,
+    EphemeralEvent,
+    Event,
+    MegolmEvent,
+    PresenceEvent,
+    RoomEncryptionEvent,
+    RoomKeyRequest,
+    RoomKeyRequestCancellation,
+    RoomMemberEvent,
+    ToDeviceEvent,
+    UnknownBadEvent,
+)
 from ..exceptions import EncryptionError, LocalProtocolError, MembersSyncError
-from ..responses import (ErrorResponse, JoinedMembersResponse,
-                         KeysClaimResponse, KeysQueryResponse,
-                         KeysUploadResponse, LoginResponse, LogoutResponse,
-                         PresenceGetResponse, RegisterResponse, Response,
-                         RoomContextResponse, RoomForgetResponse,
-                         RoomGetEventResponse, RoomInfo,
-                         RoomKeyRequestResponse, RoomMessagesResponse,
-                         ShareGroupSessionResponse, SyncResponse,
-                         ToDeviceResponse)
+from ..responses import (
+    ErrorResponse,
+    JoinedMembersResponse,
+    KeysClaimResponse,
+    KeysQueryResponse,
+    KeysUploadResponse,
+    LoginResponse,
+    LogoutResponse,
+    PresenceGetResponse,
+    RegisterResponse,
+    Response,
+    RoomContextResponse,
+    RoomForgetResponse,
+    RoomGetEventResponse,
+    RoomInfo,
+    RoomKeyRequestResponse,
+    RoomMessagesResponse,
+    ShareGroupSessionResponse,
+    SyncResponse,
+    ToDeviceResponse,
+)
 from ..rooms import MatrixInvitedRoom, MatrixRoom
 
 if ENCRYPTION_ENABLED:
