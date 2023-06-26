@@ -2159,8 +2159,8 @@ class TestClass:
         class CallbackException(Exception):
             pass
 
-        async def cb(_, event):
-            if isinstance(event, RoomMemberEvent):
+        async def cb(room, event):
+            if isinstance(event, RoomMemberEvent) or isinstance(room, str):
                 raise CallbackException()
 
         async_client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
