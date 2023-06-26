@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 import logging
+from dataclasses import dataclass, field
+from typing import Optional
+
+from ..schemas import Schemas
+from .misc import verify
 
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
 #
@@ -15,11 +20,7 @@ import logging
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from dataclasses import dataclass, field
-from typing import Optional
 
-from ..schemas import Schemas
-from .misc import verify
 
 logger = logging.getLogger(__name__)
 

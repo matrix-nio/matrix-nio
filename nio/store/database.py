@@ -21,33 +21,13 @@ from typing import Dict, List, Optional
 from peewee import DoesNotExist, SqliteDatabase
 from playhouse.sqliteq import SqliteQueueDatabase
 
-from ..crypto import (
-    DeviceStore,
-    GroupSessionStore,
-    InboundGroupSession,
-    OlmAccount,
-    OlmDevice,
-    OutgoingKeyRequest,
-    Session,
-    SessionStore,
-    TrustState,
-)
-from . import (
-    Accounts,
-    DeviceKeys,
-    DeviceKeys_v1,
-    DeviceTrustState,
-    EncryptedRooms,
-    ForwardedChains,
-    Key,
-    Keys,
-    KeyStore,
-    MegolmInboundSessions,
-    OlmSessions,
-    OutgoingKeyRequests,
-    StoreVersion,
-    SyncTokens,
-)
+from ..crypto import (DeviceStore, GroupSessionStore, InboundGroupSession,
+                      OlmAccount, OlmDevice, OutgoingKeyRequest, Session,
+                      SessionStore, TrustState)
+from . import (Accounts, DeviceKeys, DeviceKeys_v1, DeviceTrustState,
+               EncryptedRooms, ForwardedChains, Key, Keys, KeyStore,
+               MegolmInboundSessions, OlmSessions, OutgoingKeyRequests,
+               StoreVersion, SyncTokens)
 
 
 def use_database(fn):

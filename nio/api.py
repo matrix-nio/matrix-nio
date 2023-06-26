@@ -29,19 +29,8 @@ from __future__ import unicode_literals
 import json
 from collections import defaultdict
 from enum import Enum, unique
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    DefaultDict,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Union,
-)
+from typing import (TYPE_CHECKING, Any, DefaultDict, Dict, Iterable, List,
+                    Optional, Sequence, Set, Tuple, Union)
 
 from .exceptions import LocalProtocolError
 

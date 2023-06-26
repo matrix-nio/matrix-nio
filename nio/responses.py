@@ -27,14 +27,8 @@ from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
 from jsonschema.exceptions import SchemaError, ValidationError
 
 from .event_builders import ToDeviceMessage
-from .events import (
-    AccountDataEvent,
-    BadEventType,
-    EphemeralEvent,
-    Event,
-    InviteEvent,
-    ToDeviceEvent,
-)
+from .events import (AccountDataEvent, BadEventType, EphemeralEvent, Event,
+                     InviteEvent, ToDeviceEvent)
 from .events.presence import PresenceEvent
 from .http import TransportResponse
 from .schemas import Schemas, validate_json
