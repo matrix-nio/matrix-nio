@@ -2160,9 +2160,8 @@ class TestClass:
             pass
 
         async def cb(room, event):
-            if isinstance(event, RoomMemberEvent):
-                if instance(room, str):
-                    raise CallbackException()
+            if isinstance(event, RoomMemberEvent) or isinstance(room, str):
+                raise CallbackException()
 
         async_client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
 
@@ -2186,7 +2185,6 @@ class TestClass:
             await async_client.receive_response(
                 SyncResponse.from_dict(self.sync_response)
             )
-
 
     async def test_handle_account_data(self, async_client):
         await async_client.receive_response(
