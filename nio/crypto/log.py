@@ -16,4 +16,4 @@
 
 import logging
 
-logger = logging.getLogger("nio.encryption")
+logger = logging.getLogger(__name__)

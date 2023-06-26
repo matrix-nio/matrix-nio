@@ -30,7 +30,7 @@ import h2.connection
 import h2.events
 import h11
 
-logger = logging.getLogger("nio.http")
+logger = logging.getLogger(__name__)
 
 USER_AGENT = "nio"
 

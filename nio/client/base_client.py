@@ -84,7 +84,7 @@ except ImportError:
     JSONDecodeError = ValueError  # type: ignore
 
 
-logger = logging.getLogger("nio.client")
+logger = logging.getLogger(__name__)
 
 
 def logged_in(func):

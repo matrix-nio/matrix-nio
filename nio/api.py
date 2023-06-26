@@ -64,6 +64,7 @@ MATRIX_MEDIA_API_PATH = "/_matrix/media/r0"  # type: str
 
 _FilterT = Union[None, str, Dict[Any, Any]]
 
+
 @unique
 class MessageDirection(Enum):
     """Enum representing the direction messages should be fetched from."""

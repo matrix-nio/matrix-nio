@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -22,7 +23,7 @@ from jsonschema.exceptions import SchemaError, ValidationError
 
 from ..schemas import validate_json
 
-logger = logging.getLogger("nio.events")
+logger = logging.getLogger(__name__)
 
 
 def validate_or_badevent(

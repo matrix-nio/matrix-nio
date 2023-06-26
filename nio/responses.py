@@ -39,7 +39,7 @@ from .events.presence import PresenceEvent
 from .http import TransportResponse
 from .schemas import Schemas, validate_json
 
-logger = logging.getLogger("nio.responses")
+logger = logging.getLogger(__name__)
 
 
 __all__ = [

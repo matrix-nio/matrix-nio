@@ -16,4 +16,4 @@ import logging
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-logger = logging.getLogger("nio.cryptostore")
+logger = logging.getLogger(__name__)

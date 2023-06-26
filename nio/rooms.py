@@ -53,7 +53,7 @@ from .events import (
 )
 from .responses import RoomSummary, UnreadNotifications
 
-logger = logging.getLogger("nio.rooms")
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "MatrixRoom",
