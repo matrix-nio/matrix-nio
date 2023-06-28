@@ -414,7 +414,7 @@ class MatrixRoom:
                     self.users[user_id].power_level = level
 
         elif isinstance(event, RoomSpaceParentEvent):
-            self.parent.add(event.state_key)
+            self.parents.add(event.state_key)
 
         elif isinstance(event, RoomSpaceChildEvent):
             self.children.add(event.state_key)

@@ -478,14 +478,14 @@ class TestClass:
 
     def test_space_parent(self):
         room = self.test_room
-        assert room.parent == set()
+        assert room.parents == set()
         room.handle_event(
             RoomSpaceParentEvent(
                 {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
                 "!X:example.org",
             )
         )
-        assert "!X:example.org" in room.parent
+        assert "!X:example.org" in room.parents
 
     def test_space_child(self):
         room = self.test_room
