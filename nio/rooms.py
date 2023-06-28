@@ -84,7 +84,7 @@ class MatrixRoom:
         self.canonical_alias = None   # type: Optional[str]
         self.topic = None             # type: Optional[str]
         self.name = None              # type: Optional[str]
-        self.parent = set()           # type: Set[str]
+        self.parents = set()           # type: Set[str]
         self.children = set()         # type: Set[str]
         self.users = dict()           # type: Dict[str, MatrixUser]
         self.invited_users = dict()   # type: Dict[str, MatrixUser]
