@@ -21,7 +21,7 @@ import logging
 from builtins import super
 from collections import defaultdict
 from enum import Enum
-from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional, Set, Tuple, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
 
@@ -46,6 +46,8 @@ from .events import (
     RoomJoinRulesEvent,
     RoomMemberEvent,
     RoomNameEvent,
+    RoomSpaceChildEvent,
+    RoomSpaceParentEvent,
     RoomTopicEvent,
     RoomUpgradeEvent,
     TagEvent,
@@ -80,6 +82,8 @@ class MatrixRoom:
         self.canonical_alias = None   # type: Optional[str]
         self.topic = None             # type: Optional[str]
         self.name = None              # type: Optional[str]
+        self.parents = set()           # type: Set[str]
+        self.children = set()         # type: Set[str]
         self.users = dict()           # type: Dict[str, MatrixUser]
         self.invited_users = dict()   # type: Dict[str, MatrixUser]
         self.names = defaultdict(list)  # type: DefaultDict[str, List[str]]
@@ -406,6 +410,12 @@ class MatrixRoom:
                         f"Changing power level for user {user_id} from {self.users[user_id].power_level} to {level}"
                     )
                     self.users[user_id].power_level = level
+
+        elif isinstance(event, RoomSpaceParentEvent):
+            self.parents.add(event.state_key)
+
+        elif isinstance(event, RoomSpaceChildEvent):
+            self.children.add(event.state_key)
 
     def handle_account_data(self, event: AccountDataEvent) -> None:
         if isinstance(event, FullyReadEvent):

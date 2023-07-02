@@ -161,6 +161,10 @@ class Event:
             return RedactionEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.tombstone":
             return RoomUpgradeEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.space.parent":
+            return RoomSpaceParentEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.space.child":
+            return RoomSpaceChildEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.encrypted":
             return Event.parse_encrypted_event(event_dict)
         elif event_dict["type"] == "m.sticker":
@@ -812,6 +816,48 @@ class RoomAvatarEvent(Event):
         room_avatar_url = parsed_dict["content"]["url"]
 
         return cls(parsed_dict, room_avatar_url)
+
+
+@dataclass
+class RoomSpaceParentEvent(Event):
+    """Event holding the parent space of a room.
+
+    Attributes:
+        state_key (str): The parent space's room
+
+    """
+
+    state_key: str = field()
+    canonical: bool = False
+
+    @classmethod
+    @verify(Schemas.room_space_parent)
+    def from_dict(cls, parsed_dict):
+        content_dict = parsed_dict["content"]
+        return cls(
+            parsed_dict, parsed_dict["state_key"], content_dict.get("canonical", False)
+        )
+
+
+@dataclass
+class RoomSpaceChildEvent(Event):
+    """Event holding the child rooms of a space.
+
+    Attributes:
+        state_key (str): The child room of a space
+
+    """
+
+    state_key: str = field()
+    suggested: bool = False
+
+    @classmethod
+    @verify(Schemas.room_space_child)
+    def from_dict(cls, parsed_dict):
+        content_dict = parsed_dict["content"]
+        return cls(
+            parsed_dict, parsed_dict["state_key"], content_dict.get("suggested", False)
+        )
 
 
 @dataclass
