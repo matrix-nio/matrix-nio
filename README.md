@@ -9,7 +9,7 @@ nio
 
 nio is a multilayered [Matrix](https://matrix.org/) client library. The
 underlying base layer doesn't do any network IO on its own, but on top of that
-is a full fledged batteries-included asyncio layer using
+is a full-fledged batteries-included asyncio layer using
 [aiohttp](https://github.com/aio-libs/aiohttp/). File IO is only done if you
 enable end-to-end encryption (E2EE).
 
@@ -26,6 +26,7 @@ nio has most of the features you'd expect in a Matrix library, but it's still a 
 
 - ✅ transparent end-to-end encryption (EE2E)
 - ✅ encrypted file uploads & downloads
+- ✅ space parents/children
 - ✅ manual and emoji verification
 - ✅ custom [authentication types](https://matrix.org/docs/spec/client_server/r0.6.0#id183)
 - ✅ well-integrated type system
@@ -37,12 +38,11 @@ nio has most of the features you'd expect in a Matrix library, but it's still a 
 - ✅ read receipts
 - ✅ live syncing
 - ✅ `m.tag`s
-- ❌ python 2.7 support
 - ❌ cross-signing support
 - ❌ server-side key backups (room key backup, "Secure Backup")
 - ❌ user deactivation ([#112](https://github.com/poljar/matrix-nio/issues/112))
+- ❌ threading support
 - ❌ in-room emoji verification
-- ❌ room upgrades and `m.room.tombstone` events ([#47](https://github.com/poljar/matrix-nio/issues/47))
 
 Installation
 ------------
