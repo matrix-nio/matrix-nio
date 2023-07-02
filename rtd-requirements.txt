@@ -13,6 +13,5 @@ aiohttp; python_version >= '3.5'
 aiohttp_socks
 aioresponses; python_version >= '3.5'
 aiofiles; python_version >= '3.5'
-dataclasses; python_version < '3.7'
 m2r2
 sphinx_rtd_theme
