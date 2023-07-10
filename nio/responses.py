@@ -97,6 +97,8 @@ __all__ = [
     "RoomInviteError",
     "RoomKickResponse",
     "RoomKickError",
+    "RoomKnockResponse",
+    "RoomKnockError",
     "RoomLeaveResponse",
     "RoomLeaveError",
     "RoomForgetResponse",

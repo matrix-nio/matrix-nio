@@ -2259,7 +2259,6 @@ class AsyncClient(Client):
             room_id,
             reason,
         )
-        print(f"Path for kncok: {path}")
         return await self._send(RoomKnockResponse, method, path, data)
 
 
