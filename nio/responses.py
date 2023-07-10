@@ -505,6 +505,10 @@ class JoinError(ErrorResponse):
     pass
 
 
+class RoomKnockError(ErrorResponse):
+    pass
+
+
 class RoomLeaveError(ErrorResponse):
     pass
 
@@ -1261,6 +1265,12 @@ class JoinResponse(RoomIdResponse):
     @staticmethod
     def create_error(parsed_dict):
         return JoinError.from_dict(parsed_dict)
+
+
+class RoomKnockResponse(RoomIdResponse):
+    @staticmethod
+    def create_error(parsed_dict):
+        return RoomKnockError.from_dict(parsed_dict)
 
 
 class RoomLeaveResponse(EmptyResponse):

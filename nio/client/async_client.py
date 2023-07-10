@@ -173,6 +173,8 @@ from ..responses import (
     RoomKeyRequestResponse,
     RoomKickError,
     RoomKickResponse,
+    RoomKnockResponse,
+    RoomKnockError,
     RoomLeaveError,
     RoomLeaveResponse,
     RoomMessagesError,
@@ -2233,6 +2235,33 @@ class AsyncClient(Client):
         """
         method, path, data = Api.join(self.access_token, room_id)
         return await self._send(JoinResponse, method, path, data)
+
+    @logged_in_async
+    async def room_knock(
+        self,
+        room_id: str,
+        reason: Optional[str] = None,
+    ) -> Union[RoomKnockResponse, RoomKnockError]:
+        """Knock on a room.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `RoomKnockResponse` if the request was successful or
+        a `RoomKnockError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room that the user is
+                knocking on.
+            reason (str, optional): The reason for the knock.
+        """
+        method, path, data = Api.room_knock(
+            self.access_token,
+            room_id,
+            reason,
+        )
+        print(f"Path for kncok: {path}")
+        return await self._send(RoomKnockResponse, method, path, data)
+
 
     @logged_in_async
     async def room_invite(

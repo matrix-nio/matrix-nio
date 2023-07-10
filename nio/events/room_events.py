@@ -1483,7 +1483,7 @@ class RoomMemberEvent(Event):
             cases except for when membership is join, the user ID in the sender
             attribute does not need to match the user ID in the state_key.
         membership (str): The membership state of the user. One of "invite",
-            "join", "leave", "ban".
+            "join", "leave", "ban", "knock".
         prev_membership (str, optional): The previous membership state that
             this one is overwriting. Can be None in which case the membership
             state is assumed to have been "leave".
