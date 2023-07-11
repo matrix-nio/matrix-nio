@@ -246,6 +246,32 @@ class Schemas:
         "required": ["user_id", "device_id", "access_token"],
     }
 
+    register_flows = {
+        "type": "object",
+        "properties": {
+            "flows": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "stages": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        }
+                    },
+                    "required": ["stages"],
+                },
+            },
+            "params": {"type": "object"},
+            "session": {"type": "string"},
+            "completed": {"type": "array", "items": {"type": "string"}},
+            "user_id": {"type": "string", "format": "user_id"},
+            "device_id": {"type": "string"},
+            "access_token": {"type": "string"},
+        },
+        "required": ["flows", "params", "session"],
+    }
+
     login = {
         "type": "object",
         "properties": {

@@ -417,6 +417,45 @@ class TestClass:
         assert isinstance(resp, RegisterResponse)
         assert async_client.access_token
 
+    async def test_register_with_token(self, async_client, aioresponse):
+        assert not async_client.access_token
+
+        # first response should return session token + flows
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/register",
+            status=401,
+            payload={
+                "session": "abc1234",
+                "flows": [{"stages": ["m.login.registration_token", "m.login.dummy"]}],
+                "params": {},
+            },
+        )
+
+        # second response indicates that registration_token flow is completed
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/register",
+            status=401,
+            payload={
+                "session": "abc1234",
+                "flows": [{"stages": ["m.login.registration_token", "m.login.dummy"]}],
+                "params": {},
+                "completed": [
+                    "m.login.registration_token",
+                ],
+            },
+        )
+
+        # third response should return access token
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/register",
+            status=200,
+            payload=self.register_response,
+        )
+
+        resp = await async_client.register_with_token("user", "password", "token")
+        assert isinstance(resp, RegisterResponse)
+        assert async_client.access_token
+
     async def test_discovery_info(self, async_client, aioresponse):
         aioresponse.get(
             "https://example.org/.well-known/matrix/client",
