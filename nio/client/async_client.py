@@ -187,6 +187,7 @@ from ..responses import (
     RoomRedactResponse,
     RoomResolveAliasError,
     RoomResolveAliasResponse,
+    RoomSendError,
     RoomSendResponse,
     RoomTypingError,
     RoomTypingResponse,
@@ -1545,7 +1546,7 @@ class AsyncClient(Client):
         content: Dict[Any, Any],
         tx_id: Optional[str] = None,
         ignore_unverified_devices: bool = False,
-    ):
+    ) -> Union[RoomSendResponse, RoomSendError]:
         """Send a message to a room.
 
         Calls receive_response() to update the client state if necessary.
