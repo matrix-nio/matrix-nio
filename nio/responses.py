@@ -508,6 +508,7 @@ class JoinError(ErrorResponse):
 
 
 class RoomKnockError(ErrorResponse):
+    """A response representing a unsuccessful room knock request."""
     pass
 
 
@@ -1270,6 +1271,7 @@ class JoinResponse(RoomIdResponse):
 
 
 class RoomKnockResponse(RoomIdResponse):
+    """A response representing a successful room knock request."""
     @staticmethod
     def create_error(parsed_dict):
         return RoomKnockError.from_dict(parsed_dict)
