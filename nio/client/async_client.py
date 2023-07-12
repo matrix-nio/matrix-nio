@@ -2261,6 +2261,24 @@ class AsyncClient(Client):
         )
         return await self._send(RoomKnockResponse, method, path, data)
 
+    @logged_in_async
+    async def room_enable_knocking(
+        self,
+        room_id: str,
+    ) -> Union[RoomPutStateResponse, RoomPutStateError]:
+        """Enables knocking for a room.
+
+        Returns either a `RoomPutStateResponse` if the request was successful
+        or a `RoomPutStateError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room to enable knocking for.
+        """
+        return await self.room_put_state(
+            room_id,
+            event_type="m.room.join_rules",
+            content={"join_rule": "knock"},
+        )
 
     @logged_in_async
     async def room_invite(
