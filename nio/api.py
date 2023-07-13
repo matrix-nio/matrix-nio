@@ -807,7 +807,6 @@ class Api:
             Api.to_json(body),
         )
 
-
     @staticmethod
     def room_invite(access_token, room_id, user_id):
         # type (str, str, str) -> Tuple[str, str, str]
