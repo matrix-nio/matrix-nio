@@ -30,6 +30,7 @@ from nio.responses import (
     RoomForgetResponse,
     RoomKeyRequestError,
     RoomKeyRequestResponse,
+    RoomKnockResponse,
     RoomLeaveResponse,
     RoomMessagesResponse,
     RoomTypingResponse,
@@ -250,6 +251,11 @@ class TestClass:
         parsed_dict = TestClass._load_response("tests/data/room_id.json")
         response = JoinResponse.from_dict(parsed_dict)
         assert isinstance(response, JoinResponse)
+
+    def test_knock(self):
+        parsed_dict = TestClass._load_response("tests/data/room_id.json")
+        response = RoomKnockResponse.from_dict(parsed_dict)
+        assert isinstance(response, RoomKnockResponse)
 
     def test_room_leave(self):
         response = RoomLeaveResponse.from_dict({})

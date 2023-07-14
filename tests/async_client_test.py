@@ -95,6 +95,7 @@ from nio import (
     RoomInviteResponse,
     RoomKeyRequest,
     RoomKickResponse,
+    RoomKnockResponse,
     RoomLeaveResponse,
     RoomMemberEvent,
     RoomMessagesResponse,
@@ -1430,6 +1431,21 @@ class TestClass:
 
         resp = await async_client.room_invite(TEST_ROOM_ID, ALICE_ID)
         assert isinstance(resp, RoomInviteResponse)
+
+    async def test_room_knock(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            f"https://example.org/_matrix/client/r0/knock/{TEST_ROOM_ID}?access_token=abc123",
+            status=200,
+            payload=self.room_id_response(TEST_ROOM_ID),
+        )
+
+        resp = await async_client.room_knock(TEST_ROOM_ID, reason="test")
+        assert isinstance(resp, RoomKnockResponse)
 
     async def test_room_leave(self, async_client, aioresponse):
         await async_client.receive_response(

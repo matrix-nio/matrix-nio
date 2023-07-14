@@ -97,6 +97,8 @@ __all__ = [
     "RoomInviteError",
     "RoomKickResponse",
     "RoomKickError",
+    "RoomKnockResponse",
+    "RoomKnockError",
     "RoomLeaveResponse",
     "RoomLeaveError",
     "RoomForgetResponse",
@@ -502,6 +504,12 @@ class RoomCreateError(ErrorResponse):
 
 
 class JoinError(ErrorResponse):
+    pass
+
+
+class RoomKnockError(ErrorResponse):
+    """A response representing a unsuccessful room knock request."""
+
     pass
 
 
@@ -1261,6 +1269,12 @@ class JoinResponse(RoomIdResponse):
     @staticmethod
     def create_error(parsed_dict):
         return JoinError.from_dict(parsed_dict)
+
+
+class RoomKnockResponse(RoomIdResponse):
+    @staticmethod
+    def create_error(parsed_dict):
+        return RoomKnockError.from_dict(parsed_dict)
 
 
 class RoomLeaveResponse(EmptyResponse):
