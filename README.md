@@ -30,7 +30,7 @@ nio has most of the features you'd expect in a Matrix library, but it's still a 
 - ✅ manual and emoji verification
 - ✅ custom [authentication types](https://matrix.org/docs/spec/client_server/r0.6.0#id183)
 - ✅ well-integrated type system
-- ✅ kick, ban and unban
+- ✅ knocking, kick, ban and unban
 - ✅ typing notifications
 - ✅ message redaction
 - ✅ token based login

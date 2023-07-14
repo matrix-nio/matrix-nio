@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.21.0] - 2023-7-14
+
+### Breaking Changes
+
+- [[#416]] Drop support for end-of-life `python3.7`
+- [[#413]] Drop usage of `logbook` in favor of standard library `logging`
+  - This fixes an issue where logging was effectively disabled by default.
+
+### Features
+
+- [[#409]] Support m.space.parent and m.space.child events
+- [[#418]] Add ability to knock on a room, and enable knocking for a room
+
+### Documentation
+
+- Add documentation on how to configure `logging`
+- Note in `README` that room upgrades/tombstone events *are* supported
+
+### Miscellaneous Tasks
+
+- [[#401]] Removing skip for passing test
+- [[#417]] Add type hints
+- [[#406]] [[#407]] [[#414]] Add content to `built-with-nio`
+
+### Bug Fixes
+
+- [[#408]] Properly generate code coverage
+- [[#411]] Fixed bug in Event Callbacks
+
 ## [0.20.2] - 2023-3-26
 
 ### Miscellaneous Tasks
