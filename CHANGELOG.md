@@ -31,6 +31,18 @@ All notable changes to this project will be documented in this file.
 - [[#408]] Properly generate code coverage
 - [[#411]] Fixed bug in Event Callbacks
 
+[#416]: https://github.com/poljar/matrix-nio/pull/416
+[#413]: https://github.com/poljar/matrix-nio/pull/413
+[#409]: https://github.com/poljar/matrix-nio/pull/409
+[#418]: https://github.com/poljar/matrix-nio/pull/418
+[#401]: https://github.com/poljar/matrix-nio/pull/401
+[#417]: https://github.com/poljar/matrix-nio/pull/417
+[#406]: https://github.com/poljar/matrix-nio/pull/406
+[#407]: https://github.com/poljar/matrix-nio/pull/407
+[#414]: https://github.com/poljar/matrix-nio/pull/414
+[#408]: https://github.com/poljar/matrix-nio/pull/408
+[#411]: https://github.com/poljar/matrix-nio/pull/411
+
 ## [0.20.2] - 2023-3-26
 
 ### Miscellaneous Tasks
@@ -46,7 +58,6 @@ All notable changes to this project will be documented in this file.
 - [[#354]] Fix `first_sync_filter` parameter of `AsyncClient.sync_forever`
 - [[#357]] Element exports keys without required fields
 - [[#396]] Fix `timeline->limited` being required
-
 
 [#384]: https://github.com/poljar/matrix-nio/pull/384
 [#335]: https://github.com/poljar/matrix-nio/pull/335
