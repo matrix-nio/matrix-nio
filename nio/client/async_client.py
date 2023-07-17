@@ -3252,7 +3252,7 @@ class AsyncClient(Client):
 
         return await self._send(UploadFilterResponse, method, path, data)
 
-    async def whoami(self):
+    async def whoami(self) -> Union[WhoamiResponse | WhoamiError]:
         if self.access_token is None:
             raise ValueError("No access_token is set.")
 

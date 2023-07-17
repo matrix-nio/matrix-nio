@@ -389,6 +389,10 @@ class TestClass:
     def room_resolve_alias_response(self):
         return {"room_id": TEST_ROOM_ID, "servers": ["example.org", "matrix.org"]}
 
+    @property
+    def whoami_response(self):
+        return self._load_response("tests/data/whoami_response.json")
+
     async def test_mxc_to_http(self, async_client):
         mxc = "mxc://privacytools.io/123foo"
         url_path = "/_matrix/media/r0/download/privacytools.io/123foo"
@@ -603,6 +607,21 @@ class TestClass:
         assert not async_client.client_session
         await async_client.close()
         assert not async_client.client_session
+
+    async def test_whoami(self, async_client, aioresponse):
+        async_client.restore_login(
+            user_id="unknown",
+            device_id="unknown",
+            access_token="abc123",
+        )
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/account/whoami?access_token=abc123",
+            status=200,
+            payload=self.whoami_response,
+        )
+        await async_client.whoami()
+        assert async_client.user_id != "unknown"
+        assert async_client.device_id != "unknown"
 
     async def test_logout(self, async_client, aioresponse):
         aioresponse.post(
