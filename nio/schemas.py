@@ -1893,7 +1893,11 @@ class Schemas:
 
     whoami = {
         "type": "object",
-        "user_id": "string",
+        "properties": {
+            "user_id": {"type": "string", "format": "user_id"},
+            "device_id": {"type": "string"},
+            "is_guest": {"type": "boolean"},
+        },
         "required": ["user_id"],
     }
 

@@ -69,6 +69,7 @@ from ..responses import (
     ShareGroupSessionResponse,
     SyncResponse,
     ToDeviceResponse,
+    WhoamiResponse,
 )
 from ..rooms import MatrixInvitedRoom, MatrixRoom
 
@@ -1022,6 +1023,11 @@ class Client:
             )
             self.rooms[room_id].users[response.user_id].status_msg = response.status_msg
 
+    def _handle_whoami_response(self, response: WhoamiResponse):
+        self.user_id = response.user_id
+        self.device_id = response.device_id or self.device_id
+        # self.is_guest = response.is_guest
+
     def receive_response(
         self, response: Response
     ) -> Union[None, Coroutine[Any, Any, None]]:
@@ -1073,6 +1079,8 @@ class Client:
                     pass
         elif isinstance(response, PresenceGetResponse):
             self._handle_presence_response(response)
+        elif isinstance(response, WhoamiResponse):
+            self._handle_whoami_response(response)
         elif isinstance(response, ErrorResponse):
             if response.soft_logout:
                 self.access_token = ""
