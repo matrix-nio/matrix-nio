@@ -3253,6 +3253,14 @@ class AsyncClient(Client):
         return await self._send(UploadFilterResponse, method, path, data)
 
     async def whoami(self) -> Union[WhoamiResponse, WhoamiError]:
+        """Get information about the logged-in user from the homeserver.
+
+        Returns either a `WhoamiResponse` if the request was successful
+        or a `WhoamiError` if there was an error with the request.
+
+        On a successful response, the client's state will be updated with
+        the user_id and device_id returned, if different from the current state.
+        """
         if self.access_token is None:
             raise ValueError("No access_token is set.")
 
