@@ -557,13 +557,6 @@ class AsyncClient(Client):
                     async for chunk in transport_response.content.iter_chunked(self.config.io_chunk_size):
                         await f.write(chunk)
                 body = save_to
-            print(
-                "%r body is type %r, which %s an instance of os.PathLike" % (
-                    response_class,
-                    type(body),
-                    "is" if isinstance(body, os.PathLike) else "is not"
-                )
-            )
             resp = response_class.from_data(body, content_type, name)
         elif (
             issubclass(response_class, RoomGetStateEventResponse)
