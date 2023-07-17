@@ -1912,8 +1912,8 @@ class WhoamiError(ErrorResponse):
 @dataclass
 class WhoamiResponse(Response):
     user_id: str = field()
-    device_id: str = field()
-    is_guest: bool = field()
+    device_id: Optional[str] = field()
+    is_guest: Optional[bool] = field()
 
     @classmethod
     @verify(Schemas.whoami, WhoamiError)
@@ -1923,8 +1923,8 @@ class WhoamiResponse(Response):
     ) -> Union["WhoamiResponse", WhoamiError]:
         return cls(
             parsed_dict["user_id"],
-            parsed_dict["device_id"],
-            parsed_dict["is_guest"],
+            parsed_dict.get("device_id"),
+            parsed_dict.get("is_guest", False),
         )
 
 

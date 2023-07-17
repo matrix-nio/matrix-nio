@@ -1025,7 +1025,7 @@ class Client:
 
     def _handle_whoami_response(self, response: WhoamiResponse):
         self.user_id = response.user_id
-        self.device_id = response.device_id
+        self.device_id = response.device_id or self.device_id
         # self.is_guest = response.is_guest
 
     def receive_response(

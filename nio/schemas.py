@@ -1898,7 +1898,7 @@ class Schemas:
             "device_id": {"type": "string"},
             "is_guest": {"type": "boolean"},
         },
-        "required": ["user_id", "device_id", "is_guest"],
+        "required": ["user_id"],
     }
 
     room_tombstone = {
