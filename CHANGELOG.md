@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.21.2] - 2023-7-17
+
+### Bug Fixes
+
+- [[#423]] Revert [[#411]] due to backwards-incompatibilities.
+
+[#423]: https://github.com/poljar/matrix-nio/pull/423
+
 ## [0.21.1] - 2023-7-16
 
 ### Bug Fixes
