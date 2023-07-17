@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.21.1] - 2023-7-16
+
+### Bug Fixes
+
+- [[#422]] `async_client.whoami` will alter the state of `async_client` correctly, and accept all spec-compliant fields.
+
+### Miscellaneous Tasks
+
+- [[#420]] Add `python3.8` tests to workflow.
+
+[#422]: https://github.com/poljar/matrix-nio/pull/422
+[#420]: https://github.com/poljar/matrix-nio/pull/420
+
 ## [0.21.0] - 2023-7-14
 
 ### Breaking Changes
