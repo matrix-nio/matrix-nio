@@ -19,6 +19,7 @@ import asyncio
 import io
 import json
 import os
+import pathlib
 import warnings
 from asyncio import Event as AsyncioEvent
 from dataclasses import dataclass, field
@@ -345,6 +346,10 @@ class AsyncClientConfig(ClientConfig):
             `timeout` argument.
             The `download()`, `thumbnail()` and `upload()` methods ignore
             this option and use `0`.
+
+        io_chunk_size (int): The size of the chunks to read from the IO
+            streams when saving files to disk.
+            Defaults to 64 KiB.
     """
 
     max_limit_exceeded: Optional[int] = None
@@ -352,6 +357,7 @@ class AsyncClientConfig(ClientConfig):
     backoff_factor: float = 0.1
     max_timeout_retry_wait_time: float = 60
     request_timeout: float = 60
+    io_chunk_size: int = 64 * 1024
 
 
 class AsyncClient(Client):
@@ -542,13 +548,13 @@ class AsyncClient(Client):
             if not save_to:
                 body = await transport_response.read()
             else:
+                if not isinstance(save_to, os.PathLike):
+                    save_to = pathlib.Path(save_to)
+                    # used to force os.PathLike type. 9 times out of 10, save_to is a string that simply wasn't typed.
                 if os.path.isdir(save_to):
-                    save_to = os.path.join(save_to, name)
+                    save_to = pathlib.Path(os.path.join(save_to, name))
                 async with aiofiles.open(save_to, "wb") as f:
-                    while True:
-                        chunk = await transport_response.content.read(1024 * 4096)
-                        if not chunk:
-                            break
+                    async for chunk in transport_response.content.iter_chunked(self.config.io_chunk_size):
                         await f.write(chunk)
                 body = save_to
             resp = response_class.from_data(body, content_type, name)
@@ -2888,14 +2894,14 @@ class AsyncClient(Client):
         server_name: Optional[str] = None,
         media_id: Optional[str] = None,
         save_to: Optional[os.PathLike] = None,
-    ) -> Union[DownloadResponse, DownloadError]:
+    ) -> Union[DiskDownloadResponse, MemoryDownloadResponse, DownloadError]:
         """Get the content of a file from the content repository.
 
         This method ignores `AsyncClient.config.request_timeout` and uses `0`.
 
         Calls receive_response() to update the client state if necessary.
 
-        Returns either a `DownloadResponse` if the request was successful or
+        Returns either a `MemoryDownloadResponse` or `DiskDownloadResponse` if the request was successful or
         a `DownloadError` if there was an error with the request.
 
         The parameters `server_name` and `media_id` are deprecated and will be removed in a future release.

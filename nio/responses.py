@@ -329,7 +329,7 @@ class FileResponse(Response):
         return f"{len(self.body)} bytes, content type: {self.content_type}, filename: {self.filename}"
 
     @classmethod
-    def from_data(cls, data: Union[bytes, os.PathLike], content_type, filename=None):
+    def from_data(cls, data: Union[bytes, os.PathLike, dict], content_type, filename=None):
         """Create a FileResponse from file content returned by the server.
 
         Args:
