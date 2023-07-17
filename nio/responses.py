@@ -859,7 +859,7 @@ class DownloadResponse(FileResponse):
         filename: Optional[str] = None,
     ):
         # type: (...) -> Union[DownloadResponse, DownloadError]
-        if isinstance(data, bytes):
+        if isinstance(data, (bytes, os.PathLike)):
             return cls(body=data, content_type=content_type, filename=filename)
 
         if isinstance(data, dict):
