@@ -687,7 +687,7 @@ class Client:
 
                 for cb in self.event_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
-                        cb.func(room_id, event)
+                        cb.func(room, event)
 
     def _handle_joined_state(
         self, room_id: str, join_info: RoomInfo, encrypted_rooms: Set[str]
@@ -770,7 +770,7 @@ class Client:
 
                 for cb in self.event_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
-                        cb.func(room_id, event)
+                        cb.func(room, event)
 
             # Replace the Megolm events with decrypted ones
             for index, event in decrypted_events:
@@ -781,14 +781,14 @@ class Client:
 
                 for cb in self.ephemeral_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
-                        cb.func(room_id, event)
+                        cb.func(room, event)
 
             for event in join_info.account_data:
                 room.handle_account_data(event)
 
                 for cb in self.room_account_data_callbacks:
                     if cb.filter is None or isinstance(event, cb.filter):
-                        cb.func(room_id, event)
+                        cb.func(room, event)
 
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)

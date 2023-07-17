@@ -1067,7 +1067,7 @@ class TestClass:
             pass
 
         def cb(room, event):
-            if isinstance(event, RoomMemberEvent) or isinstance(room, str):
+            if isinstance(event, RoomMemberEvent):
                 raise CallbackException()
 
         client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
