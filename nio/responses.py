@@ -18,6 +18,7 @@
 from __future__ import unicode_literals
 
 import logging
+import os
 from builtins import str
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -314,13 +315,13 @@ class FileResponse(Response):
     """A response representing a successful file content request.
 
     Attributes:
-        body (bytes): The file's content in bytes.
+        body (bytes, os.PathLike): The file's content in bytes, or location on disk if provided.
         content_type (str): The content MIME type of the file,
             e.g. "image/png".
         filename (str, optional): The file's name returned by the server.
     """
 
-    body: bytes = field()
+    body: Union[bytes, os.PathLike] = field()
     content_type: str = field()
     filename: Optional[str] = field()
 

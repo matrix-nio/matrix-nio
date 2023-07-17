@@ -27,6 +27,7 @@ client like AsyncClient or HttpClient.
 from __future__ import unicode_literals
 
 import json
+import os
 from collections import defaultdict
 from enum import Enum, unique
 from typing import (
@@ -1456,6 +1457,7 @@ class Api:
         media_id,  # type: str
         filename=None,  # type: Optional[str]
         allow_remote=True,  # type: bool
+        file=None,  # type: Optional[os.PathLike]
     ):
         # type: (...) -> Tuple[str, str]
         """Get the content of a file from the content repository.
@@ -1472,6 +1474,8 @@ class Api:
                 attempt to fetch the media if it is deemed remote.
                 This is to prevent routing loops where the server contacts
                 itself.
+            file (os.PathLike): The file to write the downloaded content to. If provided,
+                the `content` for
         """
         query_parameters = {
             "allow_remote": "true" if allow_remote else "false",

@@ -19,6 +19,7 @@ import asyncio
 import io
 import json
 import warnings
+import os
 from asyncio import Event as AsyncioEvent
 from dataclasses import dataclass, field
 from functools import partial, wraps
@@ -43,6 +44,7 @@ from typing import (
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
+import aiofiles
 from aiofiles.threadpool.binary import AsyncBufferedReader
 from aiofiles.threadpool.text import AsyncTextIOWrapper
 from aiohttp import (
@@ -504,6 +506,7 @@ class AsyncClient(Client):
         response_class: Type,
         transport_response: ClientResponse,
         data: Tuple[Any, ...] = None,
+        save_to: Optional[os.PathLike] = None
     ) -> Response:
         """Transform a transport response into a nio matrix response.
 
@@ -516,7 +519,7 @@ class AsyncClient(Client):
                 response that contains our response body.
             data (Tuple, optional): Extra data that is required to instantiate
                 the response class.
-
+            save_to (PathLike): If set, the ``FileResponse`` body will be saved to this file.
         Returns a subclass of `Response` depending on the type of the
         response_class argument.
         """
@@ -534,7 +537,18 @@ class AsyncClient(Client):
             resp = response_class.from_data(parsed_dict, content_type, name)
 
         elif issubclass(response_class, FileResponse):
-            body = await transport_response.read()
+            if not save_to:
+                body = await transport_response.read()
+            else:
+                if os.path.isdir(save_to):
+                    save_to = os.path.join(save_to, name)
+                async with aiofiles.open(save_to, "wb") as f:
+                    while True:
+                        chunk = await transport_response.content.read(1024 * 4096)
+                        if not chunk:
+                            break
+                        await f.write(chunk)
+                body = save_to
             resp = response_class.from_data(body, content_type, name)
         elif (
             issubclass(response_class, RoomGetStateEventResponse)
@@ -750,6 +764,7 @@ class AsyncClient(Client):
         data_provider: Optional[DataProvider] = None,
         timeout: Optional[float] = None,
         content_length: Optional[int] = None,
+        save_to: Optional[os.PathLike] = None
     ):
         headers = (
             {"Content-Type": content_type}
@@ -791,6 +806,7 @@ class AsyncClient(Client):
                     response_class,
                     transport_resp,
                     response_data,
+                    save_to=save_to
                 )
 
                 if transport_resp.status == 429 or (
@@ -2872,6 +2888,7 @@ class AsyncClient(Client):
         allow_remote: bool = True,
         server_name: Optional[str] = None,
         media_id: Optional[str] = None,
+        save_to: Optional[os.PathLike] = None,
     ) -> Union[DownloadResponse, DownloadError]:
         """Get the content of a file from the content repository.
 
@@ -2896,6 +2913,8 @@ class AsyncClient(Client):
                 itself.
             server_name (str, optional): [deprecated] The server name from the mxc:// URI.
             media_id (str, optional): [deprecated] The media ID from the mxc:// URI.
+            save_to (PathLike, optional): If set, the downloaded file will be saved to this path,
+                instead of being saved in-memory.
         """
         # TODO: support TransferMonitor
 
@@ -2937,6 +2956,7 @@ class AsyncClient(Client):
             http_method,
             path,
             timeout=0,
+            save_to=save_to,
         )
 
     @client_session
