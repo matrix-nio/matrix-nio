@@ -869,7 +869,7 @@ class DownloadResponse(FileResponse):
 
 
 @dataclass
-class MemoryDownloadResponse(DownloadResponse):
+class MemoryDownloadResponse(DownloadResponse, MemoryFileResponse):
     """A response representing a successful download request with the download content stored in-memory.
 
     Attributes:
@@ -880,7 +880,7 @@ class MemoryDownloadResponse(DownloadResponse):
 
 
 @dataclass
-class DiskDownloadResponse(DownloadResponse):
+class DiskDownloadResponse(DownloadResponse, DiskFileResponse):
     """A response representing a successful download request with the download content stored on disk.
 
     Attributes:
