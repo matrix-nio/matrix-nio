@@ -831,9 +831,9 @@ class DownloadResponse(FileResponse):
     """A response representing a successful download request."""
 
     @classmethod
-    def from_data(cls, data: bytes, content_type: str, filename: Optional[str] = None):
+    def from_data(cls, data: Union[os.PathLike, bytes], content_type: str, filename: Optional[str] = None):
         # type: (...) -> Union[DownloadResponse, DownloadError]
-        if isinstance(data, bytes):
+        if isinstance(data, (bytes, os.PathLike)):
             return cls(body=data, content_type=content_type, filename=filename)
 
         if isinstance(data, dict):
