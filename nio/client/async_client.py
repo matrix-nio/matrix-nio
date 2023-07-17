@@ -107,6 +107,7 @@ from ..responses import (
     DevicesResponse,
     DiscoveryInfoError,
     DiscoveryInfoResponse,
+    DiskDownloadResponse,
     DownloadError,
     DownloadResponse,
     EnablePushRuleError,
@@ -133,6 +134,7 @@ from ..responses import (
     LoginResponse,
     LogoutError,
     LogoutResponse,
+    MemoryDownloadResponse,
     PresenceGetError,
     PresenceGetResponse,
     PresenceSetError,
@@ -2948,8 +2950,12 @@ class AsyncClient(Client):
             allow_remote,
         )
 
+        response_class = MemoryDownloadResponse
+        if save_to is not None:
+            response_class = DiskDownloadResponse
+
         return await self._send(
-            DownloadResponse,
+            response_class,
             http_method,
             path,
             timeout=0,

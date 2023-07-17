@@ -23,7 +23,7 @@ from builtins import str
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
+from typing import Any, Awaitable, Dict, Generator, List, Optional, Set, Tuple, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
 
@@ -329,15 +329,36 @@ class FileResponse(Response):
         return f"{len(self.body)} bytes, content type: {self.content_type}, filename: {self.filename}"
 
     @classmethod
-    def from_data(cls, data, content_type, filename=None):
+    def from_data(cls, data: Union[bytes, os.PathLike], content_type, filename=None):
         """Create a FileResponse from file content returned by the server.
 
         Args:
-            data (bytes): The file's content in bytes.
+            data (bytes, os.PathLike): The file's content in bytes.
             content_type (str): The content MIME type of the file,
                 e.g. "image/png".
+            filename (str, optional): The file's name returned by the server.
         """
         raise NotImplementedError()
+
+
+@dataclass
+class MemoryFileResponse(FileResponse):
+    """A response representing a successful file content request with the file content stored in memory.
+
+    This class is exactly the same as ``FileResponse`` but with a different name."""
+
+
+@dataclass
+class DiskFileResponse(FileResponse):
+    """A response representing a successful file content request with the file content stored on disk.
+
+    This class is exactly the same as ``FileResponse`` but with the following difference
+
+    Attributes:
+        body (os.PathLike): The path to the file on disk.
+    """
+
+    body: os.PathLike = field()
 
 
 @dataclass
@@ -831,15 +852,44 @@ class DownloadResponse(FileResponse):
     """A response representing a successful download request."""
 
     @classmethod
-    def from_data(cls, data: Union[os.PathLike, bytes], content_type: str, filename: Optional[str] = None):
+    def from_data(
+        cls,
+        data: Union[os.PathLike, bytes],
+        content_type: str,
+        filename: Optional[str] = None,
+    ):
         # type: (...) -> Union[DownloadResponse, DownloadError]
-        if isinstance(data, (bytes, os.PathLike)):
+        if isinstance(data, bytes):
             return cls(body=data, content_type=content_type, filename=filename)
 
         if isinstance(data, dict):
             return DownloadError.from_dict(data)
 
         return DownloadError("invalid data")
+
+
+@dataclass
+class MemoryDownloadResponse(DownloadResponse):
+    """A response representing a successful download request with the download content stored in-memory.
+
+    Attributes:
+        body (bytes): The content of the download.
+        content_type (str): The content type of the download.
+        filename (Optional[str]): The filename of the download.
+    """
+
+
+@dataclass
+class DiskDownloadResponse(DownloadResponse):
+    """A response representing a successful download request with the download content stored on disk.
+
+    Attributes:
+        body (os.PathLike): The path to the downloaded file.
+        content_type (str): The content type of the download.
+        filename (Optional[str]): The filename of the download.
+    """
+
+    body: os.PathLike = field()
 
 
 @dataclass
