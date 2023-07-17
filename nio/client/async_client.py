@@ -18,8 +18,8 @@
 import asyncio
 import io
 import json
-import warnings
 import os
+import warnings
 from asyncio import Event as AsyncioEvent
 from dataclasses import dataclass, field
 from functools import partial, wraps
@@ -506,7 +506,7 @@ class AsyncClient(Client):
         response_class: Type,
         transport_response: ClientResponse,
         data: Tuple[Any, ...] = None,
-        save_to: Optional[os.PathLike] = None
+        save_to: Optional[os.PathLike] = None,
     ) -> Response:
         """Transform a transport response into a nio matrix response.
 
@@ -764,7 +764,7 @@ class AsyncClient(Client):
         data_provider: Optional[DataProvider] = None,
         timeout: Optional[float] = None,
         content_length: Optional[int] = None,
-        save_to: Optional[os.PathLike] = None
+        save_to: Optional[os.PathLike] = None,
     ):
         headers = (
             {"Content-Type": content_type}
@@ -803,10 +803,7 @@ class AsyncClient(Client):
                 )
 
                 resp = await self.create_matrix_response(
-                    response_class,
-                    transport_resp,
-                    response_data,
-                    save_to=save_to
+                    response_class, transport_resp, response_data, save_to=save_to
                 )
 
                 if transport_resp.status == 429 or (
