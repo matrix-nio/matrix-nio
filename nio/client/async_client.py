@@ -527,7 +527,7 @@ class AsyncClient(Client):
                 response that contains our response body.
             data (Tuple, optional): Extra data that is required to instantiate
                 the response class.
-            save_to (PathLike): If set, the ``FileResponse`` body will be saved to this file.
+            save_to (PathLike, optional): If set, the ``FileResponse`` body will be saved to this file.
         Returns a subclass of `Response` depending on the type of the
         response_class argument.
         """
