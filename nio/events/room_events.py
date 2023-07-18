@@ -1562,11 +1562,11 @@ class StickerEvent(Event):
 
 @dataclass
 class ReactionEvent(Event):
-    """Class representing to a m.reaction event.
+    """An event representing an m.reaction event.
 
     Users sometimes wish to respond to a message using emojis. When such
     responses are grouped visually below the message being reacted to, this
-    provides a (visually) light-weight way for users to react to messages.
+    provides a (visually) lightweight way for users to react to messages.
 
     Attributes:
         reacts_to (str): The event_id of the message the reaction relates to.
