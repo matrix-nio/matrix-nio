@@ -20,7 +20,6 @@ import io
 import json
 import logging
 import os
-import pathlib
 import warnings
 from asyncio import Event as AsyncioEvent
 from dataclasses import dataclass, field
@@ -551,11 +550,10 @@ class AsyncClient(Client):
             if not save_to:
                 body = await transport_response.read()
             else:
-                if not isinstance(save_to, os.PathLike):
-                    save_to = pathlib.Path(save_to)
-                    # used to force os.PathLike type. 9 times out of 10, save_to is a string that simply wasn't typed.
-                if os.path.isdir(save_to):
-                    save_to = pathlib.Path(os.path.join(save_to, name))
+                save_to = Path(save_to)
+                if save_to.is_dir():
+                    save_to = save_to / name
+
                 async with aiofiles.open(save_to, "wb") as f:
                     async for chunk in transport_response.content.iter_chunked(
                         self.config.io_chunk_size
