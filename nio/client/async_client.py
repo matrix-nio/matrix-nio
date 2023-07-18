@@ -347,7 +347,7 @@ class AsyncClientConfig(ClientConfig):
             The `download()`, `thumbnail()` and `upload()` methods ignore
             this option and use `0`.
 
-        io_chunk_size (int): The size of the chunks to read from the IO
+        io_chunk_size (int): The size (in bytes) of the chunks to read from the IO
             streams when saving files to disk.
             Defaults to 64 KiB.
     """
