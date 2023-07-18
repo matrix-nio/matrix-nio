@@ -329,7 +329,9 @@ class FileResponse(Response):
         return f"{len(self.body)} bytes, content type: {self.content_type}, filename: {self.filename}"
 
     @classmethod
-    def from_data(cls, data: Union[bytes, os.PathLike, dict], content_type, filename=None):
+    def from_data(
+        cls, data: Union[bytes, os.PathLike, dict], content_type, filename=None
+    ):
         """Create a FileResponse from file content returned by the server.
 
         Args:
@@ -343,9 +345,7 @@ class FileResponse(Response):
 
 @dataclass
 class MemoryFileResponse(FileResponse):
-    """A response representing a successful file content request with the file content stored in memory.
-
-    This class is exactly the same as ``FileResponse`` but with a different name."""
+    """A response representing a successful file content request with the file content stored in memory."""
 
 
 @dataclass
@@ -889,7 +889,7 @@ class DiskDownloadResponse(DownloadResponse, DiskFileResponse):
         filename (Optional[str]): The filename of the download.
     """
 
-    body: os.PathLike = field()
+    # body: os.PathLike = field()
 
 
 @dataclass

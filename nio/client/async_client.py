@@ -16,9 +16,9 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import asyncio
-import logging
 import io
 import json
+import logging
 import os
 import pathlib
 import warnings
@@ -557,7 +557,9 @@ class AsyncClient(Client):
                 if os.path.isdir(save_to):
                     save_to = pathlib.Path(os.path.join(save_to, name))
                 async with aiofiles.open(save_to, "wb") as f:
-                    async for chunk in transport_response.content.iter_chunked(self.config.io_chunk_size):
+                    async for chunk in transport_response.content.iter_chunked(
+                        self.config.io_chunk_size
+                    ):
                         await f.write(chunk)
                 body = save_to
             resp = response_class.from_data(body, content_type, name)
@@ -832,7 +834,10 @@ class AsyncClient(Client):
                     await self.run_response_callbacks([resp])
 
                     retry_after_ms = getattr(resp, "retry_after_ms", 0) or 5000
-                    logger.warning("Got 429 response (ratelimited), sleeping for %dms", retry_after_ms)
+                    logger.warning(
+                        "Got 429 response (ratelimited), sleeping for %dms",
+                        retry_after_ms,
+                    )
                     await asyncio.sleep(retry_after_ms / 1000)
                 else:
                     break
