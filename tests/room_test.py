@@ -30,6 +30,8 @@ from nio.events import (
     RoomJoinRulesEvent,
     RoomMemberEvent,
     RoomNameEvent,
+    RoomSpaceChildEvent,
+    RoomSpaceParentEvent,
     RoomUpgradeEvent,
     TypingNoticeEvent,
 )
@@ -473,6 +475,28 @@ class TestClass:
             )
         )
         assert room.name == "test name"
+
+    def test_space_parent(self):
+        room = self.test_room
+        assert room.parents == set()
+        room.handle_event(
+            RoomSpaceParentEvent(
+                {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
+                "!X:example.org",
+            )
+        )
+        assert "!X:example.org" in room.parents
+
+    def test_space_child(self):
+        room = self.test_room
+        assert room.children == set()
+        room.handle_event(
+            RoomSpaceChildEvent(
+                {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
+                "!X:example.org",
+            )
+        )
+        assert "!X:example.org" in room.children
 
     def test_room_avatar_event(self):
         room = self.test_room

@@ -308,7 +308,7 @@ class Schemas:
             "limited": {"type": "boolean"},
             "prev_batch": {"type": "string"},
         },
-        "required": ["events", "limited"],
+        "required": ["events"],
     }
 
     sync = {
@@ -919,6 +919,43 @@ class Schemas:
                 "type": "object",
                 "properties": {"topic": {"type": "string"}},
                 "required": ["topic"],
+            },
+        },
+        "required": ["type", "sender", "content", "state_key"],
+    }
+
+    room_space_parent = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "canonical": {"type": "boolean", "default": False},
+                    "via": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["via"],
+            },
+        },
+        "required": ["type", "sender", "content", "state_key"],
+    }
+
+    room_space_child = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "suggested": {"type": "boolean", "default": False},
+                    "via": {"type": "array", "items": {"type": "string"}},
+                    "order": {"type": "string"},
+                },
+                "required": ["via"],
             },
         },
         "required": ["type", "sender", "content", "state_key"],
@@ -1856,7 +1893,11 @@ class Schemas:
 
     whoami = {
         "type": "object",
-        "user_id": "string",
+        "properties": {
+            "user_id": {"type": "string", "format": "user_id"},
+            "device_id": {"type": "string"},
+            "is_guest": {"type": "boolean"},
+        },
         "required": ["user_id"],
     }
 

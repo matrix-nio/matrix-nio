@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 import math
 import re
@@ -8,6 +9,7 @@ from datetime import datetime, timedelta
 from os import path
 from pathlib import Path
 from typing import Tuple
+from unittest.mock import AsyncMock
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -93,6 +95,7 @@ from nio import (
     RoomInviteResponse,
     RoomKeyRequest,
     RoomKickResponse,
+    RoomKnockResponse,
     RoomLeaveResponse,
     RoomMemberEvent,
     RoomMessagesResponse,
@@ -386,6 +389,10 @@ class TestClass:
     def room_resolve_alias_response(self):
         return {"room_id": TEST_ROOM_ID, "servers": ["example.org", "matrix.org"]}
 
+    @property
+    def whoami_response(self):
+        return self._load_response("tests/data/whoami_response.json")
+
     async def test_mxc_to_http(self, async_client):
         mxc = "mxc://privacytools.io/123foo"
         url_path = "/_matrix/media/r0/download/privacytools.io/123foo"
@@ -601,6 +608,21 @@ class TestClass:
         await async_client.close()
         assert not async_client.client_session
 
+    async def test_whoami(self, async_client, aioresponse):
+        async_client.restore_login(
+            user_id="unknown",
+            device_id="unknown",
+            access_token="abc123",
+        )
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/account/whoami?access_token=abc123",
+            status=200,
+            payload=self.whoami_response,
+        )
+        await async_client.whoami()
+        assert async_client.user_id != "unknown"
+        assert async_client.device_id != "unknown"
+
     async def test_logout(self, async_client, aioresponse):
         aioresponse.post(
             "https://example.org/_matrix/client/r0/login",
@@ -731,6 +753,16 @@ class TestClass:
         )
         resp4 = await async_client.sync(sync_filter={})
         assert isinstance(resp4, SyncResponse)
+
+        # Test with timeout
+
+        aioresponse.get(
+            re.compile(rf"{url}&since=[\w\d_]*&timeout=60000"),
+            status=200,
+            payload=self.sync_response,
+        )
+        resp5 = await async_client.sync(timeout=None)
+        assert isinstance(resp5, SyncResponse)
 
     async def test_sync_presence(self, async_client, aioresponse):
         """Test if prsences info in sync events are parsed correctly"""
@@ -1418,6 +1450,21 @@ class TestClass:
 
         resp = await async_client.room_invite(TEST_ROOM_ID, ALICE_ID)
         assert isinstance(resp, RoomInviteResponse)
+
+    async def test_room_knock(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            f"https://example.org/_matrix/client/r0/knock/{TEST_ROOM_ID}?access_token=abc123",
+            status=200,
+            payload=self.room_id_response(TEST_ROOM_ID),
+        )
+
+        resp = await async_client.room_knock(TEST_ROOM_ID, reason="test")
+        assert isinstance(resp, RoomKnockResponse)
 
     async def test_room_leave(self, async_client, aioresponse):
         await async_client.receive_response(
@@ -4000,9 +4047,6 @@ class TestClass:
         assert event.body == "It's a secret to everybody."
         assert cb_ran
 
-    @pytest.mark.skipif(
-        sys.version_info[0:2] == (3, 11), reason="fails due to cpython bug #99277"
-    )
     async def test_connect_wrapper(self, async_client, aioresponse):
         domain = "https://example.org"
 
@@ -4206,3 +4250,14 @@ class TestClass:
             [tweak],
         )
         assert isinstance(resp, SetPushRuleActionsResponse)
+
+    async def test_async_mockable(self):
+        mock = AsyncMock(spec=AsyncClient)
+
+        assert asyncio.iscoroutinefunction(
+            mock.room_send
+        ), "logged_in method should be awaitable"
+
+        assert not asyncio.iscoroutinefunction(
+            mock.restore_login
+        ), "not logged_in method should not be awaitable"

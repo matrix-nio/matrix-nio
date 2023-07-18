@@ -152,7 +152,6 @@ async def async_generator_from_data(
     data: AsyncDataT,
     chunk_size: int = 4 * 1024,
 ) -> AsyncGenerator[bytes, None]:
-
     aio_opened = False
     if isinstance(data, (str, Path)):
         data = await aiofiles.open(data, "rb")

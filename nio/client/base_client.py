@@ -14,6 +14,7 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import wraps
@@ -30,8 +31,6 @@ from typing import (
     Type,
     Union,
 )
-
-from logbook import Logger
 
 from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OlmDevice, OutgoingKeyRequest
 from ..events import (
@@ -50,7 +49,6 @@ from ..events import (
     UnknownBadEvent,
 )
 from ..exceptions import EncryptionError, LocalProtocolError, MembersSyncError
-from ..log import logger_group
 from ..responses import (
     ErrorResponse,
     JoinedMembersResponse,
@@ -71,6 +69,7 @@ from ..responses import (
     ShareGroupSessionResponse,
     SyncResponse,
     ToDeviceResponse,
+    WhoamiResponse,
 )
 from ..rooms import MatrixInvitedRoom, MatrixRoom
 
@@ -80,17 +79,13 @@ if ENCRYPTION_ENABLED:
 
 from ..event_builders import ToDeviceMessage
 
-if False:
-    from ..crypto import Sas
-
 try:
     from json.decoder import JSONDecodeError
 except ImportError:
     JSONDecodeError = ValueError  # type: ignore
 
 
-logger = Logger("nio.client")
-logger_group.add_logger(logger)
+logger = logging.getLogger(__name__)
 
 
 def logged_in(func):
@@ -99,6 +94,16 @@ def logged_in(func):
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
         return func(self, *args, **kwargs)
+
+    return wrapper
+
+
+def logged_in_async(func):
+    @wraps(func)
+    async def wrapper(self, *args, **kwargs):
+        if not self.logged_in:
+            raise LocalProtocolError("Not logged in.")
+        return await func(self, *args, **kwargs)
 
     return wrapper
 
@@ -1018,6 +1023,11 @@ class Client:
             )
             self.rooms[room_id].users[response.user_id].status_msg = response.status_msg
 
+    def _handle_whoami_response(self, response: WhoamiResponse):
+        self.user_id = response.user_id
+        self.device_id = response.device_id or self.device_id
+        # self.is_guest = response.is_guest
+
     def receive_response(
         self, response: Response
     ) -> Union[None, Coroutine[Any, Any, None]]:
@@ -1069,6 +1079,8 @@ class Client:
                     pass
         elif isinstance(response, PresenceGetResponse):
             self._handle_presence_response(response)
+        elif isinstance(response, WhoamiResponse):
+            self._handle_whoami_response(response)
         elif isinstance(response, ErrorResponse):
             if response.soft_logout:
                 self.access_token = ""

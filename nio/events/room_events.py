@@ -161,6 +161,10 @@ class Event:
             return RedactionEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.tombstone":
             return RoomUpgradeEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.space.parent":
+            return RoomSpaceParentEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.space.child":
+            return RoomSpaceChildEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.encrypted":
             return Event.parse_encrypted_event(event_dict)
         elif event_dict["type"] == "m.sticker":
@@ -815,6 +819,48 @@ class RoomAvatarEvent(Event):
 
 
 @dataclass
+class RoomSpaceParentEvent(Event):
+    """Event holding the parent space of a room.
+
+    Attributes:
+        state_key (str): The parent space's room
+
+    """
+
+    state_key: str = field()
+    canonical: bool = False
+
+    @classmethod
+    @verify(Schemas.room_space_parent)
+    def from_dict(cls, parsed_dict):
+        content_dict = parsed_dict["content"]
+        return cls(
+            parsed_dict, parsed_dict["state_key"], content_dict.get("canonical", False)
+        )
+
+
+@dataclass
+class RoomSpaceChildEvent(Event):
+    """Event holding the child rooms of a space.
+
+    Attributes:
+        state_key (str): The child room of a space
+
+    """
+
+    state_key: str = field()
+    suggested: bool = False
+
+    @classmethod
+    @verify(Schemas.room_space_child)
+    def from_dict(cls, parsed_dict):
+        content_dict = parsed_dict["content"]
+        return cls(
+            parsed_dict, parsed_dict["state_key"], content_dict.get("suggested", False)
+        )
+
+
+@dataclass
 class RoomMessage(Event):
     """Abstract room message class.
 
@@ -1437,7 +1483,7 @@ class RoomMemberEvent(Event):
             cases except for when membership is join, the user ID in the sender
             attribute does not need to match the user ID in the state_key.
         membership (str): The membership state of the user. One of "invite",
-            "join", "leave", "ban".
+            "join", "leave", "ban", "knock".
         prev_membership (str, optional): The previous membership state that
             this one is overwriting. Can be None in which case the membership
             state is assumed to have been "leave".

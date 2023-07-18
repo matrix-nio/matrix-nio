@@ -778,6 +778,36 @@ class Api:
         )
 
     @staticmethod
+    def room_knock(
+        access_token: str,
+        room_id: str,
+        reason: Optional[str] = None,
+    ) -> Tuple[str, str, str]:
+        """Knocks on a room for the user.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room id of the room that the user will be
+                knocking on.
+            reason (str, optional): The reason the user is knocking.
+        """
+
+        path = ["knock", room_id]
+        query_parameters = {"access_token": access_token}
+        body = {}
+
+        if reason:
+            body["reason"] = reason
+
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body),
+        )
+
+    @staticmethod
     def room_invite(access_token, room_id, user_id):
         # type (str, str, str) -> Tuple[str, str, str]
         """Invite a user to a room.

@@ -100,15 +100,11 @@ class TestClass:
             alice.import_keys(file, "pass")
 
     def test_invalid_json_schema(self, tempdir):
-        device_id = "DEVICEID"
         file = path.join(tempdir, "keys_file")
 
         payload = {"sessions": [{"algorithm": "test"}]}
-
         encrypt_and_save(json.dumps(payload).encode(), file, "pass", count=10)
 
-        alice_store = DefaultStore("alice", device_id, tempdir, "")
-        alice = Olm("alice", device_id, alice_store)
+        imported = Olm.import_keys_static(file, "pass")
 
-        with pytest.raises(EncryptionError):
-            alice.import_keys(file, "pass")
+        assert len(imported) == 0

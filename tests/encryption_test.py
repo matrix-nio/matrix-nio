@@ -784,7 +784,6 @@ class TestClass:
         assert alice.is_device_ignored(bob_device)
 
     def test_session_unwedging(self, olm_account, bob_account):
-
         alice = olm_account
         bob = bob_account
 

@@ -17,6 +17,7 @@
 
 from __future__ import unicode_literals
 
+import logging
 from builtins import str
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -25,7 +26,6 @@ from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
 
 from aiohttp import StreamReader
 from jsonschema.exceptions import SchemaError, ValidationError
-from logbook import Logger
 
 from .event_builders import ToDeviceMessage
 from .events import (
@@ -38,11 +38,9 @@ from .events import (
 )
 from .events.presence import PresenceEvent
 from .http import TransportResponse
-from .log import logger_group
 from .schemas import Schemas, validate_json
 
-logger = Logger("nio.responses")
-logger_group.add_logger(logger)
+logger = logging.getLogger(__name__)
 
 
 __all__ = [
@@ -100,6 +98,8 @@ __all__ = [
     "RoomInviteError",
     "RoomKickResponse",
     "RoomKickError",
+    "RoomKnockResponse",
+    "RoomKnockError",
     "RoomLeaveResponse",
     "RoomLeaveError",
     "RoomForgetResponse",
@@ -173,6 +173,8 @@ __all__ = [
     "UploadFilterResponse",
     "UpdateReceiptMarkerError",
     "UpdateReceiptMarkerResponse",
+    "WhoamiError",
+    "WhoamiResponse",
 ]
 
 
@@ -181,10 +183,10 @@ def verify(schema, error_class, pass_arguments=True):
         @wraps(f)
         def wrapper(cls, parsed_dict, *args, **kwargs):
             try:
-                logger.info("Validating response schema")
+                logger.debug("Validating response schema %r: %s", schema, parsed_dict)
                 validate_json(parsed_dict, schema)
             except (SchemaError, ValidationError) as e:
-                logger.warn("Error validating response: " + str(e.message))
+                logger.warning("Error validating response: " + str(e.message))
 
                 if pass_arguments:
                     return error_class.from_dict(parsed_dict, *args, **kwargs)
@@ -534,6 +536,12 @@ class JoinError(ErrorResponse):
     pass
 
 
+class RoomKnockError(ErrorResponse):
+    """A response representing a unsuccessful room knock request."""
+
+    pass
+
+
 class RoomLeaveError(ErrorResponse):
     pass
 
@@ -680,7 +688,6 @@ class DiscoveryInfoResponse(Response):
         cls,
         parsed_dict: Dict[str, Any],
     ) -> Union["DiscoveryInfoResponse", DiscoveryInfoError]:
-
         homeserver_url = parsed_dict["m.homeserver"]["base_url"].rstrip("/")
 
         identity_server_url = (
@@ -1297,6 +1304,12 @@ class JoinResponse(RoomIdResponse):
         return JoinError.from_dict(parsed_dict)
 
 
+class RoomKnockResponse(RoomIdResponse):
+    @staticmethod
+    def create_error(parsed_dict):
+        return RoomKnockError.from_dict(parsed_dict)
+
+
 class RoomLeaveResponse(EmptyResponse):
     @staticmethod
     def create_error(parsed_dict):
@@ -1742,7 +1755,9 @@ class SyncResponse(Response):
 
         events = SyncResponse._get_room_events(parsed_dict.get("events", []))
 
-        return Timeline(events, parsed_dict["limited"], parsed_dict.get("prev_batch"))
+        return Timeline(
+            events, parsed_dict.get("limited", False), parsed_dict.get("prev_batch")
+        )
 
     @staticmethod
     def _get_state(parsed_dict: Dict[Any, Any]) -> List[Union[Event, BadEventType]]:
@@ -1929,8 +1944,9 @@ class WhoamiError(ErrorResponse):
 
 @dataclass
 class WhoamiResponse(Response):
-
     user_id: str = field()
+    device_id: Optional[str] = field()
+    is_guest: Optional[bool] = field()
 
     @classmethod
     @verify(Schemas.whoami, WhoamiError)
@@ -1938,7 +1954,11 @@ class WhoamiResponse(Response):
         cls,
         parsed_dict: Dict[Any, Any],
     ) -> Union["WhoamiResponse", WhoamiError]:
-        return cls(parsed_dict["user_id"])
+        return cls(
+            parsed_dict["user_id"],
+            parsed_dict.get("device_id"),
+            parsed_dict.get("is_guest", False),
+        )
 
 
 @dataclass

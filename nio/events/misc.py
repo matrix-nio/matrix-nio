@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+import logging
+from dataclasses import dataclass, field
+from functools import wraps
+from typing import Any, Dict, Optional, Union
+
+from jsonschema.exceptions import SchemaError, ValidationError
+
+from ..schemas import validate_json
 
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
 #
@@ -14,18 +22,8 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from dataclasses import dataclass, field
-from functools import wraps
-from typing import Any, Dict, Optional, Union
 
-from jsonschema.exceptions import SchemaError, ValidationError
-from logbook import Logger
-
-from ..log import logger_group
-from ..schemas import validate_json
-
-logger = Logger("nio.events")
-logger_group.add_logger(logger)
+logger = logging.getLogger(__name__)
 
 
 def validate_or_badevent(
@@ -36,7 +34,7 @@ def validate_or_badevent(
     try:
         validate_json(parsed_dict, schema)
     except (ValidationError, SchemaError) as e:
-        logger.warn(f"Error validating event: {str(e)}")
+        logger.warning(f"Error validating event: {str(e)}")
         try:
             return BadEvent.from_dict(parsed_dict)
         except KeyError:

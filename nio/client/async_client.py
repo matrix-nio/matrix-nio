@@ -173,6 +173,8 @@ from ..responses import (
     RoomKeyRequestResponse,
     RoomKickError,
     RoomKickResponse,
+    RoomKnockError,
+    RoomKnockResponse,
     RoomLeaveError,
     RoomLeaveResponse,
     RoomMessagesError,
@@ -187,6 +189,7 @@ from ..responses import (
     RoomRedactResponse,
     RoomResolveAliasError,
     RoomResolveAliasResponse,
+    RoomSendError,
     RoomSendResponse,
     RoomTypingError,
     RoomTypingResponse,
@@ -221,7 +224,7 @@ from ..responses import (
     WhoamiResponse,
 )
 from . import Client, ClientConfig
-from .base_client import logged_in, store_loaded
+from .base_client import logged_in_async, store_loaded
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
 
@@ -240,7 +243,15 @@ SynchronousFile = (
     io.BytesIO,
     io.FileIO,
 )
+SynchronousFileType = Union[
+    io.TextIOBase,
+    io.BufferedReader,
+    io.BufferedRandom,
+    io.BytesIO,
+    io.FileIO,
+]
 AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
+AsyncFileType = Union[AsyncBufferedReader, AsyncTextIOWrapper]
 
 
 async def execute_callback(func, *args):
@@ -995,7 +1006,7 @@ class AsyncClient(Client):
 
         return await self._send(LoginResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def logout(
         self, all_devices: bool = False
     ) -> Union[LogoutResponse, LogoutError]:
@@ -1010,7 +1021,7 @@ class AsyncClient(Client):
 
         return await self._send(LogoutResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def sync(
         self,
         timeout: Optional[int] = 0,
@@ -1059,7 +1070,11 @@ class AsyncClient(Client):
         method, path = Api.sync(
             self.access_token,
             since=sync_token or self.loaded_sync_token,
-            timeout=timeout or None,
+            timeout=(
+                int(self.config.request_timeout) * 1000
+                if timeout is None
+                else timeout or None
+            ),
             filter=sync_filter,
             full_state=full_state,
             set_presence=presence,
@@ -1076,7 +1091,7 @@ class AsyncClient(Client):
 
         return response
 
-    @logged_in
+    @logged_in_async
     async def send_to_device_messages(
         self,
     ) -> List[Union[ToDeviceResponse, ToDeviceError]]:
@@ -1109,7 +1124,7 @@ class AsyncClient(Client):
                 if cb.filter is None or isinstance(response, cb.filter):
                     await execute_callback(cb.func, response)
 
-    @logged_in
+    @logged_in_async
     async def sync_forever(
         self,
         timeout: Optional[int] = None,
@@ -1179,7 +1194,11 @@ class AsyncClient(Client):
 
         while True:
             try:
-                use_filter = first_sync_filter if first_sync else sync_filter
+                use_filter = (
+                    first_sync_filter
+                    if first_sync and first_sync_filter is not None
+                    else sync_filter
+                )
                 use_timeout = 0 if first_sync else timeout
 
                 tasks = []
@@ -1237,7 +1256,7 @@ class AsyncClient(Client):
 
                 break
 
-    @logged_in
+    @logged_in_async
     @store_loaded
     async def start_key_verification(
         self, device: OlmDevice, tx_id: Optional[str] = None
@@ -1254,7 +1273,7 @@ class AsyncClient(Client):
         message = self.create_key_verification(device)
         return await self.to_device(message, tx_id)
 
-    @logged_in
+    @logged_in_async
     @store_loaded
     async def cancel_key_verification(
         self,
@@ -1294,7 +1313,7 @@ class AsyncClient(Client):
 
         return await self.to_device(message, tx_id)
 
-    @logged_in
+    @logged_in_async
     @store_loaded
     async def accept_key_verification(
         self, transaction_id: str, tx_id: Optional[str] = None
@@ -1319,7 +1338,7 @@ class AsyncClient(Client):
 
         return await self.to_device(message, tx_id)
 
-    @logged_in
+    @logged_in_async
     @store_loaded
     async def confirm_short_auth_string(
         self, transaction_id: str, tx_id: Optional[str] = None
@@ -1336,7 +1355,7 @@ class AsyncClient(Client):
         message = self.confirm_key_verification(transaction_id)
         return await self.to_device(message, tx_id)
 
-    @logged_in
+    @logged_in_async
     async def to_device(
         self,
         message: ToDeviceMessage,
@@ -1364,7 +1383,7 @@ class AsyncClient(Client):
             ToDeviceResponse, method, path, data, response_data=(message,)
         )
 
-    @logged_in
+    @logged_in_async
     @store_loaded
     async def keys_upload(self) -> Union[KeysUploadResponse, KeysUploadError]:
         """Upload the E2E encryption keys.
@@ -1389,7 +1408,7 @@ class AsyncClient(Client):
 
         return await self._send(KeysUploadResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     @store_loaded
     async def keys_query(self) -> Union[KeysQueryResponse, KeysQueryError]:
         """Query the server for user keys.
@@ -1415,7 +1434,7 @@ class AsyncClient(Client):
 
         return await self._send(KeysQueryResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def devices(self) -> Union[DevicesResponse, DevicesError]:
         """Get the list of devices for the current user.
 
@@ -1428,7 +1447,7 @@ class AsyncClient(Client):
 
         return await self._send(DevicesResponse, method, path)
 
-    @logged_in
+    @logged_in_async
     async def update_device(
         self, device_id: str, content: Dict[str, str]
     ) -> Union[UpdateDeviceResponse, UpdateDeviceError]:
@@ -1452,7 +1471,7 @@ class AsyncClient(Client):
 
         return await self._send(UpdateDeviceResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def delete_devices(
         self, devices: List[str], auth: Optional[Dict[str, str]] = None
     ) -> Union[DeleteDevicesResponse, DeleteDevicesError]:
@@ -1491,7 +1510,7 @@ class AsyncClient(Client):
 
         return await self._send(DeleteDevicesResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def joined_members(
         self, room_id: str
     ) -> Union[JoinedMembersResponse, JoinedMembersError]:
@@ -1512,7 +1531,7 @@ class AsyncClient(Client):
             JoinedMembersResponse, method, path, response_data=(room_id,)
         )
 
-    @logged_in
+    @logged_in_async
     async def joined_rooms(
         self,
     ) -> Union[JoinedRoomsResponse, JoinedRoomsError]:
@@ -1527,7 +1546,7 @@ class AsyncClient(Client):
 
         return await self._send(JoinedRoomsResponse, method, path)
 
-    @logged_in
+    @logged_in_async
     async def room_send(
         self,
         room_id: str,
@@ -1535,7 +1554,7 @@ class AsyncClient(Client):
         content: Dict[Any, Any],
         tx_id: Optional[str] = None,
         ignore_unverified_devices: bool = False,
-    ):
+    ) -> Union[RoomSendResponse, RoomSendError]:
         """Send a message to a room.
 
         Calls receive_response() to update the client state if necessary.
@@ -1606,7 +1625,7 @@ class AsyncClient(Client):
 
         return await self._send(RoomSendResponse, method, path, data, (room_id,))
 
-    @logged_in
+    @logged_in_async
     async def room_get_event(
         self, room_id: str, event_id: str
     ) -> Union[RoomGetEventResponse, RoomGetEventError]:
@@ -1625,7 +1644,7 @@ class AsyncClient(Client):
 
         return await self._send(RoomGetEventResponse, method, path)
 
-    @logged_in
+    @logged_in_async
     async def room_put_state(
         self,
         room_id: str,
@@ -1663,7 +1682,7 @@ class AsyncClient(Client):
             response_data=(room_id,),
         )
 
-    @logged_in
+    @logged_in_async
     async def room_get_state(
         self,
         room_id: str,
@@ -1691,7 +1710,7 @@ class AsyncClient(Client):
             response_data=(room_id,),
         )
 
-    @logged_in
+    @logged_in_async
     async def room_get_state_event(
         self, room_id: str, event_type: str, state_key: str = ""
     ) -> Union[RoomGetStateEventResponse, RoomGetStateEventError]:
@@ -1724,7 +1743,7 @@ class AsyncClient(Client):
             ),
         )
 
-    @logged_in
+    @logged_in_async
     async def room_redact(
         self,
         room_id: str,
@@ -1787,7 +1806,7 @@ class AsyncClient(Client):
             response_data=(room_alias,),
         )
 
-    @logged_in
+    @logged_in_async
     async def room_delete_alias(
         self,
         room_alias: str,
@@ -1815,7 +1834,7 @@ class AsyncClient(Client):
             response_data=(room_alias,),
         )
 
-    @logged_in
+    @logged_in_async
     async def room_put_alias(
         self,
         room_alias: str,
@@ -1871,7 +1890,7 @@ class AsyncClient(Client):
             response_data=(room_id,),
         )
 
-    @logged_in
+    @logged_in_async
     @store_loaded
     async def keys_claim(
         self, user_set: Dict[str, Iterable[str]]
@@ -1896,7 +1915,7 @@ class AsyncClient(Client):
 
         return await self._send(KeysClaimResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     @store_loaded
     async def share_group_session(
         self,
@@ -1985,7 +2004,7 @@ class AsyncClient(Client):
 
         return ShareGroupSessionResponse(room_id, shared_with)
 
-    @logged_in
+    @logged_in_async
     @store_loaded
     async def request_room_key(
         self,
@@ -2105,7 +2124,7 @@ class AsyncClient(Client):
             if self.olm.inbound_group_store.add(session):
                 self.store.save_inbound_group_session(session)
 
-    @logged_in
+    @logged_in_async
     async def room_create(
         self,
         visibility: RoomVisibility = RoomVisibility.private,
@@ -2206,7 +2225,7 @@ class AsyncClient(Client):
 
         return await self._send(RoomCreateResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def join(self, room_id: str) -> Union[JoinResponse, JoinError]:
         """Join a room.
 
@@ -2224,7 +2243,51 @@ class AsyncClient(Client):
         method, path, data = Api.join(self.access_token, room_id)
         return await self._send(JoinResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
+    async def room_knock(
+        self,
+        room_id: str,
+        reason: Optional[str] = None,
+    ) -> Union[RoomKnockResponse, RoomKnockError]:
+        """Knock on a room.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `RoomKnockResponse` if the request was successful or
+        a `RoomKnockError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room that the user is
+                knocking on.
+            reason (str, optional): The reason for the knock.
+        """
+        method, path, data = Api.room_knock(
+            self.access_token,
+            room_id,
+            reason,
+        )
+        return await self._send(RoomKnockResponse, method, path, data)
+
+    @logged_in_async
+    async def room_enable_knocking(
+        self,
+        room_id: str,
+    ) -> Union[RoomPutStateResponse, RoomPutStateError]:
+        """Enables knocking for a room.
+
+        Returns either a `RoomPutStateResponse` if the request was successful
+        or a `RoomPutStateError` if there was an error with the request.
+
+        Args:
+            room_id (str): The room id of the room to enable knocking for.
+        """
+        return await self.room_put_state(
+            room_id,
+            event_type="m.room.join_rules",
+            content={"join_rule": "knock"},
+        )
+
+    @logged_in_async
     async def room_invite(
         self,
         room_id: str,
@@ -2249,7 +2312,7 @@ class AsyncClient(Client):
         )
         return await self._send(RoomInviteResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def room_leave(
         self, room_id: str
     ) -> Union[RoomLeaveResponse, RoomLeaveError]:
@@ -2269,7 +2332,7 @@ class AsyncClient(Client):
         method, path, data = Api.room_leave(self.access_token, room_id)
         return await self._send(RoomLeaveResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def room_forget(
         self, room_id: str
     ) -> Union[RoomForgetResponse, RoomForgetError]:
@@ -2292,7 +2355,7 @@ class AsyncClient(Client):
             RoomForgetResponse, method, path, data, response_data=(room_id,)
         )
 
-    @logged_in
+    @logged_in_async
     async def room_kick(
         self,
         room_id: str,
@@ -2324,7 +2387,7 @@ class AsyncClient(Client):
         )
         return await self._send(RoomKickResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def room_ban(
         self,
         room_id: str,
@@ -2358,7 +2421,7 @@ class AsyncClient(Client):
         )
         return await self._send(RoomBanResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def room_unban(
         self,
         room_id: str,
@@ -2386,7 +2449,7 @@ class AsyncClient(Client):
         )
         return await self._send(RoomUnbanResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def room_context(
         self,
         room_id: str,
@@ -2416,7 +2479,7 @@ class AsyncClient(Client):
             RoomContextResponse, method, path, response_data=(room_id,)
         )
 
-    @logged_in
+    @logged_in_async
     async def room_messages(
         self,
         room_id: str,
@@ -2475,7 +2538,7 @@ class AsyncClient(Client):
             RoomMessagesResponse, method, path, response_data=(room_id,)
         )
 
-    @logged_in
+    @logged_in_async
     async def room_typing(
         self,
         room_id: str,
@@ -2507,7 +2570,7 @@ class AsyncClient(Client):
             RoomTypingResponse, method, path, data, response_data=(room_id,)
         )
 
-    @logged_in
+    @logged_in_async
     async def update_receipt_marker(
         self,
         room_id: str,
@@ -2543,7 +2606,7 @@ class AsyncClient(Client):
             "{}",
         )
 
-    @logged_in
+    @logged_in_async
     async def room_read_markers(
         self, room_id: str, fully_read_event: str, read_event: Optional[str] = None
     ):
@@ -2588,7 +2651,7 @@ class AsyncClient(Client):
             RoomReadMarkersResponse, method, path, data, response_data=(room_id,)
         )
 
-    @logged_in
+    @logged_in_async
     async def content_repository_config(
         self,
     ) -> Union[ContentRepositoryConfigResponse, ContentRepositoryConfigError]:
@@ -2648,10 +2711,10 @@ class AsyncClient(Client):
             else:
                 yield await self._process_data_chunk(value, monitor)
 
-    @logged_in
+    @logged_in_async
     async def upload(
         self,
-        data_provider: DataProvider,
+        data_provider: Union[DataProvider, SynchronousFileType, AsyncFileType],
         content_type: str = "application/octet-stream",
         filename: Optional[str] = None,
         encrypt: bool = False,
@@ -3082,7 +3145,7 @@ class AsyncClient(Client):
             path,
         )
 
-    @logged_in
+    @logged_in_async
     async def set_displayname(self, displayname: str) -> _ProfileSetDisplayNameT:
         """Set user's display name.
 
@@ -3137,7 +3200,7 @@ class AsyncClient(Client):
             path,
         )
 
-    @logged_in
+    @logged_in_async
     async def set_avatar(
         self, avatar_url: str
     ) -> Union[ProfileSetAvatarResponse, ProfileSetAvatarError]:
@@ -3166,7 +3229,7 @@ class AsyncClient(Client):
             data,
         )
 
-    @logged_in
+    @logged_in_async
     async def get_openid_token(
         self, user_id: str
     ) -> Union[GetOpenIDTokenResponse, GetOpenIDTokenError]:
@@ -3185,7 +3248,7 @@ class AsyncClient(Client):
 
         return await self._send(GetOpenIDTokenResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def upload_filter(
         self,
         user_id: Optional[str] = None,
@@ -3242,14 +3305,22 @@ class AsyncClient(Client):
 
         return await self._send(UploadFilterResponse, method, path, data)
 
-    async def whoami(self):
+    async def whoami(self) -> Union[WhoamiResponse, WhoamiError]:
+        """Get information about the logged-in user from the homeserver.
+
+        Returns either a `WhoamiResponse` if the request was successful
+        or a `WhoamiError` if there was an error with the request.
+
+        On a successful response, the client's state will be updated with
+        the user_id and device_id returned, if different from the current state.
+        """
         if self.access_token is None:
             raise ValueError("No access_token is set.")
 
         method, path = Api.whoami(self.access_token)
         return await self._send(WhoamiResponse, method, path)
 
-    @logged_in
+    @logged_in_async
     async def set_pushrule(
         self,
         scope: str,
@@ -3343,7 +3414,7 @@ class AsyncClient(Client):
 
         return await self._send(SetPushRuleResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def delete_pushrule(
         self,
         scope: str,
@@ -3377,7 +3448,7 @@ class AsyncClient(Client):
 
         return await self._send(DeletePushRuleResponse, method, path)
 
-    @logged_in
+    @logged_in_async
     async def enable_pushrule(
         self,
         scope: str,
@@ -3415,7 +3486,7 @@ class AsyncClient(Client):
 
         return await self._send(EnablePushRuleResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def set_pushrule_actions(
         self,
         scope: str,
@@ -3458,7 +3529,7 @@ class AsyncClient(Client):
 
         return await self._send(SetPushRuleActionsResponse, method, path, data)
 
-    @logged_in
+    @logged_in_async
     async def room_update_aliases(
         self,
         room_id: str,
@@ -3522,7 +3593,7 @@ class AsyncClient(Client):
             return RoomUpdateAliasError("Failed to put m.room.canonical_alias")
         return RoomUpdateAliasResponse()
 
-    @logged_in
+    @logged_in_async
     async def room_upgrade(
         self,
         old_room_id: str,
@@ -3650,7 +3721,7 @@ class AsyncClient(Client):
 
         return RoomUpgradeResponse(new_room.room_id)
 
-    @logged_in
+    @logged_in_async
     async def update_room_topic(
         self,
         room_id: str,
@@ -3674,7 +3745,7 @@ class AsyncClient(Client):
             content={"topic": topic},
         )
 
-    @logged_in
+    @logged_in_async
     async def has_event_permission(
         self, room_id: str, event_name: str, event_type: str = "event"
     ) -> Union[bool, ErrorResponse]:
