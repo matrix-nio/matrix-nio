@@ -16,6 +16,7 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import asyncio
+import logging
 import io
 import json
 import os
@@ -255,6 +256,8 @@ SynchronousFileType = Union[
 ]
 AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
 AsyncFileType = Union[AsyncBufferedReader, AsyncTextIOWrapper]
+
+logger = logging.getLogger(__name__)
 
 
 async def execute_callback(func, *args):
@@ -811,7 +814,10 @@ class AsyncClient(Client):
                 )
 
                 resp = await self.create_matrix_response(
-                    response_class, transport_resp, response_data, save_to=save_to
+                    response_class=response_class,
+                    transport_response=transport_resp,
+                    data=response_data,
+                    save_to=save_to,
                 )
 
                 if transport_resp.status == 429 or (
@@ -826,6 +832,7 @@ class AsyncClient(Client):
                     await self.run_response_callbacks([resp])
 
                     retry_after_ms = getattr(resp, "retry_after_ms", 0) or 5000
+                    logger.warning("Got 429 response (ratelimited), sleeping for %dms", retry_after_ms)
                     await asyncio.sleep(retry_after_ms / 1000)
                 else:
                     break
@@ -837,6 +844,7 @@ class AsyncClient(Client):
                     raise
 
                 wait = await self.get_timeout_retry_wait_time(got_timeouts)
+                logger.warning("Timed out, sleeping for %ds", wait)
                 await asyncio.sleep(wait)
 
         await self.receive_response(resp)
