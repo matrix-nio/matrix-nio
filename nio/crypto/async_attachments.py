@@ -30,8 +30,8 @@ from Crypto.Cipher import AES  # nosec
 from Crypto.Hash import SHA256  # nosec
 from Crypto.Util import Counter  # nosec
 
-from .attachments import _get_decryption_info_dict
 from ..exceptions import EncryptionError
+from .attachments import _get_decryption_info_dict
 
 AsyncDataT = Union[
     str,
