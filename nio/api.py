@@ -1474,8 +1474,7 @@ class Api:
                 attempt to fetch the media if it is deemed remote.
                 This is to prevent routing loops where the server contacts
                 itself.
-            file (os.PathLike): The file to write the downloaded content to. If provided,
-                the `content` for
+            file (os.PathLike): The file to stream the downloaded content to.
         """
         query_parameters = {
             "allow_remote": "true" if allow_remote else "false",
