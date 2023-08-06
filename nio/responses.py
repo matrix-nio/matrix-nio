@@ -351,6 +351,7 @@ class MemoryFileResponse(FileResponse):
     Attributes:
         body (bytes): The file's content in bytes.
     """
+
     body: bytes = field()
 
 
