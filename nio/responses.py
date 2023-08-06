@@ -895,7 +895,7 @@ class DiskDownloadResponse(DownloadResponse, DiskFileResponse):
         filename (Optional[str]): The filename of the download.
     """
 
-    # body: os.PathLike = field()
+    body: os.PathLike = field()
 
 
 @dataclass
