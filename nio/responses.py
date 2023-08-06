@@ -345,7 +345,13 @@ class FileResponse(Response):
 
 @dataclass
 class MemoryFileResponse(FileResponse):
-    """A response representing a successful file content request with the file content stored in memory."""
+    """
+    A response representing a successful file content request with the file content stored in memory.
+
+    Attributes:
+        body (bytes): The file's content in bytes.
+    """
+    body: bytes = field()
 
 
 @dataclass
