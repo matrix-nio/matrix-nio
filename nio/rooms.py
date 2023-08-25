@@ -412,10 +412,16 @@ class MatrixRoom:
                     self.users[user_id].power_level = level
 
         elif isinstance(event, RoomSpaceParentEvent):
-            self.parents.add(event.state_key)
+            if "via" in event.source.get("content", {}):
+                self.parents.add(event.state_key)
+            else:
+                self.parents.discard(event.state_key)
 
         elif isinstance(event, RoomSpaceChildEvent):
-            self.children.add(event.state_key)
+            if "via" in event.source.get("content", {}):
+                self.children.add(event.state_key)
+            else:
+                self.children.discard(event.state_key)
 
     def handle_account_data(self, event: AccountDataEvent) -> None:
         if isinstance(event, FullyReadEvent):
