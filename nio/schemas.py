@@ -1924,3 +1924,65 @@ class Schemas:
             "state_key",
         ],
     }
+
+    space_hierarchy = {
+        "type": "object",
+        "properties": {
+            "next_batch": {"type": "string"},
+            "rooms": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "avatar_url": {"type": "string"},
+                        "canonical_alias": {"type": "string"},
+                        "children_state": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "content": {
+                                        "type": "object",
+                                        "properties": {
+                                            "via": {
+                                                "type": "array",
+                                                "items": {"type": "string"},
+                                            },
+                                        },
+                                        "required": ["via"],
+                                    },
+                                    "origin_server_ts": {"type": "integer"},
+                                    "sender": {"type": "string"},
+                                    "state_key": {"type": "string"},
+                                    "type": {"type": "string"},
+                                },
+                                "required": [
+                                    "content",
+                                    "origin_server_ts",
+                                    "sender",
+                                    "state_key",
+                                    "type",
+                                ],
+                            },
+                        },
+                        "guest_can_join": {"type": "boolean"},
+                        "join_rule": {"type": "string"},
+                        "name": {"type": "string"},
+                        "num_joined_members": {"type": "integer"},
+                        "room_id": {"type": "string"},
+                        "room_type": {"type": "string"},
+                        "topic": {"type": "string"},
+                        "world_readable": {"type": "boolean"},
+                    },
+                    "required": [
+                        "children_state",
+                        "guest_can_join",
+                        "num_joined_members",
+                        "room_id",
+                        "world_readable",
+                    ],
+                },
+            },
+        },
+        "required": ["rooms"],
+    }
