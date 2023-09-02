@@ -14,13 +14,13 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import cgi
 import json
 import logging
 import pprint
 from builtins import str, super
 from collections import deque
 from dataclasses import dataclass, field
+from email.message import EmailMessage
 from functools import wraps
 from typing import Any, Deque, Dict, List, Optional, Sequence, Tuple, Type, Union
 from uuid import UUID, uuid4
@@ -1110,7 +1110,9 @@ class HttpClient(Client):
             disposition = str(
                 transport_response.headers[b"content-disposition"], "utf-8"
             )
-            filename = cgi.parse_header(disposition)[1]["filename"]
+            message = EmailMessage()
+            message["Content-Disposition"] = disposition
+            filename = message.get_filename()
         except KeyError:
             filename = None
 
