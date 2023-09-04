@@ -44,9 +44,10 @@ def extend_with_default(validator_class):
 
 
 Validator = extend_with_default(Draft4Validator)
+Checker = FormatChecker()
 
 
-@FormatChecker.cls_checks("user_id", ValueError)
+@Checker.checks("user_id", ValueError)
 def check_user_id(value: str) -> bool:
     if not value.startswith("@"):
         raise ValueError("UserIDs start with @")
@@ -57,7 +58,7 @@ def check_user_id(value: str) -> bool:
     return True
 
 
-@FormatChecker.cls_checks("http_url", ValueError)
+@Checker.checks("http_url", ValueError)
 def check_http_url(value: str) -> bool:
     if not re.match(r"^https?://.+", value):
         raise ValueError("Must be http://... or https://... URL")
@@ -66,7 +67,7 @@ def check_http_url(value: str) -> bool:
 
 
 def validate_json(instance, schema):
-    Validator(schema, format_checker=FormatChecker()).validate(instance)
+    Validator(schema, format_checker=Checker).validate(instance)
 
 
 class Schemas:
