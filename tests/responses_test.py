@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import json
 from pathlib import Path
+from typing import Type
 
 import pytest
 
@@ -137,7 +138,7 @@ class TestClass:
             (Path("tests/data/file_response"), DiskDownloadResponse),
         ],
     )
-    def test_download(self, data, response_class: type[DownloadResponse]):
+    def test_download(self, data, response_class: Type[DownloadResponse]):
         response = response_class.from_data(data, "image/png", "example.png")
         assert isinstance(response, response_class)
         assert response.body == data
