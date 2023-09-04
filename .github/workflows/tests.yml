@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  lint:
+  pre-commit-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -15,14 +15,9 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
-      - name: Lint with Black
+      - name: Run all pre-commit hooks
         run: |
-          pip install black
-          black --check .
-      - name: Lint with isort
-        run: |
-          pip install isort
-          isort --check --profile=black .
+          pre-commit run --all-files
 
   build:
 
