@@ -17,7 +17,6 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.8.0"
-future = "^0.18.2"
 aiohttp = "^3.8.3"
 aiofiles = "^23.1.0"
 h11 = "^0.14.0"

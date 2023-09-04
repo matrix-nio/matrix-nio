@@ -18,6 +18,8 @@
 import asyncio
 import io
 import json
+import logging
+import os
 import warnings
 from asyncio import Event as AsyncioEvent
 from dataclasses import dataclass, field
@@ -43,6 +45,7 @@ from typing import (
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
+import aiofiles
 from aiofiles.threadpool.binary import AsyncBufferedReader
 from aiofiles.threadpool.text import AsyncTextIOWrapper
 from aiohttp import (
@@ -105,6 +108,7 @@ from ..responses import (
     DevicesResponse,
     DiscoveryInfoError,
     DiscoveryInfoResponse,
+    DiskDownloadResponse,
     DownloadError,
     DownloadResponse,
     EnablePushRuleError,
@@ -131,6 +135,7 @@ from ..responses import (
     LoginResponse,
     LogoutError,
     LogoutResponse,
+    MemoryDownloadResponse,
     PresenceGetError,
     PresenceGetResponse,
     PresenceSetError,
@@ -251,6 +256,8 @@ SynchronousFileType = Union[
 AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
 AsyncFileType = Union[AsyncBufferedReader, AsyncTextIOWrapper]
 
+logger = logging.getLogger(__name__)
+
 
 async def execute_callback(func, *args):
     if asyncio.iscoroutinefunction(func):
@@ -341,6 +348,10 @@ class AsyncClientConfig(ClientConfig):
             `timeout` argument.
             The `download()`, `thumbnail()` and `upload()` methods ignore
             this option and use `0`.
+
+        io_chunk_size (int): The size (in bytes) of the chunks to read from the IO
+            streams when saving files to disk.
+            Defaults to 64 KiB.
     """
 
     max_limit_exceeded: Optional[int] = None
@@ -348,6 +359,7 @@ class AsyncClientConfig(ClientConfig):
     backoff_factor: float = 0.1
     max_timeout_retry_wait_time: float = 60
     request_timeout: float = 60
+    io_chunk_size: int = 64 * 1024
 
 
 class AsyncClient(Client):
@@ -504,6 +516,7 @@ class AsyncClient(Client):
         response_class: Type,
         transport_response: ClientResponse,
         data: Tuple[Any, ...] = None,
+        save_to: Optional[os.PathLike] = None,
     ) -> Response:
         """Transform a transport response into a nio matrix response.
 
@@ -516,7 +529,7 @@ class AsyncClient(Client):
                 response that contains our response body.
             data (Tuple, optional): Extra data that is required to instantiate
                 the response class.
-
+            save_to (PathLike, optional): If set, the ``FileResponse`` body will be saved to this file.
         Returns a subclass of `Response` depending on the type of the
         response_class argument.
         """
@@ -534,7 +547,19 @@ class AsyncClient(Client):
             resp = response_class.from_data(parsed_dict, content_type, name)
 
         elif issubclass(response_class, FileResponse):
-            body = await transport_response.read()
+            if not save_to:
+                body = await transport_response.read()
+            else:
+                save_to = Path(save_to)
+                if save_to.is_dir():
+                    save_to = save_to / name
+
+                async with aiofiles.open(save_to, "wb") as f:
+                    async for chunk in transport_response.content.iter_chunked(
+                        self.config.io_chunk_size
+                    ):
+                        await f.write(chunk)
+                body = save_to
             resp = response_class.from_data(body, content_type, name)
         elif (
             issubclass(response_class, RoomGetStateEventResponse)
@@ -750,6 +775,7 @@ class AsyncClient(Client):
         data_provider: Optional[DataProvider] = None,
         timeout: Optional[float] = None,
         content_length: Optional[int] = None,
+        save_to: Optional[os.PathLike] = None,
     ):
         headers = (
             {"Content-Type": content_type}
@@ -788,9 +814,10 @@ class AsyncClient(Client):
                 )
 
                 resp = await self.create_matrix_response(
-                    response_class,
-                    transport_resp,
-                    response_data,
+                    response_class=response_class,
+                    transport_response=transport_resp,
+                    data=response_data,
+                    save_to=save_to,
                 )
 
                 if transport_resp.status == 429 or (
@@ -805,6 +832,10 @@ class AsyncClient(Client):
                     await self.run_response_callbacks([resp])
 
                     retry_after_ms = getattr(resp, "retry_after_ms", 0) or 5000
+                    logger.warning(
+                        "Got 429 response (ratelimited), sleeping for %dms",
+                        retry_after_ms,
+                    )
                     await asyncio.sleep(retry_after_ms / 1000)
                 else:
                     break
@@ -816,6 +847,7 @@ class AsyncClient(Client):
                     raise
 
                 wait = await self.get_timeout_retry_wait_time(got_timeouts)
+                logger.warning("Timed out, sleeping for %ds", wait)
                 await asyncio.sleep(wait)
 
         await self.receive_response(resp)
@@ -2872,14 +2904,15 @@ class AsyncClient(Client):
         allow_remote: bool = True,
         server_name: Optional[str] = None,
         media_id: Optional[str] = None,
-    ) -> Union[DownloadResponse, DownloadError]:
+        save_to: Optional[os.PathLike] = None,
+    ) -> Union[DiskDownloadResponse, MemoryDownloadResponse, DownloadError]:
         """Get the content of a file from the content repository.
 
         This method ignores `AsyncClient.config.request_timeout` and uses `0`.
 
         Calls receive_response() to update the client state if necessary.
 
-        Returns either a `DownloadResponse` if the request was successful or
+        Returns either a `MemoryDownloadResponse` or `DiskDownloadResponse` if the request was successful or
         a `DownloadError` if there was an error with the request.
 
         The parameters `server_name` and `media_id` are deprecated and will be removed in a future release.
@@ -2896,6 +2929,8 @@ class AsyncClient(Client):
                 itself.
             server_name (str, optional): [deprecated] The server name from the mxc:// URI.
             media_id (str, optional): [deprecated] The media ID from the mxc:// URI.
+            save_to (PathLike, optional): If set, the downloaded file will be saved to this path,
+                instead of being saved in-memory.
         """
         # TODO: support TransferMonitor
 
@@ -2932,11 +2967,16 @@ class AsyncClient(Client):
             allow_remote,
         )
 
+        response_class = MemoryDownloadResponse
+        if save_to is not None:
+            response_class = DiskDownloadResponse
+
         return await self._send(
-            DownloadResponse,
+            response_class,
             http_method,
             path,
             timeout=0,
+            save_to=save_to,
         )
 
     @client_session

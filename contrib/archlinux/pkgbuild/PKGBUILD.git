@@ -15,7 +15,7 @@ conflicts=('python-matrix-nio')
 provides=('python-matrix-nio')
 depends=('python' 'python-olm' 'python-h11' 'python-h2'
        'python-jsonschema' 'python-logbook'
-       'python-peewee' 'python-atomicwrites' 'python-future'
+       'python-peewee' 'python-atomicwrites'
        'python-pycryptodome' 'python-unpaddedbase64')
 checkdepends=()
 source=("$pkgbase-$pkgver.tar.gz")
