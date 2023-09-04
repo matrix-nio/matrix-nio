@@ -45,3 +45,54 @@ mypy = "^0.812"
 pytest-aiohttp = "^0.3.0"
 aioresponses = "^0.7.2"
 pytest-benchmark = "^3.2.3"
+ruff = "^0.0.287"
+
+[tool.ruff]
+select = [
+    "E",     # pycodestyle
+    "F",     # Pyflakes
+    "I001",  # isort
+#    "UP",    # pyupgrade
+#    "ASYNC", # flake8-async
+]
+ignore = [
+]
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "venv*",
+]
+
+# Assume Python 3.11.
+target-version = "py38"
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = [
+    "F401",
+    "I001",
+]
