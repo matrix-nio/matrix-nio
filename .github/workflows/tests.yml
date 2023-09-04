@@ -17,6 +17,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Run all pre-commit hooks
         run: |
+          pip install pre-commit
           pre-commit run --all-files
 
   build:
