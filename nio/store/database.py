@@ -16,7 +16,6 @@ import sqlite3
 from builtins import super
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Dict, List, Optional
 
 from peewee import DoesNotExist, SqliteDatabase
 from playhouse.sqliteq import SqliteQueueDatabase

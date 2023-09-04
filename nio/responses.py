@@ -23,7 +23,7 @@ from builtins import str
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import Any, Awaitable, Dict, Generator, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
 

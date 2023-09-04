@@ -1,5 +1,4 @@
 import asyncio
-import inspect
 import json
 import math
 import re
@@ -126,7 +125,7 @@ from nio import (
 )
 from nio.api import EventFormat, ResizingMethod, RoomPreset, RoomVisibility
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
-from nio.crypto import OlmDevice, Session, TrustState, decrypt_attachment
+from nio.crypto import OlmDevice, Session, decrypt_attachment
 
 TEST_ROOM_ID = "!testroom:example.org"
 
@@ -2632,7 +2631,7 @@ class TestClass:
         async_client.config = AsyncClientConfig(max_timeouts=3)
 
         try:
-            resp = await async_client.login("wordpass")
+            await async_client.login("wordpass")
         except asyncio.TimeoutError:
             return
 
@@ -3160,7 +3159,7 @@ class TestClass:
         # This implicitly claims one-time keys since we don't have an Olm
         # session with Alice
         with pytest.raises(OlmTrustError):
-            response = await bob.share_group_session(TEST_ROOM_ID)
+            await bob.share_group_session(TEST_ROOM_ID)
 
         to_device_for_alice = None
 
@@ -3775,7 +3774,7 @@ class TestClass:
         # This implicitly claims one-time keys since we don't have an Olm
         # session with Alice
         with pytest.raises(OlmTrustError):
-            response = await bob.share_group_session(TEST_ROOM_ID)
+            await bob.share_group_session(TEST_ROOM_ID)
 
         to_device_for_alice = None
 

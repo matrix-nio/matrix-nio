@@ -3,7 +3,6 @@
 from __future__ import unicode_literals
 
 import json
-import pdb
 
 from nio.api import PushRuleKind
 from nio.events import (

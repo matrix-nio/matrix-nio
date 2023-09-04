@@ -22,7 +22,7 @@ import json
 from builtins import str
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Any, DefaultDict, Dict, Iterator, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, Union
 
 import olm
 from cachetools import LRUCache
@@ -33,7 +33,6 @@ from ..api import Api
 from ..event_builders import DummyMessage, RoomKeyRequestMessage, ToDeviceMessage
 from ..events import (
     BadEvent,
-    BadEventType,
     DummyEvent,
     EncryptedToDeviceEvent,
     Event,
@@ -68,7 +67,6 @@ from ..responses import (
     ToDeviceResponse,
 )
 from ..schemas import Schemas, validate_json
-from ..store import MatrixStore
 from . import (
     DeviceStore,
     GroupSessionStore,
@@ -79,7 +77,6 @@ from . import (
     OutboundGroupSession,
     OutboundSession,
     OutgoingKeyRequest,
-    Session,
     SessionStore,
     logger,
 )

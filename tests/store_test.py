@@ -2,9 +2,7 @@
 
 import copy
 import os
-import pdb
 from collections import defaultdict
-from shutil import copyfile
 
 import pytest
 from helpers import ephemeral, ephemeral_dir, faker
@@ -126,7 +124,7 @@ class TestClass:
         assert key == store.get_key(key.user_id, key.device_id)
 
     def test_key_store_add_invalid(self, tempdir):
-        store_path = os.path.join(tempdir, "test_store")
+        os.path.join(tempdir, "test_store")
         store = KeyStore(os.path.join(tempdir, "test_store"))
 
         key = faker.ed25519_key()
@@ -139,7 +137,7 @@ class TestClass:
             store.add(fake_key)
 
     def test_key_store_check_invalid(self, tempdir):
-        store_path = os.path.join(tempdir, "test_store")
+        os.path.join(tempdir, "test_store")
         store = KeyStore(os.path.join(tempdir, "test_store"))
 
         key = faker.ed25519_key()
@@ -152,7 +150,7 @@ class TestClass:
         assert key in store
 
     def test_key_store_add_many(self, tempdir):
-        store_path = os.path.join(tempdir, "test_store")
+        os.path.join(tempdir, "test_store")
         store = KeyStore(os.path.join(tempdir, "test_store"))
 
         keys = [
@@ -170,7 +168,7 @@ class TestClass:
             assert key in store2
 
     def test_key_store_remove_many(self, tempdir):
-        store_path = os.path.join(tempdir, "test_store")
+        os.path.join(tempdir, "test_store")
         store = KeyStore(os.path.join(tempdir, "test_store"))
 
         keys = [
@@ -249,7 +247,7 @@ class TestClass:
 
     @ephemeral
     def test_store_device_keys(self):
-        account = self._create_ephemeral_account()
+        self._create_ephemeral_account()
         store = self.ephemeral_store
 
         devices = self.example_devices
@@ -288,7 +286,7 @@ class TestClass:
 
     @ephemeral
     def test_empty_device_keys(self):
-        account = self._create_ephemeral_account()
+        self._create_ephemeral_account()
         store = self.ephemeral_store
         store.save_device_keys(dict())
 
@@ -393,7 +391,7 @@ class TestClass:
         assert sorted(loaded_session.forwarding_chain) == sorted(TEST_FORWARDING_CHAIN)
 
     def test_new_store_device_keys(self, store):
-        account = store.load_account()
+        store.load_account()
 
         devices = self.example_devices
         assert len(devices) == 11
@@ -582,7 +580,7 @@ class TestClass:
         assert sqlmemorystore.is_device_verified(bob_device)
 
     def test_device_deletion(self, store):
-        account = store.load_account()
+        store.load_account()
 
         devices = self.example_devices
         assert len(devices) == 11

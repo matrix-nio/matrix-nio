@@ -22,8 +22,8 @@ from collections import deque
 from dataclasses import dataclass, field
 from email.message import EmailMessage
 from functools import wraps
-from typing import Any, Deque, Dict, List, Optional, Sequence, Tuple, Type, Union
-from uuid import UUID, uuid4
+from typing import Tuple, Type
+from uuid import uuid4
 
 import h2
 import h11
@@ -33,16 +33,13 @@ try:
 except ImportError:
     from urlparse import urlparse  # type: ignore
 
-from ..api import Api, MessageDirection, ResizingMethod, RoomPreset, RoomVisibility
-from ..events import MegolmEvent
+from ..api import Api, MessageDirection, ResizingMethod, RoomVisibility
 from ..exceptions import LocalProtocolError, RemoteTransportError
 from ..http import (
     Http2Connection,
     Http2Request,
     HttpConnection,
     HttpRequest,
-    TransportRequest,
-    TransportResponse,
     TransportType,
 )
 from ..responses import (
@@ -84,7 +81,7 @@ from ..responses import (
     ToDeviceResponse,
     UpdateDeviceResponse,
 )
-from . import Client, ClientConfig
+from . import Client
 from .base_client import logged_in, store_loaded
 
 try:
