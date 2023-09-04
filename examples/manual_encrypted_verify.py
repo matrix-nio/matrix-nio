@@ -215,7 +215,7 @@ class CustomEncryptedClient(AsyncClient):
             )
         except exceptions.OlmUnverifiedDeviceError:
             print("These are all known devices:")
-            device_store: crypto.DeviceStore = device_store
+            device_store: crypto.DeviceStore = device_store  # noqa: F821
             [
                 print(
                     f"\t{device.user_id}\t {device.device_id}\t {device.trust_state}\t  {device.display_name}"
