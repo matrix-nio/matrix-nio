@@ -9,15 +9,20 @@ on:
 jobs:
   pre-commit-check:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: [ "3.11" ]
     steps:
       - uses: actions/checkout@v3
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
-      - name: Run all pre-commit hooks
+      - name: Install pre-commit
         run: |
           pip install pre-commit
+      - name: pre-commit run --all-files
+        run: |
           pre-commit run --all-files
 
   build:
