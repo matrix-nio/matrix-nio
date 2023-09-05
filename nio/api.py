@@ -43,9 +43,6 @@ from typing import (
 if TYPE_CHECKING:
     from .events.account_data import PushAction, PushCondition
 
-if False:
-    pass
-
 try:
     from urllib.parse import quote, urlencode, urlparse
 except ImportError:
