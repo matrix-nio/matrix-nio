@@ -28,8 +28,6 @@ from json.decoder import JSONDecodeError
 from pathlib import Path
 from typing import (
     Any,
-    AsyncIterable,
-    BinaryIO,
     Callable,
     Coroutine,
     Dict,
@@ -87,18 +85,13 @@ from ..events import (
     ToDeviceEvent,
 )
 from ..exceptions import (
-    GroupEncryptionError,
     LocalProtocolError,
-    MembersSyncError,
-    SendRetryError,
     TransferCancelledError,
 )
 from ..monitors import TransferMonitor
 from ..responses import (
     ContentRepositoryConfigError,
     ContentRepositoryConfigResponse,
-    DeleteAliasError,
-    DeleteAliasResponse,
     DeleteDevicesAuthResponse,
     DeleteDevicesError,
     DeleteDevicesResponse,
@@ -110,7 +103,6 @@ from ..responses import (
     DiscoveryInfoResponse,
     DiskDownloadResponse,
     DownloadError,
-    DownloadResponse,
     EnablePushRuleError,
     EnablePushRuleResponse,
     ErrorResponse,
@@ -150,8 +142,6 @@ from ..responses import (
     ProfileSetAvatarResponse,
     ProfileSetDisplayNameError,
     ProfileSetDisplayNameResponse,
-    PutAliasError,
-    PutAliasResponse,
     RegisterResponse,
     Response,
     RoomBanError,
@@ -188,7 +178,6 @@ from ..responses import (
     RoomPutAliasResponse,
     RoomPutStateError,
     RoomPutStateResponse,
-    RoomReadMarkersError,
     RoomReadMarkersResponse,
     RoomRedactError,
     RoomRedactResponse,
@@ -198,7 +187,6 @@ from ..responses import (
     RoomSendResponse,
     RoomTypingError,
     RoomTypingResponse,
-    RoomUnbanError,
     RoomUnbanResponse,
     RoomUpdateAliasError,
     RoomUpdateAliasResponse,

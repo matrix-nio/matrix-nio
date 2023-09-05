@@ -15,10 +15,8 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from dataclasses import dataclass, field
-from typing import Dict
 
-from ..event_builders import RoomKeyRequestMessage, ToDeviceMessage
-from ..responses import RoomKeyRequestResponse
+from ..event_builders import ToDeviceMessage
 
 
 @dataclass

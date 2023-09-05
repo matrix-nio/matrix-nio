@@ -24,7 +24,6 @@ from nio.responses import (
     LoginError,
     LoginInfoResponse,
     LoginResponse,
-    LogoutError,
     LogoutResponse,
     MemoryDownloadResponse,
     ProfileGetAvatarResponse,

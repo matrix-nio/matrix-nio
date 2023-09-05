@@ -1,5 +1,4 @@
 import asyncio
-import inspect
 import json
 import math
 import re
@@ -126,7 +125,7 @@ from nio import (
 )
 from nio.api import EventFormat, ResizingMethod, RoomPreset, RoomVisibility
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
-from nio.crypto import OlmDevice, Session, TrustState, decrypt_attachment
+from nio.crypto import OlmDevice, Session, decrypt_attachment
 
 TEST_ROOM_ID = "!testroom:example.org"
 
@@ -1229,6 +1228,33 @@ class TestClass:
         assert not async_client.get_missing_sessions(TEST_ROOM_ID)
         assert async_client.olm.session_store.get(alice_device.curve25519)
 
+    async def test_session_sharing_2(self, alice_client, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        await async_client.receive_response(self.encryption_sync_response)
+
+        alice_client.load_store()
+
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/sendToDevice/m.room_key_request/1?access_token=abc123",
+            status=200,
+            payload={},
+        )
+
+        event = MegolmEvent.from_dict(
+            self._load_response("tests/data/events/megolm.json")
+        )
+
+        await async_client.request_room_key(event, "1")
+
+        assert (
+            "X3lUlvLELLYxeTx4yOVu6UDpasGEVO0Jbu+QFnm0cKQ"
+            in async_client.outgoing_key_requests
+        )
+
     async def test_get_openid_token(self, async_client, aioresponse):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
@@ -1304,33 +1330,6 @@ class TestClass:
         response = await async_client.joined_rooms()
 
         assert isinstance(response, JoinedRoomsResponse)
-
-    async def test_session_sharing(self, alice_client, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
-
-        await async_client.receive_response(self.encryption_sync_response)
-
-        alice_client.load_store()
-
-        aioresponse.put(
-            "https://example.org/_matrix/client/r0/sendToDevice/m.room_key_request/1?access_token=abc123",
-            status=200,
-            payload={},
-        )
-
-        event = MegolmEvent.from_dict(
-            self._load_response("tests/data/events/megolm.json")
-        )
-
-        await async_client.request_room_key(event, "1")
-
-        assert (
-            "X3lUlvLELLYxeTx4yOVu6UDpasGEVO0Jbu+QFnm0cKQ"
-            in async_client.outgoing_key_requests
-        )
 
     async def test_key_exports(self, async_client, tempdir):
         file = path.join(tempdir, "keys_file")
@@ -2632,7 +2631,7 @@ class TestClass:
         async_client.config = AsyncClientConfig(max_timeouts=3)
 
         try:
-            resp = await async_client.login("wordpass")
+            await async_client.login("wordpass")
         except asyncio.TimeoutError:
             return
 
@@ -3160,7 +3159,7 @@ class TestClass:
         # This implicitly claims one-time keys since we don't have an Olm
         # session with Alice
         with pytest.raises(OlmTrustError):
-            response = await bob.share_group_session(TEST_ROOM_ID)
+            await bob.share_group_session(TEST_ROOM_ID)
 
         to_device_for_alice = None
 
@@ -3775,7 +3774,7 @@ class TestClass:
         # This implicitly claims one-time keys since we don't have an Olm
         # session with Alice
         with pytest.raises(OlmTrustError):
-            response = await bob.share_group_session(TEST_ROOM_ID)
+            await bob.share_group_session(TEST_ROOM_ID)
 
         to_device_for_alice = None
 

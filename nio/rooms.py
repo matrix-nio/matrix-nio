@@ -20,10 +20,7 @@ from __future__ import unicode_literals
 import logging
 from builtins import super
 from collections import defaultdict
-from enum import Enum
-from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional, Set, Tuple, Union
-
-from jsonschema.exceptions import SchemaError, ValidationError
+from typing import Dict, List, Optional, Tuple, Union
 
 from .events import (
     AccountDataEvent,
@@ -35,7 +32,6 @@ from .events import (
     InviteNameEvent,
     PowerLevels,
     PowerLevelsEvent,
-    Receipt,
     ReceiptEvent,
     RoomAliasEvent,
     RoomAvatarEvent,

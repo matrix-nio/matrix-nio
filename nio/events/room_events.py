@@ -19,11 +19,11 @@ from __future__ import unicode_literals
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from ..event_builders import RoomKeyRequestMessage
 from ..schemas import Schemas
-from .misc import BadEvent, BadEventType, UnknownBadEvent, validate_or_badevent, verify
+from .misc import BadEvent, UnknownBadEvent, validate_or_badevent, verify
 
 
 @dataclass

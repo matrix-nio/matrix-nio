@@ -15,7 +15,7 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from collections import defaultdict
-from typing import DefaultDict, Dict, Iterator, KeysView, List, Optional
+from typing import DefaultDict, Dict, Iterator, List, Optional
 
 from .sessions import InboundGroupSession, Session
 

@@ -27,7 +27,7 @@ import olm
 
 from ..api import Api
 from ..event_builders import ToDeviceMessage
-from ..events import KeyVerificationEvent, KeyVerificationStart
+from ..events import KeyVerificationEvent
 from ..exceptions import LocalProtocolError
 from .device import OlmDevice
 
