@@ -284,13 +284,11 @@ class TestClass:
         assert isinstance(response, LoginInfoResponse)
 
     def test_register(self):
-        parsed_dict = TestClass._load_response("tests/data/register_response.json")
+        parsed_dict = _load_response("tests/data/register_response.json")
         response = RegisterResponse.from_dict(parsed_dict)
         assert isinstance(response, RegisterResponse)
 
     def test_register_interactive(self):
-        parsed_dict = TestClass._load_response(
-            "tests/data/register_interactive_response.json"
-        )
+        parsed_dict = _load_response("tests/data/register_interactive_response.json")
         response = RegisterInteractiveResponse.from_dict(parsed_dict)
         assert isinstance(response, RegisterInteractiveResponse)

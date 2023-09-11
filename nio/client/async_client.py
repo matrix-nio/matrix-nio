@@ -142,8 +142,6 @@ from ..responses import (
     ProfileSetAvatarResponse,
     ProfileSetDisplayNameError,
     ProfileSetDisplayNameResponse,
-    PutAliasError,
-    PutAliasResponse,
     RegisterErrorResponse,
     RegisterInteractiveError,
     RegisterInteractiveResponse,
