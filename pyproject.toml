@@ -45,7 +45,7 @@ mypy = "^0.812"
 pytest-aiohttp = "^0.3.0"
 aioresponses = "^0.7.2"
 pytest-benchmark = "^3.2.3"
-ruff = "^0.0.287"
+ruff = "^0.0.291"
 
 [tool.ruff]
 select = [

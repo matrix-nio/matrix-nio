@@ -93,7 +93,7 @@ class TestClass:
         parsed_dict = TestClass._load_response("tests/data/events/create.json")
         event = RoomCreateEvent.from_dict(parsed_dict)
         assert isinstance(event, RoomCreateEvent)
-        
+
     def test_create_event_typed(self):
         parsed_dict = TestClass._load_response("tests/data/events/create_typed.json")
         event = RoomCreateEvent.from_dict(parsed_dict)

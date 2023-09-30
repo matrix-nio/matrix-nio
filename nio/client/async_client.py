@@ -2316,7 +2316,7 @@ class AsyncClient(Client):
                 If not specified, the homeserver will use its default setting.
                 If a version not supported by the homeserver is specified,
                 a 400 ``M_UNSUPPORTED_ROOM_VERSION`` error will be returned.
-                
+
             room_type (str, optional): The room type to set.
                 If not specified, the homeserver will use its default setting.
                 In spec v1.2 the following room types are specified:
