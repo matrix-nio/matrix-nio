@@ -1463,7 +1463,7 @@ class TestClass:
         )
         assert isinstance(resp, RoomCreateResponse)
         assert resp.room_id == TEST_ROOM_ID
-        
+
     async def test_room_create__typed(self, async_client, aioresponse):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
