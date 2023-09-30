@@ -72,6 +72,7 @@ class MatrixRoom:
         self.creator = ""             # type: str
         self.federate = True          # type: bool
         self.room_version = "1"       # type: str
+        self.room_type = None         # type: Optional[str]
         self.guest_access = "forbidden"  # type: str
         self.join_rule = "invite"     # type: str
         self.history_visibility = "shared"  # type: str
@@ -368,6 +369,7 @@ class MatrixRoom:
             self.creator = event.creator
             self.federate = event.federate
             self.room_version = event.room_version
+            self.room_type = event.room_type
 
         elif isinstance(event, RoomGuestAccessEvent):
             self.guest_access = event.guest_access

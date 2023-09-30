@@ -625,12 +625,17 @@ class RoomCreateEvent(Event):
         room_version (str): The version of the room. Different room versions
             will have different event formats. Clients shouldn't worry about
             this too much unless they want to perform room upgrades.
+        room_type (str): The type of the room.
+            In spec v1.2 the following room types are specified:
+                - `m.space`
+            Unspecified room types are permitted through the use of Namespaced Identifiers.
 
     """
 
     creator: str = field()
     federate: bool = True
     room_version: str = "1"
+    room_type: str = ""
 
     @classmethod
     @verify(Schemas.room_create)
@@ -639,8 +644,10 @@ class RoomCreateEvent(Event):
         creator = parsed_dict["content"]["creator"]
         federate = parsed_dict["content"]["m.federate"]
         version = parsed_dict["content"]["room_version"]
+        if "type" in parsed_dict["content"]:
+            room_type = parsed_dict["content"]["type"]
 
-        return cls(parsed_dict, creator, federate, version)
+        return cls(parsed_dict, creator, federate, version, room_type)
 
 
 @dataclass
