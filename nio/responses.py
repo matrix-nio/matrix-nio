@@ -175,6 +175,8 @@ __all__ = [
     "UpdateReceiptMarkerResponse",
     "WhoamiError",
     "WhoamiResponse",
+    "SpaceGetHierarchyResponse",
+    "SpaceGetHierarchyError",
 ]
 
 
@@ -553,6 +555,10 @@ class RoomForgetError(_ErrorWithRoomId):
 
 
 class RoomMessagesError(_ErrorWithRoomId):
+    pass
+
+
+class SpaceGetHierarchyError(ErrorResponse):
     pass
 
 
@@ -1156,6 +1162,33 @@ class RoomGetVisibilityResponse(Response):
         # type: (...) -> Union[RoomGetVisibilityResponse, ErrorResponse]
         visibility = parsed_dict["visibility"]
         return cls(room_id, visibility)
+
+
+@dataclass
+class SpaceGetHierarchyResponse(Response):
+    """A response indicating successful space get hierarchy request.
+
+    Attributes:
+        next_batch: The token to supply in the from parameter of the next call.
+        rooms: The rooms in the space.
+    """
+
+    next_batch: str = field()
+    rooms: List = field()
+
+    @classmethod
+    @verify(
+        Schemas.space_hierarchy,
+        SpaceGetHierarchyError,
+        pass_arguments=False,
+    )
+    def from_dict(
+        cls, parsed_dict: Dict[str, Any]
+    ) -> Union["SpaceGetHierarchyResponse", SpaceGetHierarchyError]:
+        next_batch = parsed_dict.get("next_batch")
+        rooms = parsed_dict["rooms"]
+        resp = cls(next_batch, rooms)
+        return resp
 
 
 class EmptyResponse(Response):

@@ -580,6 +580,47 @@ class Api:
         return ("PUT", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
+    def space_get_hierarchy(
+        access_token: str,
+        space_id: str,
+        from_page: Optional[str] = None,
+        limit: Optional[int] = None,
+        max_depth: Optional[int] = None,
+        suggested_only: bool = False,
+    ) -> Tuple[str, str]:
+        """Get rooms/spaces that are a part of the provided space.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            space_id (str): The ID of the space to get the hierarchy for.
+            from_page (str, optional): Pagination token from a previous request
+                to this endpoint.
+            limit (int, optional): The maximum number of rooms to return.
+            max_depth (int, optional): The maximum depth of the returned tree.
+            suggested_only (bool, optional): Whether or not to only return
+                rooms that are considered suggested. Defaults to False.
+        """
+        query_parameters = {"access_token": access_token}
+
+        if from_page:
+            query_parameters["from"] = from_page
+
+        if limit:
+            query_parameters["limit"] = limit
+
+        if max_depth:
+            query_parameters["max_depth"] = max_depth
+
+        if suggested_only:
+            query_parameters["suggested_only"] = suggested_only
+
+        path = ["rooms", space_id, "hierarchy"]
+
+        return ("GET", Api._build_path(path, query_parameters, "/_matrix/client/v1"))
+
+    @staticmethod
     def room_get_event(
         access_token: str, room_id: str, event_id: str
     ) -> Tuple[str, str]:

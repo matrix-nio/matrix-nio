@@ -112,6 +112,8 @@ from nio import (
     SetPushRuleActionsResponse,
     SetPushRuleResponse,
     ShareGroupSessionResponse,
+    SpaceGetHierarchyError,
+    SpaceGetHierarchyResponse,
     SyncResponse,
     ThumbnailError,
     ThumbnailResponse,
@@ -166,6 +168,10 @@ class TestClass:
     @property
     def login_response(self):
         return self._load_response("tests/data/login_response.json")
+
+    @property
+    def hierarchy_response(self):
+        return self._load_response("tests/data/get_hierarchy_response.json")
 
     @property
     def logout_response(self):
@@ -4299,3 +4305,65 @@ class TestClass:
         assert not asyncio.iscoroutinefunction(
             mock.restore_login
         ), "not logged_in method should not be awaitable"
+
+    async def test_space_get_hierarchy(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        base_url = "https://example.org/_matrix/client/v1"
+
+        aioresponse.get(
+            f"{base_url}/rooms/{TEST_ROOM_ID}/hierarchy?access_token=abc123",
+            status=200,
+            payload=self.hierarchy_response,
+        )
+
+        resp = await async_client.space_get_hierarchy(TEST_ROOM_ID)
+
+        assert isinstance(resp, SpaceGetHierarchyResponse)
+        assert isinstance(resp.rooms, list)
+
+        aioresponse.get(
+            f"{base_url}/rooms/{TEST_ROOM_ID}/hierarchy?access_token=abc123",
+            status=403,
+            payload={
+                "errcode": "M_FORBIDDEN",
+                "error": "You are not allowed to view this room.",
+            },
+        )
+
+        resp = await async_client.space_get_hierarchy(TEST_ROOM_ID)
+
+        assert isinstance(resp, SpaceGetHierarchyError)
+
+        aioresponse.get(
+            f"{base_url}/rooms/{TEST_ROOM_ID}/hierarchy?access_token=abc123&from=invalid",
+            status=400,
+            payload={
+                "errcode": "M_INVALID_PARAM",
+                "error": "suggested_only and max_depth cannot change on paginated requests",
+            },
+        )
+
+        resp = await async_client.space_get_hierarchy(TEST_ROOM_ID, from_page="invalid")
+
+        assert isinstance(resp, SpaceGetHierarchyError)
+
+        async_client.config = AsyncClientConfig(max_limit_exceeded=0)
+
+        aioresponse.get(
+            f"{base_url}/rooms/{TEST_ROOM_ID}/hierarchy?access_token=abc123",
+            status=429,
+            payload={
+                "errcode": "M_LIMIT_EXCEEDED",
+                "error": "Too many requests",
+                "retry_after_ms": 1,
+            },
+            repeat=True,
+        )
+
+        resp = await async_client.space_get_hierarchy(TEST_ROOM_ID)
+
+        assert isinstance(resp, SpaceGetHierarchyError)

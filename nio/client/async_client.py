@@ -201,6 +201,8 @@ from ..responses import (
     SetPushRuleResponse,
     ShareGroupSessionError,
     ShareGroupSessionResponse,
+    SpaceGetHierarchyError,
+    SpaceGetHierarchyResponse,
     SyncError,
     SyncResponse,
     ThumbnailError,
@@ -1620,6 +1622,42 @@ class AsyncClient(Client):
         )
 
         return await self._send(DeleteDevicesResponse, method, path, data)
+
+    @logged_in_async
+    async def space_get_hierarchy(
+        self,
+        space_id: str,
+        from_page: Optional[str] = None,
+        limit: Optional[int] = None,
+        max_depth: Optional[int] = None,
+        suggested_only: bool = False,
+    ) -> Union[SpaceGetHierarchyResponse, SpaceGetHierarchyError]:
+        """Gets the space's room hierarchy.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `SpaceGetHierarchyResponse` if the request was successful
+        or a `SpaceGetHierarchyError` if there was an error with the request.
+
+        Args:
+            space_id (str): The ID of the space to get the hierarchy for.
+            from_page (str, optional): Pagination token from a previous request
+                to this endpoint.
+            limit (int, optional): The maximum number of rooms to return.
+            max_depth (int, optional): The maximum depth of the returned tree.
+            suggested_only (bool, optional): Whether or not to only return
+                rooms that are considered suggested. Defaults to False.
+        """
+        method, path = Api.space_get_hierarchy(
+            self.access_token,
+            space_id,
+            from_page=from_page,
+            limit=limit,
+            max_depth=max_depth,
+            suggested_only=suggested_only,
+        )
+
+        return await self._send(SpaceGetHierarchyResponse, method, path)
 
     @logged_in_async
     async def joined_members(
