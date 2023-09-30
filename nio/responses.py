@@ -732,6 +732,39 @@ class RegisterResponse(Response):
 
 
 @dataclass
+class RegisterInteractiveError(ErrorResponse):
+    pass
+
+
+@dataclass
+class RegisterInteractiveResponse(Response):
+    stages: List[str] = field()
+    params: Dict[str, Any] = field()
+    session: str = field()
+    completed: List[str] = field()
+    user_id: str = field()
+    device_id: str = field()
+    access_token: str = field()
+
+    @classmethod
+    @verify(Schemas.register_flows, RegisterInteractiveError)
+    def from_dict(cls, parsed_dict: Dict[Any, Any]):
+        # type: (...) -> Union[RegisterInteractiveResponse, RegisterInteractiveError]
+        for flow in parsed_dict["flows"]:
+            stages = [stage for stage in flow["stages"]]
+
+        return cls(
+            stages,
+            parsed_dict["params"],
+            parsed_dict["session"],
+            parsed_dict.get("completed"),
+            parsed_dict.get("user_id"),
+            parsed_dict.get("device_id"),
+            parsed_dict.get("access_token"),
+        )
+
+
+@dataclass
 class LoginInfoError(ErrorResponse):
     pass
 

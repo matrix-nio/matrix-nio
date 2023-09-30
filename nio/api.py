@@ -326,6 +326,7 @@ class Api:
         password=None,  # type: str
         device_name="",  # type: Optional[str]
         device_id="",  # type: Optional[str]
+        auth_dict=None,  # type: Optional[dict[str, Any]]
     ):
         """Register a new user.
 
@@ -338,13 +339,26 @@ class Api:
             device_id (str): ID of the client device. If this does not
                 correspond to a known client device, a new device will be
                 created.
+            auth_dict (Dict[str, Any, optional): The authentication dictionary
+                containing the elements for a particular registration flow.
+                If not provided, then m.login.dummy is used.
+                See the example below and here
+                https://spec.matrix.org/latest/client-server-api/#account-registration-and-management
+                for detailed documentation
+
+                Example:
+                        >>> auth_dict = {
+                        >>>     "type": "m.login.registration_token",
+                        >>>     "registration_token": "REGISTRATIONTOKEN",
+                        >>>     "session": "session-id-from-homeserver"
+                        >>> }
         """
         path = Api._build_path(["register"])
 
         content_dict = {
-            "auth": {"type": "m.login.dummy"},
             "username": user,
             "password": password,
+            "auth": auth_dict or {"type": "m.login.dummy"},
         }
 
         if device_id:

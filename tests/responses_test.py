@@ -29,6 +29,8 @@ from nio.responses import (
     ProfileGetAvatarResponse,
     ProfileGetDisplayNameResponse,
     ProfileGetResponse,
+    RegisterInteractiveResponse,
+    RegisterResponse,
     RoomContextError,
     RoomContextResponse,
     RoomCreateResponse,
@@ -286,3 +288,13 @@ class TestClass:
         parsed_dict = _load_response("tests/data/get_hierarchy_response.json")
         response = SpaceGetHierarchyResponse.from_dict(parsed_dict)
         assert isinstance(response, SpaceGetHierarchyResponse)
+
+    def test_register(self):
+        parsed_dict = _load_response("tests/data/register_response.json")
+        response = RegisterResponse.from_dict(parsed_dict)
+        assert isinstance(response, RegisterResponse)
+
+    def test_register_interactive(self):
+        parsed_dict = _load_response("tests/data/register_interactive_response.json")
+        response = RegisterInteractiveResponse.from_dict(parsed_dict)
+        assert isinstance(response, RegisterInteractiveResponse)

@@ -142,6 +142,9 @@ from ..responses import (
     ProfileSetAvatarResponse,
     ProfileSetDisplayNameError,
     ProfileSetDisplayNameResponse,
+    RegisterErrorResponse,
+    RegisterInteractiveError,
+    RegisterInteractiveResponse,
     RegisterResponse,
     Response,
     RoomBanError,
@@ -925,7 +928,93 @@ class AsyncClient(Client):
 
         return await self._send(LoginResponse, method, path, data)
 
-    async def register(self, username, password, device_name=""):
+    async def register_interactive(
+        self,
+        username: str,
+        password: str,
+        auth_dict: Dict[str, Any],
+        device_name: str = "",
+    ) -> Union[RegisterInteractiveResponse, RegisterInteractiveError]:
+        """Makes a request to the register endpoint using the provided
+        auth dictionary. This is allows for interactive registration flows
+        from the homeserver.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Args:
+            username (str): Username to register the new user as.
+            password (str): New password for the user.
+            auth_dict (dict): The auth dictionary.
+            device_name (str): A display name to assign to a newly-created
+                device. Ignored if the logged in device corresponds to a
+                known device.
+
+        Returns a 'RegisterInteractiveResponse' if successful.
+        """
+        method, path, data = Api.register(
+            user=username,
+            password=password,
+            device_name=device_name,
+            device_id=self.device_id,
+            auth_dict=auth_dict,
+        )
+
+        return await self._send(RegisterInteractiveResponse, method, path, data)
+
+    async def register_with_token(
+        self,
+        username: str,
+        password: str,
+        registration_token: str,
+        device_name: str = "",
+    ) -> Union[RegisterResponse, RegisterErrorResponse]:
+        """Registers a user using a registration token.
+        See https://spec.matrix.org/latest/client-server-api/#token-authenticated-registration
+
+        Returns either a `RegisterResponse` if the request was successful or
+        a `RegisterErrorResponse` if there was an error with the request.
+
+        """
+        # must first register without token to get a session token
+        resp = await self.register_interactive(
+            username,
+            password,
+            auth_dict={"initial_device_display_name": self.device_id or "matrix-nio"},
+        )
+        if isinstance(resp, RegisterInteractiveError):
+            return RegisterErrorResponse(
+                resp.message, resp.status_code, resp.retry_after_ms, resp.soft_logout
+            )
+
+        # use session token to register with token
+        session_token = resp.session
+        resp = await self.register_interactive(
+            username,
+            password,
+            auth_dict={
+                "type": "m.login.registration_token",
+                "token": registration_token,
+                "session": session_token,
+            },
+        )
+        if isinstance(resp, RegisterInteractiveError):
+            return RegisterErrorResponse(
+                resp.message, resp.status_code, resp.retry_after_ms, resp.soft_logout
+            )
+
+        # finally call register with dummy auth with original session token
+        # to complete registration and acquire access token
+        return await self.register(
+            username, password, device_name=device_name, session_token=session_token
+        )
+
+    async def register(
+        self,
+        username: str,
+        password: str,
+        device_name: str = "",
+        session_token: Optional[str] = None,
+    ) -> Union[RegisterResponse, RegisterErrorResponse]:
         """Register with homeserver.
 
         Calls receive_response() to update the client state if necessary.
@@ -933,17 +1022,25 @@ class AsyncClient(Client):
         Args:
             username (str): Username to register the new user as.
             password (str): New password for the user.
-            device_name (str): A display name to assign to a newly-created
-                device. Ignored if the logged in device corresponds to a
-                known device.
+            device_name (str, optional): A display name to assign to a
+                newly-created device. Ignored if the logged in device
+                corresponds to a known device.
+            session_token (str, optional): The session token the server
+                provided during interactive registration. If not provided,
+                the session token is not added to the request's auth dict.
 
         Returns a 'RegisterResponse' if successful.
         """
+        auth_dict = {"type": "m.login.dummy"}
+        if session_token is not None:
+            auth_dict["session"] = session_token
+
         method, path, data = Api.register(
             user=username,
             password=password,
             device_name=device_name,
             device_id=self.device_id,
+            auth_dict=auth_dict,
         )
 
         return await self._send(RegisterResponse, method, path, data)
