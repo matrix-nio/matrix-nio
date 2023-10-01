@@ -7,15 +7,10 @@ from typing import Optional
 from nio import (
     AsyncClient,
     ClientConfig,
-    DevicesError,
-    Event,
     InviteEvent,
-    LocalProtocolError,
     LoginResponse,
     MatrixRoom,
-    MatrixUser,
     RoomMessageText,
-    RoomSendResponse,
     crypto,
     exceptions,
 )
@@ -218,9 +213,9 @@ class CustomEncryptedClient(AsyncClient):
                     "body": "Hello, this message is encrypted",
                 },
             )
-        except exceptions.OlmUnverifiedDeviceError as err:
+        except exceptions.OlmUnverifiedDeviceError:
             print("These are all known devices:")
-            device_store: crypto.DeviceStore = device_store
+            device_store: crypto.DeviceStore = device_store  # noqa: F821
             [
                 print(
                     f"\t{device.user_id}\t {device.device_id}\t {device.trust_state}\t  {device.display_name}"

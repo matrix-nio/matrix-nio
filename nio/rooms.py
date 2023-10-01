@@ -17,13 +17,10 @@
 
 from __future__ import unicode_literals
 
+import logging
 from builtins import super
 from collections import defaultdict
-from enum import Enum
-from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional, Tuple, Union
-
-from jsonschema.exceptions import SchemaError, ValidationError
-from logbook import Logger
+from typing import Dict, List, Optional, Tuple, Union
 
 from .events import (
     AccountDataEvent,
@@ -35,7 +32,6 @@ from .events import (
     InviteNameEvent,
     PowerLevels,
     PowerLevelsEvent,
-    Receipt,
     ReceiptEvent,
     RoomAliasEvent,
     RoomAvatarEvent,
@@ -46,16 +42,16 @@ from .events import (
     RoomJoinRulesEvent,
     RoomMemberEvent,
     RoomNameEvent,
+    RoomSpaceChildEvent,
+    RoomSpaceParentEvent,
     RoomTopicEvent,
     RoomUpgradeEvent,
     TagEvent,
     TypingNoticeEvent,
 )
-from .log import logger_group
 from .responses import RoomSummary, UnreadNotifications
 
-logger = Logger("nio.rooms")
-logger_group.add_logger(logger)
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "MatrixRoom",
@@ -76,12 +72,15 @@ class MatrixRoom:
         self.creator = ""             # type: str
         self.federate = True          # type: bool
         self.room_version = "1"       # type: str
+        self.room_type = None         # type: Optional[str]
         self.guest_access = "forbidden"  # type: str
         self.join_rule = "invite"     # type: str
         self.history_visibility = "shared"  # type: str
         self.canonical_alias = None   # type: Optional[str]
         self.topic = None             # type: Optional[str]
         self.name = None              # type: Optional[str]
+        self.parents = set()           # type: Set[str]
+        self.children = set()         # type: Set[str]
         self.users = dict()           # type: Dict[str, MatrixUser]
         self.invited_users = dict()   # type: Dict[str, MatrixUser]
         self.names = defaultdict(list)  # type: DefaultDict[str, List[str]]
@@ -370,6 +369,7 @@ class MatrixRoom:
             self.creator = event.creator
             self.federate = event.federate
             self.room_version = event.room_version
+            self.room_type = event.room_type
 
         elif isinstance(event, RoomGuestAccessEvent):
             self.guest_access = event.guest_access
@@ -408,6 +408,18 @@ class MatrixRoom:
                         f"Changing power level for user {user_id} from {self.users[user_id].power_level} to {level}"
                     )
                     self.users[user_id].power_level = level
+
+        elif isinstance(event, RoomSpaceParentEvent):
+            if "via" in event.source.get("content", {}):
+                self.parents.add(event.state_key)
+            else:
+                self.parents.discard(event.state_key)
+
+        elif isinstance(event, RoomSpaceChildEvent):
+            if "via" in event.source.get("content", {}):
+                self.children.add(event.state_key)
+            else:
+                self.children.discard(event.state_key)
 
     def handle_account_data(self, event: AccountDataEvent) -> None:
         if isinstance(event, FullyReadEvent):

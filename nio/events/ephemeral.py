@@ -24,7 +24,7 @@ Ephemeral events are used for typing notifications and read receipts.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import List
 
 from ..schemas import Schemas
 from .misc import verify_or_none

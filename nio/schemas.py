@@ -44,9 +44,10 @@ def extend_with_default(validator_class):
 
 
 Validator = extend_with_default(Draft4Validator)
+Checker = FormatChecker()
 
 
-@FormatChecker.cls_checks("user_id", ValueError)
+@Checker.checks("user_id", ValueError)
 def check_user_id(value: str) -> bool:
     if not value.startswith("@"):
         raise ValueError("UserIDs start with @")
@@ -57,7 +58,7 @@ def check_user_id(value: str) -> bool:
     return True
 
 
-@FormatChecker.cls_checks("http_url", ValueError)
+@Checker.checks("http_url", ValueError)
 def check_http_url(value: str) -> bool:
     if not re.match(r"^https?://.+", value):
         raise ValueError("Must be http://... or https://... URL")
@@ -66,7 +67,7 @@ def check_http_url(value: str) -> bool:
 
 
 def validate_json(instance, schema):
-    Validator(schema, format_checker=FormatChecker()).validate(instance)
+    Validator(schema, format_checker=Checker).validate(instance)
 
 
 class Schemas:
@@ -243,6 +244,32 @@ class Schemas:
             "access_token": {"type": "string"},
         },
         "required": ["user_id", "device_id", "access_token"],
+    }
+
+    register_flows = {
+        "type": "object",
+        "properties": {
+            "flows": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "stages": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        }
+                    },
+                    "required": ["stages"],
+                },
+            },
+            "params": {"type": "object"},
+            "session": {"type": "string"},
+            "completed": {"type": "array", "items": {"type": "string"}},
+            "user_id": {"type": "string", "format": "user_id"},
+            "device_id": {"type": "string"},
+            "access_token": {"type": "string"},
+        },
+        "required": ["flows", "params", "session"],
     }
 
     login = {
@@ -776,6 +803,7 @@ class Schemas:
                     "creator": {"type": "string", "format": "user_id"},
                     "m.federate": {"type": "boolean", "default": True},
                     "room_version": {"type": "string", "default": "1"},
+                    "type": {"type": "string", "default": ""},
                     "predecessor": {
                         "type": "object",
                         "properties": {
@@ -919,6 +947,41 @@ class Schemas:
                 "type": "object",
                 "properties": {"topic": {"type": "string"}},
                 "required": ["topic"],
+            },
+        },
+        "required": ["type", "sender", "content", "state_key"],
+    }
+
+    room_space_parent = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "canonical": {"type": "boolean", "default": False},
+                    "via": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+        "required": ["type", "sender", "content", "state_key"],
+    }
+
+    room_space_child = {
+        "type": "object",
+        "properties": {
+            "sender": {"type": "string", "format": "user_id"},
+            "state_key": {"type": "string"},
+            "type": {"type": "string"},
+            "content": {
+                "type": "object",
+                "properties": {
+                    "suggested": {"type": "boolean", "default": False},
+                    "via": {"type": "array", "items": {"type": "string"}},
+                    "order": {"type": "string"},
+                },
             },
         },
         "required": ["type", "sender", "content", "state_key"],
@@ -1856,7 +1919,11 @@ class Schemas:
 
     whoami = {
         "type": "object",
-        "user_id": "string",
+        "properties": {
+            "user_id": {"type": "string", "format": "user_id"},
+            "device_id": {"type": "string"},
+            "is_guest": {"type": "boolean"},
+        },
         "required": ["user_id"],
     }
 
@@ -1883,4 +1950,66 @@ class Schemas:
             "content",
             "state_key",
         ],
+    }
+
+    space_hierarchy = {
+        "type": "object",
+        "properties": {
+            "next_batch": {"type": "string"},
+            "rooms": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "avatar_url": {"type": "string"},
+                        "canonical_alias": {"type": "string"},
+                        "children_state": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "content": {
+                                        "type": "object",
+                                        "properties": {
+                                            "via": {
+                                                "type": "array",
+                                                "items": {"type": "string"},
+                                            },
+                                        },
+                                        "required": ["via"],
+                                    },
+                                    "origin_server_ts": {"type": "integer"},
+                                    "sender": {"type": "string"},
+                                    "state_key": {"type": "string"},
+                                    "type": {"type": "string"},
+                                },
+                                "required": [
+                                    "content",
+                                    "origin_server_ts",
+                                    "sender",
+                                    "state_key",
+                                    "type",
+                                ],
+                            },
+                        },
+                        "guest_can_join": {"type": "boolean"},
+                        "join_rule": {"type": "string"},
+                        "name": {"type": "string"},
+                        "num_joined_members": {"type": "integer"},
+                        "room_id": {"type": "string"},
+                        "room_type": {"type": "string"},
+                        "topic": {"type": "string"},
+                        "world_readable": {"type": "boolean"},
+                    },
+                    "required": [
+                        "children_state",
+                        "guest_can_join",
+                        "num_joined_members",
+                        "room_id",
+                        "world_readable",
+                    ],
+                },
+            },
+        },
+        "required": ["rooms"],
     }

@@ -32,24 +32,16 @@ from enum import Enum, unique
 from typing import (
     TYPE_CHECKING,
     Any,
-    DefaultDict,
     Dict,
-    Iterable,
     List,
     Optional,
     Sequence,
-    Set,
     Tuple,
     Union,
 )
 
-from .exceptions import LocalProtocolError
-
 if TYPE_CHECKING:
     from .events.account_data import PushAction, PushCondition
-
-if False:
-    from uuid import UUID
 
 try:
     from urllib.parse import quote, urlencode, urlparse
@@ -334,6 +326,7 @@ class Api:
         password=None,  # type: str
         device_name="",  # type: Optional[str]
         device_id="",  # type: Optional[str]
+        auth_dict=None,  # type: Optional[dict[str, Any]]
     ):
         """Register a new user.
 
@@ -346,13 +339,26 @@ class Api:
             device_id (str): ID of the client device. If this does not
                 correspond to a known client device, a new device will be
                 created.
+            auth_dict (Dict[str, Any, optional): The authentication dictionary
+                containing the elements for a particular registration flow.
+                If not provided, then m.login.dummy is used.
+                See the example below and here
+                https://spec.matrix.org/latest/client-server-api/#account-registration-and-management
+                for detailed documentation
+
+                Example:
+                        >>> auth_dict = {
+                        >>>     "type": "m.login.registration_token",
+                        >>>     "registration_token": "REGISTRATIONTOKEN",
+                        >>>     "session": "session-id-from-homeserver"
+                        >>> }
         """
         path = Api._build_path(["register"])
 
         content_dict = {
-            "auth": {"type": "m.login.dummy"},
             "username": user,
             "password": password,
+            "auth": auth_dict or {"type": "m.login.dummy"},
         }
 
         if device_id:
@@ -574,6 +580,47 @@ class Api:
         return ("PUT", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
+    def space_get_hierarchy(
+        access_token: str,
+        space_id: str,
+        from_page: Optional[str] = None,
+        limit: Optional[int] = None,
+        max_depth: Optional[int] = None,
+        suggested_only: bool = False,
+    ) -> Tuple[str, str]:
+        """Get rooms/spaces that are a part of the provided space.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            space_id (str): The ID of the space to get the hierarchy for.
+            from_page (str, optional): Pagination token from a previous request
+                to this endpoint.
+            limit (int, optional): The maximum number of rooms to return.
+            max_depth (int, optional): The maximum depth of the returned tree.
+            suggested_only (bool, optional): Whether or not to only return
+                rooms that are considered suggested. Defaults to False.
+        """
+        query_parameters = {"access_token": access_token}
+
+        if from_page:
+            query_parameters["from"] = from_page
+
+        if limit:
+            query_parameters["limit"] = limit
+
+        if max_depth:
+            query_parameters["max_depth"] = max_depth
+
+        if suggested_only:
+            query_parameters["suggested_only"] = suggested_only
+
+        path = ["rooms", space_id, "hierarchy"]
+
+        return ("GET", Api._build_path(path, query_parameters, "/_matrix/client/v1"))
+
+    @staticmethod
     def room_get_event(
         access_token: str, room_id: str, event_id: str
     ) -> Tuple[str, str]:
@@ -778,6 +825,36 @@ class Api:
         )
 
     @staticmethod
+    def room_knock(
+        access_token: str,
+        room_id: str,
+        reason: Optional[str] = None,
+    ) -> Tuple[str, str, str]:
+        """Knocks on a room for the user.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room id of the room that the user will be
+                knocking on.
+            reason (str, optional): The reason the user is knocking.
+        """
+
+        path = ["knock", room_id]
+        query_parameters = {"access_token": access_token}
+        body = {}
+
+        if reason:
+            body["reason"] = reason
+
+        return (
+            "POST",
+            Api._build_path(path, query_parameters),
+            Api.to_json(body),
+        )
+
+    @staticmethod
     def room_invite(access_token, room_id, user_id):
         # type (str, str, str) -> Tuple[str, str, str]
         """Invite a user to a room.
@@ -804,6 +881,7 @@ class Api:
         name=None,  # type: Optional[str]
         topic=None,  # type: Optional[str]
         room_version=None,  # type: Optional[str]
+        room_type=None,  # type: Optional[str]
         federate=True,  # type: bool
         is_direct=False,  # type: bool
         preset=None,  # type: Optional[RoomPreset]
@@ -838,6 +916,12 @@ class Api:
                 If not specified, the homeserver will use its default setting.
                 If a version not supported by the homeserver is specified,
                 a 400 ``M_UNSUPPORTED_ROOM_VERSION`` error will be returned.
+
+            room_type (str, optional): The room type to set.
+                If not specified, the homeserver will use its default setting.
+                In spec v1.2 the following room types are specified:
+                    - ``m.space``
+                Unspecified room types are permitted through the use of Namespaced Identifiers.
 
             federate (bool): Whether to allow users from other homeservers from
                 joining the room. Defaults to ``True``.
@@ -891,6 +975,9 @@ class Api:
 
         if room_version:
             body["room_version"] = room_version
+
+        if room_type:
+            body["creation_content"]["type"] = room_type
 
         if preset:
             body["preset"] = preset.value
@@ -1426,6 +1513,7 @@ class Api:
         media_id,  # type: str
         filename=None,  # type: Optional[str]
         allow_remote=True,  # type: bool
+        file=None,  # type: Optional[os.PathLike]
     ):
         # type: (...) -> Tuple[str, str]
         """Get the content of a file from the content repository.
@@ -1442,6 +1530,7 @@ class Api:
                 attempt to fetch the media if it is deemed remote.
                 This is to prevent routing loops where the server contacts
                 itself.
+            file (os.PathLike): The file to stream the downloaded content to.
         """
         query_parameters = {
             "allow_remote": "true" if allow_remote else "false",

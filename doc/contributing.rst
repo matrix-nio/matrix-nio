@@ -47,7 +47,7 @@ If you only want to test your changes (and not run all of the test suite), you c
 
 .. code-block:: sh
 
-	python3 -m pytest --benchmark-disable tests/your-test.py
+    python3 -m pytest --benchmark-disable tests/your-test.py
 
 
 Getting ready for a pull request

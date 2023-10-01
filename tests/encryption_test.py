@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from helpers import faker
-from olm import Account, OlmMessage, OlmPreKeyMessage, OutboundGroupSession
+from olm import Account, OutboundGroupSession
 
 from nio.crypto import (
     DeviceStore,
@@ -21,7 +21,6 @@ from nio.crypto import (
     Session,
     SessionStore,
 )
-from nio.event_builders import RoomKeyRequestMessage
 from nio.events import (
     DummyEvent,
     ForwardedRoomKeyEvent,

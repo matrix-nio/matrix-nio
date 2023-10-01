@@ -15,7 +15,7 @@
 import os
 import sys
 
-import sphinx
+import sphinx  # noqa: F401
 
 sys.path.insert(0, os.path.abspath("../"))
 
@@ -29,7 +29,7 @@ author = "Damir Jelić"
 # The short X.Y version
 version = ""
 # The full version, including alpha/beta/rc tags
-release = "0.20.2"
+release = "0.21.2"
 
 
 # -- General configuration ---------------------------------------------------

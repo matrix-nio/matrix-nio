@@ -3,7 +3,6 @@
 from __future__ import unicode_literals
 
 import json
-import pdb
 
 from nio.api import PushRuleKind
 from nio.events import (
@@ -94,6 +93,12 @@ class TestClass:
         parsed_dict = TestClass._load_response("tests/data/events/create.json")
         event = RoomCreateEvent.from_dict(parsed_dict)
         assert isinstance(event, RoomCreateEvent)
+
+    def test_create_event_typed(self):
+        parsed_dict = TestClass._load_response("tests/data/events/create_typed.json")
+        event = RoomCreateEvent.from_dict(parsed_dict)
+        assert isinstance(event, RoomCreateEvent)
+        assert event.room_type == "nio.matrix.test"
 
     def test_guest_access_event(self):
         parsed_dict = TestClass._load_response("tests/data/events/guest_access.json")

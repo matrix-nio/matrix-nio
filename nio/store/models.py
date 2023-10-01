@@ -19,7 +19,6 @@ from peewee import (
     SQL,
     BlobField,
     BooleanField,
-    CompositeKey,
     ForeignKeyField,
     IntegerField,
     Model,

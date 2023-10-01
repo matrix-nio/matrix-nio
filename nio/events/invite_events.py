@@ -30,10 +30,10 @@ be displayed to users if they are invited to a room.
 
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Union
+from typing import Dict
 
 from ..schemas import Schemas
-from .misc import BadEventType, verify, verify_or_none
+from .misc import verify, verify_or_none
 
 
 @dataclass

@@ -17,6 +17,8 @@
 
 from __future__ import unicode_literals
 
+import logging
+import os
 from builtins import str
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -24,7 +26,6 @@ from functools import wraps
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
-from logbook import Logger
 
 from .event_builders import ToDeviceMessage
 from .events import (
@@ -37,11 +38,9 @@ from .events import (
 )
 from .events.presence import PresenceEvent
 from .http import TransportResponse
-from .log import logger_group
 from .schemas import Schemas, validate_json
 
-logger = Logger("nio.responses")
-logger_group.add_logger(logger)
+logger = logging.getLogger(__name__)
 
 
 __all__ = [
@@ -60,6 +59,7 @@ __all__ = [
     "DeviceOneTimeKeyCount",
     "DiscoveryInfoError",
     "DiscoveryInfoResponse",
+    "DiskDownloadResponse",
     "DownloadResponse",
     "DownloadError",
     "EnablePushRuleResponse",
@@ -87,6 +87,7 @@ __all__ = [
     "LoginInfoError",
     "LogoutResponse",
     "LogoutError",
+    "MemoryDownloadResponse",
     "Response",
     "RoomBanResponse",
     "RoomBanError",
@@ -99,6 +100,8 @@ __all__ = [
     "RoomInviteError",
     "RoomKickResponse",
     "RoomKickError",
+    "RoomKnockResponse",
+    "RoomKnockError",
     "RoomLeaveResponse",
     "RoomLeaveError",
     "RoomForgetResponse",
@@ -172,6 +175,8 @@ __all__ = [
     "UpdateReceiptMarkerResponse",
     "WhoamiError",
     "WhoamiResponse",
+    "SpaceGetHierarchyResponse",
+    "SpaceGetHierarchyError",
 ]
 
 
@@ -180,10 +185,10 @@ def verify(schema, error_class, pass_arguments=True):
         @wraps(f)
         def wrapper(cls, parsed_dict, *args, **kwargs):
             try:
-                logger.info("Validating response schema")
+                logger.debug("Validating response schema %r: %s", schema, parsed_dict)
                 validate_json(parsed_dict, schema)
             except (SchemaError, ValidationError) as e:
-                logger.warn("Error validating response: " + str(e.message))
+                logger.warning("Error validating response: " + str(e.message))
 
                 if pass_arguments:
                     return error_class.from_dict(parsed_dict, *args, **kwargs)
@@ -314,13 +319,13 @@ class FileResponse(Response):
     """A response representing a successful file content request.
 
     Attributes:
-        body (bytes): The file's content in bytes.
+        body (bytes, os.PathLike): The file's content in bytes, or location on disk if provided.
         content_type (str): The content MIME type of the file,
             e.g. "image/png".
         filename (str, optional): The file's name returned by the server.
     """
 
-    body: bytes = field()
+    body: Union[bytes, os.PathLike] = field()
     content_type: str = field()
     filename: Optional[str] = field()
 
@@ -328,15 +333,43 @@ class FileResponse(Response):
         return f"{len(self.body)} bytes, content type: {self.content_type}, filename: {self.filename}"
 
     @classmethod
-    def from_data(cls, data, content_type, filename=None):
+    def from_data(
+        cls, data: Union[bytes, os.PathLike, dict], content_type, filename=None
+    ):
         """Create a FileResponse from file content returned by the server.
 
         Args:
-            data (bytes): The file's content in bytes.
+            data (bytes, os.PathLike): The file's content in bytes.
             content_type (str): The content MIME type of the file,
                 e.g. "image/png".
+            filename (str, optional): The file's name returned by the server.
         """
         raise NotImplementedError()
+
+
+@dataclass
+class MemoryFileResponse(FileResponse):
+    """
+    A response representing a successful file content request with the file content stored in memory.
+
+    Attributes:
+        body (bytes): The file's content in bytes.
+    """
+
+    body: bytes = field()
+
+
+@dataclass
+class DiskFileResponse(FileResponse):
+    """A response representing a successful file content request with the file content stored on disk.
+
+    This class is exactly the same as ``FileResponse`` but with the following difference
+
+    Attributes:
+        body (os.PathLike): The path to the file on disk.
+    """
+
+    body: os.PathLike = field()
 
 
 @dataclass
@@ -507,6 +540,12 @@ class JoinError(ErrorResponse):
     pass
 
 
+class RoomKnockError(ErrorResponse):
+    """A response representing a unsuccessful room knock request."""
+
+    pass
+
+
 class RoomLeaveError(ErrorResponse):
     pass
 
@@ -516,6 +555,10 @@ class RoomForgetError(_ErrorWithRoomId):
 
 
 class RoomMessagesError(_ErrorWithRoomId):
+    pass
+
+
+class SpaceGetHierarchyError(ErrorResponse):
     pass
 
 
@@ -689,6 +732,39 @@ class RegisterResponse(Response):
 
 
 @dataclass
+class RegisterInteractiveError(ErrorResponse):
+    pass
+
+
+@dataclass
+class RegisterInteractiveResponse(Response):
+    stages: List[str] = field()
+    params: Dict[str, Any] = field()
+    session: str = field()
+    completed: List[str] = field()
+    user_id: str = field()
+    device_id: str = field()
+    access_token: str = field()
+
+    @classmethod
+    @verify(Schemas.register_flows, RegisterInteractiveError)
+    def from_dict(cls, parsed_dict: Dict[Any, Any]):
+        # type: (...) -> Union[RegisterInteractiveResponse, RegisterInteractiveError]
+        for flow in parsed_dict["flows"]:
+            stages = [stage for stage in flow["stages"]]
+
+        return cls(
+            stages,
+            parsed_dict["params"],
+            parsed_dict["session"],
+            parsed_dict.get("completed"),
+            parsed_dict.get("user_id"),
+            parsed_dict.get("device_id"),
+            parsed_dict.get("access_token"),
+        )
+
+
+@dataclass
 class LoginInfoError(ErrorResponse):
     pass
 
@@ -824,15 +900,44 @@ class DownloadResponse(FileResponse):
     """A response representing a successful download request."""
 
     @classmethod
-    def from_data(cls, data: bytes, content_type: str, filename: Optional[str] = None):
+    def from_data(
+        cls,
+        data: Union[os.PathLike, bytes],
+        content_type: str,
+        filename: Optional[str] = None,
+    ):
         # type: (...) -> Union[DownloadResponse, DownloadError]
-        if isinstance(data, bytes):
+        if isinstance(data, (bytes, os.PathLike)):
             return cls(body=data, content_type=content_type, filename=filename)
 
         if isinstance(data, dict):
             return DownloadError.from_dict(data)
 
         return DownloadError("invalid data")
+
+
+@dataclass
+class MemoryDownloadResponse(DownloadResponse, MemoryFileResponse):
+    """A response representing a successful download request with the download content stored in-memory.
+
+    Attributes:
+        body (bytes): The content of the download.
+        content_type (str): The content type of the download.
+        filename (Optional[str]): The filename of the download.
+    """
+
+
+@dataclass
+class DiskDownloadResponse(DownloadResponse, DiskFileResponse):
+    """A response representing a successful download request with the download content stored on disk.
+
+    Attributes:
+        body (os.PathLike): The path to the downloaded file.
+        content_type (str): The content type of the download.
+        filename (Optional[str]): The filename of the download.
+    """
+
+    body: os.PathLike = field()
 
 
 @dataclass
@@ -1059,6 +1164,33 @@ class RoomGetVisibilityResponse(Response):
         return cls(room_id, visibility)
 
 
+@dataclass
+class SpaceGetHierarchyResponse(Response):
+    """A response indicating successful space get hierarchy request.
+
+    Attributes:
+        next_batch: The token to supply in the from parameter of the next call.
+        rooms: The rooms in the space.
+    """
+
+    next_batch: str = field()
+    rooms: List = field()
+
+    @classmethod
+    @verify(
+        Schemas.space_hierarchy,
+        SpaceGetHierarchyError,
+        pass_arguments=False,
+    )
+    def from_dict(
+        cls, parsed_dict: Dict[str, Any]
+    ) -> Union["SpaceGetHierarchyResponse", SpaceGetHierarchyError]:
+        next_batch = parsed_dict.get("next_batch")
+        rooms = parsed_dict["rooms"]
+        resp = cls(next_batch, rooms)
+        return resp
+
+
 class EmptyResponse(Response):
     @staticmethod
     def create_error(parsed_dict):
@@ -1263,6 +1395,12 @@ class JoinResponse(RoomIdResponse):
     @staticmethod
     def create_error(parsed_dict):
         return JoinError.from_dict(parsed_dict)
+
+
+class RoomKnockResponse(RoomIdResponse):
+    @staticmethod
+    def create_error(parsed_dict):
+        return RoomKnockError.from_dict(parsed_dict)
 
 
 class RoomLeaveResponse(EmptyResponse):
@@ -1900,6 +2038,8 @@ class WhoamiError(ErrorResponse):
 @dataclass
 class WhoamiResponse(Response):
     user_id: str = field()
+    device_id: Optional[str] = field()
+    is_guest: Optional[bool] = field()
 
     @classmethod
     @verify(Schemas.whoami, WhoamiError)
@@ -1907,7 +2047,11 @@ class WhoamiResponse(Response):
         cls,
         parsed_dict: Dict[Any, Any],
     ) -> Union["WhoamiResponse", WhoamiError]:
-        return cls(parsed_dict["user_id"])
+        return cls(
+            parsed_dict["user_id"],
+            parsed_dict.get("device_id"),
+            parsed_dict.get("is_guest", False),
+        )
 
 
 @dataclass

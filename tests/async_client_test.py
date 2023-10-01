@@ -1,5 +1,4 @@
 import asyncio
-import inspect
 import json
 import math
 import re
@@ -95,6 +94,7 @@ from nio import (
     RoomInviteResponse,
     RoomKeyRequest,
     RoomKickResponse,
+    RoomKnockResponse,
     RoomLeaveResponse,
     RoomMemberEvent,
     RoomMessagesResponse,
@@ -112,6 +112,8 @@ from nio import (
     SetPushRuleActionsResponse,
     SetPushRuleResponse,
     ShareGroupSessionResponse,
+    SpaceGetHierarchyError,
+    SpaceGetHierarchyResponse,
     SyncResponse,
     ThumbnailError,
     ThumbnailResponse,
@@ -125,7 +127,7 @@ from nio import (
 )
 from nio.api import EventFormat, ResizingMethod, RoomPreset, RoomVisibility
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
-from nio.crypto import OlmDevice, Session, TrustState, decrypt_attachment
+from nio.crypto import OlmDevice, Session, decrypt_attachment
 
 TEST_ROOM_ID = "!testroom:example.org"
 
@@ -166,6 +168,10 @@ class TestClass:
     @property
     def login_response(self):
         return self._load_response("tests/data/login_response.json")
+
+    @property
+    def hierarchy_response(self):
+        return self._load_response("tests/data/get_hierarchy_response.json")
 
     @property
     def logout_response(self):
@@ -388,6 +394,10 @@ class TestClass:
     def room_resolve_alias_response(self):
         return {"room_id": TEST_ROOM_ID, "servers": ["example.org", "matrix.org"]}
 
+    @property
+    def whoami_response(self):
+        return self._load_response("tests/data/whoami_response.json")
+
     async def test_mxc_to_http(self, async_client):
         mxc = "mxc://privacytools.io/123foo"
         url_path = "/_matrix/media/r0/download/privacytools.io/123foo"
@@ -410,6 +420,45 @@ class TestClass:
         )
         resp = await async_client.register("user", "password")
 
+        assert isinstance(resp, RegisterResponse)
+        assert async_client.access_token
+
+    async def test_register_with_token(self, async_client, aioresponse):
+        assert not async_client.access_token
+
+        # first response should return session token + flows
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/register",
+            status=401,
+            payload={
+                "session": "abc1234",
+                "flows": [{"stages": ["m.login.registration_token", "m.login.dummy"]}],
+                "params": {},
+            },
+        )
+
+        # second response indicates that registration_token flow is completed
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/register",
+            status=401,
+            payload={
+                "session": "abc1234",
+                "flows": [{"stages": ["m.login.registration_token", "m.login.dummy"]}],
+                "params": {},
+                "completed": [
+                    "m.login.registration_token",
+                ],
+            },
+        )
+
+        # third response should return access token
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/register",
+            status=200,
+            payload=self.register_response,
+        )
+
+        resp = await async_client.register_with_token("user", "password", "token")
         assert isinstance(resp, RegisterResponse)
         assert async_client.access_token
 
@@ -602,6 +651,21 @@ class TestClass:
         assert not async_client.client_session
         await async_client.close()
         assert not async_client.client_session
+
+    async def test_whoami(self, async_client, aioresponse):
+        async_client.restore_login(
+            user_id="unknown",
+            device_id="unknown",
+            access_token="abc123",
+        )
+        aioresponse.get(
+            "https://example.org/_matrix/client/r0/account/whoami?access_token=abc123",
+            status=200,
+            payload=self.whoami_response,
+        )
+        await async_client.whoami()
+        assert async_client.user_id != "unknown"
+        assert async_client.device_id != "unknown"
 
     async def test_logout(self, async_client, aioresponse):
         aioresponse.post(
@@ -1209,6 +1273,33 @@ class TestClass:
         assert not async_client.get_missing_sessions(TEST_ROOM_ID)
         assert async_client.olm.session_store.get(alice_device.curve25519)
 
+    async def test_session_sharing_2(self, alice_client, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        await async_client.receive_response(self.encryption_sync_response)
+
+        alice_client.load_store()
+
+        aioresponse.put(
+            "https://example.org/_matrix/client/r0/sendToDevice/m.room_key_request/1?access_token=abc123",
+            status=200,
+            payload={},
+        )
+
+        event = MegolmEvent.from_dict(
+            self._load_response("tests/data/events/megolm.json")
+        )
+
+        await async_client.request_room_key(event, "1")
+
+        assert (
+            "X3lUlvLELLYxeTx4yOVu6UDpasGEVO0Jbu+QFnm0cKQ"
+            in async_client.outgoing_key_requests
+        )
+
     async def test_get_openid_token(self, async_client, aioresponse):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
@@ -1284,33 +1375,6 @@ class TestClass:
         response = await async_client.joined_rooms()
 
         assert isinstance(response, JoinedRoomsResponse)
-
-    async def test_session_sharing(self, alice_client, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
-
-        await async_client.receive_response(self.encryption_sync_response)
-
-        alice_client.load_store()
-
-        aioresponse.put(
-            "https://example.org/_matrix/client/r0/sendToDevice/m.room_key_request/1?access_token=abc123",
-            status=200,
-            payload={},
-        )
-
-        event = MegolmEvent.from_dict(
-            self._load_response("tests/data/events/megolm.json")
-        )
-
-        await async_client.request_room_key(event, "1")
-
-        assert (
-            "X3lUlvLELLYxeTx4yOVu6UDpasGEVO0Jbu+QFnm0cKQ"
-            in async_client.outgoing_key_requests
-        )
 
     async def test_key_exports(self, async_client, tempdir):
         file = path.join(tempdir, "keys_file")
@@ -1400,6 +1464,34 @@ class TestClass:
         assert isinstance(resp, RoomCreateResponse)
         assert resp.room_id == TEST_ROOM_ID
 
+    async def test_room_create__typed(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            "https://example.org/_matrix/client/r0/createRoom" "?access_token=abc123",
+            status=200,
+            payload=self.room_id_response(TEST_ROOM_ID),
+        )
+
+        resp = await async_client.room_create(
+            visibility=RoomVisibility.public,
+            alias="foo-space",
+            name="bar",
+            topic="Foos and bars space",
+            room_version="9",
+            room_type="nio.matrix.test",
+            preset=RoomPreset.public_chat,
+            invite={ALICE_ID},
+            initial_state=[],
+            power_level_override={},
+            space=True,
+        )
+        assert isinstance(resp, RoomCreateResponse)
+        assert resp.room_id == TEST_ROOM_ID
+
     async def test_join(self, async_client, aioresponse):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
@@ -1430,6 +1522,21 @@ class TestClass:
 
         resp = await async_client.room_invite(TEST_ROOM_ID, ALICE_ID)
         assert isinstance(resp, RoomInviteResponse)
+
+    async def test_room_knock(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        aioresponse.post(
+            f"https://example.org/_matrix/client/r0/knock/{TEST_ROOM_ID}?access_token=abc123",
+            status=200,
+            payload=self.room_id_response(TEST_ROOM_ID),
+        )
+
+        resp = await async_client.room_knock(TEST_ROOM_ID, reason="test")
+        assert isinstance(resp, RoomKnockResponse)
 
     async def test_room_leave(self, async_client, aioresponse):
         await async_client.receive_response(
@@ -2597,7 +2704,7 @@ class TestClass:
         async_client.config = AsyncClientConfig(max_timeouts=3)
 
         try:
-            resp = await async_client.login("wordpass")
+            await async_client.login("wordpass")
         except asyncio.TimeoutError:
             return
 
@@ -3125,7 +3232,7 @@ class TestClass:
         # This implicitly claims one-time keys since we don't have an Olm
         # session with Alice
         with pytest.raises(OlmTrustError):
-            response = await bob.share_group_session(TEST_ROOM_ID)
+            await bob.share_group_session(TEST_ROOM_ID)
 
         to_device_for_alice = None
 
@@ -3740,7 +3847,7 @@ class TestClass:
         # This implicitly claims one-time keys since we don't have an Olm
         # session with Alice
         with pytest.raises(OlmTrustError):
-            response = await bob.share_group_session(TEST_ROOM_ID)
+            await bob.share_group_session(TEST_ROOM_ID)
 
         to_device_for_alice = None
 
@@ -4226,3 +4333,65 @@ class TestClass:
         assert not asyncio.iscoroutinefunction(
             mock.restore_login
         ), "not logged_in method should not be awaitable"
+
+    async def test_space_get_hierarchy(self, async_client, aioresponse):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response),
+        )
+        assert async_client.logged_in
+
+        base_url = "https://example.org/_matrix/client/v1"
+
+        aioresponse.get(
+            f"{base_url}/rooms/{TEST_ROOM_ID}/hierarchy?access_token=abc123",
+            status=200,
+            payload=self.hierarchy_response,
+        )
+
+        resp = await async_client.space_get_hierarchy(TEST_ROOM_ID)
+
+        assert isinstance(resp, SpaceGetHierarchyResponse)
+        assert isinstance(resp.rooms, list)
+
+        aioresponse.get(
+            f"{base_url}/rooms/{TEST_ROOM_ID}/hierarchy?access_token=abc123",
+            status=403,
+            payload={
+                "errcode": "M_FORBIDDEN",
+                "error": "You are not allowed to view this room.",
+            },
+        )
+
+        resp = await async_client.space_get_hierarchy(TEST_ROOM_ID)
+
+        assert isinstance(resp, SpaceGetHierarchyError)
+
+        aioresponse.get(
+            f"{base_url}/rooms/{TEST_ROOM_ID}/hierarchy?access_token=abc123&from=invalid",
+            status=400,
+            payload={
+                "errcode": "M_INVALID_PARAM",
+                "error": "suggested_only and max_depth cannot change on paginated requests",
+            },
+        )
+
+        resp = await async_client.space_get_hierarchy(TEST_ROOM_ID, from_page="invalid")
+
+        assert isinstance(resp, SpaceGetHierarchyError)
+
+        async_client.config = AsyncClientConfig(max_limit_exceeded=0)
+
+        aioresponse.get(
+            f"{base_url}/rooms/{TEST_ROOM_ID}/hierarchy?access_token=abc123",
+            status=429,
+            payload={
+                "errcode": "M_LIMIT_EXCEEDED",
+                "error": "Too many requests",
+                "retry_after_ms": 1,
+            },
+            repeat=True,
+        )
+
+        resp = await async_client.space_get_hierarchy(TEST_ROOM_ID)
+
+        assert isinstance(resp, SpaceGetHierarchyError)

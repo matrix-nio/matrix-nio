@@ -3,7 +3,6 @@
 from __future__ import unicode_literals
 
 from nio.client import HttpClient
-from nio.http import TransportResponse
 
 
 class TestClass:

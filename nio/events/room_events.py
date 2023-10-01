@@ -19,11 +19,11 @@ from __future__ import unicode_literals
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from ..event_builders import RoomKeyRequestMessage
 from ..schemas import Schemas
-from .misc import BadEvent, BadEventType, UnknownBadEvent, validate_or_badevent, verify
+from .misc import BadEvent, UnknownBadEvent, validate_or_badevent, verify
 
 
 @dataclass
@@ -161,6 +161,10 @@ class Event:
             return RedactionEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.tombstone":
             return RoomUpgradeEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.space.parent":
+            return RoomSpaceParentEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.space.child":
+            return RoomSpaceChildEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.room.encrypted":
             return Event.parse_encrypted_event(event_dict)
         elif event_dict["type"] == "m.sticker":
@@ -621,12 +625,17 @@ class RoomCreateEvent(Event):
         room_version (str): The version of the room. Different room versions
             will have different event formats. Clients shouldn't worry about
             this too much unless they want to perform room upgrades.
+        room_type (str): The type of the room.
+            In spec v1.2 the following room types are specified:
+                - `m.space`
+            Unspecified room types are permitted through the use of Namespaced Identifiers.
 
     """
 
     creator: str = field()
     federate: bool = True
     room_version: str = "1"
+    room_type: str = ""
 
     @classmethod
     @verify(Schemas.room_create)
@@ -635,8 +644,10 @@ class RoomCreateEvent(Event):
         creator = parsed_dict["content"]["creator"]
         federate = parsed_dict["content"]["m.federate"]
         version = parsed_dict["content"]["room_version"]
+        if "type" in parsed_dict["content"]:
+            room_type = parsed_dict["content"]["type"]
 
-        return cls(parsed_dict, creator, federate, version)
+        return cls(parsed_dict, creator, federate, version, room_type)
 
 
 @dataclass
@@ -812,6 +823,48 @@ class RoomAvatarEvent(Event):
         room_avatar_url = parsed_dict["content"]["url"]
 
         return cls(parsed_dict, room_avatar_url)
+
+
+@dataclass
+class RoomSpaceParentEvent(Event):
+    """Event holding the parent space of a room.
+
+    Attributes:
+        state_key (str): The parent space's room
+
+    """
+
+    state_key: str = field()
+    canonical: bool = False
+
+    @classmethod
+    @verify(Schemas.room_space_parent)
+    def from_dict(cls, parsed_dict):
+        content_dict = parsed_dict["content"]
+        return cls(
+            parsed_dict, parsed_dict["state_key"], content_dict.get("canonical", False)
+        )
+
+
+@dataclass
+class RoomSpaceChildEvent(Event):
+    """Event holding the child rooms of a space.
+
+    Attributes:
+        state_key (str): The child room of a space
+
+    """
+
+    state_key: str = field()
+    suggested: bool = False
+
+    @classmethod
+    @verify(Schemas.room_space_child)
+    def from_dict(cls, parsed_dict):
+        content_dict = parsed_dict["content"]
+        return cls(
+            parsed_dict, parsed_dict["state_key"], content_dict.get("suggested", False)
+        )
 
 
 @dataclass
@@ -1437,7 +1490,7 @@ class RoomMemberEvent(Event):
             cases except for when membership is join, the user ID in the sender
             attribute does not need to match the user ID in the state_key.
         membership (str): The membership state of the user. One of "invite",
-            "join", "leave", "ban".
+            "join", "leave", "ban", "knock".
         prev_membership (str, optional): The previous membership state that
             this one is overwriting. Can be None in which case the membership
             state is assumed to have been "leave".

@@ -1,31 +1,36 @@
 name: Build Status
 
-on: [ push, pull_request ]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
-  lint:
+  pre-commit-check:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: [ "3.11" ]
     steps:
       - uses: actions/checkout@v3
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
-      - name: Lint with Black
+      - name: Install pre-commit
         run: |
-          pip install black
-          black --check .
-      - name: Lint with isort
+          pip install pre-commit
+      - name: pre-commit run --all-files
         run: |
-          pip install isort
-          isort --check --profile=black .
+          pre-commit run --all-files
 
   build:
 
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.9", "3.10", "3.11"]
+        python: ["3.8", "3.9", "3.10", "3.11"]
 
     steps:
       - uses: actions/checkout@v3

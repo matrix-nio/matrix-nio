@@ -3,8 +3,8 @@
 
 pkgbase=matrix-nio
 pkgname='python-matrix-nio-git'
-pkgver=0.20.2
-_pkgver=0.20.2
+pkgver=0.21.2
+_pkgver=0.21.2
 pkgrel=1
 pkgdesc='python no-IO library for the matrix chat protocol'
 arch=('any')
@@ -15,7 +15,7 @@ conflicts=('python-matrix-nio')
 provides=('python-matrix-nio')
 depends=('python' 'python-olm' 'python-h11' 'python-h2'
        'python-jsonschema' 'python-logbook'
-       'python-peewee' 'python-atomicwrites' 'python-future'
+       'python-peewee' 'python-atomicwrites'
        'python-pycryptodome' 'python-unpaddedbase64')
 checkdepends=()
 source=("$pkgbase-$pkgver.tar.gz")

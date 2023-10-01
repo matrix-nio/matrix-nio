@@ -1,0 +1,14 @@
+{
+    "flows": [{
+        "stages": [
+            "m.login.registration_token",
+            "m.login.dummy"
+        ]
+       }
+    ],
+    "session": "abc123",
+    "params": {},
+    "completed": [
+        "m.login.registration_token"
+    ]
+}

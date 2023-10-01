@@ -2,6 +2,68 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.21.2] - 2023-7-17
+
+### Bug Fixes
+
+- [[#423]] Revert [[#411]] due to backwards-incompatibilities.
+
+[#423]: https://github.com/poljar/matrix-nio/pull/423
+
+## [0.21.1] - 2023-7-16
+
+### Bug Fixes
+
+- [[#422]] `async_client.whoami` will alter the state of `async_client` correctly, and accept all spec-compliant fields.
+
+### Miscellaneous Tasks
+
+- [[#420]] Add `python3.8` tests to workflow.
+
+[#422]: https://github.com/poljar/matrix-nio/pull/422
+[#420]: https://github.com/poljar/matrix-nio/pull/420
+
+## [0.21.0] - 2023-7-14
+
+### Breaking Changes
+
+- [[#416]] Drop support for end-of-life `python3.7`
+- [[#413]] Drop usage of `logbook` in favor of standard library `logging`
+  - This fixes an issue where logging was effectively disabled by default.
+
+### Features
+
+- [[#409]] Support m.space.parent and m.space.child events
+- [[#418]] Add ability to knock on a room, and enable knocking for a room
+
+### Documentation
+
+- Add documentation on how to configure `logging`
+- Note in `README` that room upgrades/tombstone events *are* supported
+
+### Miscellaneous Tasks
+
+- [[#401]] Removing skip for passing test
+- [[#417]] Add type hints
+- [[#406]] [[#407]] [[#414]] Add content to `built-with-nio`
+
+### Bug Fixes
+
+- [[#408]] Properly generate code coverage
+- [[#411]] Fixed bug in Event Callbacks
+
+[#416]: https://github.com/poljar/matrix-nio/pull/416
+[#413]: https://github.com/poljar/matrix-nio/pull/413
+[#409]: https://github.com/poljar/matrix-nio/pull/409
+[#418]: https://github.com/poljar/matrix-nio/pull/418
+[#401]: https://github.com/poljar/matrix-nio/pull/401
+[#417]: https://github.com/poljar/matrix-nio/pull/417
+[#406]: https://github.com/poljar/matrix-nio/pull/406
+[#407]: https://github.com/poljar/matrix-nio/pull/407
+[#414]: https://github.com/poljar/matrix-nio/pull/414
+[#408]: https://github.com/poljar/matrix-nio/pull/408
+[#411]: https://github.com/poljar/matrix-nio/pull/411
+
 ## [0.20.2] - 2023-3-26
 
 ### Miscellaneous Tasks
@@ -17,7 +79,6 @@ All notable changes to this project will be documented in this file.
 - [[#354]] Fix `first_sync_filter` parameter of `AsyncClient.sync_forever`
 - [[#357]] Element exports keys without required fields
 - [[#396]] Fix `timeline->limited` being required
-
 
 [#384]: https://github.com/poljar/matrix-nio/pull/384
 [#335]: https://github.com/poljar/matrix-nio/pull/335

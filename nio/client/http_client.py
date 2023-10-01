@@ -14,38 +14,34 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import cgi
 import json
+import logging
 import pprint
 from builtins import str, super
 from collections import deque
 from dataclasses import dataclass, field
+from email.message import EmailMessage
 from functools import wraps
-from typing import Any, Deque, Dict, List, Optional, Sequence, Tuple, Type, Union
-from uuid import UUID, uuid4
+from typing import Tuple, Type
+from uuid import uuid4
 
 import h2
 import h11
-from logbook import Logger
 
 try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse  # type: ignore
 
-from ..api import Api, MessageDirection, ResizingMethod, RoomPreset, RoomVisibility
-from ..events import MegolmEvent
+from ..api import Api, MessageDirection, ResizingMethod, RoomVisibility
 from ..exceptions import LocalProtocolError, RemoteTransportError
 from ..http import (
     Http2Connection,
     Http2Request,
     HttpConnection,
     HttpRequest,
-    TransportRequest,
-    TransportResponse,
     TransportType,
 )
-from ..log import logger_group
 from ..responses import (
     DeleteDevicesAuthResponse,
     DeleteDevicesResponse,
@@ -85,12 +81,8 @@ from ..responses import (
     ToDeviceResponse,
     UpdateDeviceResponse,
 )
-from . import Client, ClientConfig
+from . import Client
 from .base_client import logged_in, store_loaded
-
-if False:
-    from .crypto import OlmDevice
-    from .event_builders import ToDeviceMessage
 
 try:
     from json.decoder import JSONDecodeError
@@ -98,8 +90,7 @@ except ImportError:
     JSONDecodeError = ValueError  # type: ignore
 
 
-logger = Logger("nio.client")
-logger_group.add_logger(logger)
+logger = logging.getLogger(__name__)
 
 
 def connected(func):
@@ -388,6 +379,7 @@ class HttpClient(Client):
         name=None,  # type: Optional[str]
         topic=None,  # type: Optional[str]
         room_version=None,  # type: Optional[str]
+        room_type=None,  # type: Optional[str]
         federate=True,  # type: bool
         is_direct=False,  # type: bool
         preset=None,  # type: Optional[RoomPreset]
@@ -419,6 +411,12 @@ class HttpClient(Client):
                 If not specified, the homeserver will use its default setting.
                 If a version not supported by the homeserver is specified,
                 a 400 ``M_UNSUPPORTED_ROOM_VERSION`` error will be returned.
+
+            room_type (str, optional): The room type to set.
+                If not specified, the homeserver will use its default setting.
+                In spec v1.2 the following room types are specified:
+                    - ``m.space``
+                Unspecified room types are permitted through the use of Namespaced Identifiers.
 
             federate (bool): Whether to allow users from other homeservers from
                 joining the room. Defaults to ``True``.
@@ -459,6 +457,7 @@ class HttpClient(Client):
                 name=name,
                 topic=topic,
                 room_version=room_version,
+                room_type=room_type,
                 federate=federate,
                 is_direct=is_direct,
                 preset=preset,
@@ -1116,7 +1115,9 @@ class HttpClient(Client):
             disposition = str(
                 transport_response.headers[b"content-disposition"], "utf-8"
             )
-            filename = cgi.parse_header(disposition)[1]["filename"]
+            message = EmailMessage()
+            message["Content-Disposition"] = disposition
+            filename = message.get_filename()
         except KeyError:
             filename = None
 
@@ -1187,7 +1188,7 @@ class HttpClient(Client):
                 logger.info(f"Received response of type: {request_info.request_class}")
             else:
                 logger.info(
-                    ("Error with response of type type: {}, " "error code {}").format(
+                    "Error with response of type type: {}, error code {}".format(
                         request_info.request_class, response.status_code
                     )
                 )
