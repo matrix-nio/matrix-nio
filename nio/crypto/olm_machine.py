@@ -14,15 +14,13 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import unicode_literals
+from __future__ import annotations, unicode_literals
 
 import json
-
-# pylint: disable=redefined-builtin
-from builtins import str
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, Union
+from json.decoder import JSONDecodeError
+from typing import Any, DefaultDict, Dict, Iterator, List, Optional, Set, Tuple, Union
 
 import olm
 from cachetools import LRUCache
@@ -30,9 +28,11 @@ from jsonschema import SchemaError, ValidationError
 from olm import OlmGroupSessionError, OlmMessage, OlmPreKeyMessage, OlmSessionError
 
 from ..api import Api
+from ..crypto.sessions import Session
 from ..event_builders import DummyMessage, RoomKeyRequestMessage, ToDeviceMessage
 from ..events import (
     BadEvent,
+    BadEventType,
     DummyEvent,
     EncryptedToDeviceEvent,
     Event,
@@ -67,6 +67,7 @@ from ..responses import (
     ToDeviceResponse,
 )
 from ..schemas import Schemas, validate_json
+from ..store import MatrixStore
 from . import (
     DeviceStore,
     GroupSessionStore,
@@ -82,12 +83,6 @@ from . import (
 )
 from .key_export import decrypt_and_read, encrypt_and_save
 from .sas import Sas
-
-try:
-    from json.decoder import JSONDecodeError
-except ImportError:  # pragma: no cover
-    JSONDecodeError = ValueError  # type: ignore
-
 
 DecryptedOlmT = Union[RoomKeyEvent, BadEvent, UnknownBadEvent, None]
 
@@ -129,12 +124,10 @@ class Olm:
 
     def __init__(
         self,
-        user_id,  # type: str
-        device_id,  # type: str
-        store,  # type: MatrixStore
-    ):
-        # type: (...) -> None
-
+        user_id: str,
+        device_id: str,
+        store: MatrixStore,
+    ) -> None:
         # Our own user id and device id. A tuple of user_id/device_id is
         # guaranteed to be unique.
         self.user_id = user_id
@@ -144,10 +137,10 @@ class Olm:
         # is None no action will be taken. After a sync request the client will
         # set this for us and depending on the count we will suggest the client
         # to upload new keys.
-        self.uploaded_key_count = None  # type: Optional[int]
+        self.uploaded_key_count: Optional[int] = None
 
         # A set of users for which we need to query their device keys.
-        self.users_for_key_query = set()  # type: Set[str]
+        self.users_for_key_query: Set[str] = set()
 
         # A store holding all the Olm devices of differing users we know about.
         self.device_store = DeviceStore()
@@ -172,18 +165,18 @@ class Olm:
         # users/devices in a room before they can be used to encrypt a room
         # message.
         # Dict of outbound Megolm sessions Dict[room_id]
-        self.outbound_group_sessions = {}  # type: Dict[str, OutboundGroupSession]
+        self.outbound_group_sessions: Dict[str, OutboundGroupSession] = {}
 
-        self.tracked_users = set()  # type: Set[str]
+        self.tracked_users: Set[str] = set()
 
         # A dictionary holding key requests that we sent out ourselves. Those
         # will be stored in the database and restored.
-        self.outgoing_key_requests = dict()  # type: Dict[str, OutgoingKeyRequest]
+        self.outgoing_key_requests: Dict[str, OutgoingKeyRequest] = dict()
 
         # This dictionary holds key requests that we received during a sync
         # response. We don't handle them right away since they might be
         # cancelled in the same sync response.
-        self.received_key_requests = dict()  # type: Dict[str, RoomKeyRequest]
+        self.received_key_requests: Dict[str, RoomKeyRequest] = dict()
 
         # If a received key request comes from a device for which we don't have
         # an Olm session the event will end up in this dictionary and the
@@ -191,42 +184,42 @@ class Olm:
         # After the user claims one-time keys for the device with the missing
         # Olm session the event will be put back into the received_key_requests
         # dictionary.
-        self.key_requests_waiting_for_session = defaultdict(
-            dict
-        )  # type: Dict[Tuple[str, str], Dict[str, RoomKeyRequest]]
-        self.key_request_devices_no_session = list()  # type: List[OlmDevice]
+        self.key_requests_waiting_for_session: Dict[
+            Tuple[str, str], Dict[str, RoomKeyRequest]
+        ] = defaultdict(dict)
+        self.key_request_devices_no_session: List[OlmDevice] = list()
 
         # This dictionary holds key requests that we received but the device
         # that sent us the key request is not verified/trusted. Such key
         # requests will be forwarded to users using a callback.
         # Users will need to verify the device and tell us to continue the key
         # sharing process using the continue_key_share method.
-        self.key_request_from_untrusted = dict()  # type: Dict[str, RoomKeyRequest]
+        self.key_request_from_untrusted: Dict[str, RoomKeyRequest] = dict()
 
         # A list of devices for which we need to start a new Olm session.
         # Matrix clients need to do a one-time key claiming request for the
         # devices in this list. After a new session is created with the device
         # it will be removed from this list and a dummy encrypted message will
         # be queued to be sent as a to-device message.
-        self.wedged_devices = list()  # type: List[OlmDevice]
+        self.wedged_devices: List[OlmDevice] = list()
 
         # A cache of megolm events that failed to decrypt because the Olm
         # session was wedged and thus the decryption key was missed.
         # We need to unwedge the session and only then send out key re-requests,
         # otherwise we might again fail to decrypt the Olm message.
-        self.key_re_requests_events = defaultdict(
-            list
-        )  # type: DefaultDict[Tuple[str, str], List[MegolmEvent]]
+        self.key_re_requests_events: DefaultDict[
+            Tuple[str, str], List[MegolmEvent]
+        ] = defaultdict(list)
 
         # A mapping from a transaction id to a Sas key verification object. The
         # transaction id uniquely identifies the key verification session.
-        self.key_verifications = dict()  # type: Dict[str, Sas]
+        self.key_verifications: Dict[str, Sas] = dict()
 
         # A list of to-device messages that need to be sent to the homeserver
         # by the client. This will get populated by common to-device messages
         # for key-requests, interactive device verification and Olm session
         # unwedging.
-        self.outgoing_to_device_messages = []  # type: List[ToDeviceMessage]
+        self.outgoing_to_device_messages: List[ToDeviceMessage] = []
 
         # A least recently used cache for replay attack protection for Megolm
         # encrypted messages. This is a dict holding a tuple of the
@@ -252,7 +245,7 @@ class Olm:
 
         self.load()
 
-        self.account = account  # type: OlmAccount
+        self.account: OlmAccount = account
 
     def update_tracked_users(self, room):
         already_tracked = self.tracked_users
@@ -263,8 +256,7 @@ class Olm:
         if missing:
             self.users_for_key_query.update(missing)
 
-    def add_changed_users(self, users):
-        # type: (Set[str]) -> None
+    def add_changed_users(self, users: Set[str]) -> None:
         """Add users that have changed keys to the query set."""
         self.users_for_key_query.update(users)
 
@@ -286,8 +278,7 @@ class Olm:
         key_count = (max_keys // 2) - self.uploaded_key_count
         return key_count > 0
 
-    def user_fully_verified(self, user_id):
-        # type: (str) -> bool
+    def user_fully_verified(self, user_id: str) -> bool:
         devices = self.device_store.active_user_devices(user_id)
         for device in devices:
             if not self.is_device_verified(device) and not self.is_device_blacklisted(
@@ -297,10 +288,8 @@ class Olm:
 
         return True
 
-    def share_keys(self):
-        # type: () -> Dict[str, Any]
-        def generate_one_time_keys(current_key_count):
-            # type: (int) -> None
+    def share_keys(self) -> Dict[str, Any]:
+        def generate_one_time_keys(current_key_count: int) -> None:
             max_keys = self.account.max_one_time_keys
 
             key_count = (max_keys // 2) - current_key_count
@@ -349,7 +338,7 @@ class Olm:
 
             return one_time_key_dict
 
-        content = {}  # type: Dict[Any, Any]
+        content: Dict[Any, Any] = {}
 
         # We're sharing our account for the first time, upload the identity
         # keys and one-time keys as well.
@@ -469,12 +458,11 @@ class Olm:
 
     def _encrypt_forwarding_key(
         self,
-        room_id,  # type: str
-        group_session,  # type: InboundGroupSession
-        session,  # type: Session
-        device,  # type: OlmDevice
-    ):
-        # type: (...) -> ToDeviceMessage
+        room_id: str,
+        group_session: InboundGroupSession,
+        session: Session,
+        device: OlmDevice,
+    ) -> ToDeviceMessage:
         """Encrypt a group session to be forwarded as a to-device message."""
         key_content = {
             "algorithm": self._megolm_algorithm,
@@ -496,8 +484,7 @@ class Olm:
             "m.room.encrypted", device.user_id, device.device_id, olm_dict
         )
 
-    def share_with_ourselves(self, event):
-        # type: (RoomKeyRequest) -> None
+    def share_with_ourselves(self, event: RoomKeyRequest) -> None:
         """Share a room key with some other device owned by our own user.
 
         Args:
@@ -564,8 +551,9 @@ class Olm:
             self._encrypt_forwarding_key(event.room_id, group_session, session, device)
         )
 
-    def get_active_key_requests(self, user_id, device_id):
-        # type: (str, str) -> List[RoomKeyRequest]
+    def get_active_key_requests(
+        self, user_id: str, device_id: str
+    ) -> List[RoomKeyRequest]:
         """Get key requests from a device that are waiting for verification.
 
         Args:
@@ -580,8 +568,7 @@ class Olm:
             if event.sender == user_id and event.requesting_device_id == device_id
         ]
 
-    def continue_key_share(self, event):
-        # type: (RoomKeyRequest) -> bool
+    def continue_key_share(self, event: RoomKeyRequest) -> bool:
         """Continue a previously interrupted key share event.
 
         Args:
@@ -598,8 +585,7 @@ class Olm:
         self.key_request_from_untrusted.pop(event.request_id)
         return True
 
-    def cancel_key_share(self, event):
-        # type: (RoomKeyRequest) -> bool
+    def cancel_key_share(self, event: RoomKeyRequest) -> bool:
         """Cancel a previously interrupted key share event.
 
         Args:
@@ -607,8 +593,7 @@ class Olm:
         """
         return bool(self.key_request_from_untrusted.pop(event.request_id, None))
 
-    def _collect_single_key_share(self, event):
-        # type: (RoomKeyRequest) -> bool
+    def _collect_single_key_share(self, event: RoomKeyRequest) -> bool:
         # The sender is ourself but on a different device. We share all
         # keys with ourselves.
         if event.sender == self.user_id:
@@ -712,9 +697,8 @@ class Olm:
                     )
 
     # This function is copyrighted under the Apache 2.0 license Zil0
-    def _handle_key_query(self, response):
-        # type: (KeysQueryResponse) -> None
-        changed = defaultdict(dict)  # type: DefaultDict[str, Dict[str, OlmDevice]]
+    def _handle_key_query(self, response: KeysQueryResponse) -> None:
+        changed: DefaultDict[str, Dict[str, OlmDevice]] = defaultdict(dict)
 
         for user_id, device_dict in response.device_keys.items():
             try:
@@ -892,11 +876,10 @@ class Olm:
 
     def _create_inbound_session(
         self,
-        sender,  # type: str
-        sender_key,  # type: str
-        message,  # type: Union[OlmPreKeyMessage, OlmMessage]
-    ):
-        # type: (...) -> InboundSession
+        sender: str,
+        sender_key: str,
+        message: Union[OlmPreKeyMessage, OlmMessage],
+    ) -> InboundSession:
         logger.info(f"Creating Inbound session for {sender}")
         # Let's create a new inbound session.
         session = InboundSession(self.account, message, sender_key)
@@ -909,44 +892,34 @@ class Olm:
 
         return session
 
-    def blacklist_device(self, device):
-        # type: (OlmDevice) -> bool
+    def blacklist_device(self, device: OlmDevice) -> bool:
         return self.store.blacklist_device(device)
 
-    def unblacklist_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unblacklist_device(self, device: OlmDevice) -> bool:
         return self.store.unblacklist_device(device)
 
-    def verify_device(self, device):
-        # type: (OlmDevice) -> bool
+    def verify_device(self, device: OlmDevice) -> bool:
         return self.store.verify_device(device)
 
-    def is_device_verified(self, device):
-        # type: (OlmDevice) -> bool
+    def is_device_verified(self, device: OlmDevice) -> bool:
         return self.store.is_device_verified(device)
 
-    def is_device_blacklisted(self, device):
-        # type: (OlmDevice) -> bool
+    def is_device_blacklisted(self, device: OlmDevice) -> bool:
         return self.store.is_device_blacklisted(device)
 
-    def unverify_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unverify_device(self, device: OlmDevice) -> bool:
         return self.store.unverify_device(device)
 
-    def ignore_device(self, device):
-        # type: (OlmDevice) -> bool
+    def ignore_device(self, device: OlmDevice) -> bool:
         return self.store.ignore_device(device)
 
-    def unignore_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unignore_device(self, device: OlmDevice) -> bool:
         return self.store.unignore_device(device)
 
-    def is_device_ignored(self, device):
-        # type: (OlmDevice) -> bool
+    def is_device_ignored(self, device: OlmDevice) -> bool:
         return self.store.is_device_ignored(device)
 
-    def create_session(self, one_time_key, curve_key):
-        # type: (str, str) -> OutboundSession
+    def create_session(self, one_time_key: str, curve_key: str) -> OutboundSession:
         # TODO this can fail
         session = OutboundSession(self.account, curve_key, one_time_key)
         # Save the account, add the session to the store and save it to the
@@ -958,9 +931,13 @@ class Olm:
         return session
 
     def create_group_session(
-        self, sender_key, sender_fp_key, room_id, session_id, session_key
-    ):
-        # type: (str, str, str, str, str) -> None
+        self,
+        sender_key: str,
+        sender_fp_key: str,
+        room_id: str,
+        session_id: str,
+        session_key: str,
+    ) -> None:
         logger.info(f"Creating inbound group session for {room_id} from {sender_key}")
 
         try:
@@ -979,8 +956,7 @@ class Olm:
         self.inbound_group_store.add(session)
         self.save_inbound_group_session(session)
 
-    def create_outbound_group_session(self, room_id):
-        # type: (str) -> None
+    def create_outbound_group_session(self, room_id: str) -> None:
         logger.info(f"Creating outbound group session for {room_id}")
         session = OutboundGroupSession()
         self.outbound_group_sessions[room_id] = session
@@ -993,9 +969,8 @@ class Olm:
         )
         logger.info(f"Created outbound group session for {room_id}")
 
-    def get_missing_sessions(self, users):
-        # type: (List[str]) -> Dict[str, List[str]]
-        missing = defaultdict(list)  # type: DefaultDict[str, List[str]]
+    def get_missing_sessions(self, users: List[str]) -> Dict[str, List[str]]:
+        missing: DefaultDict[str, List[str]] = defaultdict(list)
 
         for user_id in users:
             for device in self.device_store.active_user_devices(user_id):
@@ -1009,8 +984,7 @@ class Olm:
 
         return missing
 
-    def get_users_for_key_claiming(self):
-        # type: () -> Dict[str, List[str]]
+    def get_users_for_key_claiming(self) -> Dict[str, List[str]]:
         """Get the content for a key claim request that needs to be made.
 
         Returns a dictionary containing users as the keys and a list of devices
@@ -1021,7 +995,7 @@ class Olm:
         if not self.wedged_devices and not self.key_request_devices_no_session:
             raise LocalProtocolError("No wedged sessions found.")
 
-        wedged = defaultdict(list)  # type: DefaultDict[str, List[str]]
+        wedged: DefaultDict[str, List[str]] = defaultdict(list)
 
         for device in self.wedged_devices:
             wedged[device.user_id].append(device.device_id)
@@ -1069,11 +1043,10 @@ class Olm:
 
     def _try_decrypt(
         self,
-        sender,  # type: str
-        sender_key,  # type: str
-        message,  # type: Union[OlmPreKeyMessage, OlmMessage]
-    ):
-        # type: (...) -> Optional[str]
+        sender: str,
+        sender_key: str,
+        message: Union[OlmPreKeyMessage, OlmMessage],
+    ) -> Optional[str]:
         plaintext = None
 
         # Let's try to decrypt with each known session for the sender.
@@ -1122,8 +1095,7 @@ class Olm:
 
         return None
 
-    def _verify_olm_payload(self, sender, payload):
-        # type: (str, Dict[Any, Any]) -> bool
+    def _verify_olm_payload(self, sender: str, payload: Dict[Any, Any]) -> bool:
         # Verify that the sender in the payload matches the sender of the event
         if sender != payload["sender"]:
             raise VerificationError("Mismatched sender in Olm payload")
@@ -1143,11 +1115,10 @@ class Olm:
 
     def _handle_room_key_event(
         self,
-        sender,  # type: str
-        sender_key,  # type: str
-        payload,  # type: Dict[Any, Any]
-    ):
-        # type: (...) -> Union[RoomKeyEvent, BadEventType, None]
+        sender: str,
+        sender_key: str,
+        payload: Dict[Any, Any],
+    ) -> Union[RoomKeyEvent, BadEventType, None]:
         event = RoomKeyEvent.from_dict(payload, sender, sender_key)
 
         if isinstance(event, (BadEvent, UnknownBadEvent)):
@@ -1224,11 +1195,10 @@ class Olm:
     # This function is copyrighted under the Apache 2.0 license Zil0
     def _handle_forwarded_room_key_event(
         self,
-        sender,  # type: str
-        sender_key,  # type: str
-        payload,  # type: Dict[Any, Any]
-    ):
-        # type: (...) -> Union[ForwardedRoomKeyEvent, BadEventType, None]
+        sender: str,
+        sender_key: str,
+        payload: Dict[Any, Any],
+    ) -> Union[ForwardedRoomKeyEvent, BadEventType, None]:
         event = ForwardedRoomKeyEvent.from_dict(payload, sender, sender_key)
 
         if isinstance(event, (BadEvent, UnknownBadEvent)):
@@ -1268,11 +1238,10 @@ class Olm:
 
     def _handle_olm_event(
         self,
-        sender,  # type: str
-        sender_key,  # type: str
-        payload,  # type: Dict[Any, Any]
-    ):
-        # type: (...) -> DecryptedOlmT
+        sender: str,
+        sender_key: str,
+        payload: Dict[Any, Any],
+    ) -> DecryptedOlmT:
         logger.info(
             f"Received Olm event of type: {payload['type']} from {sender} {sender_key}"
         )
@@ -1291,8 +1260,7 @@ class Olm:
             logger.warning(f"Received unsupported Olm event of type {payload['type']}")
             return None
 
-    def message_index_ok(self, message_index, event):
-        # type: (int, MegolmEvent) -> bool
+    def message_index_ok(self, message_index: int, event: MegolmEvent) -> bool:
         """Check that the message index corresponds to a known message.
 
         If we know about the index already we will do some sanity checking to
@@ -1453,7 +1421,7 @@ class Olm:
                     verified = True
 
         try:
-            parsed_dict = json.loads(plaintext)  # type: Dict[Any, Any]
+            parsed_dict: Dict[Any, Any] = json.loads(plaintext)
         except JSONDecodeError as e:
             raise EncryptionError(f"Error parsing payload: {str(e)}")
 
@@ -1493,10 +1461,9 @@ class Olm:
 
     def decrypt_event(
         self,
-        event,  # type: Union[EncryptedToDeviceEvent, MegolmEvent]
-        room_id=None,  # type: str
-    ):
-        # type: (...) -> Union[Event, RoomKeyEvent, BadEventType, None]
+        event: Union[EncryptedToDeviceEvent, MegolmEvent],
+        room_id: str = None,
+    ) -> Union[Event, RoomKeyEvent, BadEventType, None]:
         logger.debug(f"Decrypting event of type {type(event).__name__}")
         if isinstance(event, OlmEvent):
             try:
@@ -1528,12 +1495,10 @@ class Olm:
 
     def decrypt(
         self,
-        sender,  # type: str
-        sender_key,  # type: str
-        message,  # type: Union[OlmPreKeyMessage, OlmMessage]
-    ):
-        # type: (...) -> DecryptedOlmT
-
+        sender: str,
+        sender_key: str,
+        message: Union[OlmPreKeyMessage, OlmMessage],
+    ) -> DecryptedOlmT:
         try:
             # First try to decrypt using an existing session.
             plaintext = self._try_decrypt(sender, sender_key, message)
@@ -1632,10 +1597,9 @@ class Olm:
 
     def group_encrypt(
         self,
-        room_id,  # type: str
-        plaintext_dict,  # type: Dict[Any, Any]
-    ):
-        # type: (...) -> Dict[str, str]
+        room_id: str,
+        plaintext_dict: Dict[Any, Any],
+    ) -> Dict[str, str]:
         if room_id not in self.outbound_group_sessions:
             self.create_outbound_group_session(room_id)
 
@@ -1732,7 +1696,7 @@ class Olm:
             self.store.ignore_devices(mark_as_ignored)
 
         for user_map_chunk in chunks(user_map, self._maxToDeviceMessagesPerRequest):
-            to_device_dict = {"messages": {}}  # type: Dict[str, Any]
+            to_device_dict: Dict[str, Any] = {"messages": {}}
             sharing_with = set()
 
             for user_id, device, session in user_map_chunk:
@@ -1748,12 +1712,11 @@ class Olm:
 
     def share_group_session(
         self,
-        room_id,  # type: str
-        users,  # type: List[str]
-        ignore_missing_sessions=False,  # type: bool
-        ignore_unverified_devices=False,  # type: bool
-    ):
-        # type: (...) -> Tuple[Set[Tuple[str, str]], Dict[str, Any]]
+        room_id: str,
+        users: List[str],
+        ignore_missing_sessions: bool = False,
+        ignore_unverified_devices: bool = False,
+    ) -> Tuple[Set[Tuple[str, str]], Dict[str, Any]]:
         logger.info(f"Sharing group session for room {room_id}")
         if room_id not in self.outbound_group_sessions:
             self.create_outbound_group_session(room_id)
@@ -1770,7 +1733,7 @@ class Olm:
             "session_key": group_session.session_key,
         }
 
-        to_device_dict = {"messages": {}}  # type: Dict[str, Any]
+        to_device_dict: Dict[str, Any] = {"messages": {}}
 
         already_shared_set = group_session.users_shared_with
         ignored_set = group_session.users_ignored
@@ -1841,31 +1804,26 @@ class Olm:
 
         return sharing_with, to_device_dict
 
-    def load(self):
-        # type: () -> None
+    def load(self) -> None:
         self.session_store = self.store.load_sessions()
         self.inbound_group_store = self.store.load_inbound_group_sessions()
         self.device_store = self.store.load_device_keys()
         self.outgoing_key_requests = self.store.load_outgoing_key_requests()
 
-    def save_session(self, curve_key, session):
-        # type: (str, Session) -> None
+    def save_session(self, curve_key: str, session: Session) -> None:
         self.store.save_session(curve_key, session)
 
-    def save_inbound_group_session(self, session):
-        # type: (InboundGroupSession) -> None
+    def save_inbound_group_session(self, session: InboundGroupSession) -> None:
         self.store.save_inbound_group_session(session)
 
-    def save_account(self, account=None):
-        # type: (Optional[OlmAccount]) -> None
+    def save_account(self, account: Optional[OlmAccount] = None) -> None:
         if account:
             self.store.save_account(account)
         else:
             self.store.save_account(self.account)
         logger.debug("Saving account")
 
-    def sign_json(self, json_dict):
-        # type: (Dict[Any, Any]) -> str
+    def sign_json(self, json_dict: Dict[Any, Any]) -> str:
         signature = self.account.sign(Api.to_canonical_json(json_dict))
         return signature
 
@@ -1909,8 +1867,7 @@ class Olm:
 
         return success
 
-    def mark_keys_as_published(self):
-        # type: () -> None
+    def mark_keys_as_published(self) -> None:
         self.account.mark_keys_as_published()
 
     @staticmethod
@@ -1970,8 +1927,7 @@ class Olm:
             return None
 
     @staticmethod
-    def import_keys_static(infile, passphrase):
-        # type: (str, str) -> List[InboundGroupSession]
+    def import_keys_static(infile: str, passphrase: str) -> List[InboundGroupSession]:
         sessions = []
 
         try:
@@ -2088,8 +2044,7 @@ class Olm:
 
         return sas.start_verification()
 
-    def get_active_sas(self, user_id, device_id):
-        # type: (str, str) -> Optional[Sas]
+    def get_active_sas(self, user_id: str, device_id: str) -> Optional[Sas]:
         """Find a non-canceled SAS verification object for the provided user.
 
         Args:
@@ -2109,8 +2064,7 @@ class Olm:
 
         return None
 
-    def handle_key_verification(self, event):
-        # type: (KeyVerificationEvent) -> None
+    def handle_key_verification(self, event: KeyVerificationEvent) -> None:
         """Receive key verification events."""
         if isinstance(event, KeyVerificationStart):
             logger.info(

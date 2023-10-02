@@ -10,6 +10,11 @@ repos:
     rev: v0.6.8
     hooks:
       - id: sphinx-lint
+  - repo: https://github.com/ilevkivskyi/com2ann
+    rev: master
+    hooks:
+      - id: com2ann
+        args: [ --add-future-imports, --python-minor-version=8]
   - repo: https://github.com/psf/black
     rev: 23.9.1
     hooks:

@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import unicode_literals
+from __future__ import annotations, unicode_literals
+
+from typing import Any, Dict
 
 from nio.client import HttpClient
 
 
 class TestClass:
     @staticmethod
-    def _load_response(filename):
-        # type: (str) -> Dict[Any, Any]
+    def _load_response(filename: str) -> Dict[Any, Any]:
         with open(filename, "rb") as f:
             return f.read()
 

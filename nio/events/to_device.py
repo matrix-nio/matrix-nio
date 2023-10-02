@@ -24,9 +24,11 @@ of a user.
 
 """
 
+from __future__ import annotations
+
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from ..schemas import Schemas
 from .common import (
@@ -37,7 +39,7 @@ from .common import (
     KeyVerificationMacMixin,
     KeyVerificationStartMixin,
 )
-from .misc import logger, verify
+from .misc import BadEventType, logger, verify
 
 
 @dataclass
@@ -57,8 +59,9 @@ class ToDeviceEvent:
 
     @classmethod
     @verify(Schemas.to_device)
-    def parse_event(cls, event_dict):
-        # type: (Dict) -> Optional[Union[ToDeviceEvent, BadEventType]]
+    def parse_event(
+        cls, event_dict: Dict
+    ) -> Optional[Union[ToDeviceEvent, BadEventType]]:
         """Parse a to-device event and create a higher level event object.
 
         This function parses the type of the to-device event and produces a

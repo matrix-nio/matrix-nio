@@ -15,8 +15,11 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+from __future__ import annotations
+
 from builtins import super
 from datetime import datetime, timedelta
+from typing import List, Optional, Set, Tuple
 
 import olm
 
@@ -24,8 +27,7 @@ from ..exceptions import EncryptionError
 
 
 class OlmAccount(olm.Account):
-    def __init__(self):
-        # type: () -> None
+    def __init__(self) -> None:
         self.shared = False
         super().__init__()
 
@@ -35,11 +37,10 @@ class OlmAccount(olm.Account):
     @classmethod
     def from_pickle(
         cls,
-        pickle,  # type: bytes
-        passphrase="",  # type: str
-        shared=False,  # type: bool
-    ):
-        # type: (...) -> OlmAccount
+        pickle: bytes,
+        passphrase: str = "",
+        shared: bool = False,
+    ) -> OlmAccount:
         account = super().from_pickle(pickle, passphrase)
         account.shared = shared
         return account
@@ -61,14 +62,19 @@ class Session(olm.Session, _SessionExpirationMixin):
         return super().__new__(cls, *args)
 
     @classmethod
-    def from_pickle(cls, pickle, creation_time, passphrase="", use_time=None):
-        # type: (str, datetime, str, Optional[datetime]) -> Session
+    def from_pickle(
+        cls,
+        pickle: str,
+        creation_time: datetime,
+        passphrase: str = "",
+        use_time: Optional[datetime] = None,
+    ) -> Session:
         session = super().from_pickle(pickle, passphrase)
         session.creation_time = creation_time
         session.use_time = use_time or creation_time
         return session
 
-    def decrypt(self, ciphertext):
+    def decrypt(self, ciphertext, unicode_errors="replace"):
         self.use_time = datetime.now()
         return super().decrypt(ciphertext)
 
@@ -86,7 +92,7 @@ class InboundSession(olm.InboundSession, _SessionExpirationMixin):
         self.creation_time = datetime.now()
         self.use_time = datetime.now()
 
-    def decrypt(self, ciphertext):
+    def decrypt(self, ciphertext, unicode_errors="replace"):
         self.use_time = datetime.now()
         return super().decrypt(ciphertext)
 
@@ -104,7 +110,7 @@ class OutboundSession(olm.OutboundSession, _SessionExpirationMixin):
         self.creation_time = datetime.now()
         self.use_time = datetime.now()
 
-    def decrypt(self, ciphertext):
+    def decrypt(self, ciphertext, unicode_errors="replace"):
         self.use_time = datetime.now()
         return super().decrypt(ciphertext)
 
@@ -116,17 +122,16 @@ class OutboundSession(olm.OutboundSession, _SessionExpirationMixin):
 class InboundGroupSession(olm.InboundGroupSession):
     def __init__(
         self,
-        session_key,  # type: str
-        signing_key,  # type: str
-        sender_key,  # type: str
-        room_id,  # type: str
-        forwarding_chains=None,  # type: Optional[List[str]]
-    ):
-        # type: (...) -> None
+        session_key: str,
+        signing_key: str,
+        sender_key: str,
+        room_id: str,
+        forwarding_chains: Optional[List[str]] = None,
+    ) -> None:
         self.ed25519 = signing_key
         self.sender_key = sender_key
         self.room_id = room_id
-        self.forwarding_chain = forwarding_chains or []  # type: List[str]
+        self.forwarding_chain: List[str] = forwarding_chains or []
         super().__init__(session_key)
 
     def __new__(cls, *args):
@@ -135,14 +140,13 @@ class InboundGroupSession(olm.InboundGroupSession):
     @classmethod
     def from_pickle(
         cls,
-        pickle,  # type: bytes
-        signing_key,  # type: str
-        sender_key,  # type: str
-        room_id,  # type: str
-        passphrase="",  # type: str
-        forwarding_chain=None,  # type: List[str]
-    ):
-        # type: (...) -> InboundGroupSession
+        pickle: bytes,
+        signing_key: str,
+        sender_key: str,
+        room_id: str,
+        passphrase: str = "",
+        forwarding_chain: Optional[List[str]] = None,
+    ) -> InboundGroupSession:
         session = super().from_pickle(pickle, passphrase)
         session.ed25519 = signing_key
         session.sender_key = sender_key
@@ -153,11 +157,11 @@ class InboundGroupSession(olm.InboundGroupSession):
     @classmethod
     def import_session(
         cls,
-        session_key,  # type: str
-        signing_key,  # type: str
-        sender_key,  # type: str
-        room_id,  # type: str
-        forwarding_chain=None,  # type: Optional[List[str]]
+        session_key: str,
+        signing_key: str,
+        sender_key: str,
+        room_id: str,
+        forwarding_chain: Optional[List[str]] = None,
     ):
         session = super().import_session(session_key)
         session.ed25519 = signing_key
@@ -184,8 +188,8 @@ class OutboundGroupSession(olm.OutboundGroupSession):
         self.max_messages = 100
         self.creation_time = datetime.now()
         self.message_count = 0
-        self.users_shared_with = set()  # type: Set[Tuple[str, str]]
-        self.users_ignored = set()  # type: Set[Tuple[str, str]]
+        self.users_shared_with: Set[Tuple[str, str]] = set()
+        self.users_ignored: Set[Tuple[str, str]] = set()
         self.shared = False
         super().__init__()
 
