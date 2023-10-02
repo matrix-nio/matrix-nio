@@ -19,7 +19,6 @@ from __future__ import annotations
 import json
 import logging
 import pprint
-import sys
 from builtins import str, super
 from collections import deque
 from collections.abc import Sequence
@@ -27,15 +26,11 @@ from dataclasses import dataclass, field
 from email.message import EmailMessage
 from functools import wraps
 from typing import Any, Deque, Dict, List, Optional, Tuple, Type, Union
+from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 import h2
 import h11
-
-if sys.version_info < (3, 11):
-    from urlparse import urlparse  # type: ignore
-else:
-    from urllib.parse import urlparse
 
 from ..api import Api, MessageDirection, ResizingMethod, RoomPreset, RoomVisibility
 from ..crypto import OlmDevice

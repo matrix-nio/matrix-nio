@@ -76,7 +76,7 @@ class Session(olm.Session, _SessionExpirationMixin):
 
     def decrypt(self, ciphertext, unicode_errors="replace"):
         self.use_time = datetime.now()
-        return super().decrypt(ciphertext)
+        return super().decrypt(ciphertext, unicode_errors)
 
     def encrypt(self, plaintext):
         self.use_time = datetime.now()
@@ -94,7 +94,7 @@ class InboundSession(olm.InboundSession, _SessionExpirationMixin):
 
     def decrypt(self, ciphertext, unicode_errors="replace"):
         self.use_time = datetime.now()
-        return super().decrypt(ciphertext)
+        return super().decrypt(ciphertext, unicode_errors)
 
     def encrypt(self, plaintext):
         self.use_time = datetime.now()
@@ -112,7 +112,7 @@ class OutboundSession(olm.OutboundSession, _SessionExpirationMixin):
 
     def decrypt(self, ciphertext, unicode_errors="replace"):
         self.use_time = datetime.now()
-        return super().decrypt(ciphertext)
+        return super().decrypt(ciphertext, unicode_errors)
 
     def encrypt(self, plaintext):
         self.use_time = datetime.now()
