@@ -243,9 +243,9 @@ class HttpResponse(TransportResponse):
         self.status_code = response.status_code
 
         for header in response.headers:
-            name, value = header
-            name = name.decode("utf-8")
-            value = value.decode("utf-8")
+            _name, _value = header
+            name = _name.decode("utf-8")
+            value = _value.decode("utf-8")
             logger.debug(f"Got http header {name}: {value}")
             self.headers[name] = value
 

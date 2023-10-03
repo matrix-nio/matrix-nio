@@ -1344,7 +1344,7 @@ class Olm:
             )
 
     def _decrypt_megolm_no_error(
-        self, event: MegolmEvent, room_id: str = None
+        self, event: MegolmEvent, room_id: Optional[str] = None
     ) -> Optional[Union[Event, BadEvent]]:
         try:
             return self.decrypt_megolm_event(event, room_id)
@@ -1462,7 +1462,7 @@ class Olm:
     def decrypt_event(
         self,
         event: Union[EncryptedToDeviceEvent, MegolmEvent],
-        room_id: str = None,
+        room_id: Optional[str] = None,
     ) -> Union[Event, RoomKeyEvent, BadEventType, None]:
         logger.debug(f"Decrypting event of type {type(event).__name__}")
         if isinstance(event, OlmEvent):

@@ -256,7 +256,7 @@ class HttpClient(Client):
     @connected
     def login(
         self,
-        password: str = None,
+        password: Optional[str] = None,
         device_name: Optional[str] = "",
         token: Optional[str] = None,
     ) -> Tuple[UUID, bytes]:
@@ -728,7 +728,7 @@ class HttpClient(Client):
         self,
         room_id: str,
         ignore_missing_sessions: bool = False,
-        tx_id: str = None,
+        tx_id: Optional[str] = None,
         ignore_unverified_devices: bool = False,
     ) -> Tuple[UUID, bytes]:
         """Share a group session with a room.

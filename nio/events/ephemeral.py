@@ -22,6 +22,7 @@ history.
 Ephemeral events are used for typing notifications and read receipts.
 
 """
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import List
@@ -124,7 +125,7 @@ class ReceiptEvent(EphemeralEvent):
 
     @classmethod
     @verify_or_none(Schemas.m_receipt)
-    def from_dict(cls, parsed_dict):
+    def from_dict(cls, parsed_dict) -> ReceiptEvent:
         event_receipts: List[Receipt] = []
 
         for event_id, event in parsed_dict["content"].items():

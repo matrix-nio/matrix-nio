@@ -9,7 +9,7 @@ test:
 	python3 -m pytest --benchmark-disable
 
 typecheck:
-	mypy -p nio --ignore-missing-imports --warn-redundant-casts
+	mypy -p nio --warn-redundant-casts
 
 coverage:
 	python3 -m pytest --cov nio --benchmark-disable

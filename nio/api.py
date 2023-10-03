@@ -199,7 +199,7 @@ class Api:
         key: str,
         hash: str,
         iv: str,
-        homeserver: str = None,
+        homeserver: Optional[str] = None,
         mimetype: Optional[str] = None,
     ) -> Optional[str]:
         """Convert a matrix content URI to a encrypted mxc URI.
@@ -262,7 +262,9 @@ class Api:
 
     @staticmethod
     def _build_path(
-        path: List[str], query_parameters: Dict = None, base_path: str = MATRIX_API_PATH
+        path: List[str],
+        query_parameters: Optional[Dict] = None,
+        base_path: str = MATRIX_API_PATH,
     ) -> str:
         """Builds a percent-encoded path from a list of strings.
 
@@ -321,7 +323,7 @@ class Api:
     @staticmethod
     def register(
         user: str,
-        password: str = None,
+        password: Optional[str] = None,
         device_name: Optional[str] = "",
         device_id: Optional[str] = "",
         auth_dict: Optional[dict[str, Any]] = None,
@@ -370,10 +372,10 @@ class Api:
     @staticmethod
     def login(
         user: str,
-        password: str = None,
+        password: Optional[str] = None,
         device_name: Optional[str] = "",
         device_id: Optional[str] = "",
-        token: str = None,
+        token: Optional[str] = None,
     ) -> Tuple[str, str, str]:
         """Authenticate the user.
 
@@ -389,6 +391,7 @@ class Api:
             device_id (str): ID of the client device. If this does not
                 correspond to a known client device, a new device will be
                 created.
+            token (str): Token for token-based login.
         """
         path = Api._build_path(path=["login"])
 
@@ -495,7 +498,7 @@ class Api:
         access_token: str,
         since: Optional[str] = None,
         timeout: Optional[int] = None,
-        filter: _FilterT = None,
+        filter: Optional[_FilterT] = None,
         full_state: Optional[bool] = None,
         set_presence: Optional[str] = None,
     ) -> Tuple[str, str]:
@@ -594,7 +597,7 @@ class Api:
                 to this endpoint.
             limit (int, optional): The maximum number of rooms to return.
             max_depth (int, optional): The maximum depth of the returned tree.
-            suggested_only (bool, optional): Whether or not to only return
+            suggested_only (bool, optional): Whether to only return
                 rooms that are considered suggested. Defaults to False.
         """
         query_parameters = {"access_token": access_token}
@@ -1566,7 +1569,9 @@ class Api:
         return ("GET", Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH))
 
     @staticmethod
-    def profile_get(user_id: str, access_token: str = None) -> Tuple[str, str]:
+    def profile_get(
+        user_id: str, access_token: Optional[str] = None
+    ) -> Tuple[str, str]:
         """Get the combined profile information for a user.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1587,7 +1592,7 @@ class Api:
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def profile_get_displayname(user_id, access_token: str = None):
+    def profile_get_displayname(user_id, access_token: Optional[str] = None):
         # type (str, str) -> Tuple[str, str]
         """Get display name.
 
@@ -1625,7 +1630,7 @@ class Api:
         return ("PUT", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
-    def profile_get_avatar(user_id, access_token: str = None):
+    def profile_get_avatar(user_id, access_token: Optional[str] = None):
         # type (str, str) -> Tuple[str, str]
         """Get avatar URL.
 
@@ -1681,7 +1686,7 @@ class Api:
 
     @staticmethod
     def set_presence(
-        access_token: str, user_id: str, presence: str, status_msg: str = None
+        access_token: str, user_id: str, presence: str, status_msg: Optional[str] = None
     ):
         """This API sets the given user's presence state.
 

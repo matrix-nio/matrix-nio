@@ -157,7 +157,7 @@ class ClientConfig:
     store_name: str = ""
     pickle_key: str = "DEFAULT_KEY"
     store_sync_tokens: bool = False
-    custom_headers: Dict[str, str] = None
+    custom_headers: Optional[Dict[str, str]] = None
 
     def __post_init__(self):
         if not ENCRYPTION_ENABLED and self.encryption_enabled:

@@ -180,7 +180,7 @@ class Sas(olm.Sas):
         own_device: str,
         own_fp_key: str,
         other_olm_device: OlmDevice,
-        transaction_id: str = None,
+        transaction_id: Optional[str] = None,
         short_auth_string: Optional[List[str]] = None,
         mac_methods: Optional[List[str]] = None,
     ):
