@@ -23,7 +23,7 @@ import time
 from builtins import bytes, super
 from collections import OrderedDict, deque
 from enum import Enum, unique
-from typing import Any, Deque, Optional, Tuple
+from typing import Any, Deque, List, Optional, Tuple
 from uuid import UUID, uuid4
 
 import h2.connection
@@ -50,15 +50,15 @@ class TransportRequest:
         self.timeout = timeout
 
     @classmethod
-    def get(host, target, timeout=0):
+    def get(cls, host, target, timeout=0):
         raise NotImplementedError
 
     @classmethod
-    def post(host, target, data, timeout=0):
+    def post(cls, host, target, data, timeout=0):
         raise NotImplementedError
 
     @classmethod
-    def put(host, target, data, timeout=0):
+    def put(cls, host, target, data, timeout=0):
         raise NotImplementedError
 
 
@@ -76,8 +76,7 @@ class HttpRequest(TransportRequest):
         return cls(request, timeout=timeout)
 
     @staticmethod
-    def _headers(host, data=None):
-        # type (str, bytes) -> List[Tuple[str, str]]
+    def _headers(host: str, data: Optional[bytes] = None) -> List[Tuple[str, str]]:
         headers = [
             ("User-Agent", f"{USER_AGENT}"),
             ("Host", f"{host}"),
@@ -129,8 +128,7 @@ class Http2Request(TransportRequest):
         return h
 
     @staticmethod
-    def _headers(host, data=None):
-        # type (str, bytes) -> List[Tuple[str, str]]
+    def _headers(host: str, data: Optional[bytes] = None) -> List[Tuple[str, str]]:
         headers = [
             (":authority", f"{host}"),
             (":scheme", "https"),

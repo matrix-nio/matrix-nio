@@ -453,8 +453,7 @@ class MatrixStore:
             ).on_conflict_ignore().execute()
 
     @use_database
-    def save_sync_token(self, token):
-        # type (str) -> None
+    def save_sync_token(self, token: str) -> None:
         """Save the given token"""
         account = self._get_account()
         assert account
@@ -462,8 +461,7 @@ class MatrixStore:
         SyncTokens.replace(account=account, token=token).execute()
 
     @use_database
-    def load_sync_token(self):
-        # type () -> Optional[str]
+    def load_sync_token(self) -> Optional[str]:
         account = self._get_account()
 
         if not account:

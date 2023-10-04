@@ -34,7 +34,7 @@ from typing import (
     Union,
 )
 
-from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OlmDevice, OutgoingKeyRequest
+from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OlmDevice, OutgoingKeyRequest, Sas
 from ..events import (
     AccountDataEvent,
     BadEvent,
@@ -310,8 +310,7 @@ class Client:
         return self.olm.outgoing_key_requests if self.olm else dict()
 
     @property
-    def key_verifications(self):
-        # type () -> Dict[str, Sas]
+    def key_verifications(self) -> Dict[str, Sas]:
         """Key verifications that the client is participating in."""
         return self.olm.key_verifications if self.olm else dict()
 
@@ -320,8 +319,7 @@ class Client:
         """To-device messages that we need to send out."""
         return self.olm.outgoing_to_device_messages if self.olm else []
 
-    def get_active_sas(self, user_id, device_id):
-        # type (str, str) -> Optional[Sas]
+    def get_active_sas(self, user_id: str, device_id: str) -> Optional[Sas]:
         """Find a non-canceled SAS verification object for the provided user.
 
         Args:

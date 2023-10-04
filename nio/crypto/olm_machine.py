@@ -1351,8 +1351,9 @@ class Olm:
         except EncryptionError:
             return None
 
-    def decrypt_megolm_event(self, event, room_id=None):
-        # type (MegolmEvent, Optional[str]) -> Union[Event, BadEvent]
+    def decrypt_megolm_event(
+        self, event: MegolmEvent, room_id: Optional[str] = None
+    ) -> Union[Event, BadEvent]:
         room_id = room_id or event.room_id
 
         if not room_id:

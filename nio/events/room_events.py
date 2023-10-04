@@ -823,8 +823,9 @@ class RoomAvatarEvent(Event):
 
     @classmethod
     @verify(Schemas.room_avatar)
-    def from_dict(cls, parsed_dict):
-        # type (Dict[Any, Any]) -> Union[RoomAvatarEvent, BadEventType]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RoomAvatarEvent, BadEventType]:
         room_avatar_url = parsed_dict["content"]["url"]
 
         return cls(parsed_dict, room_avatar_url)

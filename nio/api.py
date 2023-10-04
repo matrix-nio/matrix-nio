@@ -556,8 +556,7 @@ class Api:
         event_type: str,
         body: Dict[Any, Any],
         tx_id: Union[str, UUID],
-    ):
-        # type (...) -> Tuple[str, str, str]
+    ) -> Tuple[str, str, str]:
         """Send a message event to a room.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -639,13 +638,12 @@ class Api:
 
     @staticmethod
     def room_put_state(
-        access_token,  # type str
-        room_id,  # type str
-        event_type,  # type str
-        body,  # type Dict[Any, Any]
-        state_key="",  # type str
-    ):
-        # type (...) -> Tuple[str, str, str]
+        access_token: str,
+        room_id: str,
+        event_type: str,
+        body: Dict[Any, Any],
+        state_key: str = "",
+    ) -> Tuple[str, str, str]:
         """Send a state event.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -667,8 +665,9 @@ class Api:
         return ("PUT", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
-    def room_get_state_event(access_token, room_id, event_type, state_key=""):
-        # type (str, str, str) -> Tuple[str, str]
+    def room_get_state_event(
+        access_token, room_id: str, event_type: str, state_key: str = ""
+    ) -> Tuple[str, str]:
         """Fetch a state event.
 
         Returns the HTTP method and HTTP path for the request.
@@ -688,8 +687,7 @@ class Api:
         return ("GET", Api._build_path(path, query_parameters))
 
     @staticmethod
-    def room_get_state(access_token, room_id):
-        # type (str, str) -> Tuple[str, str]
+    def room_get_state(access_token: str, room_id: str) -> Tuple[str, str]:
         """Fetch the current state for a room.
 
         Returns the HTTP method and HTTP path for the request.
@@ -712,8 +710,7 @@ class Api:
         event_id: str,
         tx_id: Union[str, UUID],
         reason: Optional[str] = None,
-    ):
-        # type (...) -> Tuple[str, str, str]
+    ) -> Tuple[str, str, str]:
         """Strip information out of an event.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -739,8 +736,9 @@ class Api:
         return ("PUT", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
-    def room_kick(access_token, room_id, user_id, reason=None):
-        # type (str, str, str, Optional[str]) -> Tuple[str, str, str]
+    def room_kick(
+        access_token: str, room_id: str, user_id: str, reason: Optional[str] = None
+    ) -> Tuple[str, str, str]:
         """Kick a user from a room, or withdraw their invitation.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -853,8 +851,9 @@ class Api:
         )
 
     @staticmethod
-    def room_invite(access_token, room_id, user_id):
-        # type (str, str, str) -> Tuple[str, str, str]
+    def room_invite(
+        access_token: str, room_id: str, user_id: str
+    ) -> Tuple[str, str, str]:
         """Invite a user to a room.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -888,8 +887,7 @@ class Api:
         power_level_override: Optional[Dict[str, Any]] = None,
         predecessor: Optional[Dict[str, Any]] = None,
         space: bool = False,
-    ):
-        # type (...) -> Tuple[str, str, str]
+    ) -> Tuple[str, str, str]:
         """Create a new room.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -998,8 +996,7 @@ class Api:
         return ("POST", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
-    def join(access_token, room_id):
-        # type (str, str) -> Tuple[str, str, str]
+    def join(access_token: str, room_id: str) -> Tuple[str, str, str]:
         """Join a room.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -1015,8 +1012,7 @@ class Api:
         return ("POST", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
-    def room_leave(access_token, room_id):
-        # type (str, str) -> Tuple[str, str, str]
+    def room_leave(access_token: str, room_id: str) -> Tuple[str, str, str]:
         """Leave a room.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -1032,8 +1028,7 @@ class Api:
         return ("POST", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
-    def room_forget(access_token, room_id):
-        # type (str, str) -> Tuple[str, str, str]
+    def room_forget(access_token: str, room_id: str) -> Tuple[str, str, str]:
         """Forget a room.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -1057,8 +1052,7 @@ class Api:
         direction: MessageDirection = MessageDirection.back,
         limit: int = 10,
         message_filter: Optional[Dict[Any, Any]] = None,
-    ):
-        # type (...) -> Tuple[str, str]
+    ) -> Tuple[str, str]:
         """Get room messages.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1592,8 +1586,9 @@ class Api:
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def profile_get_displayname(user_id, access_token: Optional[str] = None):
-        # type (str, str) -> Tuple[str, str]
+    def profile_get_displayname(
+        user_id: str, access_token: Optional[str] = None
+    ) -> Tuple[str, str]:
         """Get display name.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1612,8 +1607,9 @@ class Api:
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def profile_set_displayname(access_token, user_id, display_name):
-        # type (str, str, str) -> Tuple[str, str, str]
+    def profile_set_displayname(
+        access_token: str, user_id: str, display_name: str
+    ) -> Tuple[str, str, str]:
         """Set display name.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -1630,8 +1626,9 @@ class Api:
         return ("PUT", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
-    def profile_get_avatar(user_id, access_token: Optional[str] = None):
-        # type (str, str) -> Tuple[str, str]
+    def profile_get_avatar(
+        user_id: str, access_token: Optional[str] = None
+    ) -> Tuple[str, str]:
         """Get avatar URL.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1649,8 +1646,9 @@ class Api:
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def profile_set_avatar(access_token, user_id, avatar_url):
-        # type (str, str, str) -> Tuple[str, str, str]
+    def profile_set_avatar(
+        access_token: str, user_id: str, avatar_url: str
+    ) -> Tuple[str, str, str]:
         """Set avatar url.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -1707,8 +1705,7 @@ class Api:
         return ("PUT", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
-    def whoami(access_token):
-        # type (str) -> Tuple[str, str]
+    def whoami(access_token: str) -> Tuple[str, str]:
         """Get information about the owner of a given access token.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -1722,8 +1719,9 @@ class Api:
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def room_context(access_token, room_id, event_id, limit=None):
-        # type (str) -> Tuple[str, str]
+    def room_context(
+        access_token: str, room_id: str, event_id: str, limit: Optional[int] = None
+    ) -> Tuple[str, str]:
         """Fetch a number of events that happened before and after an event.
         This allows clients to get the context surrounding an event.
 
