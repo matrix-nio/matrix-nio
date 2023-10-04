@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2021 Famedly GmbH
 #
@@ -15,7 +13,7 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import annotations, unicode_literals
+from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field

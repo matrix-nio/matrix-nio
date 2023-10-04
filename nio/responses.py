@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2020-2021 Famedly GmbH
 #
@@ -15,11 +13,10 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import annotations, unicode_literals
+from __future__ import annotations
 
 import logging
 import os
-from builtins import str
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
@@ -204,9 +201,9 @@ def verify(schema, error_class, pass_arguments=True):
 
 @dataclass
 class Rooms:
-    invite: Dict[str, "InviteInfo"] = field()
-    join: Dict[str, "RoomInfo"] = field()
-    leave: Dict[str, "RoomInfo"] = field()
+    invite: Dict[str, InviteInfo] = field()
+    join: Dict[str, RoomInfo] = field()
+    leave: Dict[str, RoomInfo] = field()
 
 
 @dataclass
@@ -690,7 +687,7 @@ class DiscoveryInfoResponse(Response):
     def from_dict(
         cls,
         parsed_dict: Dict[str, Any],
-    ) -> Union["DiscoveryInfoResponse", DiscoveryInfoError]:
+    ) -> Union[DiscoveryInfoResponse, DiscoveryInfoError]:
         homeserver_url = parsed_dict["m.homeserver"]["base_url"].rstrip("/")
 
         identity_server_url = (
@@ -877,7 +874,7 @@ class ContentRepositoryConfigResponse(Response):
     def from_dict(
         cls,
         parsed_dict: dict,
-    ) -> Union["ContentRepositoryConfigResponse", ErrorResponse]:
+    ) -> Union[ContentRepositoryConfigResponse, ErrorResponse]:
         return cls(parsed_dict.get("m.upload.size"))
 
 
@@ -1047,7 +1044,7 @@ class RoomGetStateEventResponse(Response):
         event_type: str,
         state_key: str,
         room_id: str,
-    ) -> Union["RoomGetStateEventResponse", RoomGetStateEventError]:
+    ) -> Union[RoomGetStateEventResponse, RoomGetStateEventError]:
         return cls(parsed_dict, event_type, state_key, room_id)
 
 
@@ -1068,7 +1065,7 @@ class RoomGetEventResponse(Response):
     )
     def from_dict(
         cls, parsed_dict: Dict[str, Any]
-    ) -> Union["RoomGetEventResponse", RoomGetEventError]:
+    ) -> Union[RoomGetEventResponse, RoomGetEventError]:
         event = Event.parse_event(parsed_dict)
         resp = cls()
         resp.event = event
@@ -1186,7 +1183,7 @@ class SpaceGetHierarchyResponse(Response):
     )
     def from_dict(
         cls, parsed_dict: Dict[str, Any]
-    ) -> Union["SpaceGetHierarchyResponse", SpaceGetHierarchyError]:
+    ) -> Union[SpaceGetHierarchyResponse, SpaceGetHierarchyError]:
         next_batch = parsed_dict.get("next_batch")
         rooms = parsed_dict["rooms"]
         resp = cls(next_batch, rooms)
@@ -1678,7 +1675,7 @@ class PresenceGetResponse(Response):
     @verify(Schemas.get_presence, PresenceGetError, pass_arguments=False)
     def from_dict(
         cls, parsed_dict: Dict[Any, Any], user_id: str
-    ) -> Union["PresenceGetResponse", PresenceGetError]:
+    ) -> Union[PresenceGetResponse, PresenceGetError]:
         return cls(
             user_id,
             parsed_dict.get("presence", "offline"),
@@ -1813,7 +1810,7 @@ class SyncResponse(Response):
                 result.append(f"    {event}")
 
         body = "\n".join(result)
-        string = ("Sync response until batch: {}:\n{}").format(self.next_batch, body)
+        string = f"Sync response until batch: {self.next_batch}:\n{body}"
         return string
 
     @staticmethod
@@ -2025,7 +2022,7 @@ class UploadFilterResponse(Response):
     def from_dict(
         cls,
         parsed_dict: Dict[Any, Any],
-    ) -> Union["UploadFilterResponse", UploadFilterError]:
+    ) -> Union[UploadFilterResponse, UploadFilterError]:
         return cls(parsed_dict["filter_id"])
 
 
@@ -2044,7 +2041,7 @@ class WhoamiResponse(Response):
     def from_dict(
         cls,
         parsed_dict: Dict[Any, Any],
-    ) -> Union["WhoamiResponse", WhoamiError]:
+    ) -> Union[WhoamiResponse, WhoamiError]:
         return cls(
             parsed_dict["user_id"],
             parsed_dict.get("device_id"),

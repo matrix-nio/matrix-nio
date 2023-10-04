@@ -122,7 +122,7 @@ class CustomEncryptedClient(AsyncClient):
                     f"Logged in using stored credentials: {self.user_id} on {self.device_id}"
                 )
 
-            except IOError as err:
+            except OSError as err:
                 print(f"Couldn't load session from file. Logging in. Error: {err}")
             except json.JSONDecodeError:
                 print("Couldn't read JSON file; overwriting")

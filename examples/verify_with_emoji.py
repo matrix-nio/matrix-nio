@@ -89,7 +89,7 @@ CONFIG_FILE = "credentials.json"  # login credentials JSON file
 STORE_PATH = "./store/"  # local directory
 
 
-class Callbacks(object):
+class Callbacks:
     """Class to pass client to callback methods."""
 
     def __init__(self, client):

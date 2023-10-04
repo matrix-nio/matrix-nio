@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -150,7 +148,7 @@ class ClientConfig:
 
     """
 
-    store: Optional[Type["MatrixStore"]] = DefaultStore if ENCRYPTION_ENABLED else None
+    store: Optional[Type[MatrixStore]] = DefaultStore if ENCRYPTION_ENABLED else None
 
     encryption_enabled: bool = ENCRYPTION_ENABLED
 
@@ -205,8 +203,8 @@ class Client:
         self.user = user
         self.device_id = device_id
         self.store_path = store_path
-        self.olm: Optional["Olm"] = None
-        self.store: Optional["MatrixStore"] = None
+        self.olm: Optional[Olm] = None
+        self.store: Optional[MatrixStore] = None
         self.config = config or ClientConfig()
 
         self.user_id = ""

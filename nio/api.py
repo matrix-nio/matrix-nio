@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2020-2021 Famedly GmbH
 #
@@ -23,7 +21,7 @@ In general these functions are not directly called. One should use an existing
 client like AsyncClient or HttpClient.
 """
 
-from __future__ import annotations, unicode_literals
+from __future__ import annotations
 
 import json
 import os
@@ -1831,8 +1829,8 @@ class Api:
         rule_id: str,
         before: Optional[str] = None,
         after: Optional[str] = None,
-        actions: Sequence["PushAction"] = (),
-        conditions: Optional[Sequence["PushCondition"]] = None,
+        actions: Sequence[PushAction] = (),
+        conditions: Optional[Sequence[PushCondition]] = None,
         pattern: Optional[str] = None,
     ) -> Tuple[str, str, str]:
         """Create or modify an existing user-created push rule.
@@ -1970,7 +1968,7 @@ class Api:
         scope: str,
         kind: PushRuleKind,
         rule_id: str,
-        actions: Sequence["PushAction"],
+        actions: Sequence[PushAction],
     ) -> Tuple[str, str, str]:
         """Set the actions for an existing built-in or user-created push rule.
 

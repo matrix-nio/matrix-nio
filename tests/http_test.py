@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import annotations, unicode_literals
+from __future__ import annotations
 
 from typing import Any, Dict
 

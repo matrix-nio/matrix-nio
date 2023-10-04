@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2021 Famedly GmbH
 #
 # Permission to use, copy, modify, and/or distribute this software for

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -17,7 +15,6 @@
 
 from __future__ import annotations
 
-from builtins import super
 from datetime import datetime, timedelta
 from typing import List, Optional, Set, Tuple
 

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -14,13 +12,12 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import annotations, unicode_literals
+from __future__ import annotations
 
 import json
 import logging
 import pprint
 import time
-from builtins import bytes, super
 from collections import OrderedDict, deque
 from enum import Enum, unique
 from typing import Any, Deque, List, Optional, Tuple
