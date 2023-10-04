@@ -61,6 +61,7 @@ select = [
     "PT",    # flake8-pytest-style
     "RSE",   # flake8-raise
     "PERF",  # Perflint
+    "FURB",  # refurb
 ]
 ignore = [
     "E501",  # https://www.flake8rules.com/rules/E501.html - Let `black` handle this.
