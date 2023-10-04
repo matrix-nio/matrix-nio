@@ -14,9 +14,12 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
-from ..event_builders import ToDeviceMessage
+from ..event_builders import RoomKeyRequestMessage, ToDeviceMessage
+from ..responses import RoomKeyRequestResponse
 
 
 @dataclass
@@ -29,8 +32,7 @@ class OutgoingKeyRequest:
     algorithm: str = field()
 
     @classmethod
-    def from_response(cls, response):
-        # type: (RoomKeyRequestResponse) -> OutgoingKeyRequest
+    def from_response(cls, response: RoomKeyRequestResponse) -> OutgoingKeyRequest:
         """Create a key request object from a RoomKeyRequestResponse."""
         return cls(
             response.request_id,
@@ -40,8 +42,7 @@ class OutgoingKeyRequest:
         )
 
     @classmethod
-    def from_message(cls, message):
-        # type: (RoomKeyRequestMessage) -> OutgoingKeyRequest
+    def from_message(cls, message: RoomKeyRequestMessage) -> OutgoingKeyRequest:
         """Create a key request object from a RoomKeyRequestMessage."""
         return cls(
             message.request_id,

@@ -14,6 +14,8 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from __future__ import annotations
+
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -155,7 +157,7 @@ class ClientConfig:
     store_name: str = ""
     pickle_key: str = "DEFAULT_KEY"
     store_sync_tokens: bool = False
-    custom_headers: Dict[str, str] = None
+    custom_headers: Optional[Dict[str, str]] = None
 
     def __post_init__(self):
         if not ENCRYPTION_ENABLED and self.encryption_enabled:
@@ -209,7 +211,7 @@ class Client:
 
         self.user_id = ""
         # TODO Turn this into a optional string.
-        self.access_token = ""  # type: str
+        self.access_token: str = ""
         self.next_batch = ""
         self.loaded_sync_token = ""
 
@@ -455,8 +457,7 @@ class Client:
         elif session:
             logger.info(f"Invalidating session for {room_id}")
 
-    def _invalidate_outbound_sessions(self, device):
-        # type: (OlmDevice) -> None
+    def _invalidate_outbound_sessions(self, device: OlmDevice) -> None:
         assert self.olm
 
         for room in self.rooms.values():
@@ -591,8 +592,9 @@ class Client:
 
         return changed
 
-    def _handle_register(self, response):
-        # type: (Union[RegisterResponse, ErrorResponse]) -> None
+    def _handle_register(
+        self, response: Union[RegisterResponse, ErrorResponse]
+    ) -> None:
         if isinstance(response, ErrorResponse):
             return
 

@@ -23,7 +23,7 @@ across installations on a particular device.
 
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations, unicode_literals
 
 import re
 from dataclasses import dataclass, field
@@ -47,7 +47,7 @@ class AccountDataEvent:
     @verify(Schemas.account_data)
     def parse_event(
         cls,
-        event_dict,  # type: Dict[Any, Any]
+        event_dict: Dict[Any, Any],
     ):
         if event_dict["type"] == "m.fully_read":
             return FullyReadEvent.from_dict(event_dict)

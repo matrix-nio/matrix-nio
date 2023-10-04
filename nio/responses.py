@@ -15,7 +15,7 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import unicode_literals
+from __future__ import annotations, unicode_literals
 
 import logging
 import os
@@ -395,8 +395,7 @@ class ErrorResponse(Response):
         return f"{self.__class__.__name__}: {e}"
 
     @classmethod
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> ErrorResponse
+    def from_dict(cls, parsed_dict: Dict[Any, Any]) -> ErrorResponse:
         try:
             validate_json(parsed_dict, Schemas.error)
         except (SchemaError, ValidationError):
@@ -748,8 +747,9 @@ class RegisterInteractiveResponse(Response):
 
     @classmethod
     @verify(Schemas.register_flows, RegisterInteractiveError)
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> Union[RegisterInteractiveResponse, RegisterInteractiveError]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RegisterInteractiveResponse, RegisterInteractiveError]:
         for flow in parsed_dict["flows"]:
             stages = [stage for stage in flow["stages"]]
 
@@ -775,8 +775,9 @@ class LoginInfoResponse(Response):
 
     @classmethod
     @verify(Schemas.login_info, LoginInfoError)
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> Union[LoginInfoResponse, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[LoginInfoResponse, ErrorResponse]:
         flow_types = [flow["type"] for flow in parsed_dict["flows"]]
         return cls(flow_types)
 
@@ -792,8 +793,9 @@ class LoginResponse(Response):
 
     @classmethod
     @verify(Schemas.login, LoginError)
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> Union[LoginResponse, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[LoginResponse, ErrorResponse]:
         return cls(
             parsed_dict["user_id"],
             parsed_dict["device_id"],
@@ -808,8 +810,9 @@ class LogoutResponse(Response):
 
     @classmethod
     @verify(Schemas.empty, LogoutError)
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> Union[LogoutResponse, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[LogoutResponse, ErrorResponse]:
         """Create a response for logout response from server."""
         return cls()
 
@@ -825,8 +828,7 @@ class JoinedMembersResponse(Response):
         cls,
         parsed_dict: Dict[Any, Any],
         room_id: str,
-    ):
-        # type: (...) -> Union[JoinedMembersResponse, ErrorResponse]
+    ) -> Union[JoinedMembersResponse, ErrorResponse]:
         members = []
 
         for user_id, user_info in parsed_dict["joined"].items():
@@ -855,8 +857,7 @@ class JoinedRoomsResponse(Response):
     def from_dict(
         cls,
         parsed_dict: Dict[Any, Any],
-    ):
-        # type: (...) -> Union[JoinedRoomsResponse, ErrorResponse]
+    ) -> Union[JoinedRoomsResponse, ErrorResponse]:
         return cls(parsed_dict["joined_rooms"])
 
 
@@ -888,8 +889,9 @@ class UploadResponse(Response):
 
     @classmethod
     @verify(Schemas.upload, UploadError)
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> Union[UploadResponse, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[UploadResponse, ErrorResponse]:
         return cls(
             parsed_dict["content_uri"],
         )
@@ -905,8 +907,7 @@ class DownloadResponse(FileResponse):
         data: Union[os.PathLike, bytes],
         content_type: str,
         filename: Optional[str] = None,
-    ):
-        # type: (...) -> Union[DownloadResponse, DownloadError]
+    ) -> Union[DownloadResponse, DownloadError]:
         if isinstance(data, (bytes, os.PathLike)):
             return cls(body=data, content_type=content_type, filename=filename)
 
@@ -945,8 +946,9 @@ class ThumbnailResponse(FileResponse):
     """A response representing a successful thumbnail request."""
 
     @classmethod
-    def from_data(cls, data: bytes, content_type: str, filename: Optional[str] = None):
-        # type: (...) -> Union[ThumbnailResponse, ThumbnailError]
+    def from_data(
+        cls, data: bytes, content_type: str, filename: Optional[str] = None
+    ) -> Union[ThumbnailResponse, ThumbnailError]:
         if not content_type.startswith("image/"):
             return ThumbnailError(f"invalid content type: {content_type}")
 
@@ -973,8 +975,7 @@ class RoomEventIdResponse(Response):
         cls,
         parsed_dict: Dict[Any, Any],
         room_id: str,
-    ):
-        # type: (...) -> Union[RoomEventIdResponse, ErrorResponse]
+    ) -> Union[RoomEventIdResponse, ErrorResponse]:
         try:
             validate_json(parsed_dict, Schemas.room_event_id)
         except (SchemaError, ValidationError):
@@ -1010,8 +1011,7 @@ class RoomGetStateResponse(Response):
         cls,
         parsed_dict: List[Dict[Any, Any]],
         room_id: str,
-    ):
-        # type: (...) -> Union[RoomGetStateResponse, RoomGetStateError]
+    ) -> Union[RoomGetStateResponse, RoomGetStateError]:
         try:
             validate_json(parsed_dict, Schemas.room_state)
         except (SchemaError, ValidationError):
@@ -1113,8 +1113,7 @@ class RoomResolveAliasResponse(Response):
         cls,
         parsed_dict: Dict[Any, Any],
         room_alias: str,
-    ):
-        # type: (...) -> Union[RoomResolveAliasResponse, ErrorResponse]
+    ) -> Union[RoomResolveAliasResponse, ErrorResponse]:
         room_id = parsed_dict["room_id"]
         servers = parsed_dict["servers"]
         return cls(room_alias, room_id, servers)
@@ -1127,8 +1126,9 @@ class RoomDeleteAliasResponse(Response):
     room_alias: str = field()
 
     @classmethod
-    def from_dict(cls, parsed_dict: Dict[Any, Any], room_alias: str):
-        # type: (...) -> Union[RoomDeleteAliasResponse, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any], room_alias: str
+    ) -> Union[RoomDeleteAliasResponse, ErrorResponse]:
         return cls(room_alias)
 
 
@@ -1140,8 +1140,9 @@ class RoomPutAliasResponse(Response):
     room_id: str = field()
 
     @classmethod
-    def from_dict(cls, parsed_dict: Dict[Any, Any], room_alias: str, room_id: str):
-        # type: (...) -> Union[RoomPutAliasResponse, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any], room_alias: str, room_id: str
+    ) -> Union[RoomPutAliasResponse, ErrorResponse]:
         return cls(room_alias, room_id)
 
 
@@ -1158,8 +1159,9 @@ class RoomGetVisibilityResponse(Response):
         RoomGetVisibilityError,
         pass_arguments=False,
     )
-    def from_dict(cls, parsed_dict: Dict[Any, Any], room_id: str):
-        # type: (...) -> Union[RoomGetVisibilityResponse, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any], room_id: str
+    ) -> Union[RoomGetVisibilityResponse, ErrorResponse]:
         visibility = parsed_dict["visibility"]
         return cls(room_id, visibility)
 
@@ -1197,8 +1199,7 @@ class EmptyResponse(Response):
         return ErrorResponse.from_dict(parsed_dict)
 
     @classmethod
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> Union[Any, ErrorResponse]
+    def from_dict(cls, parsed_dict: Dict[Any, Any]) -> Union[Any, ErrorResponse]:
         try:
             validate_json(parsed_dict, Schemas.empty)
         except (SchemaError, ValidationError):
@@ -1216,8 +1217,9 @@ class _EmptyResponseWithRoomId(Response):
         return _ErrorWithRoomId.from_dict(parsed_dict, room_id)
 
     @classmethod
-    def from_dict(cls, parsed_dict: Dict[Any, Any], room_id: str):
-        # type: (...) -> Union[Any, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any], room_id: str
+    ) -> Union[Any, ErrorResponse]:
         try:
             validate_json(parsed_dict, Schemas.empty)
         except (SchemaError, ValidationError):
@@ -1272,8 +1274,7 @@ class ShareGroupSessionResponse(Response):
         _: Dict[Any, Any],
         room_id: str,
         users_shared_with: Set[Tuple[str, str]],
-    ):
-        # type: (...) -> Union[ShareGroupSessionResponse, ErrorResponse]
+    ) -> Union[ShareGroupSessionResponse, ErrorResponse]:
         """Create a response from the json dict the server returns.
 
         Args:
@@ -1320,8 +1321,7 @@ class DeleteDevicesAuthResponse(Response):
     def from_dict(
         cls,
         parsed_dict: Dict[Any, Any],
-    ):
-        # type: (...) -> Union[DeleteDevicesAuthResponse, ErrorResponse]
+    ) -> Union[DeleteDevicesAuthResponse, ErrorResponse]:
         return cls(parsed_dict["session"], parsed_dict["flows"], parsed_dict["params"])
 
 
@@ -1345,8 +1345,7 @@ class RoomMessagesResponse(Response):
         cls,
         parsed_dict: Dict[Any, Any],
         room_id: str,
-    ):
-        # type: (...) -> Union[RoomMessagesResponse, ErrorResponse]
+    ) -> Union[RoomMessagesResponse, ErrorResponse]:
         chunk: List[Union[Event, BadEventType]] = []
         chunk = SyncResponse._get_room_events(parsed_dict["chunk"])
         return cls(room_id, chunk, parsed_dict["start"], parsed_dict.get("end"))
@@ -1361,8 +1360,9 @@ class RoomIdResponse(Response):
         return ErrorResponse.from_dict(parsed_dict)
 
     @classmethod
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> Union[RoomIdResponse, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RoomIdResponse, ErrorResponse]:
         try:
             validate_json(parsed_dict, Schemas.room_id)
         except (SchemaError, ValidationError):
@@ -1386,8 +1386,7 @@ class RoomCreateResponse(Response):
     def from_dict(
         cls,
         parsed_dict: Dict[Any, Any],
-    ):
-        # type: (...) -> Union[RoomCreateResponse, RoomCreateError]
+    ) -> Union[RoomCreateResponse, RoomCreateError]:
         return cls(parsed_dict["room_id"])
 
 
@@ -1426,8 +1425,9 @@ class GetOpenIDTokenResponse(Response):
 
     @classmethod
     @verify(Schemas.get_openid_token, GetOpenIDTokenError)
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> Union[GetOpenIDTokenResponse, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[GetOpenIDTokenResponse, ErrorResponse]:
         access_token = parsed_dict["access_token"]
         expires_in = parsed_dict["expires_in"]
         matrix_server_name = parsed_dict["matrix_server_name"]
@@ -1443,8 +1443,9 @@ class KeysUploadResponse(Response):
 
     @classmethod
     @verify(Schemas.keys_upload, KeysUploadError)
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> Union[KeysUploadResponse, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[KeysUploadResponse, ErrorResponse]:
         counts = parsed_dict["one_time_key_counts"]
         return cls(counts["curve25519"], counts["signed_curve25519"])
 
@@ -1460,8 +1461,9 @@ class KeysQueryResponse(Response):
 
     @classmethod
     @verify(Schemas.keys_query, KeysQueryError)
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> Union[KeysQueryResponse, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[KeysQueryResponse, ErrorResponse]:
         device_keys = parsed_dict["device_keys"]
         failures = parsed_dict["failures"]
 
@@ -1480,8 +1482,7 @@ class KeysClaimResponse(Response):
         cls,
         parsed_dict: Dict[Any, Any],
         room_id: str = "",
-    ):
-        # type: (...) -> Union[KeysClaimResponse, ErrorResponse]
+    ) -> Union[KeysClaimResponse, ErrorResponse]:
         one_time_keys = parsed_dict["one_time_keys"]
         failures = parsed_dict["failures"]
 
@@ -1494,8 +1495,9 @@ class DevicesResponse(Response):
 
     @classmethod
     @verify(Schemas.devices, DevicesError)
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> Union[DevicesResponse, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[DevicesResponse, ErrorResponse]:
         devices = []
         for device_dict in parsed_dict["devices"]:
             try:
@@ -1578,8 +1580,9 @@ class ProfileGetResponse(Response):
 
     @classmethod
     @verify(Schemas.get_profile, ProfileGetError)
-    def from_dict(cls, parsed_dict: Dict[Any, Any]):
-        # type: (...) -> Union[ProfileGetResponse, ErrorResponse]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[ProfileGetResponse, ErrorResponse]:
         return cls(
             parsed_dict.get("displayname"),
             parsed_dict.get("avatar_url"),
@@ -1610,8 +1613,7 @@ class ProfileGetDisplayNameResponse(Response):
     def from_dict(
         cls,
         parsed_dict: (Dict[Any, Any]),
-    ):
-        # type: (...) -> Union[ProfileGetDisplayNameResponse, ErrorResponse]
+    ) -> Union[ProfileGetDisplayNameResponse, ErrorResponse]:
         return cls(parsed_dict.get("displayname"))
 
 
@@ -1640,8 +1642,7 @@ class ProfileGetAvatarResponse(Response):
     def from_dict(
         cls,
         parsed_dict: (Dict[Any, Any]),
-    ):
-        # type: (...) -> Union[ProfileGetAvatarResponse, ErrorResponse]
+    ) -> Union[ProfileGetAvatarResponse, ErrorResponse]:
         return cls(parsed_dict.get("avatar_url"))
 
 
@@ -1767,8 +1768,7 @@ class RoomContextResponse(Response):
         cls,
         parsed_dict: Dict[Any, Any],
         room_id: str,
-    ):
-        # type: (...) -> Union[RoomContextResponse, ErrorResponse]
+    ) -> Union[RoomContextResponse, ErrorResponse]:
         events_before = SyncResponse._get_room_events(parsed_dict["events_before"])
         events_after = SyncResponse._get_room_events(parsed_dict["events_after"])
         event = Event.parse_event(parsed_dict["event"])
@@ -1831,8 +1831,7 @@ class SyncResponse(Response):
         return events
 
     @staticmethod
-    def _get_to_device(parsed_dict: Dict[Any, Any]):
-        # type: (...) -> List[ToDeviceEvent]
+    def _get_to_device(parsed_dict: Dict[Any, Any]) -> List[ToDeviceEvent]:
         events: List[ToDeviceEvent] = []
         for event_dict in parsed_dict.get("events", []):
             event = ToDeviceEvent.parse_event(event_dict)
@@ -1977,8 +1976,7 @@ class SyncResponse(Response):
     def from_dict(
         cls,
         parsed_dict: Dict[Any, Any],
-    ):
-        # type: (...) -> Union[SyncResponse, ErrorResponse]
+    ) -> Union[SyncResponse, ErrorResponse]:
         to_device = cls._get_to_device(parsed_dict.get("to_device", {}))
 
         key_count_dict = parsed_dict.get("device_one_time_keys_count", {})

@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 
 import aiofiles
@@ -12,10 +11,6 @@ from nio.crypto import async_encrypt_attachment, decrypt_attachment
 FILEPATH = "tests/data/test_bytes"
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 5),
-    reason="Python 3 specific asyncio tests",
-)
 @pytest.mark.asyncio
 class TestClass:
     async def _get_data_cypher_keys(self, data=b"Test bytes"):

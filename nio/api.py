@@ -23,15 +23,17 @@ In general these functions are not directly called. One should use an existing
 client like AsyncClient or HttpClient.
 """
 
-
-from __future__ import unicode_literals
+from __future__ import annotations, unicode_literals
 
 import json
+import os
 from collections import defaultdict
+from collections.abc import Iterable
 from enum import Enum, unique
 from typing import (
     TYPE_CHECKING,
     Any,
+    DefaultDict,
     Dict,
     List,
     Optional,
@@ -39,6 +41,7 @@ from typing import (
     Tuple,
     Union,
 )
+from uuid import UUID
 
 if TYPE_CHECKING:
     from .events.account_data import PushAction, PushCondition
@@ -51,8 +54,8 @@ except ImportError:
     from urlparse import urlparse  # type: ignore
 
 
-MATRIX_API_PATH = "/_matrix/client/r0"  # type: str
-MATRIX_MEDIA_API_PATH = "/_matrix/media/r0"  # type: str
+MATRIX_API_PATH: str = "/_matrix/client/r0"
+MATRIX_MEDIA_API_PATH: str = "/_matrix/media/r0"
 
 _FilterT = Union[None, str, Dict[Any, Any]]
 
@@ -137,14 +140,12 @@ class Api:
     """
 
     @staticmethod
-    def to_json(content_dict):
-        # type: (Dict[Any, Any]) -> str
+    def to_json(content_dict: Dict[Any, Any]) -> str:
         """Turn a dictionary into a json string."""
         return json.dumps(content_dict, separators=(",", ":"))
 
     @staticmethod
-    def to_canonical_json(content_dict):
-        # type: (Dict[Any, Any]) -> str
+    def to_canonical_json(content_dict: Dict[Any, Any]) -> str:
         """Turn a dictionary into a canonical json string."""
         return json.dumps(
             content_dict,
@@ -154,8 +155,7 @@ class Api:
         )
 
     @staticmethod
-    def mimetype_to_msgtype(mimetype):
-        # type: (str) -> str
+    def mimetype_to_msgtype(mimetype: str) -> str:
         """Turn a mimetype into a matrix message type."""
         if mimetype.startswith("image"):
             return "m.image"
@@ -167,8 +167,7 @@ class Api:
         return "m.file"
 
     @staticmethod
-    def mxc_to_http(mxc, homeserver=None):
-        # type: (str, Optional[str]) -> Optional[str]
+    def mxc_to_http(mxc: str, homeserver: Optional[str] = None) -> Optional[str]:
         """Convert a matrix content URI to a HTTP URI."""
         url = urlparse(mxc)
 
@@ -197,13 +196,12 @@ class Api:
     @staticmethod
     def encrypted_mxc_to_plumb(
         mxc,
-        key,
-        hash,
-        iv,
-        homeserver=None,
-        mimetype=None,
-    ):
-        # type: (str, str, str, str, Optional[str]) -> Optional[str]
+        key: str,
+        hash: str,
+        iv: str,
+        homeserver: Optional[str] = None,
+        mimetype: Optional[str] = None,
+    ) -> Optional[str]:
         """Convert a matrix content URI to a encrypted mxc URI.
 
         The return value of this function will have a URI schema of emxc://.
@@ -264,7 +262,9 @@ class Api:
 
     @staticmethod
     def _build_path(
-        path: List[str], query_parameters: Dict = None, base_path: str = MATRIX_API_PATH
+        path: List[str],
+        query_parameters: Optional[Dict] = None,
+        base_path: str = MATRIX_API_PATH,
     ) -> str:
         """Builds a percent-encoded path from a list of strings.
 
@@ -322,11 +322,11 @@ class Api:
 
     @staticmethod
     def register(
-        user,  # type: str
-        password=None,  # type: str
-        device_name="",  # type: Optional[str]
-        device_id="",  # type: Optional[str]
-        auth_dict=None,  # type: Optional[dict[str, Any]]
+        user: str,
+        password: Optional[str] = None,
+        device_name: Optional[str] = "",
+        device_id: Optional[str] = "",
+        auth_dict: Optional[dict[str, Any]] = None,
     ):
         """Register a new user.
 
@@ -371,13 +371,12 @@ class Api:
 
     @staticmethod
     def login(
-        user,  # type: str
-        password=None,  # type: str
-        device_name="",  # type: Optional[str]
-        device_id="",  # type: Optional[str]
-        token=None,  # type: str
-    ):
-        # type: (...) -> Tuple[str, str, str]
+        user: str,
+        password: Optional[str] = None,
+        device_name: Optional[str] = "",
+        device_id: Optional[str] = "",
+        token: Optional[str] = None,
+    ) -> Tuple[str, str, str]:
         """Authenticate the user.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -392,6 +391,7 @@ class Api:
             device_id (str): ID of the client device. If this does not
                 correspond to a known client device, a new device will be
                 created.
+            token (str): Token for token-based login.
         """
         path = Api._build_path(path=["login"])
 
@@ -434,9 +434,8 @@ class Api:
 
     @staticmethod
     def login_raw(
-        auth_dict,  # type: Dict[str, Any]
-    ):
-        # type: (...) -> Tuple[str, str, str]
+        auth_dict: Dict[str, Any],
+    ) -> Tuple[str, str, str]:
         """Login to the homeserver using a raw dictionary.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -469,8 +468,8 @@ class Api:
 
     @staticmethod
     def logout(
-        access_token,  # type: str
-        all_devices=False,  # type: bool
+        access_token: str,
+        all_devices: bool = False,
     ):
         """Logout the session.
 
@@ -487,7 +486,7 @@ class Api:
         else:
             api_path = ["logout"]
 
-        content_dict = {}  # type: Dict
+        content_dict: Dict = {}
         return (
             "POST",
             Api._build_path(api_path, query_parameters),
@@ -499,11 +498,10 @@ class Api:
         access_token: str,
         since: Optional[str] = None,
         timeout: Optional[int] = None,
-        filter: _FilterT = None,
+        filter: Optional[_FilterT] = None,
         full_state: Optional[bool] = None,
         set_presence: Optional[str] = None,
-    ):
-        # type: (...) -> Tuple[str, str]
+    ) -> Tuple[str, str]:
         """Synchronise the client's state with the latest state on the server.
 
         Returns the HTTP method and HTTP path for the request.
@@ -553,11 +551,11 @@ class Api:
 
     @staticmethod
     def room_send(
-        access_token,  # type: str
-        room_id,  # type: str
-        event_type,  # type: str
-        body,  # type: Dict[Any, Any]
-        tx_id,  # type: Union[str, UUID]
+        access_token: str,
+        room_id: str,
+        event_type: str,
+        body: Dict[Any, Any],
+        tx_id: Union[str, UUID],
     ):
         # type (...) -> Tuple[str, str, str]
         """Send a message event to a room.
@@ -599,7 +597,7 @@ class Api:
                 to this endpoint.
             limit (int, optional): The maximum number of rooms to return.
             max_depth (int, optional): The maximum depth of the returned tree.
-            suggested_only (bool, optional): Whether or not to only return
+            suggested_only (bool, optional): Whether to only return
                 rooms that are considered suggested. Defaults to False.
         """
         query_parameters = {"access_token": access_token}
@@ -709,11 +707,11 @@ class Api:
 
     @staticmethod
     def room_redact(
-        access_token,  # type: str
-        room_id,  # type: str
-        event_id,  # type: str
-        tx_id,  # type: Union[str, UUID]
-        reason=None,  # type: Optional[str]
+        access_token: str,
+        room_id: str,
+        event_id: str,
+        tx_id: Union[str, UUID],
+        reason: Optional[str] = None,
     ):
         # type (...) -> Tuple[str, str, str]
         """Strip information out of an event.
@@ -875,21 +873,21 @@ class Api:
 
     @staticmethod
     def room_create(
-        access_token,  # type: str
-        visibility=RoomVisibility.private,  # type: RoomVisibility
-        alias=None,  # type: Optional[str]
-        name=None,  # type: Optional[str]
-        topic=None,  # type: Optional[str]
-        room_version=None,  # type: Optional[str]
-        room_type=None,  # type: Optional[str]
-        federate=True,  # type: bool
-        is_direct=False,  # type: bool
-        preset=None,  # type: Optional[RoomPreset]
-        invite=(),  # type: Sequence[str]
-        initial_state=(),  # type: Sequence[Dict[str, Any]]
-        power_level_override=None,  # type: Optional[Dict[str, Any]]
-        predecessor=None,  # type: Optional[Dict[str, Any]]
-        space=False,  # type: bool
+        access_token: str,
+        visibility: RoomVisibility = RoomVisibility.private,
+        alias: Optional[str] = None,
+        name: Optional[str] = None,
+        topic: Optional[str] = None,
+        room_version: Optional[str] = None,
+        room_type: Optional[str] = None,
+        federate: bool = True,
+        is_direct: bool = False,
+        preset: Optional[RoomPreset] = None,
+        invite: Sequence[str] = (),
+        initial_state: Sequence[Dict[str, Any]] = (),
+        power_level_override: Optional[Dict[str, Any]] = None,
+        predecessor: Optional[Dict[str, Any]] = None,
+        space: bool = False,
     ):
         # type (...) -> Tuple[str, str, str]
         """Create a new room.
@@ -1109,8 +1107,9 @@ class Api:
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def keys_upload(access_token, key_dict):
-        # type: (str, Dict[str, Any]) -> Tuple[str, str, str]
+    def keys_upload(
+        access_token: str, key_dict: Dict[str, Any]
+    ) -> Tuple[str, str, str]:
         """Publish end-to-end encryption keys.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -1127,8 +1126,9 @@ class Api:
         return ("POST", Api._build_path(path, query_parameters), Api.to_json(body))
 
     @staticmethod
-    def keys_query(access_token, user_set, token=None):
-        # type: (str, Iterable[str], Optional[str]) -> Tuple[str, str, str]
+    def keys_query(
+        access_token: str, user_set: Iterable[str], token: Optional[str] = None
+    ) -> Tuple[str, str, str]:
         """Query the current devices and identity keys for the given users.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -1145,9 +1145,9 @@ class Api:
         query_parameters = {"access_token": access_token}
         path = ["keys", "query"]
 
-        content = {
+        content: Dict[str, Dict[str, List]] = {
             "device_keys": {user: [] for user in user_set}
-        }  # type: Dict[str, Dict[str, List]]
+        }
 
         if token:
             content["token"] = token  # type: ignore
@@ -1155,8 +1155,9 @@ class Api:
         return ("POST", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
-    def keys_claim(access_token, user_set):
-        # type: (str, Dict[str, Iterable[str]]) -> Tuple[str, str, str]
+    def keys_claim(
+        access_token: str, user_set: Dict[str, Iterable[str]]
+    ) -> Tuple[str, str, str]:
         """Claim one-time keys for use in Olm pre-key messages.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -1170,7 +1171,7 @@ class Api:
         query_parameters = {"access_token": access_token}
         path = ["keys", "claim"]
 
-        payload = defaultdict(dict)  # type: DefaultDict[str, Dict[str, str]]
+        payload: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
 
         for user_id, device_list in user_set.items():
             for device_id in device_list:
@@ -1182,12 +1183,11 @@ class Api:
 
     @staticmethod
     def to_device(
-        access_token,  # type: str
-        event_type,  # type: str
-        content,  # type: Dict[Any, Any]
-        tx_id,  # type: Union[str, UUID]
-    ):
-        # type: (...) -> Tuple[str, str, str]
+        access_token: str,
+        event_type: str,
+        content: Dict[Any, Any],
+        tx_id: Union[str, UUID],
+    ) -> Tuple[str, str, str]:
         r"""Send to-device events to a set of client devices.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -1206,8 +1206,7 @@ class Api:
         return ("PUT", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
-    def devices(access_token):
-        # type: (str) -> Tuple[str, str]
+    def devices(access_token: str) -> Tuple[str, str]:
         """Get the list of devices for the current user.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1240,11 +1239,10 @@ class Api:
 
     @staticmethod
     def delete_devices(
-        access_token,  # type: str
-        devices,  # type: List[str]
-        auth_dict=None,  # type: Optional[Dict[str, str]]
-    ):
-        # type: (...) -> Tuple[str, str, str]
+        access_token: str,
+        devices: List[str],
+        auth_dict: Optional[Dict[str, str]] = None,
+    ) -> Tuple[str, str, str]:
         """Delete a device.
 
         This API endpoint uses the User-Interactive Authentication API.
@@ -1265,7 +1263,7 @@ class Api:
         query_parameters = {"access_token": access_token}
         path = ["delete_devices"]
 
-        content = {"devices": devices}  # type: Dict[str, Any]
+        content: Dict[str, Any] = {"devices": devices}
 
         if auth_dict:
             content["auth"] = auth_dict
@@ -1273,8 +1271,7 @@ class Api:
         return ("POST", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
-    def joined_members(access_token, room_id):
-        # type: (str, str) -> Tuple[str, str]
+    def joined_members(access_token: str, room_id: str) -> Tuple[str, str]:
         """Get the list of joined members for a room.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1289,8 +1286,7 @@ class Api:
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def joined_rooms(access_token):
-        # type: (str) -> Tuple[str, str]
+    def joined_rooms(access_token: str) -> Tuple[str, str]:
         """Get the list of joined rooms for the logged in account.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1304,8 +1300,7 @@ class Api:
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def room_resolve_alias(room_alias):
-        # type: (str) -> Tuple[str, str]
+    def room_resolve_alias(room_alias: str) -> Tuple[str, str]:
         """Resolve a room alias to a room ID.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1318,8 +1313,7 @@ class Api:
         return "GET", Api._build_path(path)
 
     @staticmethod
-    def room_delete_alias(access_token, room_alias):
-        # type: (str, str) -> Tuple[str, str]
+    def room_delete_alias(access_token: str, room_alias: str) -> Tuple[str, str]:
         """Delete a room alias.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1334,8 +1328,9 @@ class Api:
         return "DELETE", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def room_put_alias(access_token, room_alias, room_id):
-        # type: (str, str, str) -> Tuple[str, str, str]
+    def room_put_alias(
+        access_token: str, room_alias: str, room_id: str
+    ) -> Tuple[str, str, str]:
         """Add a room alias.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1354,8 +1349,7 @@ class Api:
         return "PUT", Api._build_path(path, query_parameters), Api.to_json(body)
 
     @staticmethod
-    def room_get_visibility(room_id):
-        # type: (str) -> Tuple[str, str]
+    def room_get_visibility(room_id: str) -> Tuple[str, str]:
         """Get visibility of a room in the directory.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1369,13 +1363,12 @@ class Api:
 
     @staticmethod
     def room_typing(
-        access_token,  # type: str
-        room_id,  # type: str
-        user_id,  # type: str
-        typing_state=True,  # type: bool
-        timeout=30000,  # type: int
-    ):
-        # type: (...) -> Tuple[str, str, str]
+        access_token: str,
+        room_id: str,
+        user_id: str,
+        typing_state: bool = True,
+        timeout: int = 30000,
+    ) -> Tuple[str, str, str]:
         """Send a typing notice to the server.
 
         This tells the server that the user is typing for the next N
@@ -1428,12 +1421,11 @@ class Api:
 
     @staticmethod
     def room_read_markers(
-        access_token,  # type: str
-        room_id,  # type: str
-        fully_read_event,  # type: str
-        read_event=None,  # type: Optional[str]
-    ):
-        # type: (...) -> Tuple[str, str, str]
+        access_token: str,
+        room_id: str,
+        fully_read_event: str,
+        read_event: Optional[str] = None,
+    ) -> Tuple[str, str, str]:
         """Update fully read marker and optionally read marker for a room.
 
         This sets the position of the read marker for a given room,
@@ -1479,10 +1471,9 @@ class Api:
 
     @staticmethod
     def upload(
-        access_token,  # type: str
-        filename=None,  # type: Optional[str]
-    ):
-        # type: (...) -> Tuple[str, str, str]
+        access_token: str,
+        filename: Optional[str] = None,
+    ) -> Tuple[str, str, str]:
         """Upload a file's content to the content repository.
 
         Returns the HTTP method, HTTP path and empty data for the request.
@@ -1509,13 +1500,12 @@ class Api:
 
     @staticmethod
     def download(
-        server_name,  # type: str
-        media_id,  # type: str
-        filename=None,  # type: Optional[str]
-        allow_remote=True,  # type: bool
-        file=None,  # type: Optional[os.PathLike]
-    ):
-        # type: (...) -> Tuple[str, str]
+        server_name: str,
+        media_id: str,
+        filename: Optional[str] = None,
+        allow_remote: bool = True,
+        file: Optional[os.PathLike] = None,
+    ) -> Tuple[str, str]:
         """Get the content of a file from the content repository.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1544,14 +1534,13 @@ class Api:
 
     @staticmethod
     def thumbnail(
-        server_name,  # type: str
-        media_id,  # type: str
-        width,  # type: int
-        height,  # type: int
+        server_name: str,
+        media_id: str,
+        width: int,
+        height: int,
         method=ResizingMethod.scale,  # ŧype: ResizingMethod
-        allow_remote=True,  # type: bool
-    ):
-        # type: (...) -> Tuple[str, str]
+        allow_remote: bool = True,
+    ) -> Tuple[str, str]:
         """Get the thumbnail of a file from the content repository.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1580,7 +1569,9 @@ class Api:
         return ("GET", Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH))
 
     @staticmethod
-    def profile_get(user_id: str, access_token: str = None) -> Tuple[str, str]:
+    def profile_get(
+        user_id: str, access_token: Optional[str] = None
+    ) -> Tuple[str, str]:
         """Get the combined profile information for a user.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1601,7 +1592,7 @@ class Api:
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
-    def profile_get_displayname(user_id, access_token: str = None):
+    def profile_get_displayname(user_id, access_token: Optional[str] = None):
         # type (str, str) -> Tuple[str, str]
         """Get display name.
 
@@ -1639,7 +1630,7 @@ class Api:
         return ("PUT", Api._build_path(path, query_parameters), Api.to_json(content))
 
     @staticmethod
-    def profile_get_avatar(user_id, access_token: str = None):
+    def profile_get_avatar(user_id, access_token: Optional[str] = None):
         # type (str, str) -> Tuple[str, str]
         """Get avatar URL.
 
@@ -1695,7 +1686,7 @@ class Api:
 
     @staticmethod
     def set_presence(
-        access_token: str, user_id: str, presence: str, status_msg: str = None
+        access_token: str, user_id: str, presence: str, status_msg: Optional[str] = None
     ):
         """This API sets the given user's presence state.
 

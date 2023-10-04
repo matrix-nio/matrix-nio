@@ -508,7 +508,7 @@ class AsyncClient(Client):
         self,
         response_class: Type,
         transport_response: ClientResponse,
-        data: Tuple[Any, ...] = None,
+        data: Optional[Tuple[Any, ...]] = None,
         save_to: Optional[os.PathLike] = None,
     ) -> Response:
         """Transform a transport response into a nio matrix response.
@@ -853,7 +853,7 @@ class AsyncClient(Client):
         path: str,
         data: Union[None, str, AsyncDataT] = None,
         headers: Optional[Dict[str, str]] = None,
-        trace_context: Any = None,
+        trace_context: Optional[Any] = None,
         timeout: Optional[float] = None,
     ) -> ClientResponse:
         """Send a request to the homeserver.
@@ -1138,7 +1138,7 @@ class AsyncClient(Client):
     async def sync(
         self,
         timeout: Optional[int] = 0,
-        sync_filter: _FilterT = None,
+        sync_filter: Optional[_FilterT] = None,
         since: Optional[str] = None,
         full_state: Optional[bool] = None,
         set_presence: Optional[str] = None,
@@ -1241,11 +1241,11 @@ class AsyncClient(Client):
     async def sync_forever(
         self,
         timeout: Optional[int] = None,
-        sync_filter: _FilterT = None,
+        sync_filter: Optional[_FilterT] = None,
         since: Optional[str] = None,
         full_state: Optional[bool] = None,
         loop_sleep_time: Optional[int] = None,
-        first_sync_filter: _FilterT = None,
+        first_sync_filter: Optional[_FilterT] = None,
         set_presence: Optional[str] = None,
     ):
         """Continuously sync with the configured homeserver.
@@ -3207,7 +3207,7 @@ class AsyncClient(Client):
 
     @client_session
     async def set_presence(
-        self, presence: str, status_msg: str = None
+        self, presence: str, status_msg: Optional[str] = None
     ) -> Union[PresenceSetResponse, PresenceSetError]:
         """Set our user's presence state.
 

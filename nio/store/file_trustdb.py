@@ -1,15 +1,13 @@
+from __future__ import annotations
+
 from functools import wraps
 from typing import Any, Iterator, List, Optional
 
 from atomicwrites import atomic_write
 
+from ..crypto import OlmDevice
 from ..exceptions import OlmTrustError
 from . import logger
-
-try:
-    FileNotFoundError  # type: ignore
-except NameError:  # pragma: no cover
-    FileNotFoundError = IOError
 
 
 class Key:
@@ -19,8 +17,7 @@ class Key:
         self.key = key
 
     @classmethod
-    def from_line(cls, line):
-        # type: (str) -> Optional[Key]
+    def from_line(cls, line: str) -> Optional[Key]:
         fields = line.split(" ")
 
         if len(fields) < 4:
@@ -45,8 +42,7 @@ class Key:
         return line
 
     @classmethod
-    def from_olmdevice(cls, device):
-        # type: (OlmDevice) -> Ed25519Key
+    def from_olmdevice(cls, device: OlmDevice) -> Ed25519Key:
         user_id = device.user_id
         device_id = device.id
         return Ed25519Key(user_id, device_id, device.ed25519)

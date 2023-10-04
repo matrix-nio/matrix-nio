@@ -14,7 +14,7 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import unicode_literals
+from __future__ import annotations, unicode_literals
 
 from builtins import bytes, super
 from datetime import datetime, timedelta
@@ -27,7 +27,7 @@ import olm
 
 from ..api import Api
 from ..event_builders import ToDeviceMessage
-from ..events import KeyVerificationEvent
+from ..events import KeyVerificationEvent, KeyVerificationStart
 from ..exceptions import LocalProtocolError
 from .device import OlmDevice
 
@@ -180,7 +180,7 @@ class Sas(olm.Sas):
         own_device: str,
         own_fp_key: str,
         other_olm_device: OlmDevice,
-        transaction_id: str = None,
+        transaction_id: Optional[str] = None,
         short_auth_string: Optional[List[str]] = None,
         mac_methods: Optional[List[str]] = None,
     ):
@@ -214,9 +214,13 @@ class Sas(olm.Sas):
 
     @classmethod
     def from_key_verification_start(
-        cls, own_user, own_device, own_fp_key, other_olm_device, event
-    ):
-        # type: (str, str, str, OlmDevice, KeyVerificationStart) -> Sas
+        cls,
+        own_user: str,
+        own_device: str,
+        own_fp_key: str,
+        other_olm_device: OlmDevice,
+        event: KeyVerificationStart,
+    ) -> Sas:
         """Create a SAS object from a KeyVerificationStart event.
 
         Args:
