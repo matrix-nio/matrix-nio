@@ -255,12 +255,7 @@ class RoomInfo:
     @staticmethod
     def parse_account_data(event_dict):
         """Parse the account data dictionary and produce a list of events."""
-        events = []
-
-        for event in event_dict:
-            events.append(AccountDataEvent.parse_event(event))
-
-        return events
+        return [AccountDataEvent.parse_event(event) for event in event_dict]
 
 
 @dataclass
@@ -1797,9 +1792,7 @@ class SyncResponse(Response):
         result = []
         for room_id, room_info in self.rooms.join.items():
             room_header = f"  Messages for room {room_id}:\n    "
-            messages = []
-            for event in room_info.timeline.events:
-                messages.append(str(event))
+            messages = (str(event) for event in room_info.timeline.events)
 
             room_message = room_header + "\n    ".join(messages)
             result.append(room_message)
@@ -1807,7 +1800,7 @@ class SyncResponse(Response):
         if len(self.to_device_events) > 0:
             result.append("  Device messages:")
             for event in self.to_device_events:
-                result.append(f"    {event}")
+                result.append(f"    {event}")  # noqa: PERF401
 
         body = "\n".join(result)
         string = f"Sync response until batch: {self.next_batch}:\n{body}"
@@ -1955,11 +1948,10 @@ class SyncResponse(Response):
 
     @staticmethod
     def _get_presence(parsed_dict) -> List[PresenceEvent]:
-        presence_events = []
-        for presence_dict in parsed_dict.get("presence", {}).get("events", []):
-            presence_events.append(PresenceEvent.from_dict(presence_dict))
-
-        return presence_events
+        presence_dicts = parsed_dict.get("presence", {}).get("events", [])
+        return [
+            PresenceEvent.from_dict(presence_dict) for presence_dict in presence_dicts
+        ]
 
     @staticmethod
     def _get_account_data(

@@ -1361,7 +1361,7 @@ class AsyncClient(Client):
                 if loop_sleep_time:
                     await asyncio.sleep(loop_sleep_time / 1000)
 
-            except asyncio.CancelledError:
+            except asyncio.CancelledError:  # noqa: PERF203
                 for task in tasks:
                     task.cancel()
 
@@ -3650,7 +3650,7 @@ class AsyncClient(Client):
         self,
         room_id: str,
         canonical_alias: Union[str, None] = None,
-        alt_aliases: List[str] = [],
+        alt_aliases: Optional[List[str]] = None,
     ):
         """Update the aliases of an existing room.
            This method will not transfer aliases from one room to another!
@@ -3666,6 +3666,7 @@ class AsyncClient(Client):
             If None is passed as canonical_alias or alt_aliases the existing aliases
              will be removed without assigning new aliases.
         """
+        alt_aliases = alt_aliases or []
         # Concentrate new aliases
         if canonical_alias is None:
             new_aliases = []
@@ -3681,8 +3682,7 @@ class AsyncClient(Client):
             current_aliases.append(current_alias_event.content["alias"])
             if "alt_aliases" in current_alias_event.content:
                 alt_aliases = current_alias_event.content["alt_aliases"]
-                for alias in alt_aliases:
-                    current_aliases.append(alias)
+                current_aliases.extend(alt_aliases)
 
         # Unregister old aliases
         for alias in current_aliases:
@@ -3809,12 +3809,10 @@ class AsyncClient(Client):
             old_room_id, "m.room.canonical_alias"
         )
         if isinstance(old_room_alias, RoomGetStateEventResponse):
-            aliases = []
-            aliases.append(old_room_alias.content["alias"])
+            aliases = [old_room_alias.content["alias"]]
             if "alt_aliases" in old_room_alias.content:
                 alt_aliases = old_room_alias.content["alt_aliases"]
-                for alias in alt_aliases:
-                    aliases.append(alias)
+                aliases.extend(alt_aliases)
             else:
                 alt_aliases = []
 
