@@ -152,13 +152,14 @@ async def main() -> None:
     # Otherwise the config file exists, so we'll use the stored credentials
     else:
         # open the file in read-only mode
-        with open(CONFIG_FILE, "r") as f:
-            config = json.load(f)
-            client = AsyncClient(config["homeserver"])
+        async with aiofiles.open(CONFIG_FILE, "r") as f:
+            contents = await f.read()
+        config = json.loads(contents)
+        client = AsyncClient(config["homeserver"])
 
-            client.access_token = config["access_token"]
-            client.user_id = config["user_id"]
-            client.device_id = config["device_id"]
+        client.access_token = config["access_token"]
+        client.user_id = config["user_id"]
+        client.device_id = config["device_id"]
 
         # Now we can send messages as the user
         room_id = "!myfavouriteroomid:example.org"

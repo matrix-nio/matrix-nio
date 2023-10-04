@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -14,7 +12,7 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import annotations, unicode_literals
+from __future__ import annotations
 
 import json
 from collections import defaultdict
@@ -171,12 +169,12 @@ class Olm:
 
         # A dictionary holding key requests that we sent out ourselves. Those
         # will be stored in the database and restored.
-        self.outgoing_key_requests: Dict[str, OutgoingKeyRequest] = dict()
+        self.outgoing_key_requests: Dict[str, OutgoingKeyRequest] = {}
 
         # This dictionary holds key requests that we received during a sync
         # response. We don't handle them right away since they might be
         # cancelled in the same sync response.
-        self.received_key_requests: Dict[str, RoomKeyRequest] = dict()
+        self.received_key_requests: Dict[str, RoomKeyRequest] = {}
 
         # If a received key request comes from a device for which we don't have
         # an Olm session the event will end up in this dictionary and the
@@ -187,21 +185,21 @@ class Olm:
         self.key_requests_waiting_for_session: Dict[
             Tuple[str, str], Dict[str, RoomKeyRequest]
         ] = defaultdict(dict)
-        self.key_request_devices_no_session: List[OlmDevice] = list()
+        self.key_request_devices_no_session: List[OlmDevice] = []
 
         # This dictionary holds key requests that we received but the device
         # that sent us the key request is not verified/trusted. Such key
         # requests will be forwarded to users using a callback.
         # Users will need to verify the device and tell us to continue the key
         # sharing process using the continue_key_share method.
-        self.key_request_from_untrusted: Dict[str, RoomKeyRequest] = dict()
+        self.key_request_from_untrusted: Dict[str, RoomKeyRequest] = {}
 
         # A list of devices for which we need to start a new Olm session.
         # Matrix clients need to do a one-time key claiming request for the
         # devices in this list. After a new session is created with the device
         # it will be removed from this list and a dummy encrypted message will
         # be queued to be sent as a to-device message.
-        self.wedged_devices: List[OlmDevice] = list()
+        self.wedged_devices: List[OlmDevice] = []
 
         # A cache of megolm events that failed to decrypt because the Olm
         # session was wedged and thus the decryption key was missed.
@@ -213,7 +211,7 @@ class Olm:
 
         # A mapping from a transaction id to a Sas key verification object. The
         # transaction id uniquely identifies the key verification session.
-        self.key_verifications: Dict[str, Sas] = dict()
+        self.key_verifications: Dict[str, Sas] = {}
 
         # A list of to-device messages that need to be sent to the homeserver
         # by the client. This will get populated by common to-device messages
@@ -641,7 +639,7 @@ class Olm:
                 self.key_request_from_untrusted[event.request_id] = event
                 events_for_users.append(event)
 
-        self.received_key_requests = dict()
+        self.received_key_requests = {}
         return events_for_users
 
     def _handle_key_claiming(self, response):
@@ -795,9 +793,9 @@ class Olm:
                 changed[user_id][device_id] = user_devices[device_id]
 
             current_devices = set(device_dict.keys())
-            stored_devices = set(
+            stored_devices = {
                 device.id for device in self.device_store.active_user_devices(user_id)
-            )
+            }
             deleted_devices = stored_devices - current_devices
 
             for device_id in deleted_devices:
@@ -2011,7 +2009,7 @@ class Olm:
         stream of our caller.
 
         """
-        active_sas = dict()
+        active_sas = {}
         events = []
 
         now = datetime.now()

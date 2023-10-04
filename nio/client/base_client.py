@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -150,7 +148,7 @@ class ClientConfig:
 
     """
 
-    store: Optional[Type["MatrixStore"]] = DefaultStore if ENCRYPTION_ENABLED else None
+    store: Optional[Type[MatrixStore]] = DefaultStore if ENCRYPTION_ENABLED else None
 
     encryption_enabled: bool = ENCRYPTION_ENABLED
 
@@ -205,8 +203,8 @@ class Client:
         self.user = user
         self.device_id = device_id
         self.store_path = store_path
-        self.olm: Optional["Olm"] = None
-        self.store: Optional["MatrixStore"] = None
+        self.olm: Optional[Olm] = None
+        self.store: Optional[MatrixStore] = None
         self.config = config or ClientConfig()
 
         self.user_id = ""
@@ -215,8 +213,8 @@ class Client:
         self.next_batch = ""
         self.loaded_sync_token = ""
 
-        self.rooms: Dict[str, MatrixRoom] = dict()
-        self.invited_rooms: Dict[str, MatrixInvitedRoom] = dict()
+        self.rooms: Dict[str, MatrixRoom] = {}
+        self.invited_rooms: Dict[str, MatrixInvitedRoom] = {}
         self.encrypted_rooms: Set[str] = set()
 
         self.event_callbacks: List[ClientCallback] = []
@@ -307,12 +305,12 @@ class Client:
     @property
     def outgoing_key_requests(self) -> Dict[str, OutgoingKeyRequest]:
         """Our active key requests that we made."""
-        return self.olm.outgoing_key_requests if self.olm else dict()
+        return self.olm.outgoing_key_requests if self.olm else {}
 
     @property
     def key_verifications(self) -> Dict[str, Sas]:
         """Key verifications that the client is participating in."""
-        return self.olm.key_verifications if self.olm else dict()
+        return self.olm.key_verifications if self.olm else {}
 
     @property
     def outgoing_to_device_messages(self) -> List[ToDeviceMessage]:

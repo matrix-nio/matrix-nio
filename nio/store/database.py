@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2018 Zil0
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,6 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from builtins import super
 from dataclasses import dataclass, field
 from functools import wraps
 from typing import List, Optional
@@ -402,7 +400,7 @@ class MatrixStore:
         account = self._get_account()
 
         if not account:
-            return dict()
+            return {}
 
         return {
             request.request_id: OutgoingKeyRequest.from_database(request)

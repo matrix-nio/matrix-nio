@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2018 Zil0
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,6 @@
 # limitations under the License.
 
 import time
-from builtins import bytes
 from datetime import datetime
 
 from peewee import (

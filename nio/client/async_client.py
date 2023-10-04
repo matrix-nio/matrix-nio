@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2020-2021 Famedly GmbH
 #
@@ -437,7 +435,7 @@ class AsyncClient(Client):
         self.synced = AsyncioEvent()
         self.response_callbacks: List[ResponseCb] = []
 
-        self.sharing_session: Dict[str, AsyncioEvent] = dict()
+        self.sharing_session: Dict[str, AsyncioEvent] = {}
 
         is_config = isinstance(config, ClientConfig)
         is_async_config = isinstance(config, AsyncClientConfig)
@@ -1363,7 +1361,7 @@ class AsyncClient(Client):
                 if loop_sleep_time:
                     await asyncio.sleep(loop_sleep_time / 1000)
 
-            except asyncio.CancelledError:
+            except asyncio.CancelledError:  # noqa: PERF203
                 for task in tasks:
                     task.cancel()
 
@@ -2827,7 +2825,7 @@ class AsyncClient(Client):
     @staticmethod
     async def _process_data_chunk(chunk, monitor=None):
         if monitor and monitor.cancel:
-            raise TransferCancelledError()
+            raise TransferCancelledError
 
         while monitor and monitor.pause:
             await asyncio.sleep(0.1)
@@ -3652,7 +3650,7 @@ class AsyncClient(Client):
         self,
         room_id: str,
         canonical_alias: Union[str, None] = None,
-        alt_aliases: List[str] = [],
+        alt_aliases: Optional[List[str]] = None,
     ):
         """Update the aliases of an existing room.
            This method will not transfer aliases from one room to another!
@@ -3668,14 +3666,15 @@ class AsyncClient(Client):
             If None is passed as canonical_alias or alt_aliases the existing aliases
              will be removed without assigning new aliases.
         """
+        alt_aliases = alt_aliases or []
         # Concentrate new aliases
         if canonical_alias is None:
-            new_aliases = list()
+            new_aliases = []
         else:
             new_aliases = alt_aliases + [canonical_alias]
 
         # Get current aliases
-        current_aliases = list()
+        current_aliases = []
         current_alias_event = await self.room_get_state_event(
             room_id, "m.room.canonical_alias"
         )
@@ -3683,8 +3682,7 @@ class AsyncClient(Client):
             current_aliases.append(current_alias_event.content["alias"])
             if "alt_aliases" in current_alias_event.content:
                 alt_aliases = current_alias_event.content["alt_aliases"]
-                for alias in alt_aliases:
-                    current_aliases.append(alias)
+                current_aliases.extend(alt_aliases)
 
         # Unregister old aliases
         for alias in current_aliases:
@@ -3760,7 +3758,7 @@ class AsyncClient(Client):
 
         # Get initial_state and power_level
         old_room_power_levels = None
-        new_room_initial_state = list()
+        new_room_initial_state = []
         for event in old_room_state_events.events:
             if (
                 event["type"] in copy_events
@@ -3811,12 +3809,10 @@ class AsyncClient(Client):
             old_room_id, "m.room.canonical_alias"
         )
         if isinstance(old_room_alias, RoomGetStateEventResponse):
-            aliases = list()
-            aliases.append(old_room_alias.content["alias"])
+            aliases = [old_room_alias.content["alias"]]
             if "alt_aliases" in old_room_alias.content:
                 alt_aliases = old_room_alias.content["alt_aliases"]
-                for alias in alt_aliases:
-                    aliases.append(alias)
+                aliases.extend(alt_aliases)
             else:
                 alt_aliases = []
 

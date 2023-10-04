@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import pytest
 import unpaddedbase64
 from Crypto import Random

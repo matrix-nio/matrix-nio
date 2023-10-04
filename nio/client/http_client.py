@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -19,7 +17,6 @@ from __future__ import annotations
 import json
 import logging
 import pprint
-from builtins import str, super
 from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass, field

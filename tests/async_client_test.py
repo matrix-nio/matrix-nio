@@ -139,7 +139,7 @@ DAVE_ID = "@dave:example.org"
 EIRIN_ID = "@eirin:example.org"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 class TestClass:
     @staticmethod
     def _load_bytes(filename):
@@ -625,7 +625,7 @@ class TestClass:
         auth_dict = {}
         resp = None
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Auth dictionary shall not be empty"):
             resp = await async_client.login_raw(auth_dict)
 
         assert not resp
@@ -642,7 +642,7 @@ class TestClass:
         auth_dict = None
         resp = None
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Auth dictionary shall not be empty"):
             resp = await async_client.login_raw(auth_dict)
 
         assert not resp
@@ -1826,7 +1826,7 @@ class TestClass:
         )
 
         # Upload binary file using a standard file object
-        with open("tests/data/file_response", "r+b") as f:
+        with open("tests/data/file_response", "r+b") as f:  # noqa: ASYNC101
             resp, decryption_info = await async_client.upload(
                 f,
                 "image/png",
@@ -1910,7 +1910,8 @@ class TestClass:
             async for piece in data:
                 received += piece
 
-            assert received == open(path).read()
+            async with aiofiles.open(path) as f:
+                assert received == await f.read()
 
         # We make sure to read the data in the first post response to verify
         # that we can read the full file in a subsequent post.
@@ -2136,7 +2137,7 @@ class TestClass:
         slept = 0
 
         while not called["transferred"] or not called["speed_changed"]:
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
             slept += 0.1
 
             if slept >= 1:
@@ -2168,7 +2169,8 @@ class TestClass:
     def _verify_monitor_state_for_finished_transfer(self, monitor, data_size):
         self._wait_monitor_thread_exited(monitor)
         assert monitor.total_size == data_size
-        assert monitor.start_time and monitor.end_time
+        assert monitor.start_time
+        assert monitor.end_time
         assert monitor.average_speed > 0
         assert monitor.transferred == data_size
         assert monitor.percent_done == 100
@@ -2268,7 +2270,7 @@ class TestClass:
 
         async def cb(_, event):
             if isinstance(event, RoomMemberEvent):
-                raise CallbackException()
+                raise CallbackException
 
         async_client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
 
@@ -2284,7 +2286,7 @@ class TestClass:
             pass
 
         async def cb(_, event):
-            raise CallbackException()
+            raise CallbackException
 
         async_client.add_room_account_data_callback(cb, FullyReadEvent)
 
@@ -2426,7 +2428,7 @@ class TestClass:
 
         async def cb(event):
             if isinstance(event, PresenceEvent):
-                raise CallbackException()
+                raise CallbackException
 
         async_client.add_presence_callback(cb, PresenceEvent)
 
@@ -4176,7 +4178,7 @@ class TestClass:
             pass
 
         async def cb(_event):
-            raise CallbackCalled()
+            raise CallbackCalled
 
         async_client.add_global_account_data_callback(cb, PushRulesEvent)
 

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2019 miruka <miruka@disroot.org>
 #
@@ -22,4 +20,4 @@ class EventBuilder:
 
     def as_dict(self):
         """Format the event as a dictionary, to be sent to the server."""
-        raise NotImplementedError()
+        raise NotImplementedError

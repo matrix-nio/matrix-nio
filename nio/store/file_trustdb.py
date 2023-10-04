@@ -71,15 +71,14 @@ class KeyStore:
         self._load(filename)
 
     def __iter__(self) -> Iterator[Key]:
-        for entry in self._entries:
-            yield entry
+        yield from self._entries
 
     def __repr__(self) -> str:
         return f"KeyStore object, file: {self._filename}"
 
     def _load(self, filename: str):
         try:
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 for line in f:
                     line = line.strip()
 

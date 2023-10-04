@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import json
 import random
 from uuid import uuid4
@@ -497,7 +496,7 @@ class TestClass:
         assert not client.store
 
     def test_client_invalid_response(self, client):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Invalid response received"):
             client.receive_response(None)
 
     def test_client_login(self, client):
@@ -538,7 +537,10 @@ class TestClass:
     def test_client_account_sharing(self, client):
         client.receive_response(self.login_response)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="Invalid event, this function can only decrypt MegolmEvents",
+        ):
             client.decrypt_event(None)
 
         assert not client.olm_account_shared
@@ -778,7 +780,7 @@ class TestClass:
         http_client.connect(TransportType.HTTP2)
         auth_dict = {}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Auth dictionary shall not be empty"):
             _, _ = http_client.login_raw(auth_dict)
 
         assert not http_client.access_token == "ABCD"
@@ -787,7 +789,7 @@ class TestClass:
         http_client.connect(TransportType.HTTP2)
         auth_dict = None
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Auth dictionary shall not be empty"):
             _, _ = http_client.login_raw(auth_dict)
 
         assert not http_client.access_token == "ABCD"
@@ -1068,7 +1070,7 @@ class TestClass:
 
         def cb(room, event):
             if isinstance(event, RoomMemberEvent):
-                raise CallbackException()
+                raise CallbackException
 
         client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
 
@@ -1083,7 +1085,7 @@ class TestClass:
 
         def cb(event):
             if isinstance(event, RoomEncryptionEvent):
-                raise CallbackException()
+                raise CallbackException
 
         client.add_to_device_callback(cb, RoomEncryptionEvent)
 
@@ -1097,7 +1099,7 @@ class TestClass:
             pass
 
         def cb(_, event):
-            raise CallbackException()
+            raise CallbackException
 
         client.add_ephemeral_callback(cb, TypingNoticeEvent)
 
@@ -1131,7 +1133,7 @@ class TestClass:
             exceptions.append(exception_class)
 
             def callback(_, event):
-                raise exception_class()
+                raise exception_class
 
             client.add_ephemeral_callback(callback, event)
 
@@ -1145,7 +1147,7 @@ class TestClass:
             pass
 
         def cb(_, event):
-            raise CallbackException()
+            raise CallbackException
 
         client.add_room_account_data_callback(cb, FullyReadEvent)
 
@@ -1159,7 +1161,7 @@ class TestClass:
             pass
 
         def cb(_event):
-            raise CallbackCalled()
+            raise CallbackCalled
 
         client.add_global_account_data_callback(cb, PushRulesEvent)
 
@@ -1217,7 +1219,7 @@ class TestClass:
             pass
 
         def cb(_, event):
-            raise CallbackException()
+            raise CallbackException
 
         client.add_event_callback(cb, InviteMemberEvent)
 
@@ -1298,7 +1300,7 @@ class TestClass:
 
         def cb(event):
             if isinstance(event, PresenceEvent):
-                raise CallbackException()
+                raise CallbackException
 
         client.add_presence_callback(cb, PresenceEvent)
 

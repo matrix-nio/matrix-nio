@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import copy
 import os
 from collections import defaultdict
@@ -288,7 +286,7 @@ class TestClass:
     def test_empty_device_keys(self):
         self._create_ephemeral_account()
         store = self.ephemeral_store
-        store.save_device_keys(dict())
+        store.save_device_keys({})
 
     @ephemeral
     def test_saving_account_twice(self):

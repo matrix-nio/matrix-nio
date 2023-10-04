@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2021 Famedly GmbH
 #
@@ -15,10 +13,9 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import annotations, unicode_literals
+from __future__ import annotations
 
 import logging
-from builtins import super
 from collections import defaultdict
 from typing import DefaultDict, Dict, List, Optional, Set, Tuple, Union
 
@@ -81,8 +78,8 @@ class MatrixRoom:
         self.name: Optional[str] = None
         self.parents: Set[str] = set()
         self.children: Set[str] = set()
-        self.users: Dict[str, MatrixUser] = dict()
-        self.invited_users: Dict[str, MatrixUser] = dict()
+        self.users: Dict[str, MatrixUser] = {}
+        self.invited_users: Dict[str, MatrixUser] = {}
         self.names: DefaultDict[str, List[str]] = defaultdict(list)
         self.encrypted: bool = encrypted
         self.power_levels: PowerLevels = PowerLevels()

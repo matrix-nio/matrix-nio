@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2019 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -68,7 +66,7 @@ class EphemeralEvent:
             parsed_dict (dict): The dictionary representation of the event.
 
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 @dataclass
