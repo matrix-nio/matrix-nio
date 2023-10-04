@@ -748,7 +748,7 @@ class RegisterInteractiveResponse(Response):
         cls, parsed_dict: Dict[Any, Any]
     ) -> Union[RegisterInteractiveResponse, RegisterInteractiveError]:
         for flow in parsed_dict["flows"]:
-            stages = [stage for stage in flow["stages"]]
+            stages = list(flow["stages"])
 
         return cls(
             stages,

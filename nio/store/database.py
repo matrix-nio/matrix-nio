@@ -400,7 +400,7 @@ class MatrixStore:
         account = self._get_account()
 
         if not account:
-            return dict()
+            return {}
 
         return {
             request.request_id: OutgoingKeyRequest.from_database(request)

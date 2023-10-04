@@ -78,8 +78,8 @@ class MatrixRoom:
         self.name: Optional[str] = None
         self.parents: Set[str] = set()
         self.children: Set[str] = set()
-        self.users: Dict[str, MatrixUser] = dict()
-        self.invited_users: Dict[str, MatrixUser] = dict()
+        self.users: Dict[str, MatrixUser] = {}
+        self.invited_users: Dict[str, MatrixUser] = {}
         self.names: DefaultDict[str, List[str]] = defaultdict(list)
         self.encrypted: bool = encrypted
         self.power_levels: PowerLevels = PowerLevels()

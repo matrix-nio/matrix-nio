@@ -2033,7 +2033,7 @@ class Api:
 
         query_parameters = {"access_token": access_token}
         path = ["directory", "room", alias]
-        content = dict()
+        content = {}
         content["room_id"] = room_id
 
         return (

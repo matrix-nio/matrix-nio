@@ -435,7 +435,7 @@ class AsyncClient(Client):
         self.synced = AsyncioEvent()
         self.response_callbacks: List[ResponseCb] = []
 
-        self.sharing_session: Dict[str, AsyncioEvent] = dict()
+        self.sharing_session: Dict[str, AsyncioEvent] = {}
 
         is_config = isinstance(config, ClientConfig)
         is_async_config = isinstance(config, AsyncClientConfig)
@@ -3668,12 +3668,12 @@ class AsyncClient(Client):
         """
         # Concentrate new aliases
         if canonical_alias is None:
-            new_aliases = list()
+            new_aliases = []
         else:
             new_aliases = alt_aliases + [canonical_alias]
 
         # Get current aliases
-        current_aliases = list()
+        current_aliases = []
         current_alias_event = await self.room_get_state_event(
             room_id, "m.room.canonical_alias"
         )
@@ -3758,7 +3758,7 @@ class AsyncClient(Client):
 
         # Get initial_state and power_level
         old_room_power_levels = None
-        new_room_initial_state = list()
+        new_room_initial_state = []
         for event in old_room_state_events.events:
             if (
                 event["type"] in copy_events
@@ -3809,7 +3809,7 @@ class AsyncClient(Client):
             old_room_id, "m.room.canonical_alias"
         )
         if isinstance(old_room_alias, RoomGetStateEventResponse):
-            aliases = list()
+            aliases = []
             aliases.append(old_room_alias.content["alias"])
             if "alt_aliases" in old_room_alias.content:
                 alt_aliases = old_room_alias.content["alt_aliases"]
