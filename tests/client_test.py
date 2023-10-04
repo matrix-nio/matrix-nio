@@ -496,7 +496,7 @@ class TestClass:
         assert not client.store
 
     def test_client_invalid_response(self, client):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Invalid response received"):
             client.receive_response(None)
 
     def test_client_login(self, client):
@@ -537,7 +537,10 @@ class TestClass:
     def test_client_account_sharing(self, client):
         client.receive_response(self.login_response)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="Invalid event, this function can only decrypt MegolmEvents",
+        ):
             client.decrypt_event(None)
 
         assert not client.olm_account_shared
@@ -777,7 +780,7 @@ class TestClass:
         http_client.connect(TransportType.HTTP2)
         auth_dict = {}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Auth dictionary shall not be empty"):
             _, _ = http_client.login_raw(auth_dict)
 
         assert not http_client.access_token == "ABCD"
@@ -786,7 +789,7 @@ class TestClass:
         http_client.connect(TransportType.HTTP2)
         auth_dict = None
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Auth dictionary shall not be empty"):
             _, _ = http_client.login_raw(auth_dict)
 
         assert not http_client.access_token == "ABCD"

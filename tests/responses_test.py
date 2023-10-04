@@ -130,7 +130,7 @@ class TestClass:
         assert isinstance(response, UploadResponse)
 
     @pytest.mark.parametrize(
-        "data,response_class",
+        ("data", "response_class"),
         [
             (_load_bytes("tests/data/file_response"), MemoryDownloadResponse),
             (Path("tests/data/file_response"), DiskDownloadResponse),

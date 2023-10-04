@@ -694,8 +694,10 @@ class TestClass:
 
         assert not olm.should_upload_keys
 
-        with pytest.raises(ValueError):
-            to_share = olm.share_keys()
+        with pytest.raises(
+            ValueError, match="Can't share any keys, too many keys already shared"
+        ):
+            olm.share_keys()
 
         olm.uploaded_key_count -= 1
 

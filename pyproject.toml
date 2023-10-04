@@ -58,6 +58,7 @@ select = [
     "C4",    # flake8-comprehensions
     "T10",   # flake8-debugger
     "FA",    # flake8-future-annotations
+    "PT",    # flake8-pytest-style
 ]
 ignore = [
     "E501",  # https://www.flake8rules.com/rules/E501.html - Let `black` handle this.
@@ -107,3 +108,5 @@ keep-runtime-typing = true
     "F403",
     "I001",
 ]
+[tool.ruff.flake8-pytest-style]
+fixture-parentheses = false

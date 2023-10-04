@@ -30,9 +30,11 @@ class TestClass:
             "state_key": "",
             "content": {"name": "foo"},
         }
-
-        with pytest.raises(ValueError):
-            builders.ChangeNameBuilder("TooLongName" * 256)
+        too_long_name = "TooLongName" * 256
+        with pytest.raises(
+            ValueError, match=f"Room name exceeds 255 characters: {too_long_name}"
+        ):
+            builders.ChangeNameBuilder(too_long_name)
 
     def test_change_topic(self):
         event = builders.ChangeTopicBuilder("Lorem ipsum").as_dict()

@@ -139,7 +139,7 @@ DAVE_ID = "@dave:example.org"
 EIRIN_ID = "@eirin:example.org"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 class TestClass:
     @staticmethod
     def _load_bytes(filename):
@@ -625,7 +625,7 @@ class TestClass:
         auth_dict = {}
         resp = None
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Auth dictionary shall not be empty"):
             resp = await async_client.login_raw(auth_dict)
 
         assert not resp
@@ -642,7 +642,7 @@ class TestClass:
         auth_dict = None
         resp = None
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Auth dictionary shall not be empty"):
             resp = await async_client.login_raw(auth_dict)
 
         assert not resp
@@ -2169,7 +2169,8 @@ class TestClass:
     def _verify_monitor_state_for_finished_transfer(self, monitor, data_size):
         self._wait_monitor_thread_exited(monitor)
         assert monitor.total_size == data_size
-        assert monitor.start_time and monitor.end_time
+        assert monitor.start_time
+        assert monitor.end_time
         assert monitor.average_speed > 0
         assert monitor.transferred == data_size
         assert monitor.percent_done == 100

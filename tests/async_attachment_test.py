@@ -11,7 +11,7 @@ from nio.crypto import async_encrypt_attachment, decrypt_attachment
 FILEPATH = "tests/data/test_bytes"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 class TestClass:
     async def _get_data_cypher_keys(self, data=b"Test bytes"):
         *chunks, keys = [i async for i in async_encrypt_attachment(data)]

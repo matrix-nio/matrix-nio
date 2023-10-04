@@ -84,19 +84,19 @@ class TestClass:
         room = self.test_room
 
         room.summary = None
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Unusable summary"):
             assert room._summary_details()
 
         room.summary = RoomSummary(None, None, [])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Unusable summary"):
             assert room._summary_details()
 
         room.summary = RoomSummary(0, None, [])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Unusable summary"):
             assert room._summary_details()
 
         room.summary = RoomSummary(None, 0, [])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Unusable summary"):
             assert room._summary_details()
 
         room.summary = RoomSummary(0, 0, [])
