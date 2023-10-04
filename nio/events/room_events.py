@@ -1121,7 +1121,7 @@ class RoomMessageFormatted(RoomMessage):
 
     @staticmethod
     def _validate(parsed_dict):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @classmethod
     def from_dict(cls, parsed_dict: Dict[Any, Any]) -> Union[RoomMessage, BadEventType]:

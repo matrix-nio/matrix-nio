@@ -59,6 +59,7 @@ select = [
     "T10",   # flake8-debugger
     "FA",    # flake8-future-annotations
     "PT",    # flake8-pytest-style
+    "RSE",   # flake8-raise
 ]
 ignore = [
     "E501",  # https://www.flake8rules.com/rules/E501.html - Let `black` handle this.

@@ -134,7 +134,7 @@ class PushCondition:
 
     @property
     def as_value(self) -> Dict[str, Any]:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def matches(
         self,
@@ -344,7 +344,7 @@ class PushAction:
 
     @property
     def as_value(self) -> Union[str, Dict[str, Any]]:
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 @dataclass

@@ -341,7 +341,7 @@ class FileResponse(Response):
                 e.g. "image/png".
             filename (str, optional): The file's name returned by the server.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 @dataclass

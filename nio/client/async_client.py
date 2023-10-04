@@ -2825,7 +2825,7 @@ class AsyncClient(Client):
     @staticmethod
     async def _process_data_chunk(chunk, monitor=None):
         if monitor and monitor.cancel:
-            raise TransferCancelledError()
+            raise TransferCancelledError
 
         while monitor and monitor.pause:
             await asyncio.sleep(0.1)

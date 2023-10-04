@@ -1070,7 +1070,7 @@ class TestClass:
 
         def cb(room, event):
             if isinstance(event, RoomMemberEvent):
-                raise CallbackException()
+                raise CallbackException
 
         client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
 
@@ -1085,7 +1085,7 @@ class TestClass:
 
         def cb(event):
             if isinstance(event, RoomEncryptionEvent):
-                raise CallbackException()
+                raise CallbackException
 
         client.add_to_device_callback(cb, RoomEncryptionEvent)
 
@@ -1099,7 +1099,7 @@ class TestClass:
             pass
 
         def cb(_, event):
-            raise CallbackException()
+            raise CallbackException
 
         client.add_ephemeral_callback(cb, TypingNoticeEvent)
 
@@ -1133,7 +1133,7 @@ class TestClass:
             exceptions.append(exception_class)
 
             def callback(_, event):
-                raise exception_class()
+                raise exception_class
 
             client.add_ephemeral_callback(callback, event)
 
@@ -1147,7 +1147,7 @@ class TestClass:
             pass
 
         def cb(_, event):
-            raise CallbackException()
+            raise CallbackException
 
         client.add_room_account_data_callback(cb, FullyReadEvent)
 
@@ -1161,7 +1161,7 @@ class TestClass:
             pass
 
         def cb(_event):
-            raise CallbackCalled()
+            raise CallbackCalled
 
         client.add_global_account_data_callback(cb, PushRulesEvent)
 
@@ -1219,7 +1219,7 @@ class TestClass:
             pass
 
         def cb(_, event):
-            raise CallbackException()
+            raise CallbackException
 
         client.add_event_callback(cb, InviteMemberEvent)
 
@@ -1300,7 +1300,7 @@ class TestClass:
 
         def cb(event):
             if isinstance(event, PresenceEvent):
-                raise CallbackException()
+                raise CallbackException
 
         client.add_presence_callback(cb, PresenceEvent)
 

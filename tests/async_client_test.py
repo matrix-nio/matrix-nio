@@ -2270,7 +2270,7 @@ class TestClass:
 
         async def cb(_, event):
             if isinstance(event, RoomMemberEvent):
-                raise CallbackException()
+                raise CallbackException
 
         async_client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
 
@@ -2286,7 +2286,7 @@ class TestClass:
             pass
 
         async def cb(_, event):
-            raise CallbackException()
+            raise CallbackException
 
         async_client.add_room_account_data_callback(cb, FullyReadEvent)
 
@@ -2428,7 +2428,7 @@ class TestClass:
 
         async def cb(event):
             if isinstance(event, PresenceEvent):
-                raise CallbackException()
+                raise CallbackException
 
         async_client.add_presence_callback(cb, PresenceEvent)
 
@@ -4178,7 +4178,7 @@ class TestClass:
             pass
 
         async def cb(_event):
-            raise CallbackCalled()
+            raise CallbackCalled
 
         async_client.add_global_account_data_callback(cb, PushRulesEvent)
 

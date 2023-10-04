@@ -96,7 +96,7 @@ class InviteEvent:
             parsed_dict (dict): The dictionary representation of the event.
 
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 @dataclass
