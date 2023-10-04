@@ -56,6 +56,7 @@ select = [
     "UP",    # pyupgrade
     "ASYNC", # flake8-async
     "C4",    # flake8-comprehensions
+    "T10",   # flake8-debugger
 ]
 ignore = [
     "E501",  # https://www.flake8rules.com/rules/E501.html - Let `black` handle this.
