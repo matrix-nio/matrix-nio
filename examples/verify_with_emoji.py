@@ -68,6 +68,8 @@ import os
 import sys
 import traceback
 
+import aiofiles
+
 from nio import (
     AsyncClient,
     AsyncClientConfig,
@@ -348,22 +350,23 @@ async def login() -> AsyncClient:
     # Otherwise the config file exists, so we'll use the stored credentials
     else:
         # open the file in read-only mode
-        with open(CONFIG_FILE, "r") as f:
-            config = json.load(f)
-            # Initialize the matrix client based on credentials from file
-            client = AsyncClient(
-                config["homeserver"],
-                config["user_id"],
-                device_id=config["device_id"],
-                store_path=STORE_PATH,
-                config=client_config,
-            )
+        async with aiofiles.open(CONFIG_FILE, "r") as f:
+            contents = await f.read()
+        config = json.loads(contents)
+        # Initialize the matrix client based on credentials from file
+        client = AsyncClient(
+            config["homeserver"],
+            config["user_id"],
+            device_id=config["device_id"],
+            store_path=STORE_PATH,
+            config=client_config,
+        )
 
-            client.restore_login(
-                user_id=config["user_id"],
-                device_id=config["device_id"],
-                access_token=config["access_token"],
-            )
+        client.restore_login(
+            user_id=config["user_id"],
+            device_id=config["device_id"],
+            access_token=config["access_token"],
+        )
         print("Logged in using stored credentials.")
 
     return client

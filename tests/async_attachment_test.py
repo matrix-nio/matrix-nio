@@ -51,7 +51,7 @@ class TestClass:
         await self.test_encrypt(async_gen())
 
     async def test_encrypt_file_object(self):
-        await self.test_encrypt(open(FILEPATH, "rb"))
+        await self.test_encrypt(open(FILEPATH, "rb"))  # noqa: ASYNC101
 
     async def test_encrypt_async_file_object(self):
         await self.test_encrypt(await aiofiles.open(FILEPATH, "rb"))

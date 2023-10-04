@@ -1826,7 +1826,7 @@ class TestClass:
         )
 
         # Upload binary file using a standard file object
-        with open("tests/data/file_response", "r+b") as f:
+        with open("tests/data/file_response", "r+b") as f:  # noqa: ASYNC101
             resp, decryption_info = await async_client.upload(
                 f,
                 "image/png",
@@ -1910,7 +1910,8 @@ class TestClass:
             async for piece in data:
                 received += piece
 
-            assert received == open(path).read()
+            async with aiofiles.open(path) as f:
+                assert received == await f.read()
 
         # We make sure to read the data in the first post response to verify
         # that we can read the full file in a subsequent post.
@@ -2136,7 +2137,7 @@ class TestClass:
         slept = 0
 
         while not called["transferred"] or not called["speed_changed"]:
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
             slept += 0.1
 
             if slept >= 1:

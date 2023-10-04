@@ -54,7 +54,7 @@ select = [
     "F",     # Pyflakes
     "I001",  # isort
 #    "UP",    # pyupgrade
-#    "ASYNC", # flake8-async
+    "ASYNC", # flake8-async
 ]
 ignore = [
     "E501",  # https://www.flake8rules.com/rules/E501.html - Let `black` handle this.
