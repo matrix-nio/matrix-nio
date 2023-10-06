@@ -131,6 +131,16 @@ class PushRuleKind(Enum):
     underride = "underride"
 
 
+@unique
+class RelationshipType(Enum):
+    """Relationship types defined by the Matrix spec."""
+
+    replacement = "m.replace"
+    annotation = "m.annotation"
+    thread = "m.thread"
+    reference = "m.reference"
+
+
 class Api:
     """Matrix API class.
 
@@ -649,6 +659,35 @@ class Api:
         path = ["rooms", room_id, "event", event_id]
 
         return ("GET", Api._build_path(path, query_parameters))
+
+    @staticmethod
+    def room_get_event_relations(
+        access_token: str,
+        room_id: str,
+        event_id: str,
+        rel_type: Optional[RelationshipType] = None,
+        event_type: Optional[str] = None,
+    ):
+        """Get all child events of a given parent event.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room id of the room where the event is in.
+            event_id (str): The event id to get.
+            rel_type (str, optional): The relationship type to search for. Required if event_type is provided.
+            event_type: (str, optional): The event type of child events to search for.
+        """
+        query_parameters = {"access_token": access_token}
+
+        path = ["rooms", room_id, "relations", event_id]
+        if rel_type:
+            path.append(rel_type.value)
+            if event_type:
+                path.append(event_type)
+
+        return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
     def room_put_state(
