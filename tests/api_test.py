@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2021 Famedly GmbH
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -14,7 +12,6 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from urllib.parse import urlencode
 
 from nio.api import Api
 

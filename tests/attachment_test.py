@@ -1,10 +1,6 @@
-# -*- coding: utf-8 -*-
-
 import pytest
 import unpaddedbase64
 from Crypto import Random
-from Crypto.Cipher import AES
-from Crypto.Util import Counter
 
 from nio import EncryptionError
 from nio.crypto import decrypt_attachment, encrypt_attachment

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2021 Famedly GmbH
 #
@@ -15,7 +13,7 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
@@ -100,8 +98,7 @@ class Event:
         return flat
 
     @classmethod
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[Event, BadEventType]
+    def from_dict(cls, parsed_dict: Dict[Any, Any]) -> Union[Event, BadEventType]:
         """Create an Event from a dictionary.
 
         Args:
@@ -112,8 +109,7 @@ class Event:
 
     @classmethod
     @verify(Schemas.room_event)
-    def parse_event(cls, event_dict):
-        # type: (Dict[Any, Any]) -> Union[Event, BadEventType]
+    def parse_event(cls, event_dict: Dict[Any, Any]) -> Union[Event, BadEventType]:
         """Parse a Matrix event and create a higher level event object.
 
         This function parses the type of the Matrix event and produces a higher
@@ -201,8 +197,9 @@ class Event:
         return UnknownEncryptedEvent.from_dict(event_dict)
 
     @classmethod
-    def parse_decrypted_event(cls, event_dict):
-        # type: (Dict[Any, Any]) -> Union[Event, BadEventType]
+    def parse_decrypted_event(
+        cls, event_dict: Dict[Any, Any]
+    ) -> Union[Event, BadEventType]:
         """Parse a decrypted event and create a higher level event object.
 
         Args:
@@ -592,8 +589,9 @@ class RedactedEvent(Event):
 
     @classmethod
     @verify(Schemas.redacted_event)
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RedactedEvent, BadEventType]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RedactedEvent, BadEventType]:
         redacter = parsed_dict["unsigned"]["redacted_because"]["sender"]
         content_dict = parsed_dict["unsigned"]["redacted_because"]["content"]
         reason = content_dict.get("reason", None)
@@ -627,22 +625,30 @@ class RoomCreateEvent(Event):
         room_version (str): The version of the room. Different room versions
             will have different event formats. Clients shouldn't worry about
             this too much unless they want to perform room upgrades.
+        room_type (str): The type of the room.
+            In spec v1.2 the following room types are specified:
+                - `m.space`
+            Unspecified room types are permitted through the use of Namespaced Identifiers.
 
     """
 
     creator: str = field()
     federate: bool = True
     room_version: str = "1"
+    room_type: str = ""
 
     @classmethod
     @verify(Schemas.room_create)
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomCreateEvent, BadEventType]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RoomCreateEvent, BadEventType]:
         creator = parsed_dict["content"]["creator"]
         federate = parsed_dict["content"]["m.federate"]
         version = parsed_dict["content"]["room_version"]
+        if "type" in parsed_dict["content"]:
+            room_type = parsed_dict["content"]["type"]
 
-        return cls(parsed_dict, creator, federate, version)
+        return cls(parsed_dict, creator, federate, version, room_type)
 
 
 @dataclass
@@ -659,8 +665,9 @@ class RoomGuestAccessEvent(Event):
 
     @classmethod
     @verify(Schemas.room_guest_access)
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomGuestAccessEvent, BadEventType]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RoomGuestAccessEvent, BadEventType]:
         guest_access = parsed_dict["content"]["guest_access"]
 
         return cls(parsed_dict, guest_access)
@@ -682,8 +689,9 @@ class RoomJoinRulesEvent(Event):
 
     @classmethod
     @verify(Schemas.room_join_rules)
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomJoinRulesEvent, BadEventType]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RoomJoinRulesEvent, BadEventType]:
         join_rule = parsed_dict["content"]["join_rule"]
 
         return cls(parsed_dict, join_rule)
@@ -724,9 +732,8 @@ class RoomHistoryVisibilityEvent(Event):
     @verify(Schemas.room_history_visibility)
     def from_dict(
         cls,
-        parsed_dict,  # type: Dict[Any, Any]
-    ):
-        # type: (...) -> Union[RoomHistoryVisibilityEvent, BadEventType]
+        parsed_dict: Dict[Any, Any],
+    ) -> Union[RoomHistoryVisibilityEvent, BadEventType]:
         history_visibility = parsed_dict["content"]["history_visibility"]
 
         return cls(parsed_dict, history_visibility)
@@ -745,8 +752,9 @@ class RoomAliasEvent(Event):
 
     @classmethod
     @verify(Schemas.room_canonical_alias)
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomAliasEvent, BadEventType]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RoomAliasEvent, BadEventType]:
         canonical_alias = parsed_dict["content"].get("alias")
 
         return cls(parsed_dict, canonical_alias)
@@ -769,8 +777,9 @@ class RoomNameEvent(Event):
 
     @classmethod
     @verify(Schemas.room_name)
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomNameEvent, BadEventType]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RoomNameEvent, BadEventType]:
         room_name = parsed_dict["content"]["name"]
 
         return cls(parsed_dict, room_name)
@@ -793,8 +802,9 @@ class RoomTopicEvent(Event):
 
     @classmethod
     @verify(Schemas.room_topic)
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomTopicEvent, BadEventType]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RoomTopicEvent, BadEventType]:
         canonical_alias = parsed_dict["content"]["topic"]
 
         return cls(parsed_dict, canonical_alias)
@@ -813,8 +823,9 @@ class RoomAvatarEvent(Event):
 
     @classmethod
     @verify(Schemas.room_avatar)
-    def from_dict(cls, parsed_dict):
-        # type (Dict[Any, Any]) -> Union[RoomAvatarEvent, BadEventType]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RoomAvatarEvent, BadEventType]:
         room_avatar_url = parsed_dict["content"]["url"]
 
         return cls(parsed_dict, room_avatar_url)
@@ -874,8 +885,9 @@ class RoomMessage(Event):
 
     @classmethod
     @verify(Schemas.room_message)
-    def parse_event(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomMessage, BadEventType]
+    def parse_event(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RoomMessage, BadEventType]:
         content_dict = parsed_dict["content"]
 
         if content_dict["msgtype"] == "m.text":
@@ -903,8 +915,9 @@ class RoomMessage(Event):
 
     @classmethod
     @verify(Schemas.room_message)
-    def parse_decrypted_event(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomMessage, BadEventType]
+    def parse_decrypted_event(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RoomMessage, BadEventType]:
         msgtype = parsed_dict["content"]["msgtype"]
 
         if msgtype == "m.image":
@@ -1074,8 +1087,7 @@ class RoomMessageUnknown(RoomMessage):
     content: Dict[str, Any] = field()
 
     @classmethod
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> RoomMessage
+    def from_dict(cls, parsed_dict: Dict[Any, Any]) -> RoomMessage:
         return cls(
             parsed_dict,
             parsed_dict["content"]["msgtype"],
@@ -1106,17 +1118,15 @@ class RoomMessageFormatted(RoomMessage):
     formatted_body: Optional[str] = field()
     format: Optional[str] = field()
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
         return f"{self.sender}: {self.body}"
 
     @staticmethod
     def _validate(parsed_dict):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @classmethod
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomMessage, BadEventType]
+    def from_dict(cls, parsed_dict: Dict[Any, Any]) -> Union[RoomMessage, BadEventType]:
         bad = cls._validate(parsed_dict)
 
         if bad:
@@ -1157,8 +1167,7 @@ class RoomMessageText(RoomMessageFormatted):
     """
 
     @staticmethod
-    def _validate(parsed_dict):
-        # type: (Dict[Any, Any]) -> Optional[BadEventType]
+    def _validate(parsed_dict: Dict[Any, Any]) -> Optional[BadEventType]:
         return validate_or_badevent(parsed_dict, Schemas.room_message_text)
 
 
@@ -1180,8 +1189,7 @@ class RoomMessageEmote(RoomMessageFormatted):
     """
 
     @staticmethod
-    def _validate(parsed_dict):
-        # type: (Dict[Any, Any]) -> Optional[BadEventType]
+    def _validate(parsed_dict: Dict[Any, Any]) -> Optional[BadEventType]:
         return validate_or_badevent(parsed_dict, Schemas.room_message_emote)
 
 
@@ -1202,8 +1210,7 @@ class RoomMessageNotice(RoomMessageFormatted):
     """
 
     @staticmethod
-    def _validate(parsed_dict):
-        # type: (Dict[Any, Any]) -> Optional[BadEventType]
+    def _validate(parsed_dict: Dict[Any, Any]) -> Optional[BadEventType]:
         return validate_or_badevent(parsed_dict, Schemas.room_message_notice)
 
 
@@ -1277,8 +1284,7 @@ class PowerLevels:
     users: Dict[str, int] = field(default_factory=dict)
     events: Dict[str, int] = field(default_factory=dict)
 
-    def get_state_event_required_level(self, event_type):
-        # type: (str) -> int
+    def get_state_event_required_level(self, event_type: str) -> int:
         """Get required power level to send a certain type of state event.
 
         Returns an integer representing the required power level.
@@ -1289,8 +1295,7 @@ class PowerLevels:
         """
         return self.events.get(event_type, self.defaults.state_default)
 
-    def get_message_event_required_level(self, event_type):
-        # type: (str) -> int
+    def get_message_event_required_level(self, event_type: str) -> int:
         """Get required power level to send a certain type of message event.
 
         Returns an integer representing the required power level.
@@ -1312,8 +1317,7 @@ class PowerLevels:
         """
         return self.defaults.notifications.get(notification_type, 50)
 
-    def get_user_level(self, user_id):
-        # type: (str) -> int
+    def get_user_level(self, user_id: str) -> int:
         """Get the power level of a user.
 
         Returns an integer representing the user's power level.
@@ -1324,8 +1328,7 @@ class PowerLevels:
         """
         return self.users.get(user_id, self.defaults.users_default)
 
-    def can_user_send_state(self, user_id, event_type):
-        # type: (str, str) -> bool
+    def can_user_send_state(self, user_id: str, event_type: str) -> bool:
         """Return whether a user has enough power to send certain state events.
 
         Args:
@@ -1336,8 +1339,9 @@ class PowerLevels:
         required_level = self.get_state_event_required_level(event_type)
         return self.get_user_level(user_id) >= required_level
 
-    def can_user_send_message(self, user_id, event_type="m.room.message"):
-        # type: (str, str) -> bool
+    def can_user_send_message(
+        self, user_id: str, event_type: str = "m.room.message"
+    ) -> bool:
         """
         Return whether a user has enough power to send certain message events.
 
@@ -1349,8 +1353,7 @@ class PowerLevels:
         required_level = self.get_message_event_required_level(event_type)
         return self.get_user_level(user_id) >= required_level
 
-    def can_user_invite(self, user_id):
-        # type: (str) -> bool
+    def can_user_invite(self, user_id: str) -> bool:
         """Return whether a user has enough power to invite others."""
         return self.get_user_level(user_id) >= self.defaults.invite
 
@@ -1464,8 +1467,9 @@ class RedactionEvent(Event):
 
     @classmethod
     @verify(Schemas.room_redaction)
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RedactionEvent, BadEventType]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RedactionEvent, BadEventType]:
         content = parsed_dict.get("content", {})
         reason = content.get("reason", None)
 
@@ -1503,8 +1507,9 @@ class RoomMemberEvent(Event):
 
     @classmethod
     @verify(Schemas.room_membership)
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[RoomMemberEvent, BadEventType]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[RoomMemberEvent, BadEventType]:
         content = parsed_dict.get("content", {})
         unsigned = parsed_dict.get("unsigned", {})
         prev_content = unsigned.get("prev_content", None)
@@ -1545,8 +1550,9 @@ class StickerEvent(Event):
 
     @classmethod
     @verify(Schemas.sticker)
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> Union[StickerEvent, BadEventType]
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[StickerEvent, BadEventType]:
         content = parsed_dict.get("content", {})
 
         body = content["body"]

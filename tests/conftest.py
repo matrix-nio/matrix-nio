@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 import shutil
-import sys
 import tempfile
 
 import helpers
 import pytest
-from conftest_async import (
+from conftest_async import (  # noqa: F401
     aioresponse,
     async_client,
     async_client_pair,

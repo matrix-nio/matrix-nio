@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -13,6 +11,8 @@
 # RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+from __future__ import annotations
 
 import logging
 from collections import defaultdict
@@ -32,7 +32,7 @@ from typing import (
     Union,
 )
 
-from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OlmDevice, OutgoingKeyRequest
+from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OlmDevice, OutgoingKeyRequest, Sas
 from ..events import (
     AccountDataEvent,
     BadEvent,
@@ -148,14 +148,14 @@ class ClientConfig:
 
     """
 
-    store: Optional[Type["MatrixStore"]] = DefaultStore if ENCRYPTION_ENABLED else None
+    store: Optional[Type[MatrixStore]] = DefaultStore if ENCRYPTION_ENABLED else None
 
     encryption_enabled: bool = ENCRYPTION_ENABLED
 
     store_name: str = ""
     pickle_key: str = "DEFAULT_KEY"
     store_sync_tokens: bool = False
-    custom_headers: Dict[str, str] = None
+    custom_headers: Optional[Dict[str, str]] = None
 
     def __post_init__(self):
         if not ENCRYPTION_ENABLED and self.encryption_enabled:
@@ -203,18 +203,18 @@ class Client:
         self.user = user
         self.device_id = device_id
         self.store_path = store_path
-        self.olm: Optional["Olm"] = None
-        self.store: Optional["MatrixStore"] = None
+        self.olm: Optional[Olm] = None
+        self.store: Optional[MatrixStore] = None
         self.config = config or ClientConfig()
 
         self.user_id = ""
         # TODO Turn this into a optional string.
-        self.access_token = ""  # type: str
+        self.access_token: str = ""
         self.next_batch = ""
         self.loaded_sync_token = ""
 
-        self.rooms: Dict[str, MatrixRoom] = dict()
-        self.invited_rooms: Dict[str, MatrixInvitedRoom] = dict()
+        self.rooms: Dict[str, MatrixRoom] = {}
+        self.invited_rooms: Dict[str, MatrixInvitedRoom] = {}
         self.encrypted_rooms: Set[str] = set()
 
         self.event_callbacks: List[ClientCallback] = []
@@ -305,21 +305,19 @@ class Client:
     @property
     def outgoing_key_requests(self) -> Dict[str, OutgoingKeyRequest]:
         """Our active key requests that we made."""
-        return self.olm.outgoing_key_requests if self.olm else dict()
+        return self.olm.outgoing_key_requests if self.olm else {}
 
     @property
-    def key_verifications(self):
-        # type () -> Dict[str, Sas]
+    def key_verifications(self) -> Dict[str, Sas]:
         """Key verifications that the client is participating in."""
-        return self.olm.key_verifications if self.olm else dict()
+        return self.olm.key_verifications if self.olm else {}
 
     @property
     def outgoing_to_device_messages(self) -> List[ToDeviceMessage]:
         """To-device messages that we need to send out."""
         return self.olm.outgoing_to_device_messages if self.olm else []
 
-    def get_active_sas(self, user_id, device_id):
-        # type (str, str) -> Optional[Sas]
+    def get_active_sas(self, user_id: str, device_id: str) -> Optional[Sas]:
         """Find a non-canceled SAS verification object for the provided user.
 
         Args:
@@ -455,8 +453,7 @@ class Client:
         elif session:
             logger.info(f"Invalidating session for {room_id}")
 
-    def _invalidate_outbound_sessions(self, device):
-        # type: (OlmDevice) -> None
+    def _invalidate_outbound_sessions(self, device: OlmDevice) -> None:
         assert self.olm
 
         for room in self.rooms.values():
@@ -591,8 +588,9 @@ class Client:
 
         return changed
 
-    def _handle_register(self, response):
-        # type: (Union[RegisterResponse, ErrorResponse]) -> None
+    def _handle_register(
+        self, response: Union[RegisterResponse, ErrorResponse]
+    ) -> None:
         if isinstance(response, ErrorResponse):
             return
 

@@ -1,10 +1,7 @@
-import time
-
 import pytest
 
 from nio import EncryptionError
 from nio.crypto import (
-    InboundGroupSession,
     InboundSession,
     OlmAccount,
     OutboundGroupSession,

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2020-2021 Famedly GmbH
 #
@@ -18,6 +16,8 @@
 import asyncio
 import io
 import json
+import logging
+import os
 import warnings
 from asyncio import Event as AsyncioEvent
 from dataclasses import dataclass, field
@@ -26,8 +26,6 @@ from json.decoder import JSONDecodeError
 from pathlib import Path
 from typing import (
     Any,
-    AsyncIterable,
-    BinaryIO,
     Callable,
     Coroutine,
     Dict,
@@ -43,6 +41,7 @@ from typing import (
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
+import aiofiles
 from aiofiles.threadpool.binary import AsyncBufferedReader
 from aiofiles.threadpool.text import AsyncTextIOWrapper
 from aiohttp import (
@@ -84,18 +83,13 @@ from ..events import (
     ToDeviceEvent,
 )
 from ..exceptions import (
-    GroupEncryptionError,
     LocalProtocolError,
-    MembersSyncError,
-    SendRetryError,
     TransferCancelledError,
 )
 from ..monitors import TransferMonitor
 from ..responses import (
     ContentRepositoryConfigError,
     ContentRepositoryConfigResponse,
-    DeleteAliasError,
-    DeleteAliasResponse,
     DeleteDevicesAuthResponse,
     DeleteDevicesError,
     DeleteDevicesResponse,
@@ -105,8 +99,8 @@ from ..responses import (
     DevicesResponse,
     DiscoveryInfoError,
     DiscoveryInfoResponse,
+    DiskDownloadResponse,
     DownloadError,
-    DownloadResponse,
     EnablePushRuleError,
     EnablePushRuleResponse,
     ErrorResponse,
@@ -131,6 +125,7 @@ from ..responses import (
     LoginResponse,
     LogoutError,
     LogoutResponse,
+    MemoryDownloadResponse,
     PresenceGetError,
     PresenceGetResponse,
     PresenceSetError,
@@ -145,8 +140,9 @@ from ..responses import (
     ProfileSetAvatarResponse,
     ProfileSetDisplayNameError,
     ProfileSetDisplayNameResponse,
-    PutAliasError,
-    PutAliasResponse,
+    RegisterErrorResponse,
+    RegisterInteractiveError,
+    RegisterInteractiveResponse,
     RegisterResponse,
     Response,
     RoomBanError,
@@ -183,7 +179,6 @@ from ..responses import (
     RoomPutAliasResponse,
     RoomPutStateError,
     RoomPutStateResponse,
-    RoomReadMarkersError,
     RoomReadMarkersResponse,
     RoomRedactError,
     RoomRedactResponse,
@@ -193,7 +188,6 @@ from ..responses import (
     RoomSendResponse,
     RoomTypingError,
     RoomTypingResponse,
-    RoomUnbanError,
     RoomUnbanResponse,
     RoomUpdateAliasError,
     RoomUpdateAliasResponse,
@@ -205,6 +199,8 @@ from ..responses import (
     SetPushRuleResponse,
     ShareGroupSessionError,
     ShareGroupSessionResponse,
+    SpaceGetHierarchyError,
+    SpaceGetHierarchyResponse,
     SyncError,
     SyncResponse,
     ThumbnailError,
@@ -250,6 +246,8 @@ SynchronousFileType = Union[
 ]
 AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
 AsyncFileType = Union[AsyncBufferedReader, AsyncTextIOWrapper]
+
+logger = logging.getLogger(__name__)
 
 
 async def execute_callback(func, *args):
@@ -341,6 +339,10 @@ class AsyncClientConfig(ClientConfig):
             `timeout` argument.
             The `download()`, `thumbnail()` and `upload()` methods ignore
             this option and use `0`.
+
+        io_chunk_size (int): The size (in bytes) of the chunks to read from the IO
+            streams when saving files to disk.
+            Defaults to 64 KiB.
     """
 
     max_limit_exceeded: Optional[int] = None
@@ -348,6 +350,7 @@ class AsyncClientConfig(ClientConfig):
     backoff_factor: float = 0.1
     max_timeout_retry_wait_time: float = 60
     request_timeout: float = 60
+    io_chunk_size: int = 64 * 1024
 
 
 class AsyncClient(Client):
@@ -432,7 +435,7 @@ class AsyncClient(Client):
         self.synced = AsyncioEvent()
         self.response_callbacks: List[ResponseCb] = []
 
-        self.sharing_session: Dict[str, AsyncioEvent] = dict()
+        self.sharing_session: Dict[str, AsyncioEvent] = {}
 
         is_config = isinstance(config, ClientConfig)
         is_async_config = isinstance(config, AsyncClientConfig)
@@ -503,7 +506,8 @@ class AsyncClient(Client):
         self,
         response_class: Type,
         transport_response: ClientResponse,
-        data: Tuple[Any, ...] = None,
+        data: Optional[Tuple[Any, ...]] = None,
+        save_to: Optional[os.PathLike] = None,
     ) -> Response:
         """Transform a transport response into a nio matrix response.
 
@@ -516,7 +520,7 @@ class AsyncClient(Client):
                 response that contains our response body.
             data (Tuple, optional): Extra data that is required to instantiate
                 the response class.
-
+            save_to (PathLike, optional): If set, the ``FileResponse`` body will be saved to this file.
         Returns a subclass of `Response` depending on the type of the
         response_class argument.
         """
@@ -534,7 +538,19 @@ class AsyncClient(Client):
             resp = response_class.from_data(parsed_dict, content_type, name)
 
         elif issubclass(response_class, FileResponse):
-            body = await transport_response.read()
+            if not save_to:
+                body = await transport_response.read()
+            else:
+                save_to = Path(save_to)
+                if save_to.is_dir():
+                    save_to = save_to / name
+
+                async with aiofiles.open(save_to, "wb") as f:
+                    async for chunk in transport_response.content.iter_chunked(
+                        self.config.io_chunk_size
+                    ):
+                        await f.write(chunk)
+                body = save_to
             resp = response_class.from_data(body, content_type, name)
         elif (
             issubclass(response_class, RoomGetStateEventResponse)
@@ -750,6 +766,7 @@ class AsyncClient(Client):
         data_provider: Optional[DataProvider] = None,
         timeout: Optional[float] = None,
         content_length: Optional[int] = None,
+        save_to: Optional[os.PathLike] = None,
     ):
         headers = (
             {"Content-Type": content_type}
@@ -788,9 +805,10 @@ class AsyncClient(Client):
                 )
 
                 resp = await self.create_matrix_response(
-                    response_class,
-                    transport_resp,
-                    response_data,
+                    response_class=response_class,
+                    transport_response=transport_resp,
+                    data=response_data,
+                    save_to=save_to,
                 )
 
                 if transport_resp.status == 429 or (
@@ -805,6 +823,10 @@ class AsyncClient(Client):
                     await self.run_response_callbacks([resp])
 
                     retry_after_ms = getattr(resp, "retry_after_ms", 0) or 5000
+                    logger.warning(
+                        "Got 429 response (ratelimited), sleeping for %dms",
+                        retry_after_ms,
+                    )
                     await asyncio.sleep(retry_after_ms / 1000)
                 else:
                     break
@@ -816,6 +838,7 @@ class AsyncClient(Client):
                     raise
 
                 wait = await self.get_timeout_retry_wait_time(got_timeouts)
+                logger.warning("Timed out, sleeping for %ds", wait)
                 await asyncio.sleep(wait)
 
         await self.receive_response(resp)
@@ -828,7 +851,7 @@ class AsyncClient(Client):
         path: str,
         data: Union[None, str, AsyncDataT] = None,
         headers: Optional[Dict[str, str]] = None,
-        trace_context: Any = None,
+        trace_context: Optional[Any] = None,
         timeout: Optional[float] = None,
     ) -> ClientResponse:
         """Send a request to the homeserver.
@@ -903,7 +926,93 @@ class AsyncClient(Client):
 
         return await self._send(LoginResponse, method, path, data)
 
-    async def register(self, username, password, device_name=""):
+    async def register_interactive(
+        self,
+        username: str,
+        password: str,
+        auth_dict: Dict[str, Any],
+        device_name: str = "",
+    ) -> Union[RegisterInteractiveResponse, RegisterInteractiveError]:
+        """Makes a request to the register endpoint using the provided
+        auth dictionary. This is allows for interactive registration flows
+        from the homeserver.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Args:
+            username (str): Username to register the new user as.
+            password (str): New password for the user.
+            auth_dict (dict): The auth dictionary.
+            device_name (str): A display name to assign to a newly-created
+                device. Ignored if the logged in device corresponds to a
+                known device.
+
+        Returns a 'RegisterInteractiveResponse' if successful.
+        """
+        method, path, data = Api.register(
+            user=username,
+            password=password,
+            device_name=device_name,
+            device_id=self.device_id,
+            auth_dict=auth_dict,
+        )
+
+        return await self._send(RegisterInteractiveResponse, method, path, data)
+
+    async def register_with_token(
+        self,
+        username: str,
+        password: str,
+        registration_token: str,
+        device_name: str = "",
+    ) -> Union[RegisterResponse, RegisterErrorResponse]:
+        """Registers a user using a registration token.
+        See https://spec.matrix.org/latest/client-server-api/#token-authenticated-registration
+
+        Returns either a `RegisterResponse` if the request was successful or
+        a `RegisterErrorResponse` if there was an error with the request.
+
+        """
+        # must first register without token to get a session token
+        resp = await self.register_interactive(
+            username,
+            password,
+            auth_dict={"initial_device_display_name": self.device_id or "matrix-nio"},
+        )
+        if isinstance(resp, RegisterInteractiveError):
+            return RegisterErrorResponse(
+                resp.message, resp.status_code, resp.retry_after_ms, resp.soft_logout
+            )
+
+        # use session token to register with token
+        session_token = resp.session
+        resp = await self.register_interactive(
+            username,
+            password,
+            auth_dict={
+                "type": "m.login.registration_token",
+                "token": registration_token,
+                "session": session_token,
+            },
+        )
+        if isinstance(resp, RegisterInteractiveError):
+            return RegisterErrorResponse(
+                resp.message, resp.status_code, resp.retry_after_ms, resp.soft_logout
+            )
+
+        # finally call register with dummy auth with original session token
+        # to complete registration and acquire access token
+        return await self.register(
+            username, password, device_name=device_name, session_token=session_token
+        )
+
+    async def register(
+        self,
+        username: str,
+        password: str,
+        device_name: str = "",
+        session_token: Optional[str] = None,
+    ) -> Union[RegisterResponse, RegisterErrorResponse]:
         """Register with homeserver.
 
         Calls receive_response() to update the client state if necessary.
@@ -911,17 +1020,25 @@ class AsyncClient(Client):
         Args:
             username (str): Username to register the new user as.
             password (str): New password for the user.
-            device_name (str): A display name to assign to a newly-created
-                device. Ignored if the logged in device corresponds to a
-                known device.
+            device_name (str, optional): A display name to assign to a
+                newly-created device. Ignored if the logged in device
+                corresponds to a known device.
+            session_token (str, optional): The session token the server
+                provided during interactive registration. If not provided,
+                the session token is not added to the request's auth dict.
 
         Returns a 'RegisterResponse' if successful.
         """
+        auth_dict = {"type": "m.login.dummy"}
+        if session_token is not None:
+            auth_dict["session"] = session_token
+
         method, path, data = Api.register(
             user=username,
             password=password,
             device_name=device_name,
             device_id=self.device_id,
+            auth_dict=auth_dict,
         )
 
         return await self._send(RegisterResponse, method, path, data)
@@ -1019,7 +1136,7 @@ class AsyncClient(Client):
     async def sync(
         self,
         timeout: Optional[int] = 0,
-        sync_filter: _FilterT = None,
+        sync_filter: Optional[_FilterT] = None,
         since: Optional[str] = None,
         full_state: Optional[bool] = None,
         set_presence: Optional[str] = None,
@@ -1122,11 +1239,11 @@ class AsyncClient(Client):
     async def sync_forever(
         self,
         timeout: Optional[int] = None,
-        sync_filter: _FilterT = None,
+        sync_filter: Optional[_FilterT] = None,
         since: Optional[str] = None,
         full_state: Optional[bool] = None,
         loop_sleep_time: Optional[int] = None,
-        first_sync_filter: _FilterT = None,
+        first_sync_filter: Optional[_FilterT] = None,
         set_presence: Optional[str] = None,
     ):
         """Continuously sync with the configured homeserver.
@@ -1244,7 +1361,7 @@ class AsyncClient(Client):
                 if loop_sleep_time:
                     await asyncio.sleep(loop_sleep_time / 1000)
 
-            except asyncio.CancelledError:
+            except asyncio.CancelledError:  # noqa: PERF203
                 for task in tasks:
                     task.cancel()
 
@@ -1503,6 +1620,42 @@ class AsyncClient(Client):
         )
 
         return await self._send(DeleteDevicesResponse, method, path, data)
+
+    @logged_in_async
+    async def space_get_hierarchy(
+        self,
+        space_id: str,
+        from_page: Optional[str] = None,
+        limit: Optional[int] = None,
+        max_depth: Optional[int] = None,
+        suggested_only: bool = False,
+    ) -> Union[SpaceGetHierarchyResponse, SpaceGetHierarchyError]:
+        """Gets the space's room hierarchy.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `SpaceGetHierarchyResponse` if the request was successful
+        or a `SpaceGetHierarchyError` if there was an error with the request.
+
+        Args:
+            space_id (str): The ID of the space to get the hierarchy for.
+            from_page (str, optional): Pagination token from a previous request
+                to this endpoint.
+            limit (int, optional): The maximum number of rooms to return.
+            max_depth (int, optional): The maximum depth of the returned tree.
+            suggested_only (bool, optional): Whether or not to only return
+                rooms that are considered suggested. Defaults to False.
+        """
+        method, path = Api.space_get_hierarchy(
+            self.access_token,
+            space_id,
+            from_page=from_page,
+            limit=limit,
+            max_depth=max_depth,
+            suggested_only=suggested_only,
+        )
+
+        return await self._send(SpaceGetHierarchyResponse, method, path)
 
     @logged_in_async
     async def joined_members(
@@ -2126,6 +2279,7 @@ class AsyncClient(Client):
         name: Optional[str] = None,
         topic: Optional[str] = None,
         room_version: Optional[str] = None,
+        room_type: Optional[str] = None,
         federate: bool = True,
         is_direct: bool = False,
         preset: Optional[RoomPreset] = None,
@@ -2160,6 +2314,12 @@ class AsyncClient(Client):
                 If not specified, the homeserver will use its default setting.
                 If a version not supported by the homeserver is specified,
                 a 400 ``M_UNSUPPORTED_ROOM_VERSION`` error will be returned.
+
+            room_type (str, optional): The room type to set.
+                If not specified, the homeserver will use its default setting.
+                In spec v1.2 the following room types are specified:
+                    - ``m.space``
+                Unspecified room types are permitted through the use of Namespaced Identifiers.
 
             federate (bool): Whether to allow users from other homeservers from
                 joining the room. Defaults to ``True``.
@@ -2207,6 +2367,7 @@ class AsyncClient(Client):
             name=name,
             topic=topic,
             room_version=room_version,
+            room_type=room_type,
             federate=federate,
             is_direct=is_direct,
             preset=preset,
@@ -2664,7 +2825,7 @@ class AsyncClient(Client):
     @staticmethod
     async def _process_data_chunk(chunk, monitor=None):
         if monitor and monitor.cancel:
-            raise TransferCancelledError()
+            raise TransferCancelledError
 
         while monitor and monitor.pause:
             await asyncio.sleep(0.1)
@@ -2872,14 +3033,15 @@ class AsyncClient(Client):
         allow_remote: bool = True,
         server_name: Optional[str] = None,
         media_id: Optional[str] = None,
-    ) -> Union[DownloadResponse, DownloadError]:
+        save_to: Optional[os.PathLike] = None,
+    ) -> Union[DiskDownloadResponse, MemoryDownloadResponse, DownloadError]:
         """Get the content of a file from the content repository.
 
         This method ignores `AsyncClient.config.request_timeout` and uses `0`.
 
         Calls receive_response() to update the client state if necessary.
 
-        Returns either a `DownloadResponse` if the request was successful or
+        Returns either a `MemoryDownloadResponse` or `DiskDownloadResponse` if the request was successful or
         a `DownloadError` if there was an error with the request.
 
         The parameters `server_name` and `media_id` are deprecated and will be removed in a future release.
@@ -2896,6 +3058,8 @@ class AsyncClient(Client):
                 itself.
             server_name (str, optional): [deprecated] The server name from the mxc:// URI.
             media_id (str, optional): [deprecated] The media ID from the mxc:// URI.
+            save_to (PathLike, optional): If set, the downloaded file will be saved to this path,
+                instead of being saved in-memory.
         """
         # TODO: support TransferMonitor
 
@@ -2932,11 +3096,16 @@ class AsyncClient(Client):
             allow_remote,
         )
 
+        response_class = MemoryDownloadResponse
+        if save_to is not None:
+            response_class = DiskDownloadResponse
+
         return await self._send(
-            DownloadResponse,
+            response_class,
             http_method,
             path,
             timeout=0,
+            save_to=save_to,
         )
 
     @client_session
@@ -3036,7 +3205,7 @@ class AsyncClient(Client):
 
     @client_session
     async def set_presence(
-        self, presence: str, status_msg: str = None
+        self, presence: str, status_msg: Optional[str] = None
     ) -> Union[PresenceSetResponse, PresenceSetError]:
         """Set our user's presence state.
 
@@ -3481,7 +3650,7 @@ class AsyncClient(Client):
         self,
         room_id: str,
         canonical_alias: Union[str, None] = None,
-        alt_aliases: List[str] = [],
+        alt_aliases: Optional[List[str]] = None,
     ):
         """Update the aliases of an existing room.
            This method will not transfer aliases from one room to another!
@@ -3497,14 +3666,15 @@ class AsyncClient(Client):
             If None is passed as canonical_alias or alt_aliases the existing aliases
              will be removed without assigning new aliases.
         """
+        alt_aliases = alt_aliases or []
         # Concentrate new aliases
         if canonical_alias is None:
-            new_aliases = list()
+            new_aliases = []
         else:
             new_aliases = alt_aliases + [canonical_alias]
 
         # Get current aliases
-        current_aliases = list()
+        current_aliases = []
         current_alias_event = await self.room_get_state_event(
             room_id, "m.room.canonical_alias"
         )
@@ -3512,8 +3682,7 @@ class AsyncClient(Client):
             current_aliases.append(current_alias_event.content["alias"])
             if "alt_aliases" in current_alias_event.content:
                 alt_aliases = current_alias_event.content["alt_aliases"]
-                for alias in alt_aliases:
-                    current_aliases.append(alias)
+                current_aliases.extend(alt_aliases)
 
         # Unregister old aliases
         for alias in current_aliases:
@@ -3589,7 +3758,7 @@ class AsyncClient(Client):
 
         # Get initial_state and power_level
         old_room_power_levels = None
-        new_room_initial_state = list()
+        new_room_initial_state = []
         for event in old_room_state_events.events:
             if (
                 event["type"] in copy_events
@@ -3640,12 +3809,10 @@ class AsyncClient(Client):
             old_room_id, "m.room.canonical_alias"
         )
         if isinstance(old_room_alias, RoomGetStateEventResponse):
-            aliases = list()
-            aliases.append(old_room_alias.content["alias"])
+            aliases = [old_room_alias.content["alias"]]
             if "alt_aliases" in old_room_alias.content:
                 alt_aliases = old_room_alias.content["alt_aliases"]
-                for alias in alt_aliases:
-                    aliases.append(alias)
+                aliases.extend(alt_aliases)
             else:
                 alt_aliases = []
 

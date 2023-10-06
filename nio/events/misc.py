@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
 from functools import wraps
@@ -27,10 +28,9 @@ logger = logging.getLogger(__name__)
 
 
 def validate_or_badevent(
-    parsed_dict,  # type: Dict[Any, Any]
-    schema,  # type: Dict[Any, Any]
-):
-    # type: (...) -> Optional[Union[BadEvent, UnknownBadEvent]]
+    parsed_dict: Dict[Any, Any],
+    schema: Dict[Any, Any],
+) -> Optional[Union[BadEvent, UnknownBadEvent]]:
     try:
         validate_json(parsed_dict, schema)
     except (ValidationError, SchemaError) as e:
@@ -164,8 +164,7 @@ class BadEvent:
         return f"Bad event of type {self.type}, from {self.sender}."
 
     @classmethod
-    def from_dict(cls, parsed_dict):
-        # type: (Dict[Any, Any]) -> BadEvent
+    def from_dict(cls, parsed_dict: Dict[Any, Any]) -> BadEvent:
         timestamp = parsed_dict["origin_server_ts"]
 
         timestamp = timestamp if timestamp > 0 else 0

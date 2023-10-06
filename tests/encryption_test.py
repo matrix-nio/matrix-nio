@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import copy
 import json
 import os
@@ -8,7 +6,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from helpers import faker
-from olm import Account, OlmMessage, OlmPreKeyMessage, OutboundGroupSession
+from olm import Account, OutboundGroupSession
 
 from nio.crypto import (
     DeviceStore,
@@ -21,7 +19,6 @@ from nio.crypto import (
     Session,
     SessionStore,
 )
-from nio.event_builders import RoomKeyRequestMessage
 from nio.events import (
     DummyEvent,
     ForwardedRoomKeyEvent,
@@ -697,8 +694,10 @@ class TestClass:
 
         assert not olm.should_upload_keys
 
-        with pytest.raises(ValueError):
-            to_share = olm.share_keys()
+        with pytest.raises(
+            ValueError, match="Can't share any keys, too many keys already shared"
+        ):
+            olm.share_keys()
 
         olm.uploaded_key_count -= 1
 
