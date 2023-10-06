@@ -165,6 +165,8 @@ class Event:
             return Event.parse_encrypted_event(event_dict)
         elif event_dict["type"] == "m.sticker":
             return StickerEvent.from_dict(event_dict)
+        elif event_dict["type"] == "m.reaction":
+            return ReactionEvent.from_dict(event_dict)
         elif event_dict["type"].startswith("m.call"):
             return CallEvent.parse_event(event_dict)
 
@@ -1565,6 +1567,35 @@ class StickerEvent(Event):
 
 
 @dataclass
+class ReactionEvent(Event):
+    """An event representing an m.reaction event.
+
+    Users sometimes wish to respond to a message using emojis. When such
+    responses are grouped visually below the message being reacted to, this
+    provides a (visually) lightweight way for users to react to messages.
+
+    Attributes:
+        reacts_to (str): The event_id of the message the reaction relates to.
+        key (str): The actual reaction/emoji.
+
+    """
+
+    reacts_to: str = field()
+    key: str = field()
+
+    @classmethod
+    @verify(Schemas.reaction)
+    def from_dict(cls, parsed_dict):
+        content = parsed_dict["content"]["m.relates_to"]
+
+        return cls(
+            parsed_dict,
+            content["event_id"],
+            content["key"],
+        )
+
+
+@dataclass
 class RoomUpgradeEvent(Event):
     """Class representing to an m.room.tombstone event.
 
@@ -1574,7 +1605,6 @@ class RoomUpgradeEvent(Event):
     Attributes:
         body (str): A server-defined message.
         replacement_room (str): The new room the client should be visiting.
-        content (dict): The content of the tombstone event.
     """
 
     body: str = field()

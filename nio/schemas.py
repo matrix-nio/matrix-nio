@@ -1109,6 +1109,35 @@ class Schemas:
         "required": ["sender"],
     }
 
+    reaction = {
+        "type": "object",
+        "properties": {
+            "sender": {
+                "type": "string",
+                "format": "user_id",
+            },
+            "content": {
+                "type": "object",
+                "properties": {
+                    "m.relates_to": {
+                        "type": "object",
+                        "properties": {
+                            "rel_type": {
+                                "type": "string",
+                                "const": "m.annotation",
+                            },
+                            "event_id": {"type": "string"},
+                            "key": {"type": "string"},
+                        },
+                        "required": ["rel_type", "event_id", "key"],
+                    },
+                },
+                "required": ["m.relates_to"],
+            },
+        },
+        "required": ["sender", "content"],
+    }
+
     room_resolve_alias = {
         "type": "object",
         "properties": {
