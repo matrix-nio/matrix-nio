@@ -4,9 +4,12 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "matrix-nio"
-version = "0.21.2"
+version = "0.22.0"
 description = "A Python Matrix client library, designed according to sans I/O principles."
-authors = ["Damir Jelić <poljar@termina.org.uk>"]
+authors = [
+    "Damir Jelić <poljar@termina.org.uk>",
+    "Paarth Shah <mail@shahpaarth.com>"
+]
 license = "ISC"
 readme = "README.md"
 repository = "https://github.com/poljar/matrix-nio"
