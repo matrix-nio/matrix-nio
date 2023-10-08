@@ -215,7 +215,7 @@ from ..responses import (
     UploadFilterResponse,
     UploadResponse,
     WhoamiError,
-    WhoamiResponse,
+    WhoamiResponse, DirectRoomListResponse,
 )
 from . import Client, ClientConfig
 from .base_client import logged_in_async, store_loaded
@@ -1771,6 +1771,15 @@ class AsyncClient(Client):
         )
 
         return await self._send(RoomSendResponse, method, path, data, (room_id,))
+
+    @logged_in_async
+    async def direct_room_list(self):
+        """
+        Get the list of rooms that are flagged as Direct in account data.
+        """
+        method, path = Api.direct_room_list(self.access_token, self.user_id)
+
+        return await self._send(DirectRoomListResponse, method, path)
 
     @logged_in_async
     async def room_get_event(

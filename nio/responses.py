@@ -1013,6 +1013,20 @@ class RoomGetStateResponse(Response):
 
 
 @dataclass
+class DirectRoomListResponse(Response):
+    """A response containing the list of direct rooms and their associated users.
+
+    Attributes:
+        rooms (Dict[str, List[str]]): The list of users and their associated direct room IDs.
+    """
+    rooms: Dict[str, List[str]] = field()
+
+    @classmethod
+    def from_dict(cls, parsed_dict) -> Union[DirectRoomListResponse, ErrorResponse]:
+        return cls({"rooms": parsed_dict})
+
+
+@dataclass
 class RoomGetStateEventResponse(Response):
     """A response containing the content of a specific bit of room state.
 
