@@ -20,7 +20,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
+from typing import Any, Awaitable, Dict, Generator, List, Optional, Set, Tuple, Union
 
 from jsonschema.exceptions import SchemaError, ValidationError
 
@@ -349,6 +349,26 @@ class MemoryFileResponse(FileResponse):
     """
 
     body: bytes = field()
+
+
+@dataclass
+class DiskFileResponse(FileResponse):
+    """A response representing a successful file content request with the file content stored on disk.
+
+    This class is exactly the same as ``FileResponse`` but with the following difference
+
+    Attributes:
+        body (os.PathLike): The path to the file on disk.
+    """
+
+    body: os.PathLike = field()
+
+
+@dataclass
+class MemoryFileResponse(FileResponse):
+    """A response representing a successful file content request with the file content stored in memory.
+
+    This class is exactly the same as ``FileResponse`` but with a different name."""
 
 
 @dataclass
