@@ -1,0 +1,30 @@
+{
+  "next_batch": "next_batch_token",
+  "rooms": [
+    {
+      "avatar_url": "mxc://example.org/abcdef",
+      "canonical_alias": "#general:example.org",
+      "children_state": [
+        {
+          "content": {
+            "via": [
+              "example.org"
+            ]
+          },
+          "origin_server_ts": 1629413349153,
+          "sender": "@alice:example.org",
+          "state_key": "!a:example.org",
+          "type": "m.space.child"
+        }
+      ],
+      "guest_can_join": false,
+      "join_rule": "public",
+      "name": "The First Space",
+      "num_joined_members": 42,
+      "room_id": "!space:example.org",
+      "room_type": "m.space",
+      "topic": "No other spaces were created first, ever",
+      "world_readable": true
+    }
+  ]
+}

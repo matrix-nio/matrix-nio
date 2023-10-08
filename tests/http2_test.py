@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import unicode_literals
-
 import h2
 import pytest
 
@@ -91,7 +87,7 @@ class TestClass:
         server.initiate_connection()
         server.receive_data(frame_factory.preamble())
 
-        events = server.receive_data(request)
+        server.receive_data(request)
         # assert events[0].headers == []
 
         client.receive(self.login_response(1, frame_factory))
@@ -102,7 +98,7 @@ class TestClass:
 
         uuid, request = client.sync()
 
-        events = server.receive_data(request)
+        server.receive_data(request)
 
         client.receive(self.sync_response(3, frame_factory))
         response = client.next_response()

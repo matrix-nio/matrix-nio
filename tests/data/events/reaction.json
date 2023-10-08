@@ -1,0 +1,14 @@
+{
+    "type": "m.reaction",
+    "sender": "@example:localhost",
+    "content": {
+        "m.relates_to": {
+            "rel_type": "m.annotation",
+            "event_id": "$B4UkDqYQ7JRC3GEMl7pTyu0x2vLFKgm_wgCR1mEw2CM",
+            "key": "❤️"
+        }
+    },
+    "origin_server_ts": 1520372800469,
+    "unsigned": {"age": 598971425},
+    "event_id": "$152037280074GZeOm:localhost"
+}

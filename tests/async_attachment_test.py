@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 
 import aiofiles
@@ -12,11 +11,7 @@ from nio.crypto import async_encrypt_attachment, decrypt_attachment
 FILEPATH = "tests/data/test_bytes"
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 5),
-    reason="Python 3 specific asyncio tests",
-)
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 class TestClass:
     async def _get_data_cypher_keys(self, data=b"Test bytes"):
         *chunks, keys = [i async for i in async_encrypt_attachment(data)]
@@ -56,7 +51,7 @@ class TestClass:
         await self.test_encrypt(async_gen())
 
     async def test_encrypt_file_object(self):
-        await self.test_encrypt(open(FILEPATH, "rb"))
+        await self.test_encrypt(open(FILEPATH, "rb"))  # noqa: ASYNC101
 
     async def test_encrypt_async_file_object(self):
         await self.test_encrypt(await aiofiles.open(FILEPATH, "rb"))

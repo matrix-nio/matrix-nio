@@ -32,8 +32,10 @@ class TestClass:
         passphrase = "A secret"
         ciphertext = encrypt(data, passphrase, count=10)
 
-        with pytest.raises(ValueError):
-            plaintext = decrypt(ciphertext, "Fake key")
+        with pytest.raises(
+            ValueError, match="HMAC check failed for encrypted payload."
+        ):
+            decrypt(ciphertext, "Fake key")
 
     def test_encrypt_file(self, tempdir):
         data = b"data"

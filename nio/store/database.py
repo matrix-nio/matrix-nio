@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2018 Zil0
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,12 +10,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import sqlite3
-from builtins import super
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from peewee import DoesNotExist, SqliteDatabase
 from playhouse.sqliteq import SqliteQueueDatabase
@@ -167,8 +167,7 @@ class MatrixStore:
         except DoesNotExist:
             return None
 
-    def load_account(self):
-        # type: () -> Optional[OlmAccount]
+    def load_account(self) -> Optional[OlmAccount]:
         """Load the Olm account from the database.
 
         Returns:
@@ -208,8 +207,7 @@ class MatrixStore:
         ).execute()
 
     @use_database
-    def load_sessions(self):
-        # type: () -> SessionStore
+    def load_sessions(self) -> SessionStore:
         """Load all Olm sessions from the database.
 
         Returns:
@@ -230,7 +228,7 @@ class MatrixStore:
         return session_store
 
     @use_database
-    def save_session(self, sender_key, session):
+    def save_session(self, curve_key, session):
         """Save the provided Olm session to the database.
 
         Args:
@@ -243,7 +241,7 @@ class MatrixStore:
 
         OlmSessions.replace(
             account=account,
-            sender_key=sender_key,
+            sender_key=curve_key,
             session=session.pickle(self.pickle_key),
             session_id=session.id,
             creation_time=session.creation_time,
@@ -251,8 +249,7 @@ class MatrixStore:
         ).execute()
 
     @use_database
-    def load_inbound_group_sessions(self):
-        # type: () -> GroupSessionStore
+    def load_inbound_group_sessions(self) -> GroupSessionStore:
         """Load all Olm sessions from the database.
 
         Returns:
@@ -307,8 +304,7 @@ class MatrixStore:
             ForwardedChains.replace(sender_key=chain, session=session.id).execute()
 
     @use_database
-    def load_device_keys(self):
-        # type: () -> DeviceStore
+    def load_device_keys(self) -> DeviceStore:
         """Load all the device keys from the database.
 
         Returns DeviceStore containing the OlmDevices with the device keys.
@@ -404,7 +400,7 @@ class MatrixStore:
         account = self._get_account()
 
         if not account:
-            return dict()
+            return {}
 
         return {
             request.request_id: OutgoingKeyRequest.from_database(request)
@@ -412,8 +408,7 @@ class MatrixStore:
         }
 
     @use_database
-    def add_outgoing_key_request(self, key_request):
-        # type: (OutgoingKeyRequest) -> None
+    def add_outgoing_key_request(self, key_request: OutgoingKeyRequest) -> None:
         """Add an outgoing key request to the store."""
         account = self._get_account()
         assert account
@@ -427,8 +422,7 @@ class MatrixStore:
         ).on_conflict_ignore().execute()
 
     @use_database
-    def remove_outgoing_key_request(self, key_request):
-        # type: (OutgoingKeyRequest) -> None
+    def remove_outgoing_key_request(self, key_request: OutgoingKeyRequest) -> None:
         """Remove an active outgoing key request from the store."""
         account = self._get_account()
         assert account
@@ -457,8 +451,7 @@ class MatrixStore:
             ).on_conflict_ignore().execute()
 
     @use_database
-    def save_sync_token(self, token):
-        # type (str) -> None
+    def save_sync_token(self, token: str) -> None:
         """Save the given token"""
         account = self._get_account()
         assert account
@@ -466,8 +459,7 @@ class MatrixStore:
         SyncTokens.replace(account=account, token=token).execute()
 
     @use_database
-    def load_sync_token(self):
-        # type () -> Optional[str]
+    def load_sync_token(self) -> Optional[str]:
         account = self._get_account()
 
         if not account:
@@ -482,15 +474,13 @@ class MatrixStore:
         return None
 
     @use_database
-    def delete_encrypted_room(self, room):
-        # type: (str) -> None
-        """Delete the a encrypted room from the store."""
+    def delete_encrypted_room(self, room: str) -> None:
+        """Delete an encrypted room from the store."""
         db_room = EncryptedRooms.get_or_none(EncryptedRooms.room_id == room)
         if db_room:
             db_room.delete_instance()
 
-    def blacklist_device(self, device):
-        # type: (OlmDevice) -> bool
+    def blacklist_device(self, device: OlmDevice) -> bool:
         """Mark a device as blacklisted.
 
         Args:
@@ -502,8 +492,7 @@ class MatrixStore:
         """
         raise NotImplementedError
 
-    def unblacklist_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unblacklist_device(self, device: OlmDevice) -> bool:
         """Unmark a device as blacklisted.
 
         Args:
@@ -512,8 +501,7 @@ class MatrixStore:
         """
         raise NotImplementedError
 
-    def verify_device(self, device):
-        # type: (OlmDevice) -> bool
+    def verify_device(self, device: OlmDevice) -> bool:
         """Mark a device as verified.
 
         Args:
@@ -525,8 +513,7 @@ class MatrixStore:
         """
         raise NotImplementedError
 
-    def is_device_verified(self, device):
-        # type: (OlmDevice) -> bool
+    def is_device_verified(self, device: OlmDevice) -> bool:
         """Check if a device is verified.
 
         Args:
@@ -535,8 +522,7 @@ class MatrixStore:
         """
         raise NotImplementedError
 
-    def is_device_blacklisted(self, device):
-        # type: (OlmDevice) -> bool
+    def is_device_blacklisted(self, device: OlmDevice) -> bool:
         """Check if a device is blacklisted.
 
         Args:
@@ -545,8 +531,7 @@ class MatrixStore:
         """
         raise NotImplementedError
 
-    def unverify_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unverify_device(self, device: OlmDevice) -> bool:
         """Unmark a device as verified.
 
         Args:
@@ -558,8 +543,7 @@ class MatrixStore:
         """
         raise NotImplementedError
 
-    def ignore_device(self, device):
-        # type: (OlmDevice) -> bool
+    def ignore_device(self, device: OlmDevice) -> bool:
         """Mark a device as ignored.
 
         Args:
@@ -570,8 +554,7 @@ class MatrixStore:
         """
         raise NotImplementedError
 
-    def unignore_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unignore_device(self, device: OlmDevice) -> bool:
         """Unmark a device as ignored.
 
         Args:
@@ -582,21 +565,19 @@ class MatrixStore:
         """
         raise NotImplementedError
 
-    def ignore_devices(self, devices):
-        # type: (List[OlmDevice]) -> None
+    def ignore_devices(self, devices: List[OlmDevice]) -> None:
         """Mark a list of devices as ignored.
 
         This is a more efficient way to mark multiple devices as ignored.
 
         Args:
-            device (list[OlmDevice]): A list of OlmDevices that will be marked
+            devices (list[OlmDevice]): A list of OlmDevices that will be marked
                 as ignored.
 
         """
         raise NotImplementedError
 
-    def is_device_ignored(self, device):
-        # type: (OlmDevice) -> bool
+    def is_device_ignored(self, device: OlmDevice) -> bool:
         """Check if a device is ignored.
 
         Args:
@@ -644,16 +625,14 @@ class DefaultStore(MatrixStore):
         ignore_file_path = f"{self.user_id}_{self.device_id}.ignored_devices"
         self.ignore_db = KeyStore(os.path.join(self.store_path, ignore_file_path))
 
-    def blacklist_device(self, device):
-        # type: (OlmDevice) -> bool
+    def blacklist_device(self, device: OlmDevice) -> bool:
         key = Key.from_olmdevice(device)
         self.trust_db.remove(key)
         self.ignore_db.remove(key)
         device.trust_state = TrustState.blacklisted
         return self.blacklist_db.add(key)
 
-    def unblacklist_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unblacklist_device(self, device: OlmDevice) -> bool:
         key = Key.from_olmdevice(device)
 
         if self.blacklist_db.remove(key):
@@ -662,26 +641,22 @@ class DefaultStore(MatrixStore):
 
         return False
 
-    def verify_device(self, device):
-        # type: (OlmDevice) -> bool
+    def verify_device(self, device: OlmDevice) -> bool:
         key = Key.from_olmdevice(device)
         self.blacklist_db.remove(key)
         self.ignore_db.remove(key)
         device.trust_state = TrustState.verified
         return self.trust_db.add(key)
 
-    def is_device_verified(self, device):
-        # type: (OlmDevice) -> bool
+    def is_device_verified(self, device: OlmDevice) -> bool:
         key = Key.from_olmdevice(device)
         return key in self.trust_db
 
-    def is_device_blacklisted(self, device):
-        # type: (OlmDevice) -> bool
+    def is_device_blacklisted(self, device: OlmDevice) -> bool:
         key = Key.from_olmdevice(device)
         return key in self.blacklist_db
 
-    def unverify_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unverify_device(self, device: OlmDevice) -> bool:
         key = Key.from_olmdevice(device)
 
         if self.trust_db.remove(key):
@@ -690,16 +665,14 @@ class DefaultStore(MatrixStore):
 
         return False
 
-    def ignore_device(self, device):
-        # type: (OlmDevice) -> bool
+    def ignore_device(self, device: OlmDevice) -> bool:
         key = Key.from_olmdevice(device)
         self.blacklist_db.remove(key)
         self.trust_db.remove(key)
         device.trust_state = TrustState.ignored
         return self.ignore_db.add(key)
 
-    def unignore_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unignore_device(self, device: OlmDevice) -> bool:
         key = Key.from_olmdevice(device)
 
         if self.ignore_db.remove(key):
@@ -708,8 +681,7 @@ class DefaultStore(MatrixStore):
 
         return False
 
-    def ignore_devices(self, devices):
-        # type: (List[OlmDevice]) -> None
+    def ignore_devices(self, devices: List[OlmDevice]) -> None:
         keys = [Key.from_olmdevice(device) for device in devices]
 
         self.blacklist_db.remove_many(keys)
@@ -721,14 +693,12 @@ class DefaultStore(MatrixStore):
 
         return
 
-    def is_device_ignored(self, device):
-        # type: (OlmDevice) -> bool
+    def is_device_ignored(self, device: OlmDevice) -> bool:
         key = Key.from_olmdevice(device)
         return key in self.ignore_db
 
     @use_database
-    def load_device_keys(self):
-        # type: () -> DeviceStore
+    def load_device_keys(self) -> DeviceStore:
         store = DeviceStore()
         account = self._get_account()
 
@@ -796,8 +766,7 @@ class SqliteStore(MatrixStore):
             return None
 
     @use_database
-    def verify_device(self, device):
-        # type: (OlmDevice) -> bool
+    def verify_device(self, device: OlmDevice) -> bool:
         if self.is_device_verified(device):
             return False
 
@@ -811,8 +780,7 @@ class SqliteStore(MatrixStore):
         return True
 
     @use_database
-    def unverify_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unverify_device(self, device: OlmDevice) -> bool:
         if not self.is_device_verified(device):
             return False
 
@@ -826,8 +794,7 @@ class SqliteStore(MatrixStore):
         return True
 
     @use_database
-    def is_device_verified(self, device):
-        # type: (OlmDevice) -> bool
+    def is_device_verified(self, device: OlmDevice) -> bool:
         d = self._get_device(device)
 
         if not d:
@@ -841,8 +808,7 @@ class SqliteStore(MatrixStore):
         return trust_state == TrustState.verified
 
     @use_database
-    def blacklist_device(self, device):
-        # type: (OlmDevice) -> bool
+    def blacklist_device(self, device: OlmDevice) -> bool:
         if self.is_device_blacklisted(device):
             return False
 
@@ -856,8 +822,7 @@ class SqliteStore(MatrixStore):
         return True
 
     @use_database
-    def unblacklist_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unblacklist_device(self, device: OlmDevice) -> bool:
         if not self.is_device_blacklisted(device):
             return False
 
@@ -871,8 +836,7 @@ class SqliteStore(MatrixStore):
         return True
 
     @use_database
-    def is_device_blacklisted(self, device):
-        # type: (OlmDevice) -> bool
+    def is_device_blacklisted(self, device: OlmDevice) -> bool:
         d = self._get_device(device)
 
         if not d:
@@ -886,8 +850,7 @@ class SqliteStore(MatrixStore):
         return trust_state == TrustState.blacklisted
 
     @use_database
-    def ignore_device(self, device):
-        # type: (OlmDevice) -> bool
+    def ignore_device(self, device: OlmDevice) -> bool:
         if self.is_device_ignored(device):
             return False
 
@@ -901,8 +864,7 @@ class SqliteStore(MatrixStore):
         return True
 
     @use_database
-    def unignore_device(self, device):
-        # type: (OlmDevice) -> bool
+    def unignore_device(self, device: OlmDevice) -> bool:
         if not self.is_device_ignored(device):
             return False
 
@@ -955,8 +917,7 @@ class SqliteStore(MatrixStore):
         return device_ids
 
     @use_database_atomic
-    def ignore_devices(self, devices):
-        # type: (List[OlmDevice]) -> None
+    def ignore_devices(self, devices: List[OlmDevice]) -> None:
         acc = self._get_account()
 
         if not acc:
@@ -982,8 +943,7 @@ class SqliteStore(MatrixStore):
             device.trust_state = TrustState.ignored
 
     @use_database
-    def is_device_ignored(self, device):
-        # type: (OlmDevice) -> bool
+    def is_device_ignored(self, device: OlmDevice) -> bool:
         d = self._get_device(device)
 
         if not d:
@@ -997,8 +957,7 @@ class SqliteStore(MatrixStore):
         return trust_state == TrustState.ignored
 
     @use_database
-    def load_device_keys(self):
-        # type: () -> DeviceStore
+    def load_device_keys(self) -> DeviceStore:
         store = DeviceStore()
         account = self._get_account()
 
@@ -1028,7 +987,7 @@ class SqliteStore(MatrixStore):
 class SqliteMemoryStore(SqliteStore):
     """The Sqlite only nio Matrix Store.
 
-    This store uses an Sqlite database as the main storage format as well as
+    This store uses a Sqlite database as the main storage format as well as
     the store format for the trust state. The Sqlite database will be stored
     only in memory and all the data will be lost after the object is deleted.
 

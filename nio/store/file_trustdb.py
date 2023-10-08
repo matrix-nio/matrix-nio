@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from functools import wraps
 from typing import Any, Iterator, List, Optional
 
@@ -7,11 +9,6 @@ from ..crypto import OlmDevice
 from ..exceptions import OlmTrustError
 from . import logger
 
-try:
-    FileNotFoundError  # type: ignore
-except NameError:  # pragma: no cover
-    FileNotFoundError = IOError
-
 
 class Key:
     def __init__(self, user_id: str, device_id: str, key: str):
@@ -20,8 +17,7 @@ class Key:
         self.key = key
 
     @classmethod
-    def from_line(cls, line):
-        # type: (str) -> Optional[Key]
+    def from_line(cls, line: str) -> Optional[Key]:
         fields = line.split(" ")
 
         if len(fields) < 4:
@@ -46,8 +42,7 @@ class Key:
         return line
 
     @classmethod
-    def from_olmdevice(cls, device):
-        # type: (OlmDevice) -> Ed25519Key
+    def from_olmdevice(cls, device: OlmDevice) -> Ed25519Key:
         user_id = device.user_id
         device_id = device.id
         return Ed25519Key(user_id, device_id, device.ed25519)
@@ -76,15 +71,14 @@ class KeyStore:
         self._load(filename)
 
     def __iter__(self) -> Iterator[Key]:
-        for entry in self._entries:
-            yield entry
+        yield from self._entries
 
     def __repr__(self) -> str:
         return f"KeyStore object, file: {self._filename}"
 
     def _load(self, filename: str):
         try:
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 for line in f:
                     line = line.strip()
 

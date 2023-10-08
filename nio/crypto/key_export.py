@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2018 Zil0
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -10,7 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from builtins import bytes, int
 
 from atomicwrites import atomic_write
 from Crypto import Random
@@ -60,7 +58,7 @@ def decrypt_and_read(infile: str, passphrase: str) -> bytes:
         FileNotFoundError if the file was not found.
 
     """
-    with open(infile, "r") as f:
+    with open(infile) as f:
         encrypted_data = f.read()
     encrypted_data = encrypted_data.replace("\n", "")
 

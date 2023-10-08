@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -23,6 +21,8 @@ To-device events can be sent to a specific device of a user or to all devices
 of a user.
 
 """
+
+from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -57,8 +57,9 @@ class ToDeviceEvent:
 
     @classmethod
     @verify(Schemas.to_device)
-    def parse_event(cls, event_dict):
-        # type: (Dict) -> Optional[Union[ToDeviceEvent, BadEventType]]
+    def parse_event(
+        cls, event_dict: Dict
+    ) -> Optional[Union[ToDeviceEvent, BadEventType]]:
         """Parse a to-device event and create a higher level event object.
 
         This function parses the type of the to-device event and produces a
@@ -130,7 +131,7 @@ class ToDeviceEvent:
             parsed_dict (dict): The dictionary representation of the event.
 
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 @dataclass

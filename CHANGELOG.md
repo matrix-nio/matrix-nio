@@ -2,6 +2,51 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.22.0] - 2023-10-6
+
+### Bug Fixes
+
+- [[#434]] Fix space handling to account for Matrix spec ambiguities.
+
+### Features
+
+- [[#426]] Add a simple streamed response to download to files
+- [[#436]] Add get space hierarchy capability
+- [[#437]] Support for Token-Authenticated Registration
+- [[#330]] Add `room_type` to `room_create` API function to allow for custom room types
+- [[#351]] Add support for `m.reaction` events (Closes [[#174]])
+
+### Miscellaneous Tasks
+
+- [[#427]], [[#446]] Add `.readthedocs.yaml` v2 to support ReadTheDocs migration
+- [[#440]] Remove `future` dependency
+- [[#438]] Fix `jsonschema` deprecations
+- [[#439]] Replace `cgi.parse_header()`
+- [[#441]] Run `pre-commit autoupdate` to fix deprecation
+- [[#442]] Introduce `ruff` as a `pre-commit` hook + run on whole codebase
+- [[#445]] Update `pre-commit` hooks
+- [[#447]] Replace ALL type comments with type hints
+- [[#448]] Add `pyupgrade`, `async`, various `flake8`, `Perflint`, and more `ruff` linting rules
+
+[#174]: https://github.com/poljar/matrix-nio/issues/174
+[#434]: https://github.com/poljar/matrix-nio/pull/434
+[#426]: https://github.com/poljar/matrix-nio/pull/426
+[#436]: https://github.com/poljar/matrix-nio/pull/436
+[#437]: https://github.com/poljar/matrix-nio/pull/437
+[#330]: https://github.com/poljar/matrix-nio/pull/330
+[#351]: https://github.com/poljar/matrix-nio/pull/351
+[#427]: https://github.com/poljar/matrix-nio/pull/427
+[#446]: https://github.com/poljar/matrix-nio/pull/446
+[#440]: https://github.com/poljar/matrix-nio/pull/440
+[#438]: https://github.com/poljar/matrix-nio/pull/438
+[#439]: https://github.com/poljar/matrix-nio/pull/439
+[#441]: https://github.com/poljar/matrix-nio/pull/441
+[#442]: https://github.com/poljar/matrix-nio/pull/442
+[#445]: https://github.com/poljar/matrix-nio/pull/445
+[#447]: https://github.com/poljar/matrix-nio/pull/447
+[#448]: https://github.com/poljar/matrix-nio/pull/448
+
+
 ## [0.21.2] - 2023-7-17
 
 ### Bug Fixes

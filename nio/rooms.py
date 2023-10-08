@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2021 Famedly GmbH
 #
@@ -15,15 +13,11 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 import logging
-from builtins import super
 from collections import defaultdict
-from enum import Enum
-from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional, Set, Tuple, Union
-
-from jsonschema.exceptions import SchemaError, ValidationError
+from typing import DefaultDict, Dict, List, Optional, Set, Tuple, Union
 
 from .events import (
     AccountDataEvent,
@@ -67,32 +61,32 @@ __all__ = [
 class MatrixRoom:
     """Represents a Matrix room."""
 
-    def __init__(self, room_id, own_user_id, encrypted=False):
-        # type: (str, str, bool) -> None
+    def __init__(self, room_id: str, own_user_id: str, encrypted: bool = False) -> None:
         """Initialize a MatrixRoom object."""
         # yapf: disable
-        self.room_id = room_id        # type: str
+        self.room_id: str = room_id
         self.own_user_id = own_user_id
-        self.creator = ""             # type: str
-        self.federate = True          # type: bool
-        self.room_version = "1"       # type: str
-        self.guest_access = "forbidden"  # type: str
-        self.join_rule = "invite"     # type: str
-        self.history_visibility = "shared"  # type: str
-        self.canonical_alias = None   # type: Optional[str]
-        self.topic = None             # type: Optional[str]
-        self.name = None              # type: Optional[str]
-        self.parents = set()           # type: Set[str]
-        self.children = set()         # type: Set[str]
-        self.users = dict()           # type: Dict[str, MatrixUser]
-        self.invited_users = dict()   # type: Dict[str, MatrixUser]
-        self.names = defaultdict(list)  # type: DefaultDict[str, List[str]]
-        self.encrypted = encrypted    # type: bool
-        self.power_levels = PowerLevels()  # type: PowerLevels
-        self.typing_users = []        # type: List[str]
-        self.read_receipts = {}       # type: Dict[str, Receipt]
-        self.summary = None           # type: Optional[RoomSummary]
-        self.room_avatar_url = None        # type: Optional[str]
+        self.creator: str = ""
+        self.federate: bool = True
+        self.room_version: str = "1"
+        self.room_type: Optional[str] = None
+        self.guest_access: str = "forbidden"
+        self.join_rule: str = "invite"
+        self.history_visibility: str = "shared"
+        self.canonical_alias: Optional[str] = None
+        self.topic: Optional[str] = None
+        self.name: Optional[str] = None
+        self.parents: Set[str] = set()
+        self.children: Set[str] = set()
+        self.users: Dict[str, MatrixUser] = {}
+        self.invited_users: Dict[str, MatrixUser] = {}
+        self.names: DefaultDict[str, List[str]] = defaultdict(list)
+        self.encrypted: bool = encrypted
+        self.power_levels: PowerLevels = PowerLevels()
+        self.typing_users: List[str] = []
+        self.read_receipts: Dict[str, Receipt] = {}
+        self.summary: Optional[RoomSummary] = None
+        self.room_avatar_url: Optional[str] = None
         self.fully_read_marker: Optional[str] = None
         self.tags: Dict[str, Optional[Dict[str, float]]] = {}
         self.unread_notifications: int = 0
@@ -372,6 +366,7 @@ class MatrixRoom:
             self.creator = event.creator
             self.federate = event.federate
             self.room_version = event.room_version
+            self.room_type = event.room_type
 
         elif isinstance(event, RoomGuestAccessEvent):
             self.guest_access = event.guest_access
@@ -412,10 +407,16 @@ class MatrixRoom:
                     self.users[user_id].power_level = level
 
         elif isinstance(event, RoomSpaceParentEvent):
-            self.parents.add(event.state_key)
+            if "via" in event.source.get("content", {}):
+                self.parents.add(event.state_key)
+            else:
+                self.parents.discard(event.state_key)
 
         elif isinstance(event, RoomSpaceChildEvent):
-            self.children.add(event.state_key)
+            if "via" in event.source.get("content", {}):
+                self.children.add(event.state_key)
+            else:
+                self.children.discard(event.state_key)
 
     def handle_account_data(self, event: AccountDataEvent) -> None:
         if isinstance(event, FullyReadEvent):

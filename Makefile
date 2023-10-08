@@ -2,17 +2,17 @@ PYTHON   ?= python
 
 all:
 
+init:
+	pre-commit install --install-hooks
+
 test:
 	python3 -m pytest --benchmark-disable
 
 typecheck:
-	mypy -p nio --ignore-missing-imports --warn-redundant-casts
+	mypy -p nio --warn-redundant-casts
 
 coverage:
 	python3 -m pytest --cov nio --benchmark-disable
-
-isort:
-	isort -p nio
 
 clean:
 	-rm -r dist/ __pycache__/
@@ -25,4 +25,4 @@ arch-git-pkg:
 	cd dist && makepkg -ci
 
 
-.PHONY: all clean test typecheck coverage
+.PHONY: all clean init test typecheck coverage

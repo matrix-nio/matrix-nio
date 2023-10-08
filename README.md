@@ -37,6 +37,7 @@ nio has most of the features you'd expect in a Matrix library, but it's still a 
 - ✅ user registration
 - ✅ read receipts
 - ✅ live syncing
+- ✅ `m.reaction`s
 - ✅ `m.tag`s
 - ❌ cross-signing support
 - ❌ server-side key backups (room key backup, "Secure Backup")

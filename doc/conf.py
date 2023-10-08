@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Configuration file for the Sphinx documentation builder.
 #
@@ -15,7 +14,7 @@
 import os
 import sys
 
-import sphinx
+import sphinx  # noqa: F401
 
 sys.path.insert(0, os.path.abspath("../"))
 
@@ -24,12 +23,12 @@ sys.path.insert(0, os.path.abspath("../"))
 
 project = "nio"
 copyright = "2020, Damir Jelić"
-author = "Damir Jelić"
+author = "Damir Jelić, Paarth Shah"
 
 # The short X.Y version
 version = ""
 # The full version, including alpha/beta/rc tags
-release = "0.21.2"
+release = "0.22.0"
 
 
 # -- General configuration ---------------------------------------------------

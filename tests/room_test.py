@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2021 Famedly GmbH
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -86,19 +84,19 @@ class TestClass:
         room = self.test_room
 
         room.summary = None
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Unusable summary"):
             assert room._summary_details()
 
         room.summary = RoomSummary(None, None, [])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Unusable summary"):
             assert room._summary_details()
 
         room.summary = RoomSummary(0, None, [])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Unusable summary"):
             assert room._summary_details()
 
         room.summary = RoomSummary(None, 0, [])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Unusable summary"):
             assert room._summary_details()
 
         room.summary = RoomSummary(0, 0, [])
@@ -481,22 +479,80 @@ class TestClass:
         assert room.parents == set()
         room.handle_event(
             RoomSpaceParentEvent(
-                {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
+                {
+                    "event_id": "event_id",
+                    "sender": BOB_ID,
+                    "origin_server_ts": 0,
+                    "content": {},
+                },
+                "!X:example.org",
+            )
+        )
+        assert "!X:example.org" not in room.parents
+        room.handle_event(
+            RoomSpaceParentEvent(
+                {
+                    "event_id": "event_id",
+                    "sender": BOB_ID,
+                    "origin_server_ts": 0,
+                    "content": {"via": ["!A:example.org"]},
+                },
                 "!X:example.org",
             )
         )
         assert "!X:example.org" in room.parents
+        room.handle_event(
+            RoomSpaceParentEvent(
+                {
+                    "event_id": "event_id",
+                    "sender": BOB_ID,
+                    "origin_server_ts": 0,
+                    "content": {},
+                },
+                "!X:example.org",
+            )
+        )
+        assert "!X:example.org" not in room.parents
 
     def test_space_child(self):
         room = self.test_room
         assert room.children == set()
         room.handle_event(
             RoomSpaceChildEvent(
-                {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
+                {
+                    "event_id": "event_id",
+                    "sender": BOB_ID,
+                    "origin_server_ts": 0,
+                    "content": {},
+                },
+                "!X:example.org",
+            )
+        )
+        assert "!X:example.org" not in room.children
+        room.handle_event(
+            RoomSpaceChildEvent(
+                {
+                    "event_id": "event_id",
+                    "sender": BOB_ID,
+                    "origin_server_ts": 0,
+                    "content": {"via": ["!A:example.org"]},
+                },
                 "!X:example.org",
             )
         )
         assert "!X:example.org" in room.children
+        room.handle_event(
+            RoomSpaceChildEvent(
+                {
+                    "event_id": "event_id",
+                    "sender": BOB_ID,
+                    "origin_server_ts": 0,
+                    "content": {},
+                },
+                "!X:example.org",
+            )
+        )
+        assert "!X:example.org" not in room.children
 
     def test_room_avatar_event(self):
         room = self.test_room
