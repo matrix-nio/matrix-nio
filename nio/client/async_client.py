@@ -1775,12 +1775,11 @@ class AsyncClient(Client):
 
     @logged_in_async
     @client_session
-    async def direct_room_list(self) -> Dict[str, List[str]]:
+    async def direct_room_list(self) -> Union[DirectRoomListResponse, DirectRoomListErrorResponse]:
         """
         Lists all rooms flagged with m.direct that the client is participating in.
 
-        This returns a dictionary of {user_id: [!room_id]}.
-        for example, {"@username:example.com": ["!ROOM_ID:example.com"]}
+        Returns a DirectRoomListResponse if the request was successful, or DirectRoomListErrorResponse if there was an error, or the current user has never marked any rooms marked with m.direct
         """
         method, path = Api.direct_room_list(self.access_token, self.user_id)
         return await self._send(DirectRoomListResponse, method, path)
