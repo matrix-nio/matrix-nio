@@ -19,6 +19,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import wraps
 from typing import (
+    TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
@@ -32,7 +33,7 @@ from typing import (
     Union,
 )
 
-from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OlmDevice, OutgoingKeyRequest, Sas
+from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OutgoingKeyRequest
 from ..events import (
     AccountDataEvent,
     BadEvent,
@@ -76,14 +77,11 @@ from ..rooms import MatrixInvitedRoom, MatrixRoom
 if ENCRYPTION_ENABLED:
     from ..crypto import Olm
     from ..store import DefaultStore, MatrixStore, SqliteMemoryStore
+if TYPE_CHECKING:
+    from ..crypto import OlmDevice, Sas
+
 
 from ..event_builders import ToDeviceMessage
-
-try:
-    from json.decoder import JSONDecodeError
-except ImportError:
-    JSONDecodeError = ValueError  # type: ignore
-
 
 logger = logging.getLogger(__name__)
 
