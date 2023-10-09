@@ -627,7 +627,7 @@ class Api:
         """
         query_parameters = {"access_token": access_token}
 
-        path = ["users", user_id, "account_data", "m.direct"]
+        path = ["user", user_id, "account_data", "m.direct"]
 
         return ("GET", Api._build_path(path, query_parameters))
 
