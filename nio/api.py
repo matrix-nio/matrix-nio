@@ -141,6 +141,14 @@ class RelationshipType(Enum):
     reference = "m.reference"
 
 
+@unique
+class ThreadInclusion(Enum):
+    """Flag to denote which thread roots are of interest in a request."""
+
+    all = "all"
+    participated = "participated"
+
+
 class Api:
     """Matrix API class.
 
@@ -686,6 +694,39 @@ class Api:
             path.append(rel_type.value)
             if event_type:
                 path.append(event_type)
+
+        return "GET", Api._build_path(path, query_parameters)
+
+    @staticmethod
+    def room_get_threads(
+        access_token: str,
+        room_id: str,
+        include: ThreadInclusion = ThreadInclusion.all,
+        paginate_from: str | None = None,
+        limit: int | None = None,
+    ):
+        """Paginate through the list of the thread roots in a given room.
+
+        Optionally, filter for threads in which the requesting user has participated.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room id of the room where the event is in.
+            include (ThreadInclusion, optional):
+                Flag to filter whether to include just threads that the user participated in or all of them.
+            paginate_from (str, optional): A pagination token from a previous result.
+                When not provided, the server starts paginating from the most topologically-recent event.
+            limit (int, optional): Limit for the maximum thread roots to include per paginated response.
+                Servers will apply a default value, and override this with a maximum value.
+        """
+        path = ["rooms", room_id, "threads"]
+        query_parameters = {"access_token": access_token, "include": include.value}
+        if paginate_from:
+            query_parameters["from"] = paginate_from
+        if limit:
+            query_parameters["limit"] = limit
 
         return "GET", Api._build_path(path, query_parameters)
 
