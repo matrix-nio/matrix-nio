@@ -983,6 +983,24 @@ class RoomSendResponse(RoomEventIdResponse):
 
 
 @dataclass
+class DirectRoomListResponse(Response):
+    """A response containing a list of direct rooms.
+
+    Attributes:
+        rooms (List[str]): The rooms joined by the account.
+    """
+
+    rooms: Dict[str, List[str]] = field()
+
+    @classmethod
+    def from_dict(
+        cls,
+        parsed_dict: Dict[Any, Any],
+    ) -> Union[DirectRoomListResponse, ErrorResponse]:
+        return cls(parsed_dict)
+
+
+@dataclass
 class RoomGetStateResponse(Response):
     """A response containing the state of a room.
 
