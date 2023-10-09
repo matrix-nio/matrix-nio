@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.22.1] - 2023-10-9
+
+### Bug Fixes
+- [[#453]] Fix ImportError from when e2e is not installed
+
+[#453]: https://github.com/poljar/matrix-nio/pull/453
+
+
 ## [0.22.0] - 2023-10-6
 
 ### Bug Fixes
