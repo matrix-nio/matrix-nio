@@ -97,6 +97,7 @@ from ..responses import (
     DeletePushRuleResponse,
     DevicesError,
     DevicesResponse,
+    DirectRoomListResponse,
     DiscoveryInfoError,
     DiscoveryInfoResponse,
     DiskDownloadResponse,
@@ -215,7 +216,7 @@ from ..responses import (
     UploadFilterResponse,
     UploadResponse,
     WhoamiError,
-    WhoamiResponse, DirectRoomListResponse,
+    WhoamiResponse,
 )
 from . import Client, ClientConfig
 from .base_client import logged_in_async, store_loaded

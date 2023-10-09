@@ -175,7 +175,7 @@ __all__ = [
     "SpaceGetHierarchyResponse",
     "SpaceGetHierarchyError",
     "DirectRoomListResponse",
-    "DirectRoomListErrorResponse"
+    "DirectRoomListErrorResponse",
 ]
 
 
