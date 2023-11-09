@@ -174,8 +174,8 @@ __all__ = [
     "WhoamiResponse",
     "SpaceGetHierarchyResponse",
     "SpaceGetHierarchyError",
-    "DirectRoomListResponse",
-    "DirectRoomListErrorResponse",
+    "DirectRoomsResponse",
+    "DirectRoomsErrorResponse",
 ]
 
 
@@ -984,12 +984,12 @@ class RoomSendResponse(RoomEventIdResponse):
         return RoomSendError.from_dict(parsed_dict, room_id)
 
 
-class DirectRoomListErrorResponse(ErrorResponse):
+class DirectRoomsErrorResponse(ErrorResponse):
     pass
 
 
 @dataclass
-class DirectRoomListResponse(Response):
+class DirectRoomsResponse(Response):
     """A response containing a list of direct rooms.
 
     Attributes:
@@ -1002,10 +1002,10 @@ class DirectRoomListResponse(Response):
     def from_dict(
         cls,
         parsed_dict: Dict[Any, Any],
-    ) -> Union[DirectRoomListResponse, DirectRoomListErrorResponse]:
-        if parsed_dict.get("errcode") == "M_UNRECOGNIZED":
+    ) -> Union[DirectRoomsResponse, DirectRoomsErrorResponse]:
+        if parsed_dict.get("errcode") is not None:
             # This user has no DM rooms that have been marked with m.direct.
-            return DirectRoomListErrorResponse.from_dict(parsed_dict)
+            return DirectRoomsErrorResponse.from_dict(parsed_dict)
         return cls(parsed_dict)
 
 
