@@ -1002,7 +1002,7 @@ class DirectRoomsResponse(Response):
     def from_dict(
         cls,
         parsed_dict: Dict[Any, Any],
-    ) -> Union["DirectRoomsResponse", DirectRoomsErrorResponse]:
+    ) -> Union[DirectRoomsResponse, DirectRoomsErrorResponse]:
         if parsed_dict.get("errcode") is not None:
             # This user has no DM rooms that have been marked with m.direct.
             return DirectRoomsErrorResponse.from_dict(parsed_dict)
