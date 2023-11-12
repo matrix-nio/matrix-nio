@@ -2260,7 +2260,7 @@ class TestClass:
         )
         assert isinstance(resp, ThumbnailError)
 
-    async def test_event_callback(self, async_client):
+    async def test_event_callback_coroutine(self, async_client):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
@@ -2271,6 +2271,25 @@ class TestClass:
         async def cb(_, event):
             if isinstance(event, RoomMemberEvent):
                 raise CallbackException
+
+        async_client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
+        with pytest.raises(CallbackException):
+            await async_client.receive_response(self.encryption_sync_response)
+
+    async def test_event_callback_awaitable_class(self, async_client):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+
+        class CallbackException(Exception):
+            pass
+
+        class CommandCallback:
+            async def __call__(self, room, event):
+                if isinstance(event, RoomMemberEvent):
+                    raise CallbackException
+
+        cb = CommandCallback()
 
         async_client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
 

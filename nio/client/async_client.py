@@ -14,6 +14,7 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import asyncio
+import inspect
 import io
 import json
 import logging
@@ -26,6 +27,7 @@ from json.decoder import JSONDecodeError
 from pathlib import Path
 from typing import (
     Any,
+    Awaitable,
     Callable,
     Coroutine,
     Dict,
@@ -250,11 +252,12 @@ AsyncFileType = Union[AsyncBufferedReader, AsyncTextIOWrapper]
 logger = logging.getLogger(__name__)
 
 
-async def execute_callback(func, *args):
-    if asyncio.iscoroutinefunction(func):
-        return await func(*args)
-
-    return func(*args)
+async def execute_callback(
+    func: Union[Callable[..., None], Callable[..., Awaitable[None]]], *args
+) -> None:
+    result = func(*args)
+    if inspect.isawaitable(result):
+        await result
 
 
 @dataclass
