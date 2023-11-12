@@ -124,6 +124,8 @@ from nio import (
     UpdateReceiptMarkerResponse,
     UploadFilterResponse,
     UploadResponse,
+    DirectRoomsResponse,
+    DirectRoomsErrorResponse
 )
 from nio.api import EventFormat, ResizingMethod, RoomPreset, RoomVisibility
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
@@ -1077,6 +1079,42 @@ class TestClass:
         resp = await async_client.room_get_event(TEST_ROOM_ID, "$not-found:localhost")
 
         assert isinstance(resp, RoomGetEventError)
+
+    async def test_list_direct_rooms(self, async_client, aioresponse: aioresponses):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        base_url = "https://example.org/_matrix/client/r0"
+
+        response = {
+            "@alice:example.org": ["!foobar:example.org"],
+            "@bob:example.org": ["!dingle:example.org", "!dongle:example.org"],
+        }
+
+        aioresponse.get(
+            f"{base_url}/user/{async_client.user_id}/account_data/m.direct?access_token=abc123",
+            status=200,
+            payload=response,
+        )
+
+        resp = await async_client.list_direct_rooms()
+        assert isinstance(resp, DirectRoomsResponse)
+
+        response = {
+            "errcode": "M_NOT_FOUND",
+            "error": "Account data not found",
+        }
+
+        aioresponse.get(
+            f"{base_url}/user/{async_client.user_id}/account_data/m.direct?access_token=abc123",
+            status=404,
+            payload=response,
+        )
+
+        resp = await async_client.list_direct_rooms()
+        assert isinstance(resp, DirectRoomsErrorResponse)
 
     async def test_room_put_state(self, async_client, aioresponse: aioresponses):
         await async_client.receive_response(
