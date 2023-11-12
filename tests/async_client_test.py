@@ -34,6 +34,8 @@ from nio import (
     DeviceList,
     DeviceOneTimeKeyCount,
     DevicesResponse,
+    DirectRoomsErrorResponse,
+    DirectRoomsResponse,
     DiscoveryInfoError,
     DiscoveryInfoResponse,
     DownloadError,
@@ -124,8 +126,6 @@ from nio import (
     UpdateReceiptMarkerResponse,
     UploadFilterResponse,
     UploadResponse,
-    DirectRoomsResponse,
-    DirectRoomsErrorResponse
 )
 from nio.api import EventFormat, ResizingMethod, RoomPreset, RoomVisibility
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
