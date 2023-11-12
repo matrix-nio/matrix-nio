@@ -1,3 +1,4 @@
+setuptools
 poetry
 pytest
 pytest-flake8
@@ -10,7 +11,7 @@ hpack
 faker
 mypy
 mypy_extensions
-aiohttp
+aiohttp >= 3.9.0b1
 pytest-aiohttp
 aioresponses
 python-olm>=3.2.15
