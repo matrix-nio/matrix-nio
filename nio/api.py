@@ -616,6 +616,22 @@ class Api:
         return ("GET", Api._build_path(path, query_parameters, "/_matrix/client/v1"))
 
     @staticmethod
+    def direct_room_list(access_token: str, user_id: str) -> Tuple[str, str]:
+        """Lists all rooms flagged as direct the client is participating in.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used within the request
+            user_id (str): The user id of the user to get the direct rooms for
+        """
+        query_parameters = {"access_token": access_token}
+
+        path = ["user", user_id, "account_data", "m.direct"]
+
+        return ("GET", Api._build_path(path, query_parameters))
+
+    @staticmethod
     def room_get_event(
         access_token: str, room_id: str, event_id: str
     ) -> Tuple[str, str]:

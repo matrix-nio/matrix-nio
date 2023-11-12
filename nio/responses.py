@@ -174,6 +174,8 @@ __all__ = [
     "WhoamiResponse",
     "SpaceGetHierarchyResponse",
     "SpaceGetHierarchyError",
+    "DirectRoomsResponse",
+    "DirectRoomsErrorResponse",
 ]
 
 
@@ -980,6 +982,31 @@ class RoomSendResponse(RoomEventIdResponse):
     @staticmethod
     def create_error(parsed_dict, room_id):
         return RoomSendError.from_dict(parsed_dict, room_id)
+
+
+class DirectRoomsErrorResponse(ErrorResponse):
+    pass
+
+
+@dataclass
+class DirectRoomsResponse(Response):
+    """A response containing a list of direct rooms.
+
+    Attributes:
+        rooms (List[str]): The rooms joined by the account.
+    """
+
+    rooms: Dict[str, List[str]] = field()
+
+    @classmethod
+    def from_dict(
+        cls,
+        parsed_dict: Dict[Any, Any],
+    ) -> Union[DirectRoomsResponse, DirectRoomsErrorResponse]:
+        if parsed_dict.get("errcode") is not None:
+            # This user has no DM rooms that have been marked with m.direct.
+            return DirectRoomsErrorResponse.from_dict(parsed_dict)
+        return cls(parsed_dict)
 
 
 @dataclass

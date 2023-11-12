@@ -97,6 +97,8 @@ from ..responses import (
     DeletePushRuleResponse,
     DevicesError,
     DevicesResponse,
+    DirectRoomsErrorResponse,
+    DirectRoomsResponse,
     DiscoveryInfoError,
     DiscoveryInfoResponse,
     DiskDownloadResponse,
@@ -1771,6 +1773,19 @@ class AsyncClient(Client):
         )
 
         return await self._send(RoomSendResponse, method, path, data, (room_id,))
+
+    @logged_in_async
+    @client_session
+    async def list_direct_rooms(
+        self,
+    ) -> Union[DirectRoomsResponse, DirectRoomsErrorResponse]:
+        """
+        Lists all rooms flagged with m.direct that the client is participating in.
+
+        Returns a DirectRoomListResponse if the request was successful, or DirectRoomListErrorResponse if there was an error, or the current user has never marked any rooms marked with m.direct
+        """
+        method, path = Api.direct_room_list(self.access_token, self.user_id)
+        return await self._send(DirectRoomsResponse, method, path)
 
     @logged_in_async
     async def room_get_event(
