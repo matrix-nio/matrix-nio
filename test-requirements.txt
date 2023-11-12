@@ -13,8 +13,8 @@ mypy_extensions
 aiohttp
 pytest-aiohttp
 aioresponses
-python-olm >= '3.1.0'
-peewee >= '3.9.5'
+python-olm>=3.2.15
+peewee>=3.17.0
 atomicwrites
 cachetools
 unpaddedbase64
