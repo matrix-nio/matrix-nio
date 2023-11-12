@@ -19,6 +19,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import wraps
 from typing import (
+    TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
@@ -32,7 +33,7 @@ from typing import (
     Union,
 )
 
-from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OlmDevice, OutgoingKeyRequest, Sas
+from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OutgoingKeyRequest
 from ..events import (
     AccountDataEvent,
     BadEvent,
@@ -76,14 +77,11 @@ from ..rooms import MatrixInvitedRoom, MatrixRoom
 if ENCRYPTION_ENABLED:
     from ..crypto import Olm
     from ..store import DefaultStore, MatrixStore, SqliteMemoryStore
+if TYPE_CHECKING:
+    from ..crypto import OlmDevice, Sas
+
 
 from ..event_builders import ToDeviceMessage
-
-try:
-    from json.decoder import JSONDecodeError
-except ImportError:
-    JSONDecodeError = ValueError  # type: ignore
-
 
 logger = logging.getLogger(__name__)
 
@@ -1316,7 +1314,7 @@ class Client:
 
         Args:
             callback (Callable[[ToDeviceEvent], None]): A function that will be
-                called if the event type in the filter argument is found in a
+                called if the event type in the filter argument is found in
                 the to-device part of the sync response.
 
             filter
@@ -1338,7 +1336,7 @@ class Client:
 
         Args:
             callback (Callable[[PresenceEvent], None]): A function that will be
-                called if the event type in the filter argument is found in a
+                called if the event type in the filter argument is found in
                 the presence part of the sync response.
             filter (Union[Type, Tuple[Type]]): The event type or a tuple
                 containing multiple types for which the function
@@ -1368,7 +1366,7 @@ class Client:
             transaction_id (str): The transaction id of the interactive key
                 verification.
 
-        Returns a ``ToDeviceMessage`` that should be sent to to the homeserver.
+        Returns a ``ToDeviceMessage`` that should be sent to the homeserver.
 
         If the other user already confirmed the short auth string on their side
         this function will also verify the device that is partaking in the

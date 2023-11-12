@@ -1,0 +1,12 @@
+{
+    "content": {
+        "dingle": "dongle"
+    },
+    "event_id": "$152037280074GZeOm:localhost",
+    "origin_server_ts": 1520372800469,
+    "sender": "@example:localhost",
+    "type": "org.example.unknown",
+    "unsigned": {
+        "age": 598971425
+    }
+}

@@ -63,6 +63,8 @@ from nio.events import (
     UnknownAccountDataEvent,
     UnknownBadEvent,
     UnknownEncryptedEvent,
+    UnknownEvent,
+    UnknownToDeviceEvent,
 )
 from nio.responses import RoomSummary
 from nio.rooms import MatrixRoom
@@ -450,6 +452,20 @@ class TestClass:
         event = Event.parse_event({"type": "m.unknown"})
 
         assert isinstance(event, UnknownBadEvent)
+
+    def test_unknown_room_event(self):
+        parsed_dict = TestClass._load_response("tests/data/events/unknown.json")
+        event = Event.parse_event(parsed_dict)
+
+        assert isinstance(event, UnknownEvent)
+
+    def test_unknown_to_device_event(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/unknown_to_device.json"
+        )
+        event = ToDeviceEvent.parse_event(parsed_dict)
+
+        assert isinstance(event, UnknownToDeviceEvent)
 
     def test_redacted_state_event(self):
         parsed_dict = TestClass._load_response("tests/data/events/redacted_state.json")
