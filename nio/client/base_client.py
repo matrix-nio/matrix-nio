@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -120,8 +121,14 @@ def store_loaded(fn):
 class ClientCallback:
     """nio internal callback class."""
 
-    func: Callable = field()
+    func: Union[Callable[..., None], Callable[..., Awaitable[None]]] = field()
     filter: Union[Tuple[Type, ...], Type, None] = None
+
+    async def execute(self, event, room: Optional[MatrixRoom] = None) -> None:
+        if self.filter is None or isinstance(event, self.filter):
+            result = self.func(room, event) if room else self.func(event)
+            if inspect.isawaitable(result):
+                await result
 
 
 @dataclass(frozen=True)
@@ -1209,7 +1216,7 @@ class Client:
     def add_event_callback(
         self,
         callback: Callable[[MatrixRoom, Event], Optional[Awaitable[None]]],
-        filter: Union[Type[Event], Tuple[Type[Event], ...]],
+        filter: Union[Type[Event], Tuple[Type[Event], None]],
     ) -> None:
         """Add a callback that will be executed on room events.
 
