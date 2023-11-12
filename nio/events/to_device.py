@@ -92,7 +92,7 @@ class ToDeviceEvent:
         elif event_dict["type"] == "m.room_key_request":
             return BaseRoomKeyRequest.parse_event(event_dict)
 
-        return None
+        return UnknownToDeviceEvent.from_dict(event_dict)
 
     @classmethod
     @verify(Schemas.room_encrypted)
@@ -513,4 +513,28 @@ class ForwardedRoomKeyEvent(RoomKeyEvent):
             content["room_id"],
             content["session_id"],
             content["algorithm"],
+        )
+
+
+@dataclass
+class UnknownToDeviceEvent(ToDeviceEvent):
+    """A ToDeviceEvent which we do not understand.
+
+    This event is created every time nio tries to parse an event of an unknown
+    type. Since custom and extensible events are a feature of Matrix this
+    allows clients to use custom events but care should be taken that the
+    clients will be responsible to validate and type check the event.
+
+    Attributes:
+        type (str): The type of the event.
+    """
+
+    type: str = field()
+
+    @classmethod
+    def from_dict(cls, event_dict):
+        return cls(
+            event_dict,
+            event_dict["sender"],
+            event_dict["type"],
         )

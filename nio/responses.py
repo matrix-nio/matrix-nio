@@ -1822,14 +1822,10 @@ class SyncResponse(Response):
 
     @staticmethod
     def _get_to_device(parsed_dict: Dict[Any, Any]) -> List[ToDeviceEvent]:
-        events: List[ToDeviceEvent] = []
-        for event_dict in parsed_dict.get("events", []):
-            event = ToDeviceEvent.parse_event(event_dict)
-
-            if event:
-                events.append(event)
-
-        return events
+        return [
+            ToDeviceEvent.parse_event(event_dict)
+            for event_dict in parsed_dict.get("events", [])
+        ]
 
     @staticmethod
     def _get_timeline(parsed_dict: Dict[Any, Any]) -> Timeline:
