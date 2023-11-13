@@ -20,7 +20,7 @@ import logging
 import os
 import warnings
 from asyncio import Event as AsyncioEvent
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
 from pathlib import Path
@@ -220,7 +220,7 @@ from ..responses import (
     WhoamiResponse,
 )
 from . import Client, ClientConfig
-from .base_client import logged_in_async, store_loaded
+from .base_client import ClientCallback, logged_in_async, store_loaded
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
 
@@ -250,21 +250,6 @@ AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
 AsyncFileType = Union[AsyncBufferedReader, AsyncTextIOWrapper]
 
 logger = logging.getLogger(__name__)
-
-
-async def execute_callback(func, *args):
-    if asyncio.iscoroutinefunction(func):
-        return await func(*args)
-
-    return func(*args)
-
-
-@dataclass
-class ResponseCb:
-    """Response callback."""
-
-    func: Callable = field()
-    filter: Union[Tuple[Type], Type, None] = None
 
 
 async def on_request_chunk_sent(session, context, params):
@@ -435,7 +420,7 @@ class AsyncClient(Client):
         self._presence: Optional[str] = None
 
         self.synced = AsyncioEvent()
-        self.response_callbacks: List[ResponseCb] = []
+        self.response_callbacks: List[ClientCallback] = []
 
         self.sharing_session: Dict[str, AsyncioEvent] = {}
 
@@ -477,7 +462,7 @@ class AsyncClient(Client):
             >>> await client.sync_forever(30000)
 
         """
-        cb = ResponseCb(func, cb_filter)  # type: ignore
+        cb = ClientCallback(func, cb_filter)
         self.response_callbacks.append(cb)
 
     async def parse_body(self, transport_response: ClientResponse) -> Dict[Any, Any]:
@@ -576,8 +561,7 @@ class AsyncClient(Client):
 
     async def _run_to_device_callbacks(self, event: Union[ToDeviceEvent]):
         for cb in self.to_device_callbacks:
-            if cb.filter is None or isinstance(event, cb.filter):
-                await execute_callback(cb.func, event)
+            await cb.execute(event)
 
     async def _handle_to_device(self, response: SyncResponse):
         decrypted_to_device = []
@@ -609,8 +593,7 @@ class AsyncClient(Client):
                 room.handle_event(event)
 
                 for cb in self.event_callbacks:
-                    if cb.filter is None or isinstance(event, cb.filter):
-                        await execute_callback(cb.func, room, event)
+                    await cb.execute(event, room)
 
     async def _handle_joined_rooms(self, response: SyncResponse) -> None:
         encrypted_rooms: Set[str] = set()
@@ -631,8 +614,7 @@ class AsyncClient(Client):
                     decrypted_events.append((index, decrypted_event))
 
                 for cb in self.event_callbacks:
-                    if cb.filter is None or isinstance(event, cb.filter):
-                        await execute_callback(cb.func, room, event)
+                    await cb.execute(event, room)
 
             # Replace the Megolm events with decrypted ones
             for index, event in decrypted_events:
@@ -642,15 +624,13 @@ class AsyncClient(Client):
                 room.handle_ephemeral_event(event)
 
                 for cb in self.ephemeral_callbacks:
-                    if cb.filter is None or isinstance(event, cb.filter):
-                        await execute_callback(cb.func, room, event)
+                    await cb.execute(event, room)
 
             for event in join_info.account_data:
                 room.handle_account_data(event)
 
                 for cb in self.room_account_data_callbacks:
-                    if cb.filter is None or isinstance(event, cb.filter):
-                        await execute_callback(cb.func, room, event)
+                    await cb.execute(event, room)
 
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)
@@ -676,8 +656,7 @@ class AsyncClient(Client):
                 self.rooms[room_id].users[event.user_id].status_msg = event.status_msg
 
             for cb in self.presence_callbacks:
-                if cb.filter is None or isinstance(event, cb.filter):
-                    await execute_callback(cb.func, event)
+                await cb.execute(event)
 
     async def _handle_global_account_data_events(  # type: ignore
         self,
@@ -685,16 +664,14 @@ class AsyncClient(Client):
     ) -> None:
         for event in response.account_data_events:
             for cb in self.global_account_data_callbacks:
-                if cb.filter is None or isinstance(event, cb.filter):
-                    await execute_callback(cb.func, event)
+                await cb.execute(event)
 
     async def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()
 
         for event in expired_verifications:
             for cb in self.to_device_callbacks:
-                if cb.filter is None or isinstance(event, cb.filter):
-                    await execute_callback(cb.func, event)
+                await cb.execute(event)
 
     async def _handle_sync(self, response: SyncResponse) -> None:
         # We already received such a sync response, do nothing in that case.
@@ -1234,8 +1211,7 @@ class AsyncClient(Client):
         """
         for response in responses:
             for cb in self.response_callbacks:
-                if cb.filter is None or isinstance(response, cb.filter):
-                    await execute_callback(cb.func, response)
+                await cb.execute(response)
 
     @logged_in_async
     async def sync_forever(
