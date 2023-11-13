@@ -20,13 +20,12 @@ import logging
 import os
 import warnings
 from asyncio import Event as AsyncioEvent
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
 from pathlib import Path
 from typing import (
     Any,
-    Awaitable,
     Callable,
     Coroutine,
     Dict,
@@ -251,16 +250,6 @@ AsyncFileType = Union[AsyncBufferedReader, AsyncTextIOWrapper]
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ResponseCallback(ClientCallback):
-    """Response callback."""
-
-    func: Union[
-        Callable[[Union[Response, ErrorResponse]], None],
-        Callable[[Union[Response, ErrorResponse]], Awaitable[None]],
-    ] = field()
-
-
 async def on_request_chunk_sent(session, context, params):
     """TraceConfig callback to run when a chunk is sent for client uploads."""
 
@@ -429,7 +418,7 @@ class AsyncClient(Client):
         self._presence: Optional[str] = None
 
         self.synced = AsyncioEvent()
-        self.response_callbacks: List[ResponseCallback] = []
+        self.response_callbacks: List[ClientCallback] = []
 
         self.sharing_session: Dict[str, AsyncioEvent] = {}
 
@@ -471,7 +460,7 @@ class AsyncClient(Client):
             >>> await client.sync_forever(30000)
 
         """
-        cb = ResponseCallback(func, cb_filter)  # type: ignore
+        cb = ClientCallback(func, cb_filter)
         self.response_callbacks.append(cb)
 
     async def parse_body(self, transport_response: ClientResponse) -> Dict[Any, Any]:

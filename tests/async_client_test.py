@@ -2273,6 +2273,7 @@ class TestClass:
                 raise CallbackException
 
         async_client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
+
         with pytest.raises(CallbackException):
             await async_client.receive_response(self.encryption_sync_response)
 
