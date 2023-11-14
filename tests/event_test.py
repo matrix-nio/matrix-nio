@@ -128,7 +128,7 @@ class TestClass:
         parsed_dict = TestClass._load_response("tests/data/events/room_avatar.json")
         parsed_dict["content"].pop("url")
         event = RoomAvatarEvent.from_dict(parsed_dict)
-        assert isinstance(event, BadEvent)
+        assert isinstance(event, RoomAvatarEvent)
 
     def test_tag_event(self):
         parsed_dict = TestClass._load_response("tests/data/events/tag.json")
