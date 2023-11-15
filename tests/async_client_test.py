@@ -2814,13 +2814,16 @@ class TestClass:
 
         assert async_client.should_upload_keys
 
-        task = event_loop.create_task(async_client.sync_forever(loop_sleep_time=100))
+        task: asyncio.Task = event_loop.create_task(
+            async_client.sync_forever(loop_sleep_time=100)
+        )
         await async_client.synced.wait()
 
         assert not async_client.should_upload_keys
 
         task.cancel()
-        await task
+        with pytest.raises(asyncio.CancelledError):
+            await task
 
     async def test_session_unwedging(self, async_client_pair, aioresponse):
         alice, bob = async_client_pair

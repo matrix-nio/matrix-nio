@@ -1343,7 +1343,7 @@ class AsyncClient(Client):
                 for task in tasks:
                     task.cancel()
 
-                break
+                raise
 
     @logged_in_async
     @store_loaded
