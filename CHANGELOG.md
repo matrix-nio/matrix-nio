@@ -2,10 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.23.0] - 2023-11-17
+
+### Bug Fixes
+
+- [[#460]] Allow custom `ToDeviceEvent`s via `UnknownToDeviceEvent`
+- [[#463]] Remove callback execution boilerplate + allow arbitrary callable/awaitable objects
+- [[#457]] Fix schemas for `m.room.avatar` and `m.room.canonical_alias`
+- [[#403]] Propagate `asyncio.CancelledError` in `sync_forever`
+
+### Features
+
+- [[#451]] Introduce the DM room account data (`m.direct`)
+
+### Miscellaneous Tasks
+
+- [[#458]] Update the `nio-bot` description
+- [[#462]] Don't manually build `libolm` during tests + `pre-commit autoupdate`
+- [[#464]] Bump `aiohttp` from 3.8.5 to 3.8.6
+
+[#460]: https://github.com/poljar/matrix-nio/pull/460
+[#458]: https://github.com/poljar/matrix-nio/pull/458
+[#462]: https://github.com/poljar/matrix-nio/pull/462
+[#451]: https://github.com/poljar/matrix-nio/pull/451
+[#463]: https://github.com/poljar/matrix-nio/pull/463
+[#464]: https://github.com/poljar/matrix-nio/pull/464
+[#457]: https://github.com/poljar/matrix-nio/pull/457
+[#403]: https://github.com/poljar/matrix-nio/pull/403
+
+
 ## [0.22.1] - 2023-10-9
 
 ### Bug Fixes
-- [[#453]] Fix ImportError from when e2e is not installed
+- [[#453]] Fix `ImportError` from when e2e is not installed
 
 [#453]: https://github.com/poljar/matrix-nio/pull/453
 
