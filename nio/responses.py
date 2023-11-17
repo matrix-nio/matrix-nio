@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
@@ -487,6 +488,12 @@ class RoomPutAliasError(ErrorResponse):
 
 class RoomGetVisibilityError(ErrorResponse):
     """A response representing an unsuccessful room get visibility request."""
+
+    pass
+
+
+class RoomThreadsError(ErrorResponse):
+    """A response representing an unsuccessful room threads request."""
 
     pass
 
@@ -1183,6 +1190,47 @@ class RoomGetVisibilityResponse(Response):
     ) -> Union[RoomGetVisibilityResponse, ErrorResponse]:
         visibility = parsed_dict["visibility"]
         return cls(room_id, visibility)
+
+
+@dataclass
+class RoomEventRelationsResponse(Response):
+    """A response containing the results of an event relations request."""
+
+    room_id: str
+    parent_event_id: str
+    events: Sequence[Event]
+    prev_batch: Optional[str]
+    next_batch: Optional[str]
+
+    @classmethod
+    @verify(Schemas.room_get_chunked_messages, RoomThreadsError, pass_arguments=False)
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any], room_id: str, event_id: str
+    ) -> Union[RoomEventRelationsResponse, ErrorResponse]:
+        events = parsed_dict["chunks"]
+        prev_batch = parsed_dict["prev_batch"]
+        next_batch = parsed_dict["next_batch"]
+        return cls(room_id, event_id, events, prev_batch, next_batch)
+
+
+@dataclass
+class RoomThreadsResponse(Response):
+    """A response containing the results of a get threads request."""
+
+    room_id: str
+    thread_roots: Sequence[Event]
+    prev_batch: Optional[str]
+    next_batch: Optional[str]
+
+    @classmethod
+    @verify(Schemas.room_get_chunked_messages, RoomThreadsError, pass_arguments=False)
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any], room_id: str
+    ) -> Union[RoomThreadsResponse, ErrorResponse]:
+        thread_roots = parsed_dict["chunks"]
+        prev_batch = parsed_dict["prev_batch"]
+        next_batch = parsed_dict["next_batch"]
+        return cls(room_id, thread_roots, prev_batch, next_batch)
 
 
 @dataclass

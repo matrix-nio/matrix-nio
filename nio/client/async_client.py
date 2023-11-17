@@ -20,6 +20,7 @@ import logging
 import os
 import warnings
 from asyncio import Event as AsyncioEvent
+from collections.abc import AsyncIterable
 from dataclasses import dataclass
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
@@ -60,6 +61,7 @@ from ..api import (
     EventFormat,
     MessageDirection,
     PushRuleKind,
+    RelationshipType,
     ResizingMethod,
     RoomPreset,
     RoomVisibility,
@@ -155,6 +157,7 @@ from ..responses import (
     RoomCreateResponse,
     RoomDeleteAliasError,
     RoomDeleteAliasResponse,
+    RoomEventRelationsResponse,
     RoomForgetError,
     RoomForgetResponse,
     RoomGetEventError,
@@ -188,6 +191,7 @@ from ..responses import (
     RoomResolveAliasResponse,
     RoomSendError,
     RoomSendResponse,
+    RoomThreadsResponse,
     RoomTypingError,
     RoomTypingResponse,
     RoomUnbanResponse,
@@ -1781,6 +1785,61 @@ class AsyncClient(Client):
         method, path = Api.room_get_event(self.access_token, room_id, event_id)
 
         return await self._send(RoomGetEventResponse, method, path)
+
+    @logged_in_async
+    async def room_get_event_relations(
+        self,
+        room_id: str,
+        event_id: str,
+        rel_type: Optional[RelationshipType],
+        event_type: Optional[str],
+        direction: MessageDirection = MessageDirection.back,
+        limit: Optional[int] = None,
+    ) -> AsyncIterable[Event]:
+        """Iterate through all related events of a given parent event.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Args:
+            room_id (str): The room id of the room where the event is in.
+            event_id (str): The event id to get.
+            rel_type (RelationshipType, optional): The relationship type to search for.
+                Required if event_type is provided.
+            event_type: (str, optional): The event type of child events to search for.
+            direction (MessageDirection, optional): The direction to return
+                events from. Defaults to MessageDirection.back.
+            limit (int, optional): The maximum events per request that will be
+                fetched per chunk while iterating. Changing this value can affect performance.
+                Homeservers will apply a default value,and override this with a maximum value.
+
+        Returns:
+            An AsyncIterable of Events.
+        """
+        paginate_from, paginate_to = None, None
+        while True:
+            method, path = Api.room_get_event_relations(
+                self.access_token,
+                room_id,
+                event_id,
+                rel_type,
+                event_type,
+                paginate_from,
+                paginate_to,
+                limit,
+            )
+            response = await self._send(
+                RoomThreadsResponse,
+                method,
+                path,
+                response_data=(room_id, event_id),
+            )
+
+            if isinstance(response, RoomEventRelationsResponse):
+                for event in response.events:
+                    yield event
+            if response.next_batch is None:
+                raise StopAsyncIteration
+            paginate_from = response.next_batch
 
     @logged_in_async
     async def room_put_state(

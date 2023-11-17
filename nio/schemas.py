@@ -890,6 +890,16 @@ class Schemas:
         "required": ["type", "sender", "content", "state_key"],
     }
 
+    room_get_chunked_messages = {
+        "type": "object",
+        "properties": {
+            "chunk": {"type": "array", "items": room_message},
+            "prev_batch": {"type": "string"},
+            "next_batch": {"type": "string"},
+        },
+        "required": ["chunk"],
+    }
+
     room_canonical_alias = {
         "type": "object",
         "properties": {

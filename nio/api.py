@@ -675,7 +675,10 @@ class Api:
         event_id: str,
         rel_type: Optional[RelationshipType] = None,
         event_type: Optional[str] = None,
-    ):
+        paginate_from: str | None = None,
+        paginate_to: str | None = None,
+        limit: int | None = None,
+    ) -> Tuple[str, str]:
         """Get all child events of a given parent event.
 
         Returns the HTTP method and HTTP path for the request.
@@ -684,10 +687,22 @@ class Api:
             access_token (str): The access token to be used with the request.
             room_id (str): The room id of the room where the event is in.
             event_id (str): The event id to get.
-            rel_type (str, optional): The relationship type to search for. Required if event_type is provided.
+            rel_type (RelationshipType, optional): The relationship type to search for. Required if event_type is provided.
             event_type: (str, optional): The event type of child events to search for.
+            paginate_from (str, optional): A pagination token from a previous result.
+                When not provided, the server starts paginating from the most recent event.
+            paginate_to (str, optional): The pagination token to stop returning results at.
+                If not supplied, results continue until 'limit', or until there no more events.
+            limit (int, optional): Limit for the maximum thread roots to include per paginated response.
+                Homeservers will apply a default value, and override this with a maximum value.
         """
         query_parameters = {"access_token": access_token}
+        if paginate_from:
+            query_parameters["from"] = paginate_from
+        if paginate_to:
+            query_parameters["to"] = paginate_to
+        if limit:
+            query_parameters["limit"] = limit
 
         path = ["rooms", room_id, "relations", event_id]
         if rel_type:
@@ -703,8 +718,9 @@ class Api:
         room_id: str,
         include: ThreadInclusion = ThreadInclusion.all,
         paginate_from: str | None = None,
+        paginate_to: str | None = None,
         limit: int | None = None,
-    ):
+    ) -> Tuple[str, str]:
         """Paginate through the list of the thread roots in a given room.
 
         Optionally, filter for threads in which the requesting user has participated.
@@ -717,16 +733,21 @@ class Api:
             include (ThreadInclusion, optional):
                 Flag to filter whether to include just threads that the user participated in or all of them.
             paginate_from (str, optional): A pagination token from a previous result.
-                When not provided, the server starts paginating from the most topologically-recent event.
+                When not provided, the server starts paginating from the most recent event.
+            paginate_to (str, optional): The pagination token to stop returning results at.
+                If not supplied, results continue until 'limit', or until there no more events.
             limit (int, optional): Limit for the maximum thread roots to include per paginated response.
                 Servers will apply a default value, and override this with a maximum value.
         """
-        path = ["rooms", room_id, "threads"]
         query_parameters = {"access_token": access_token, "include": include.value}
         if paginate_from:
             query_parameters["from"] = paginate_from
+        if paginate_to:
+            query_parameters["to"] = paginate_to
         if limit:
             query_parameters["limit"] = limit
+
+        path = ["rooms", room_id, "threads"]
 
         return "GET", Api._build_path(path, query_parameters)
 
