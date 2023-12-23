@@ -16,6 +16,7 @@ Projects built with nio
 - `matrix-archive <https://github.com/russelldavies/matrix-archive>`_ - creates a YAML log of all room messages and media
 - `matrix-eno-bot <https://github.com/8go/matrix-eno-bot>`_ - admin and personal assistence bot
 - `infinigpt-matrix <https://github.com/h1ddenpr0cess20/infinigpt-matrix>`_ - OpenAI GPT chatbot with infinite personalities
+- `ollamarama-matrix <https://github.com/h1ddenpr0cess20/ollamarama-matrix>`_ - AI chatbot with infinite personalities, using local LLMs via Ollama
 - `matrix-discord-bridge <https://github.com/git-bruh/matrix-discord-bridge>`_
 - `Matrix Nio - HACS <https://github.com/PaarthShah/matrix-nio-hacs>`_ - A HACS Integration to replace the core matrix Home Assistant integration
 - `Simple-Matrix-Bot-Lib <https://github.com/KrazyKirby99999/simple-matrix-bot-lib>`_
