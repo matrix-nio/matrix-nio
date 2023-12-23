@@ -1061,7 +1061,7 @@ class Api:
     def room_messages(
         access_token: str,
         room_id: str,
-        start: str,
+        start: Optional[str] = None,
         end: Optional[str] = None,
         direction: MessageDirection = MessageDirection.back,
         limit: int = 10,
@@ -1086,9 +1086,11 @@ class Api:
         """
         query_parameters = {
             "access_token": access_token,
-            "from": start,
             "limit": limit,
         }
+
+        if start:
+            query_parameters["from"] = start
 
         if end:
             query_parameters["to"] = end
