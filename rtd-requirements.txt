@@ -1,5 +1,5 @@
 peewee==3.16.3
-aiohttp==3.8.6
+aiohttp==3.9.0
 h11
 h2
 jsonschema==4.19.1
