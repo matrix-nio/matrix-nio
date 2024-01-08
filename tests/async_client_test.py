@@ -1746,7 +1746,7 @@ class TestClass:
             no_start_param_url + '&filter={"room":{"state":{"limit":1}}}',
             status=200,
             payload=self.messages_response,
-            )
+        )
         resp = await async_client.room_messages(
             TEST_ROOM_ID,
             message_filter={"room": {"state": {"limit": 1}}},
