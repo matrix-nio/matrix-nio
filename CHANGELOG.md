@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.24.0] - 2024-01-18
+
+### Miscellaneous Tasks
+
+- [[#473]] Update pre-commit hooks, fix issues with sphinx-lint
+- [[#472]] [[#475]] Add content to `built-with-nio`
+- [[#468]] Bump `aiohttp` from 3.8.6 to 3.9.0
+- [[#461]] Support `python3.12`
+- [[#478]] Bump `pycryptodome` from 3.19.0 to 3.19.1
+
+[#461]: https://github.com/poljar/matrix-nio/pull/461
+[#468]: https://github.com/poljar/matrix-nio/pull/468
+[#472]: https://github.com/poljar/matrix-nio/pull/472
+[#473]: https://github.com/poljar/matrix-nio/pull/473
+[#475]: https://github.com/poljar/matrix-nio/pull/475
+[#478]: https://github.com/poljar/matrix-nio/pull/478
+
 ## [0.23.0] - 2023-11-17
 
 ### Bug Fixes
