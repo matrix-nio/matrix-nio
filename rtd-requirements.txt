@@ -6,7 +6,7 @@ jsonschema==4.19.1
 atomicwrites
 cachetools==5.3.1
 unpaddedbase64
-pycryptodome==3.19.0
+pycryptodome==3.19.1
 sphinx==7.2.6
 aiohttp_socks==0.8.3
 aioresponses; python_version >= '3.5'
