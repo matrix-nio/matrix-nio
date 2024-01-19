@@ -211,6 +211,7 @@ from ..responses import (
     ToDeviceResponse,
     UpdateDeviceError,
     UpdateDeviceResponse,
+    UpdateReceiptMarkerError,
     UpdateReceiptMarkerResponse,
     UploadError,
     UploadFilterError,
@@ -2629,7 +2630,7 @@ class AsyncClient(Client):
     async def room_messages(
         self,
         room_id: str,
-        start: str,
+        start: Optional[str] = None,
         end: Optional[str] = None,
         direction: MessageDirection = MessageDirection.back,
         limit: int = 10,
@@ -2673,7 +2674,7 @@ class AsyncClient(Client):
         method, path = Api.room_messages(
             self.access_token,
             room_id,
-            start,
+            start=start,
             end=end,
             direction=direction,
             limit=limit,
@@ -2722,7 +2723,7 @@ class AsyncClient(Client):
         room_id: str,
         event_id: str,
         receipt_type: str = "m.read",
-    ) -> None:
+    ) -> Union[UpdateReceiptMarkerResponse, UpdateReceiptMarkerError]:
         """Update the marker of given the `receipt_type` to specified `event_id`.
 
         Calls receive_response() to update the client state if necessary.

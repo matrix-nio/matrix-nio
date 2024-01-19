@@ -1735,6 +1735,24 @@ class TestClass:
         )
         assert isinstance(resp, RoomMessagesResponse)
 
+        # Dict filter no start token (MSC3567)
+
+        no_start_param_url = (
+            f"https://example.org/_matrix/client/r0/rooms/{TEST_ROOM_ID}/"
+            "messages?access_token=abc123"
+            "&dir=b&limit=10"
+        )
+        aioresponse.get(
+            no_start_param_url + '&filter={"room":{"state":{"limit":1}}}',
+            status=200,
+            payload=self.messages_response,
+        )
+        resp = await async_client.room_messages(
+            TEST_ROOM_ID,
+            message_filter={"room": {"state": {"limit": 1}}},
+        )
+        assert isinstance(resp, RoomMessagesResponse)
+
     async def test_room_typing(self, async_client, aioresponse):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
