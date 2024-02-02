@@ -221,6 +221,8 @@ from ..responses import (
 from . import Client, ClientConfig
 from .base_client import logged_in, store_loaded
 
+import logging
+
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
 
 _ProfileGetDisplayNameT = Union[
@@ -240,6 +242,7 @@ SynchronousFile = (
 )
 AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
 
+logger = logging.getLogger(__name__)
 
 @dataclass
 class ResponseCb:
@@ -475,7 +478,10 @@ class AsyncClient(Client):
             try:
                 # matrix.org return an incorrect content-type for .well-known
                 # API requests, which leads to .text() working but not .json()
-                return json.loads(await transport_response.text())
+                contents = await transport_response.text()
+                logger.debug("During body parsing, failed to parse the JSON, dumping the text representation on the next log")
+                logger.debug("%s", contents)
+                return json.loads(contents)
             except (JSONDecodeError, ContentTypeError):
                 pass
 
