@@ -1354,7 +1354,7 @@ class Schemas:
                             "avatar_url": {"type": ["string", "null"]},
                             "display_name": {"type": ["string", "null"]},
                         },
-                        "required": ["display_name"],
+                        "required": [],
                     }
                 },
             }
