@@ -1324,7 +1324,7 @@ class KeysQueryResponse(Response):
     def from_dict(cls, parsed_dict: Dict[Any, Any]):
         # type: (...) -> Union[KeysQueryResponse, ErrorResponse]
         device_keys = parsed_dict["device_keys"]
-        failures = parsed_dict["failures"]
+        failures = parsed_dict.get("failures", {})
 
         return cls(device_keys, failures)
 
@@ -1344,7 +1344,7 @@ class KeysClaimResponse(Response):
     ):
         # type: (...) -> Union[KeysClaimResponse, ErrorResponse]
         one_time_keys = parsed_dict["one_time_keys"]
-        failures = parsed_dict["failures"]
+        failures = parsed_dict.get("failures", {})
 
         return cls(one_time_keys, failures, room_id)
 
