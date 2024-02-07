@@ -1194,14 +1194,9 @@ class Schemas:
             "events_after": {"type": "array"},
             "event": {"type": "object"},
         },
-        "required": [
-            "start",
-            "end",
-            "state",
-            "events_before",
-            "events_after",
-            "event",
-        ],
+        # As per https://spec.matrix.org/v1.1/client-server-api/#get_matrixclientv3roomsroomidcontexteventid
+        # Everything _SHOULD_ be optional *but* `event` is so necessary that we still put it as required.
+        "required": ["event"],
     }
 
     invite_event = {
