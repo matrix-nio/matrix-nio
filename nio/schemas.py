@@ -908,7 +908,7 @@ class Schemas:
             "type": {"type": "string"},
             "content": {
                 "type": "object",
-                "properties": {"alias": {"type": "string"}},
+                "properties": {"alias": {"type": ["string", "null"]}},
                 "required": [],
             },
         },
@@ -1010,7 +1010,7 @@ class Schemas:
                     },
                     "url": {"type": "string"},
                 },
-                "required": ["url"],
+                "required": [],
             },
         },
         "required": ["type", "sender", "content", "state_key"],

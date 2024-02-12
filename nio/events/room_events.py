@@ -748,7 +748,7 @@ class RoomAliasEvent(Event):
 
     """
 
-    canonical_alias: str = field()
+    canonical_alias: Optional[str] = field()
 
     @classmethod
     @verify(Schemas.room_canonical_alias)
@@ -819,14 +819,14 @@ class RoomAvatarEvent(Event):
 
     """
 
-    avatar_url: str = field()
+    avatar_url: Optional[str] = field()
 
     @classmethod
     @verify(Schemas.room_avatar)
     def from_dict(
         cls, parsed_dict: Dict[Any, Any]
     ) -> Union[RoomAvatarEvent, BadEventType]:
-        room_avatar_url = parsed_dict["content"]["url"]
+        room_avatar_url = parsed_dict["content"].get("url")
 
         return cls(parsed_dict, room_avatar_url)
 

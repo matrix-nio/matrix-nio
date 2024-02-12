@@ -1,7 +1,8 @@
 nio
 ===
 
-[![Build Status](https://img.shields.io/github/workflow/status/poljar/matrix-nio/Build%20Status?style=flat-square)](https://github.com/poljar/matrix-nio/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/poljar/matrix-nio/tests.yml?branch=main&style=flat-square)](https://github.com/poljar/matrix-nio/actions)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/matrix-nio?style=flat-square)](https://pypi.org/project/matrix-nio/)
 [![codecov](https://img.shields.io/codecov/c/github/poljar/matrix-nio/master.svg?style=flat-square)](https://codecov.io/gh/poljar/matrix-nio)
 [![license](https://img.shields.io/badge/license-ISC-blue.svg?style=flat-square)](https://github.com/poljar/matrix-nio/blob/master/LICENSE.md)
 [![Documentation Status](https://readthedocs.org/projects/matrix-nio/badge/?version=latest&style=flat-square)](https://matrix-nio.readthedocs.io/en/latest/?badge=latest)
@@ -52,7 +53,6 @@ To install nio, simply use pip:
 
 ```bash
 $ pip install matrix-nio
-
 ```
 
 Note that this installs nio without end-to-end encryption support. For e2ee
@@ -67,8 +67,7 @@ After libolm has been installed, the e2ee enabled version of nio can be
 installed using pip:
 
 ```bash
-$ pip install "matrix-nio[e2e]"
-
+$ pip install matrix-nio[e2e]
 ```
 
 Additionally, a docker image with the e2ee enabled version of nio is provided in
