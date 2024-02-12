@@ -1330,7 +1330,7 @@ class Schemas:
             },
             "failures": {"type": "object"},
         },
-        "required": ["device_keys", "failures"],
+        "required": ["device_keys"],
     }
 
     keys_claim = {
@@ -1375,7 +1375,7 @@ class Schemas:
             },
             "failures": {"type": "object"},
         },
-        "required": ["one_time_keys", "failures"],
+        "required": ["one_time_keys"],
     }
 
     devices = {
