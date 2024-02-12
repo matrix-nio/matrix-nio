@@ -20,13 +20,13 @@ import logging
 import os
 import warnings
 from asyncio import Event as AsyncioEvent
-from collections.abc import AsyncIterable
 from dataclasses import dataclass
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
 from pathlib import Path
 from typing import (
     Any,
+    AsyncIterable,
     Callable,
     Coroutine,
     Dict,
