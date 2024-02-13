@@ -52,8 +52,8 @@ except ImportError:
     from urlparse import urlparse  # type: ignore
 
 
-MATRIX_API_PATH: str = "/_matrix/client/v1"
-MATRIX_MEDIA_API_PATH: str = "/_matrix/media/v1"
+MATRIX_API_PATH: str = "/_matrix/client/r0"
+MATRIX_MEDIA_API_PATH: str = "/_matrix/media/r0"
 
 _FilterT = Union[None, str, Dict[Any, Any]]
 
@@ -196,7 +196,7 @@ class Api:
         parsed_homeserver = urlparse(homeserver) if homeserver else None
 
         http_url = (
-            "{homeserver}/_matrix/media/r0/download/" "{server_name}{mediaId}"
+            f"{homeserver}{MATRIX_MEDIA_API_PATH}/download/" "{server_name}{mediaId}"
         ).format(
             homeserver=(
                 parsed_homeserver.geturl()
@@ -257,7 +257,7 @@ class Api:
         )
 
         plumb_url = (
-            "{homeserver}/_matrix/media/r0/download/" "{server_name}{mediaId}"
+            f"{homeserver}{MATRIX_MEDIA_API_PATH}/download/" "{server_name}{mediaId}"
         ).format(
             homeserver=host if host else f"emxc://{url.netloc}",
             server_name=url.hostname,
@@ -714,7 +714,7 @@ class Api:
             if event_type:
                 path.append(event_type)
 
-        return "GET", Api._build_path(path, query_parameters)
+        return "GET", Api._build_path(path, query_parameters, "/_matrix/client/v1")
 
     @staticmethod
     def room_get_threads(
@@ -753,7 +753,7 @@ class Api:
 
         path = ["rooms", room_id, "threads"]
 
-        return "GET", Api._build_path(path, query_parameters)
+        return "GET", Api._build_path(path, query_parameters, "/_matrix/client/v1")
 
     @staticmethod
     def room_put_state(
