@@ -2747,7 +2747,7 @@ class AsyncClient(Client):
         Calls receive_response() to update the client state if necessary.
 
         Returns either a `RoomMessagesResponse` if the request was successful or
-        a `RoomMessagesResponse` if there was an error with the request.
+        a `RoomMessagesError` if there was an error with the request.
 
         Args:
             room_id (str): The room id of the room for which we would like to
