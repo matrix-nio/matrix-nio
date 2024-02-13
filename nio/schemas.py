@@ -893,7 +893,38 @@ class Schemas:
     room_get_chunked_messages = {
         "type": "object",
         "properties": {
-            "chunk": {"type": "array", "items": room_message},
+            "chunk": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "content": {"type": "object"},
+                        "event_id": {"type": "string"},
+                        "origin_server_ts": {"type": "integer"},
+                        "room_id": {"type": "string"},
+                        "sender": {"type": "string"},
+                        "state_key": {"type": "string"},
+                        "type": {"type": "string"},
+                        "unsigned": {
+                            "type": "object",
+                            "properties": {
+                                "age": {"type": "integer"},
+                                "prev_content": {"type": "object"},
+                                "redacted_because": {"type": "object"},
+                                "transaction_id": {"type": "string"},
+                            },
+                        },
+                    },
+                    "required": [
+                        "content",
+                        "event_id",
+                        "origin_server_ts",
+                        "room_id",
+                        "sender",
+                        "type",
+                    ],
+                },
+            },
             "prev_batch": {"type": "string"},
             "next_batch": {"type": "string"},
         },

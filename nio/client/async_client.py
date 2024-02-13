@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import (
     Any,
     AsyncIterable,
+    AsyncIterator,
     Callable,
     Coroutine,
     Dict,
@@ -65,6 +66,7 @@ from ..api import (
     ResizingMethod,
     RoomPreset,
     RoomVisibility,
+    ThreadInclusion,
     _FilterT,
 )
 from ..crypto import (
@@ -1792,14 +1794,12 @@ class AsyncClient(Client):
         self,
         room_id: str,
         event_id: str,
-        rel_type: Optional[RelationshipType],
-        event_type: Optional[str],
+        rel_type: Optional[RelationshipType] = None,
+        event_type: Optional[str] = None,
         direction: MessageDirection = MessageDirection.back,
         limit: Optional[int] = None,
     ) -> AsyncIterable[Event]:
         """Iterate through all related events of a given parent event.
-
-        Calls receive_response() to update the client state if necessary.
 
         Args:
             room_id (str): The room id of the room where the event is in.
@@ -1811,7 +1811,7 @@ class AsyncClient(Client):
                 events from. Defaults to MessageDirection.back.
             limit (int, optional): The maximum events per request that will be
                 fetched per chunk while iterating. Changing this value can affect performance.
-                Homeservers will apply a default value,and override this with a maximum value.
+                Homeservers will apply a default value, and override this with a maximum value.
 
         Returns:
             An AsyncIterable of Events.
@@ -1824,12 +1824,13 @@ class AsyncClient(Client):
                 event_id,
                 rel_type,
                 event_type,
+                direction,
                 paginate_from,
                 paginate_to,
                 limit,
             )
             response = await self._send(
-                RoomThreadsResponse,
+                RoomEventRelationsResponse,
                 method,
                 path,
                 response_data=(room_id, event_id),
@@ -1839,7 +1840,51 @@ class AsyncClient(Client):
                 for event in response.events:
                     yield event
             if response.next_batch is None:
-                raise StopAsyncIteration
+                return
+            paginate_from = response.next_batch
+
+    @logged_in_async
+    async def room_get_threads(
+        self,
+        room_id: str,
+        include: ThreadInclusion = ThreadInclusion.all,
+        limit: Optional[int] = None,
+    ) -> AsyncIterator[Event]:
+        """Iterate through the thread roots of a given room.
+
+        Args:
+            room_id (str): The room id of the room where the event is in.
+            include (ThreadInclusion, optional): Whether to filter only for threads in which
+                the user has participated in. Defaults to all threads.
+            limit (int, optional): The maximum events per request that will be
+                fetched per chunk while iterating. Changing this value can affect performance.
+                Homeservers will apply a default value, and override this with a maximum value.
+
+        Returns:
+            An AsyncIterator of Events.
+        """
+        paginate_from, paginate_to = None, None
+        while True:
+            method, path = Api.room_get_threads(
+                self.access_token,
+                room_id,
+                include,
+                paginate_from,
+                paginate_to,
+                limit,
+            )
+            response = await self._send(
+                RoomThreadsResponse,
+                method,
+                path,
+                response_data=(room_id,),
+            )
+
+            if isinstance(response, RoomThreadsResponse):
+                for event in response.thread_roots:
+                    yield event
+            if response.next_batch is None:
+                return
             paginate_from = response.next_batch
 
     @logged_in_async

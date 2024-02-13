@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
@@ -490,6 +489,10 @@ class RoomGetVisibilityError(ErrorResponse):
     """A response representing an unsuccessful room get visibility request."""
 
     pass
+
+
+class RoomEventRelationsError(ErrorResponse):
+    """A response representing an unsuccessful room event relations request."""
 
 
 class RoomThreadsError(ErrorResponse):
@@ -1198,18 +1201,20 @@ class RoomEventRelationsResponse(Response):
 
     room_id: str
     parent_event_id: str
-    events: Sequence[Event]
+    events: List[Event]
     prev_batch: Optional[str]
     next_batch: Optional[str]
 
     @classmethod
-    @verify(Schemas.room_get_chunked_messages, RoomThreadsError, pass_arguments=False)
+    @verify(
+        Schemas.room_get_chunked_messages, RoomEventRelationsError, pass_arguments=False
+    )
     def from_dict(
         cls, parsed_dict: Dict[Any, Any], room_id: str, event_id: str
-    ) -> Union[RoomEventRelationsResponse, ErrorResponse]:
-        events = parsed_dict["chunks"]
-        prev_batch = parsed_dict["prev_batch"]
-        next_batch = parsed_dict["next_batch"]
+    ) -> Union[RoomEventRelationsResponse, RoomEventRelationsError]:
+        events = [Event.parse_event(e) for e in parsed_dict["chunk"]]
+        prev_batch = parsed_dict.get("prev_batch")
+        next_batch = parsed_dict.get("next_batch")
         return cls(room_id, event_id, events, prev_batch, next_batch)
 
 
@@ -1218,19 +1223,17 @@ class RoomThreadsResponse(Response):
     """A response containing the results of a get threads request."""
 
     room_id: str
-    thread_roots: Sequence[Event]
-    prev_batch: Optional[str]
+    thread_roots: List[Event]
     next_batch: Optional[str]
 
     @classmethod
     @verify(Schemas.room_get_chunked_messages, RoomThreadsError, pass_arguments=False)
     def from_dict(
         cls, parsed_dict: Dict[Any, Any], room_id: str
-    ) -> Union[RoomThreadsResponse, ErrorResponse]:
-        thread_roots = parsed_dict["chunks"]
-        prev_batch = parsed_dict["prev_batch"]
-        next_batch = parsed_dict["next_batch"]
-        return cls(room_id, thread_roots, prev_batch, next_batch)
+    ) -> Union[RoomThreadsResponse, RoomThreadsError]:
+        thread_roots = [Event.parse_event(e) for e in parsed_dict["chunk"]]
+        next_batch = parsed_dict.get("next_batch")
+        return cls(room_id, thread_roots, next_batch)
 
 
 @dataclass

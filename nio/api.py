@@ -52,8 +52,8 @@ except ImportError:
     from urlparse import urlparse  # type: ignore
 
 
-MATRIX_API_PATH: str = "/_matrix/client/r0"
-MATRIX_MEDIA_API_PATH: str = "/_matrix/media/r0"
+MATRIX_API_PATH: str = "/_matrix/client/v1"
+MATRIX_MEDIA_API_PATH: str = "/_matrix/media/v1"
 
 _FilterT = Union[None, str, Dict[Any, Any]]
 
@@ -62,8 +62,8 @@ _FilterT = Union[None, str, Dict[Any, Any]]
 class MessageDirection(Enum):
     """Enum representing the direction messages should be fetched from."""
 
-    back = 0
-    front = 1
+    back = "b"
+    front = "f"
 
 
 @unique
@@ -675,6 +675,7 @@ class Api:
         event_id: str,
         rel_type: Optional[RelationshipType] = None,
         event_type: Optional[str] = None,
+        direction: MessageDirection = MessageDirection.front,
         paginate_from: str | None = None,
         paginate_to: str | None = None,
         limit: int | None = None,
@@ -687,8 +688,11 @@ class Api:
             access_token (str): The access token to be used with the request.
             room_id (str): The room id of the room where the event is in.
             event_id (str): The event id to get.
-            rel_type (RelationshipType, optional): The relationship type to search for. Required if event_type is provided.
+            rel_type (RelationshipType, optional): The relationship type to search for.
+                Required if event_type is provided.
             event_type: (str, optional): The event type of child events to search for.
+            direction (MessageDirection, optional): The direction to return
+                events from. Defaults to MessageDirection.back.
             paginate_from (str, optional): A pagination token from a previous result.
                 When not provided, the server starts paginating from the most recent event.
             paginate_to (str, optional): The pagination token to stop returning results at.
@@ -696,7 +700,7 @@ class Api:
             limit (int, optional): Limit for the maximum thread roots to include per paginated response.
                 Homeservers will apply a default value, and override this with a maximum value.
         """
-        query_parameters = {"access_token": access_token}
+        query_parameters = {"access_token": access_token, "dir": direction.value}
         if paginate_from:
             query_parameters["from"] = paginate_from
         if paginate_to:
@@ -1204,10 +1208,7 @@ class Api:
             else:
                 raise ValueError("Invalid direction")
 
-        if direction is MessageDirection.front:
-            query_parameters["dir"] = "f"
-        else:
-            query_parameters["dir"] = "b"
+        query_parameters["dir"] = direction.value
 
         if isinstance(message_filter, dict):
             filter_json = json.dumps(message_filter, separators=(",", ":"))
