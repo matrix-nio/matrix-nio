@@ -127,7 +127,13 @@ from nio import (
     UploadFilterResponse,
     UploadResponse,
 )
-from nio.api import EventFormat, ResizingMethod, RoomPreset, RoomVisibility
+from nio.api import (
+    EventFormat,
+    ResizingMethod,
+    RoomPreset,
+    RoomVisibility,
+    ThreadInclusion,
+)
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
 from nio.crypto import OlmDevice, Session, decrypt_attachment
 
@@ -1115,6 +1121,72 @@ class TestClass:
 
         resp = await async_client.list_direct_rooms()
         assert isinstance(resp, DirectRoomsErrorResponse)
+
+    async def test_room_get_event_relations(
+        self, async_client, aioresponse: aioresponses
+    ):
+        ...
+
+    async def test_room_get_threads(self, async_client, aioresponse: aioresponses):
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+        assert async_client.logged_in
+
+        base_url = "https://example.org/_matrix/client/v1"
+
+        response1 = {
+            "chunk": [
+                {
+                    "type": "m.room.message",
+                    "room_id": TEST_ROOM_ID,
+                    "sender": "@alice:example.org",
+                    "content": {"msgtype": "m.text", "body": "Dingle"},
+                    "origin_server_ts": 1691279364590,
+                    "event_id": "$y6bmOp_5DR5Wgz2Mygbrqg9pJe5ER4Yo66EgoRh8Wts",
+                    "age": 16539094506,
+                }
+            ],
+            "next_batch": (next_batch := "73_4305826"),
+        }
+        response2 = {
+            "chunk": [
+                {
+                    "type": "m.room.message",
+                    "room_id": TEST_ROOM_ID,
+                    "sender": "@bob:example.org",
+                    "content": {"msgtype": "m.text", "body": "Dongle"},
+                    "origin_server_ts": 1707810156395,
+                    "event_id": "$VKX3Ze7vc_94uRKSmaHA8PET07xxVuWvG4wMrn4leT0",
+                    "age": 8664569,
+                }
+            ],
+        }
+        # '&include=all&from=73_4305826&limit=1'
+        aioresponse.get(
+            f"{base_url}/rooms/{TEST_ROOM_ID}/threads?access_token=abc123&include=all&limit=1",
+            status=200,
+            payload=response1,
+        )
+        aioresponse.get(
+            f"{base_url}/rooms/{TEST_ROOM_ID}/threads?access_token=abc123&include=all&from={next_batch}&limit=1",
+            status=200,
+            payload=response2,
+        )
+
+        events = [
+            e
+            async for e in async_client.room_get_threads(
+                room_id=TEST_ROOM_ID, include=ThreadInclusion.all, limit=1
+            )
+        ]
+        assert len(events) == 2
+        assert (events[0].sender, events[1].sender) == (
+            "@alice:example.org",
+            "@bob:example.org",
+        )
+        for event in events:
+            assert isinstance(event, RoomMessageText)
 
     async def test_room_put_state(self, async_client, aioresponse: aioresponses):
         await async_client.receive_response(
