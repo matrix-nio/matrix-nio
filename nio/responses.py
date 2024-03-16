@@ -1841,8 +1841,12 @@ class RoomContextResponse(Response):
         parsed_dict: Dict[Any, Any],
         room_id: str,
     ) -> Union[RoomContextResponse, ErrorResponse]:
-        events_before = SyncResponse._get_room_events(parsed_dict.get("events_before", []))
-        events_after = SyncResponse._get_room_events(parsed_dict.get("events_after", []))
+        events_before = SyncResponse._get_room_events(
+            parsed_dict.get("events_before", [])
+        )
+        events_after = SyncResponse._get_room_events(
+            parsed_dict.get("events_after", [])
+        )
         event = Event.parse_event(parsed_dict["event"])
 
         state = SyncResponse._get_room_events(parsed_dict.get("state", {}))
