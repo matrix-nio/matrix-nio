@@ -62,8 +62,8 @@ _FilterT = Union[None, str, Dict[Any, Any]]
 class MessageDirection(Enum):
     """Enum representing the direction messages should be fetched from."""
 
-    back = 0
-    front = 1
+    back = "b"
+    front = "f"
 
 
 @unique
@@ -131,6 +131,33 @@ class PushRuleKind(Enum):
     underride = "underride"
 
 
+@unique
+class RelationshipType(Enum):
+    """Relationship types defined by the Matrix spec."""
+
+    replacement = "m.replace"
+    annotation = "m.annotation"
+    thread = "m.thread"
+    reference = "m.reference"
+
+
+@unique
+class ReceiptType(Enum):
+    """Enum to denote the type of ephemeral receipt."""
+
+    read = "m.read"
+    read_private = "m.read.private"
+    fully_read = "m.fully_read"
+
+
+@unique
+class ThreadInclusion(Enum):
+    """Enum to denote which thread roots are of interest in a request."""
+
+    all = "all"
+    participated = "participated"
+
+
 class Api:
     """Matrix API class.
 
@@ -178,7 +205,7 @@ class Api:
         parsed_homeserver = urlparse(homeserver) if homeserver else None
 
         http_url = (
-            "{homeserver}/_matrix/media/r0/download/" "{server_name}{mediaId}"
+            f"{homeserver}{MATRIX_MEDIA_API_PATH}/download/" "{server_name}{mediaId}"
         ).format(
             homeserver=(
                 parsed_homeserver.geturl()
@@ -239,7 +266,7 @@ class Api:
         )
 
         plumb_url = (
-            "{homeserver}/_matrix/media/r0/download/" "{server_name}{mediaId}"
+            f"{homeserver}{MATRIX_MEDIA_API_PATH}/download/" "{server_name}{mediaId}"
         ).format(
             homeserver=host if host else f"emxc://{url.netloc}",
             server_name=url.hostname,
@@ -649,6 +676,94 @@ class Api:
         path = ["rooms", room_id, "event", event_id]
 
         return ("GET", Api._build_path(path, query_parameters))
+
+    @staticmethod
+    def room_get_event_relations(
+        access_token: str,
+        room_id: str,
+        event_id: str,
+        rel_type: Optional[RelationshipType] = None,
+        event_type: Optional[str] = None,
+        direction: MessageDirection = MessageDirection.back,
+        paginate_from: str | None = None,
+        paginate_to: str | None = None,
+        limit: int | None = None,
+    ) -> Tuple[str, str]:
+        """Get all child events of a given parent event.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room id of the room where the event is in.
+            event_id (str): The event id to get.
+            rel_type (RelationshipType, optional): The relationship type to search for.
+                Required if event_type is provided.
+            event_type: (str, optional): The event type of child events to search for.
+                Ignored if rel_type is not provided.
+            direction (MessageDirection, optional): The direction to return events from.
+                Defaults to MessageDirection.back.
+            paginate_from (str, optional): A pagination token from a previous result.
+                When not provided, the server starts paginating from the most recent event.
+            paginate_to (str, optional): The pagination token to stop returning results at.
+                If not supplied, results continue until 'limit', or until there no more events.
+            limit (int, optional): Limit for the maximum thread roots to include per paginated response.
+                Homeservers will apply a default value, and override this with a maximum value.
+        """
+        query_parameters = {"access_token": access_token, "dir": direction.value}
+        if paginate_from:
+            query_parameters["from"] = paginate_from
+        if paginate_to:
+            query_parameters["to"] = paginate_to
+        if limit:
+            query_parameters["limit"] = limit
+
+        path = ["rooms", room_id, "relations", event_id]
+        if rel_type:
+            path.append(rel_type.value)
+            if event_type:
+                path.append(event_type)
+
+        return "GET", Api._build_path(path, query_parameters, "/_matrix/client/v1")
+
+    @staticmethod
+    def room_get_threads(
+        access_token: str,
+        room_id: str,
+        include: ThreadInclusion = ThreadInclusion.all,
+        paginate_from: str | None = None,
+        paginate_to: str | None = None,
+        limit: int | None = None,
+    ) -> Tuple[str, str]:
+        """Paginate through the list of the thread roots in a given room.
+
+        Optionally, filter for threads in which the requesting user has participated.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            room_id (str): The room id of the room where the event is in.
+            include (ThreadInclusion, optional):
+                Flag to filter whether to include just threads that the user participated in or all of them.
+            paginate_from (str, optional): A pagination token from a previous result.
+                When not provided, the server starts paginating from the most recent event.
+            paginate_to (str, optional): The pagination token to stop returning results at.
+                If not supplied, results continue until 'limit', or until there no more events.
+            limit (int, optional): Limit for the maximum thread roots to include per paginated response.
+                Servers will apply a default value, and override this with a maximum value.
+        """
+        query_parameters = {"access_token": access_token, "include": include.value}
+        if paginate_from:
+            query_parameters["from"] = paginate_from
+        if paginate_to:
+            query_parameters["to"] = paginate_to
+        if limit:
+            query_parameters["limit"] = limit
+
+        path = ["rooms", room_id, "threads"]
+
+        return "GET", Api._build_path(path, query_parameters, "/_matrix/client/v1")
 
     @staticmethod
     def room_put_state(
@@ -1103,10 +1218,7 @@ class Api:
             else:
                 raise ValueError("Invalid direction")
 
-        if direction is MessageDirection.front:
-            query_parameters["dir"] = "f"
-        else:
-            query_parameters["dir"] = "b"
+        query_parameters["dir"] = direction.value
 
         if isinstance(message_filter, dict):
             filter_json = json.dumps(message_filter, separators=(",", ":"))
@@ -1410,8 +1522,9 @@ class Api:
         access_token: str,
         room_id: str,
         event_id: str,
-        receipt_type: str = "m.read",
-    ) -> Tuple[str, str]:
+        receipt_type: ReceiptType = ReceiptType.read,
+        thread_id: str = "main",
+    ) -> Tuple[str, str, str]:
         """Update the marker of given `receipt_type` to specified `event_id`.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1421,13 +1534,16 @@ class Api:
             room_id (str): Room id of the room where the marker should
                 be updated
             event_id (str): The event ID the read marker should be located at
-            receipt_type (str): The type of receipt to send. Currently, only
+            receipt_type (ReceiptType): The type of receipt to send. Currently, only
                 `m.read` is supported by the Matrix specification.
+            thread_id (str): The thread root's event ID. Defaults to "main"
+                to indicate the main timeline, and thus not in a thread.
         """
         query_parameters = {"access_token": access_token}
-        path = ["rooms", room_id, "receipt", receipt_type, event_id]
+        path = ["rooms", room_id, "receipt", receipt_type.value, event_id]
+        content = {"thread_id": thread_id}
 
-        return ("POST", Api._build_path(path, query_parameters))
+        return "POST", Api._build_path(path, query_parameters), Api.to_json(content)
 
     @staticmethod
     def room_read_markers(
@@ -1435,11 +1551,12 @@ class Api:
         room_id: str,
         fully_read_event: str,
         read_event: Optional[str] = None,
+        private_read_event: Optional[str] = None,
     ) -> Tuple[str, str, str]:
         """Update fully read marker and optionally read marker for a room.
 
         This sets the position of the read marker for a given room,
-        and optionally the read receipt's location.
+        and optionally the location of the read receipt and private read receipt.
 
         Returns the HTTP method, HTTP path and data for the request.
 
@@ -1451,16 +1568,20 @@ class Api:
                 located at.
             read_event (Optional[str]): The event ID to set the read receipt
                 location at.
+            private_read_event (Optional[str]): The event ID to set the private
+                read receipt location at.
         """
         query_parameters = {"access_token": access_token}
         path = ["rooms", room_id, "read_markers"]
 
-        content = {"m.fully_read": fully_read_event}
+        content = {ReceiptType.fully_read.value: fully_read_event}
 
         if read_event:
-            content["m.read"] = read_event
+            content[ReceiptType.read.value] = read_event
+        if private_read_event:
+            content[ReceiptType.read_private.value] = private_read_event
 
-        return ("POST", Api._build_path(path, query_parameters), Api.to_json(content))
+        return "POST", Api._build_path(path, query_parameters), Api.to_json(content)
 
     @staticmethod
     def content_repository_config(access_token: str) -> Tuple[str, str]:

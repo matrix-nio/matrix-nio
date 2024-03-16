@@ -89,9 +89,8 @@ logger = logging.getLogger(__name__)
 
 def logged_in(func):
     @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        if not self.logged_in:
-            raise LocalProtocolError("Not logged in.")
+    def wrapper(self: Client, *args, **kwargs):
+        self._assert_logged_in()
         return func(self, *args, **kwargs)
 
     return wrapper
@@ -99,11 +98,17 @@ def logged_in(func):
 
 def logged_in_async(func):
     @wraps(func)
-    async def wrapper(self, *args, **kwargs):
-        if not self.logged_in:
-            raise LocalProtocolError("Not logged in.")
+    async def wrapper(self: Client, *args, **kwargs):
+        self._assert_logged_in()
         return await func(self, *args, **kwargs)
 
+    async def wrapper_async_gen(self: Client, *args, **kwargs):
+        self._assert_logged_in()
+        async for item in func(self, *args, **kwargs):
+            yield item
+
+    if inspect.isasyncgenfunction(func):
+        return wrapper_async_gen
     return wrapper
 
 
@@ -321,6 +326,11 @@ class Client:
     def outgoing_to_device_messages(self) -> List[ToDeviceMessage]:
         """To-device messages that we need to send out."""
         return self.olm.outgoing_to_device_messages if self.olm else []
+
+    def _assert_logged_in(self):
+        """Assert that the client is logged in."""
+        if not self.logged_in:
+            raise LocalProtocolError("Not logged in.")
 
     def get_active_sas(self, user_id: str, device_id: str) -> Optional[Sas]:
         """Find a non-canceled SAS verification object for the provided user.

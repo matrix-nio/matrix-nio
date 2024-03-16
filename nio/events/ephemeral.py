@@ -23,8 +23,9 @@ Ephemeral events are used for typing notifications and read receipts.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
+from ..api import ReceiptType
 from ..schemas import Schemas
 from .misc import verify_or_none
 
@@ -95,16 +96,19 @@ class Receipt:
 
     Attributes:
         event_id (str): the ID of the event being acknowledged
-        receipt_type (str): the type of receipt being received; this is
-            commonly "m.read" for read receipts.
+        receipt_type (ReceiptType): the type of receipt being received.
         user_id (str): the ID of the user who is acknowledging the event.
         timestamp (int): The timestamp the receipt was sent at.
+        thread_id (str, optional): the ID of the thread the receipt is for.
+            Set to `None` if the receipt is unthreaded, or "main" if explicitly
+            not in any particular thread.
     """
 
     event_id: str = field()
-    receipt_type: str = field()
+    receipt_type: ReceiptType = field()
     user_id: str = field()
     timestamp: int = field()
+    thread_id: Optional[str] = field(default=None)
 
 
 @dataclass
@@ -112,8 +116,6 @@ class ReceiptEvent(EphemeralEvent):
     """Informs the client of changes in the newest events seen by users.
 
     A ReceiptEvent can contain multiple event_ids seen by many different users.
-    At the time of writing, all Receipts have a `receipt_type` of "m.read" and
-    are read receipts, but this may change in the future.
 
     Attributes:
         receipts (List[Receipt]): The list of `Receipt`s in this event.
@@ -133,7 +135,13 @@ class ReceiptEvent(EphemeralEvent):
                     # ts values. https://github.com/matrix-org/synapse/issues/4898
                     if isinstance(user, dict) and "ts" in user:
                         event_receipts.append(
-                            Receipt(event_id, receipt_type, user_id, user["ts"])
+                            Receipt(
+                                event_id,
+                                receipt_type,
+                                user_id,
+                                user["ts"],
+                                user.get("thread_id"),
+                            )
                         )
 
         return cls(event_receipts)

@@ -15,6 +15,7 @@
 import pytest
 from helpers import faker
 
+from nio.api import ReceiptType
 from nio.events import (
     InviteAliasEvent,
     InviteMemberEvent,
@@ -386,19 +387,22 @@ class TestClass:
         assert room.typing_users == [BOB_ID]
 
     def test_read_receipt_event(self):
-        """Verify that m.read ReceiptEvents update a room's read_receipt dict.
+        """Verify that ReceiptEvents update a room's [threaded_]read_receipts dict.
 
-        Successive m.read receipts should replace the first receipt with the
-        second.
+        Successive receipts should replace the first receipt with the second.
         """
         room = self.test_room
         assert room.read_receipts == {}
 
-        r1 = Receipt("event_id", "m.read", BOB_ID, 10)
-        r2 = Receipt("event_id2", "m.read", BOB_ID, 15)
+        r1 = Receipt("event_id", ReceiptType.read, BOB_ID, 10)
+        r2 = Receipt("event_id2", ReceiptType.read, BOB_ID, 15)
+        r3 = Receipt("event_id3", ReceiptType.read_private, BOB_ID, 15, "main")
+        r4 = Receipt("event_id4", ReceiptType.read_private, BOB_ID, 15, "thread_id")
+        r5 = Receipt("event_id4", ReceiptType.read_private, BOB_ID, 20, "thread_id")
 
         r1_event = ReceiptEvent([r1])
         r2_event = ReceiptEvent([r2])
+        r345_event = ReceiptEvent([r3, r4, r5])
 
         room.handle_ephemeral_event(r1_event)
         assert room.read_receipts == {BOB_ID: r1}
@@ -406,15 +410,16 @@ class TestClass:
         room.handle_ephemeral_event(r2_event)
         assert room.read_receipts == {BOB_ID: r2}
 
+        room.handle_ephemeral_event(r345_event)
+        assert room.threaded_read_receipts == {BOB_ID: {"main": r3, "thread_id": r5}}
+
     def test_non_read_receipt_event(self):
-        """Verify that non-m.read receipts don't leak into a room's read_receipt
-        dict.
-        """
+        """Verify that non-spec-compliant receipts don't leak into a room's read_receipts dict."""
         room = self.test_room
         room.handle_ephemeral_event(
             ReceiptEvent([Receipt("event_id", "m.downvoted", BOB_ID, 0)])
         )
-        assert room.read_receipts == {}
+        assert room.read_receipts == room.threaded_read_receipts == {}
 
     def test_create_event(self):
         room = self.test_room
