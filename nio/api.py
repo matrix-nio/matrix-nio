@@ -142,8 +142,17 @@ class RelationshipType(Enum):
 
 
 @unique
+class ReceiptType(Enum):
+    """Enum to denote the type of ephemeral receipt."""
+
+    read = "m.read"
+    read_private = "m.read.private"
+    fully_read = "m.fully_read"
+
+
+@unique
 class ThreadInclusion(Enum):
-    """Flag to denote which thread roots are of interest in a request."""
+    """Enum to denote which thread roots are of interest in a request."""
 
     all = "all"
     participated = "participated"
@@ -675,7 +684,7 @@ class Api:
         event_id: str,
         rel_type: Optional[RelationshipType] = None,
         event_type: Optional[str] = None,
-        direction: MessageDirection = MessageDirection.front,
+        direction: MessageDirection = MessageDirection.back,
         paginate_from: str | None = None,
         paginate_to: str | None = None,
         limit: int | None = None,
@@ -691,8 +700,9 @@ class Api:
             rel_type (RelationshipType, optional): The relationship type to search for.
                 Required if event_type is provided.
             event_type: (str, optional): The event type of child events to search for.
-            direction (MessageDirection, optional): The direction to return
-                events from. Defaults to MessageDirection.back.
+                Ignored if rel_type is not provided.
+            direction (MessageDirection, optional): The direction to return events from.
+                Defaults to MessageDirection.back.
             paginate_from (str, optional): A pagination token from a previous result.
                 When not provided, the server starts paginating from the most recent event.
             paginate_to (str, optional): The pagination token to stop returning results at.
@@ -1512,8 +1522,9 @@ class Api:
         access_token: str,
         room_id: str,
         event_id: str,
-        receipt_type: str = "m.read",
-    ) -> Tuple[str, str]:
+        receipt_type: ReceiptType = ReceiptType.read,
+        thread_id: str = "main",
+    ) -> Tuple[str, str, str]:
         """Update the marker of given `receipt_type` to specified `event_id`.
 
         Returns the HTTP method and HTTP path for the request.
@@ -1523,13 +1534,16 @@ class Api:
             room_id (str): Room id of the room where the marker should
                 be updated
             event_id (str): The event ID the read marker should be located at
-            receipt_type (str): The type of receipt to send. Currently, only
+            receipt_type (ReceiptType): The type of receipt to send. Currently, only
                 `m.read` is supported by the Matrix specification.
+            thread_id (str): The thread root's event ID. Defaults to "main"
+                to indicate the main timeline, and thus not in a thread.
         """
         query_parameters = {"access_token": access_token}
-        path = ["rooms", room_id, "receipt", receipt_type, event_id]
+        path = ["rooms", room_id, "receipt", receipt_type.value, event_id]
+        content = {"thread_id": thread_id}
 
-        return ("POST", Api._build_path(path, query_parameters))
+        return "POST", Api._build_path(path, query_parameters), Api.to_json(content)
 
     @staticmethod
     def room_read_markers(
@@ -1537,11 +1551,12 @@ class Api:
         room_id: str,
         fully_read_event: str,
         read_event: Optional[str] = None,
+        private_read_event: Optional[str] = None,
     ) -> Tuple[str, str, str]:
         """Update fully read marker and optionally read marker for a room.
 
         This sets the position of the read marker for a given room,
-        and optionally the read receipt's location.
+        and optionally the location of the read receipt and private read receipt.
 
         Returns the HTTP method, HTTP path and data for the request.
 
@@ -1553,16 +1568,20 @@ class Api:
                 located at.
             read_event (Optional[str]): The event ID to set the read receipt
                 location at.
+            private_read_event (Optional[str]): The event ID to set the private
+                read receipt location at.
         """
         query_parameters = {"access_token": access_token}
         path = ["rooms", room_id, "read_markers"]
 
-        content = {"m.fully_read": fully_read_event}
+        content = {ReceiptType.fully_read.value: fully_read_event}
 
         if read_event:
-            content["m.read"] = read_event
+            content[ReceiptType.read.value] = read_event
+        if private_read_event:
+            content[ReceiptType.read_private.value] = private_read_event
 
-        return ("POST", Api._build_path(path, query_parameters), Api.to_json(content))
+        return "POST", Api._build_path(path, query_parameters), Api.to_json(content)
 
     @staticmethod
     def content_repository_config(access_token: str) -> Tuple[str, str]:

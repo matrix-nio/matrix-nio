@@ -1273,6 +1273,20 @@ class Schemas:
         "required": ["content", "type"],
     }
 
+    _receipt = {
+        "type": "object",
+        "patternProperties": {
+            UserIdRegex: {
+                "type": ["object", "string"],
+                "properties": {
+                    "ts": {"type": "integer"},
+                    "thread_id": {"type": "string"},
+                },
+                "required": ["ts"],
+            }
+        },
+    }
+
     m_receipt = {
         "type": "object",
         "properties": {
@@ -1282,16 +1296,8 @@ class Schemas:
                     r".*": {
                         "type": "object",
                         "properties": {
-                            "m.read": {
-                                "type": "object",
-                                "patternProperties": {
-                                    UserIdRegex: {
-                                        "type": ["object", "string"],
-                                        "properties": {"ts": {"type": "integer"}},
-                                        "required": ["ts"],
-                                    }
-                                },
-                            }
+                            "m.read": _receipt,
+                            "m.read.private": _receipt,
                         },
                     }
                 },

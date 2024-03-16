@@ -62,6 +62,7 @@ from ..api import (
     EventFormat,
     MessageDirection,
     PushRuleKind,
+    ReceiptType,
     RelationshipType,
     ResizingMethod,
     RoomPreset,
@@ -2826,7 +2827,8 @@ class AsyncClient(Client):
         self,
         room_id: str,
         event_id: str,
-        receipt_type: str = "m.read",
+        receipt_type: ReceiptType = ReceiptType.read,
+        thread_id: Optional[str] = "main",
     ) -> Union[UpdateReceiptMarkerResponse, UpdateReceiptMarkerError]:
         """Update the marker of given the `receipt_type` to specified `event_id`.
 
@@ -2840,29 +2842,41 @@ class AsyncClient(Client):
             room_id (str): Room id of the room where the marker should
                 be updated
             event_id (str): The event ID the read marker should be located at
-            receipt_type (str): The type of receipt to send. Currently, only
-                `m.read` is supported by the Matrix specification.
+            receipt_type (ReceiptType): The type of receipt to send.
+            thread_id (str): The thread root's event ID. Defaults to "main" to
+                indicate the main timeline, and thus not in any particular thread.
         """
-        method, path = Api.update_receipt_marker(
+        if not isinstance(receipt_type, ReceiptType):
+            warnings.warn(
+                f"Pass `nio.api.ReceiptType` instead of {type(receipt_type)} for `receipt_type`",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        method, path, data = Api.update_receipt_marker(
             self.access_token,
             room_id,
             event_id,
             receipt_type,
+            thread_id,
         )
 
         return await self._send(
             UpdateReceiptMarkerResponse,
             method,
             path,
-            "{}",
+            data,
         )
 
     @logged_in_async
     async def room_read_markers(
-        self, room_id: str, fully_read_event: str, read_event: Optional[str] = None
+        self,
+        room_id: str,
+        fully_read_event: str,
+        read_event: Optional[str] = None,
+        private_read_event: Optional[str] = None,
     ):
-        """Update the fully read marker (and optionally the read receipt) for
-        a room.
+        """Update the fully read marker (and optionally the read receipt
+        and/or private read receipt) for a room.
 
         Calls receive_response() to update the client state if necessary.
 
@@ -2870,7 +2884,7 @@ class AsyncClient(Client):
         successful or a `RoomReadMarkersError` if there was an error with
         the request.
 
-        This sets the position of the read markers.
+        This sets the "up to" position of the read markers.
 
         - `fully_read_event` is the latest event in the set of events that the
           user has either fully read or indicated they aren't interested in. It
@@ -2884,7 +2898,9 @@ class AsyncClient(Client):
           messages have been sent and _only_ reads the most recent message. The
           read receipt is _public_ (exposed to other room participants).
 
-        If you want to set the read receipt, you _must_ set `read_event`.
+        - `private_read_event` is the same as `read_event`, is intended to clear
+         notifications without advertising read-up-to status to others, and is
+         _private_ (not exposed to other room participants) as the name implies.
 
         Args:
             room_id (str): The room ID of the room where the read markers should
@@ -2893,9 +2909,11 @@ class AsyncClient(Client):
                 to.
             read_event (Optional[str]): The event ID to set the read receipt
                 location at.
+            private_read_event (Optional[str]): The event ID to set the private
+                read receipt location at.
         """
         method, path, data = Api.room_read_markers(
-            self.access_token, room_id, fully_read_event, read_event
+            self.access_token, room_id, fully_read_event, read_event, private_read_event
         )
 
         return await self._send(

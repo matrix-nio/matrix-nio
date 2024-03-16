@@ -494,6 +494,8 @@ class RoomGetVisibilityError(ErrorResponse):
 class RoomEventRelationsError(ErrorResponse):
     """A response representing an unsuccessful room event relations request."""
 
+    pass
+
 
 class RoomThreadsError(ErrorResponse):
     """A response representing an unsuccessful room threads request."""
@@ -502,7 +504,7 @@ class RoomThreadsError(ErrorResponse):
 
 
 class RoomTypingError(_ErrorWithRoomId):
-    """A response representing a unsuccessful room typing request."""
+    """A response representing an unsuccessful room typing request."""
 
     pass
 
