@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from collections import defaultdict
 from typing import DefaultDict, Dict, List, Optional, Set, Tuple, Union
 
@@ -31,6 +32,7 @@ from .events import (
     PowerLevelsEvent,
     Receipt,
     ReceiptEvent,
+    ReceiptType,
     RoomAliasEvent,
     RoomAvatarEvent,
     RoomCreateEvent,
@@ -85,6 +87,7 @@ class MatrixRoom:
         self.power_levels: PowerLevels = PowerLevels()
         self.typing_users: List[str] = []
         self.read_receipts: Dict[str, Receipt] = {}
+        self.threaded_read_receipts: Dict[str, Dict[str, Receipt]] = {}
         self.summary: Optional[RoomSummary] = None
         self.room_avatar_url: Optional[str] = None
         self.fully_read_marker: Optional[str] = None
@@ -352,10 +355,21 @@ class MatrixRoom:
             self.typing_users = event.users
 
         if isinstance(event, ReceiptEvent):
-            read_receipts = filter(lambda x: x.receipt_type == "m.read", event.receipts)
-
-            for read_receipt in read_receipts:
-                self.read_receipts[read_receipt.user_id] = read_receipt
+            for receipt in event.receipts:
+                if sys.version_info < (3, 12):
+                    try:
+                        ReceiptType(receipt.receipt_type)
+                    except (TypeError, ValueError):
+                        continue
+                else:
+                    if receipt.receipt_type not in ReceiptType:
+                        continue
+                if receipt.thread_id:
+                    self.threaded_read_receipts.setdefault(receipt.user_id, {})[
+                        receipt.thread_id
+                    ] = receipt
+                else:
+                    self.read_receipts[receipt.user_id] = receipt
 
     def handle_event(self, event: Event) -> None:
         logger.info(

@@ -26,6 +26,8 @@ from json.decoder import JSONDecodeError
 from pathlib import Path
 from typing import (
     Any,
+    AsyncIterable,
+    AsyncIterator,
     Callable,
     Coroutine,
     Dict,
@@ -60,9 +62,12 @@ from ..api import (
     EventFormat,
     MessageDirection,
     PushRuleKind,
+    ReceiptType,
+    RelationshipType,
     ResizingMethod,
     RoomPreset,
     RoomVisibility,
+    ThreadInclusion,
     _FilterT,
 )
 from ..crypto import (
@@ -155,6 +160,7 @@ from ..responses import (
     RoomCreateResponse,
     RoomDeleteAliasError,
     RoomDeleteAliasResponse,
+    RoomEventRelationsResponse,
     RoomForgetError,
     RoomForgetResponse,
     RoomGetEventError,
@@ -188,6 +194,7 @@ from ..responses import (
     RoomResolveAliasResponse,
     RoomSendError,
     RoomSendResponse,
+    RoomThreadsResponse,
     RoomTypingError,
     RoomTypingResponse,
     RoomUnbanResponse,
@@ -1784,6 +1791,104 @@ class AsyncClient(Client):
         return await self._send(RoomGetEventResponse, method, path)
 
     @logged_in_async
+    async def room_get_event_relations(
+        self,
+        room_id: str,
+        event_id: str,
+        rel_type: Optional[RelationshipType] = None,
+        event_type: Optional[str] = None,
+        direction: MessageDirection = MessageDirection.back,
+        limit: Optional[int] = None,
+    ) -> AsyncIterable[Event]:
+        """Iterate through all related events of a given parent event.
+
+        Args:
+            room_id (str): The room id of the room where the event is in.
+            event_id (str): The event id to get.
+            rel_type (RelationshipType, optional): The relationship type to search for.
+                Required if event_type is provided.
+            event_type: (str, optional): The event type of child events to search for.
+            direction (MessageDirection, optional): The direction to return
+                events from. Defaults to MessageDirection.back.
+            limit (int, optional): The maximum events per request that will be
+                fetched per chunk while iterating. Changing this value can affect performance.
+                Homeservers will apply a default value, and override this with a maximum value.
+
+        Returns:
+            An AsyncIterable of Events.
+        """
+        paginate_from, paginate_to = None, None
+        while True:
+            method, path = Api.room_get_event_relations(
+                self.access_token,
+                room_id,
+                event_id,
+                rel_type,
+                event_type,
+                direction,
+                paginate_from,
+                paginate_to,
+                limit,
+            )
+            response = await self._send(
+                RoomEventRelationsResponse,
+                method,
+                path,
+                response_data=(room_id, event_id),
+            )
+
+            if isinstance(response, RoomEventRelationsResponse):
+                for event in response.events:
+                    yield event
+            if response.next_batch is None:
+                return
+            paginate_from = response.next_batch
+
+    @logged_in_async
+    async def room_get_threads(
+        self,
+        room_id: str,
+        include: ThreadInclusion = ThreadInclusion.all,
+        limit: Optional[int] = None,
+    ) -> AsyncIterator[Event]:
+        """Iterate through the thread roots of a given room.
+
+        Args:
+            room_id (str): The room id of the room where the event is in.
+            include (ThreadInclusion, optional): Whether to filter only for threads in which
+                the user has participated in. Defaults to all threads.
+            limit (int, optional): The maximum events per request that will be
+                fetched per chunk while iterating. Changing this value can affect performance.
+                Homeservers will apply a default value, and override this with a maximum value.
+
+        Returns:
+            An AsyncIterator of Events.
+        """
+        paginate_from, paginate_to = None, None
+        while True:
+            method, path = Api.room_get_threads(
+                self.access_token,
+                room_id,
+                include,
+                paginate_from,
+                paginate_to,
+                limit,
+            )
+            response = await self._send(
+                RoomThreadsResponse,
+                method,
+                path,
+                response_data=(room_id,),
+            )
+
+            if isinstance(response, RoomThreadsResponse):
+                for event in response.thread_roots:
+                    yield event
+            if response.next_batch is None:
+                return
+            paginate_from = response.next_batch
+
+    @logged_in_async
     async def room_put_state(
         self,
         room_id: str,
@@ -2643,7 +2748,7 @@ class AsyncClient(Client):
         Calls receive_response() to update the client state if necessary.
 
         Returns either a `RoomMessagesResponse` if the request was successful or
-        a `RoomMessagesResponse` if there was an error with the request.
+        a `RoomMessagesError` if there was an error with the request.
 
         Args:
             room_id (str): The room id of the room for which we would like to
@@ -2722,7 +2827,8 @@ class AsyncClient(Client):
         self,
         room_id: str,
         event_id: str,
-        receipt_type: str = "m.read",
+        receipt_type: ReceiptType = ReceiptType.read,
+        thread_id: Optional[str] = "main",
     ) -> Union[UpdateReceiptMarkerResponse, UpdateReceiptMarkerError]:
         """Update the marker of given the `receipt_type` to specified `event_id`.
 
@@ -2736,29 +2842,41 @@ class AsyncClient(Client):
             room_id (str): Room id of the room where the marker should
                 be updated
             event_id (str): The event ID the read marker should be located at
-            receipt_type (str): The type of receipt to send. Currently, only
-                `m.read` is supported by the Matrix specification.
+            receipt_type (ReceiptType): The type of receipt to send.
+            thread_id (str): The thread root's event ID. Defaults to "main" to
+                indicate the main timeline, and thus not in any particular thread.
         """
-        method, path = Api.update_receipt_marker(
+        if not isinstance(receipt_type, ReceiptType):
+            warnings.warn(
+                f"Pass `nio.api.ReceiptType` instead of {type(receipt_type)} for `receipt_type`",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        method, path, data = Api.update_receipt_marker(
             self.access_token,
             room_id,
             event_id,
             receipt_type,
+            thread_id,
         )
 
         return await self._send(
             UpdateReceiptMarkerResponse,
             method,
             path,
-            "{}",
+            data,
         )
 
     @logged_in_async
     async def room_read_markers(
-        self, room_id: str, fully_read_event: str, read_event: Optional[str] = None
+        self,
+        room_id: str,
+        fully_read_event: str,
+        read_event: Optional[str] = None,
+        private_read_event: Optional[str] = None,
     ):
-        """Update the fully read marker (and optionally the read receipt) for
-        a room.
+        """Update the fully read marker (and optionally the read receipt
+        and/or private read receipt) for a room.
 
         Calls receive_response() to update the client state if necessary.
 
@@ -2766,7 +2884,7 @@ class AsyncClient(Client):
         successful or a `RoomReadMarkersError` if there was an error with
         the request.
 
-        This sets the position of the read markers.
+        This sets the "up to" position of the read markers.
 
         - `fully_read_event` is the latest event in the set of events that the
           user has either fully read or indicated they aren't interested in. It
@@ -2780,7 +2898,9 @@ class AsyncClient(Client):
           messages have been sent and _only_ reads the most recent message. The
           read receipt is _public_ (exposed to other room participants).
 
-        If you want to set the read receipt, you _must_ set `read_event`.
+        - `private_read_event` is the same as `read_event`, is intended to clear
+         notifications without advertising read-up-to status to others, and is
+         _private_ (not exposed to other room participants) as the name implies.
 
         Args:
             room_id (str): The room ID of the room where the read markers should
@@ -2789,9 +2909,11 @@ class AsyncClient(Client):
                 to.
             read_event (Optional[str]): The event ID to set the read receipt
                 location at.
+            private_read_event (Optional[str]): The event ID to set the private
+                read receipt location at.
         """
         method, path, data = Api.room_read_markers(
-            self.access_token, room_id, fully_read_event, read_event
+            self.access_token, room_id, fully_read_event, read_event, private_read_event
         )
 
         return await self._send(

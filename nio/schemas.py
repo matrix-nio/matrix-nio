@@ -890,6 +890,47 @@ class Schemas:
         "required": ["type", "sender", "content", "state_key"],
     }
 
+    room_get_chunked_messages = {
+        "type": "object",
+        "properties": {
+            "chunk": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "content": {"type": "object"},
+                        "event_id": {"type": "string"},
+                        "origin_server_ts": {"type": "integer"},
+                        "room_id": {"type": "string"},
+                        "sender": {"type": "string"},
+                        "state_key": {"type": "string"},
+                        "type": {"type": "string"},
+                        "unsigned": {
+                            "type": "object",
+                            "properties": {
+                                "age": {"type": "integer"},
+                                "prev_content": {"type": "object"},
+                                "redacted_because": {"type": "object"},
+                                "transaction_id": {"type": "string"},
+                            },
+                        },
+                    },
+                    "required": [
+                        "content",
+                        "event_id",
+                        "origin_server_ts",
+                        "room_id",
+                        "sender",
+                        "type",
+                    ],
+                },
+            },
+            "prev_batch": {"type": "string"},
+            "next_batch": {"type": "string"},
+        },
+        "required": ["chunk"],
+    }
+
     room_canonical_alias = {
         "type": "object",
         "properties": {
@@ -1227,6 +1268,20 @@ class Schemas:
         "required": ["content", "type"],
     }
 
+    _receipt = {
+        "type": "object",
+        "patternProperties": {
+            UserIdRegex: {
+                "type": ["object", "string"],
+                "properties": {
+                    "ts": {"type": "integer"},
+                    "thread_id": {"type": "string"},
+                },
+                "required": ["ts"],
+            }
+        },
+    }
+
     m_receipt = {
         "type": "object",
         "properties": {
@@ -1236,16 +1291,8 @@ class Schemas:
                     r".*": {
                         "type": "object",
                         "properties": {
-                            "m.read": {
-                                "type": "object",
-                                "patternProperties": {
-                                    UserIdRegex: {
-                                        "type": ["object", "string"],
-                                        "properties": {"ts": {"type": "integer"}},
-                                        "required": ["ts"],
-                                    }
-                                },
-                            }
+                            "m.read": _receipt,
+                            "m.read.private": _receipt,
                         },
                     }
                 },
@@ -1325,7 +1372,7 @@ class Schemas:
             },
             "failures": {"type": "object"},
         },
-        "required": ["device_keys", "failures"],
+        "required": ["device_keys"],
     }
 
     keys_claim = {
@@ -1370,7 +1417,7 @@ class Schemas:
             },
             "failures": {"type": "object"},
         },
-        "required": ["one_time_keys", "failures"],
+        "required": ["one_time_keys"],
     }
 
     devices = {
@@ -1437,7 +1484,7 @@ class Schemas:
                             "avatar_url": {"type": ["string", "null"]},
                             "display_name": {"type": ["string", "null"]},
                         },
-                        "required": ["display_name"],
+                        "required": [],
                     }
                 },
             }

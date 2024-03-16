@@ -491,8 +491,20 @@ class RoomGetVisibilityError(ErrorResponse):
     pass
 
 
+class RoomEventRelationsError(ErrorResponse):
+    """A response representing an unsuccessful room event relations request."""
+
+    pass
+
+
+class RoomThreadsError(ErrorResponse):
+    """A response representing an unsuccessful room threads request."""
+
+    pass
+
+
 class RoomTypingError(_ErrorWithRoomId):
-    """A response representing a unsuccessful room typing request."""
+    """A response representing an unsuccessful room typing request."""
 
     pass
 
@@ -1186,6 +1198,47 @@ class RoomGetVisibilityResponse(Response):
 
 
 @dataclass
+class RoomEventRelationsResponse(Response):
+    """A response containing the results of an event relations request."""
+
+    room_id: str
+    parent_event_id: str
+    events: List[Event]
+    prev_batch: Optional[str]
+    next_batch: Optional[str]
+
+    @classmethod
+    @verify(
+        Schemas.room_get_chunked_messages, RoomEventRelationsError, pass_arguments=False
+    )
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any], room_id: str, event_id: str
+    ) -> Union[RoomEventRelationsResponse, RoomEventRelationsError]:
+        events = [Event.parse_event(e) for e in parsed_dict["chunk"]]
+        prev_batch = parsed_dict.get("prev_batch")
+        next_batch = parsed_dict.get("next_batch")
+        return cls(room_id, event_id, events, prev_batch, next_batch)
+
+
+@dataclass
+class RoomThreadsResponse(Response):
+    """A response containing the results of a get threads request."""
+
+    room_id: str
+    thread_roots: List[Event]
+    next_batch: Optional[str]
+
+    @classmethod
+    @verify(Schemas.room_get_chunked_messages, RoomThreadsError, pass_arguments=False)
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any], room_id: str
+    ) -> Union[RoomThreadsResponse, RoomThreadsError]:
+        thread_roots = [Event.parse_event(e) for e in parsed_dict["chunk"]]
+        next_batch = parsed_dict.get("next_batch")
+        return cls(room_id, thread_roots, next_batch)
+
+
+@dataclass
 class SpaceGetHierarchyResponse(Response):
     """A response indicating successful space get hierarchy request.
 
@@ -1484,7 +1537,7 @@ class KeysQueryResponse(Response):
         cls, parsed_dict: Dict[Any, Any]
     ) -> Union[KeysQueryResponse, ErrorResponse]:
         device_keys = parsed_dict["device_keys"]
-        failures = parsed_dict["failures"]
+        failures = parsed_dict.get("failures", {})
 
         return cls(device_keys, failures)
 
@@ -1503,7 +1556,7 @@ class KeysClaimResponse(Response):
         room_id: str = "",
     ) -> Union[KeysClaimResponse, ErrorResponse]:
         one_time_keys = parsed_dict["one_time_keys"]
-        failures = parsed_dict["failures"]
+        failures = parsed_dict.get("failures", {})
 
         return cls(one_time_keys, failures, room_id)
 

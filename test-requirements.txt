@@ -11,7 +11,7 @@ hpack
 faker
 mypy
 mypy_extensions
-aiohttp >= 3.9.0b1
+aiohttp < 4.0.0
 pytest-aiohttp
 aioresponses
 python-olm>=3.2.15
