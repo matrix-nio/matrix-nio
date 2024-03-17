@@ -1684,7 +1684,7 @@ class ProfileGetDisplayNameResponse(Response):
     @verify(Schemas.get_displayname, ProfileGetDisplayNameError)
     def from_dict(
         cls,
-        parsed_dict: (Dict[Any, Any]),
+        parsed_dict: Dict[Any, Any],
     ) -> Union[ProfileGetDisplayNameResponse, ErrorResponse]:
         return cls(parsed_dict.get("displayname"))
 
@@ -1713,7 +1713,7 @@ class ProfileGetAvatarResponse(Response):
     @verify(Schemas.get_avatar, ProfileGetAvatarError)
     def from_dict(
         cls,
-        parsed_dict: (Dict[Any, Any]),
+        parsed_dict: Dict[Any, Any],
     ) -> Union[ProfileGetAvatarResponse, ErrorResponse]:
         return cls(parsed_dict.get("avatar_url"))
 
