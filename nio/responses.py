@@ -1824,8 +1824,8 @@ class RoomContextResponse(Response):
 
     room_id: str = field()
 
-    start: str = field()
-    end: str = field()
+    start: Optional[str] = field()
+    end: Optional[str] = field()
 
     event: Optional[Union[Event, BadEventType]] = field()
 
@@ -1841,16 +1841,20 @@ class RoomContextResponse(Response):
         parsed_dict: Dict[Any, Any],
         room_id: str,
     ) -> Union[RoomContextResponse, ErrorResponse]:
-        events_before = SyncResponse._get_room_events(parsed_dict["events_before"])
-        events_after = SyncResponse._get_room_events(parsed_dict["events_after"])
+        events_before = SyncResponse._get_room_events(
+            parsed_dict.get("events_before", [])
+        )
+        events_after = SyncResponse._get_room_events(
+            parsed_dict.get("events_after", [])
+        )
         event = Event.parse_event(parsed_dict["event"])
 
-        state = SyncResponse._get_room_events(parsed_dict["state"])
+        state = SyncResponse._get_room_events(parsed_dict.get("state", {}))
 
         return cls(
             room_id,
-            parsed_dict["start"],
-            parsed_dict["end"],
+            parsed_dict.get("start"),
+            parsed_dict.get("end"),
             event,
             events_before,
             events_after,
