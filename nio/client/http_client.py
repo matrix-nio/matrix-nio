@@ -168,38 +168,27 @@ class HttpClient(Client):
         return path
 
     def _build_request(self, api_response, timeout=0):
-        def unpack_api_call(method, *rest):
-            return method, rest
 
-        method, api_data = unpack_api_call(*api_response)
+        method, *api_data = api_response
+        if len(api_data) == 2:
+            path, data = api_data
+        else:
+            path, data = api_data[0], ""
+        path = self._add_extra_path(path)
 
         if isinstance(self.connection, HttpConnection):
-            if method == "GET":
-                path = self._add_extra_path(api_data[0])
-                return HttpRequest.get(self.host, path, timeout)
-            elif method == "POST":
-                path, data = api_data
-                path = self._add_extra_path(path)
-                return HttpRequest.post(self.host, path, data, timeout)
-            elif method == "PUT":
-                path, data = api_data
-                path = self._add_extra_path(path)
-                return HttpRequest.put(self.host, path, data, timeout)
+            Request = HttpRequest
         elif isinstance(self.connection, Http2Connection):
-            if method == "GET":
-                path = api_data[0]
-                path = self._add_extra_path(path)
-                return Http2Request.get(self.host, path, timeout)
-            elif method == "POST":
-                path, data = api_data
-                path = self._add_extra_path(path)
-                return Http2Request.post(self.host, path, data, timeout)
-            elif method == "PUT":
-                path, data = api_data
-                path = self._add_extra_path(path)
-                return Http2Request.put(self.host, path, data, timeout)
+            Request = Http2Request
+        else:
+            raise RuntimeError(f"Unsupported connection type: {type(self.connection)}")
 
-        assert "Invalid connection type"
+        if method == "GET":
+            return Request.get(self.host, path, timeout)
+        elif method == "POST":
+            return Request.post(self.host, path, data, timeout)
+        elif method == "PUT":
+            return Request.put(self.host, path, data, timeout)
 
     @property
     def lag(self) -> float:
