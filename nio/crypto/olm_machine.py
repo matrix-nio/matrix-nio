@@ -205,9 +205,9 @@ class Olm:
         # session was wedged and thus the decryption key was missed.
         # We need to unwedge the session and only then send out key re-requests,
         # otherwise we might again fail to decrypt the Olm message.
-        self.key_re_requests_events: DefaultDict[
-            Tuple[str, str], List[MegolmEvent]
-        ] = defaultdict(list)
+        self.key_re_requests_events: DefaultDict[Tuple[str, str], List[MegolmEvent]] = (
+            defaultdict(list)
+        )
 
         # A mapping from a transaction id to a Sas key verification object. The
         # transaction id uniquely identifies the key verification session.

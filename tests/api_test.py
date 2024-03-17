@@ -26,7 +26,7 @@ class TestClass:
             # an irregular but legal username
             (
                 "@a-z0-9._=-/:example.com",
-                "%40a-z0-9._%3D-%2F%3Aexample.com"
+                "%40a-z0-9._%3D-%2F%3Aexample.com",
                 # Why include this? https://github.com/poljar/matrix-nio/issues/211
                 # There were issues with a username that included slashes, which is
                 # legal by the standard: https://matrix.org/docs/spec/appendices#user-identifiers

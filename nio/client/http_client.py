@@ -1181,9 +1181,7 @@ class HttpClient(Client):
                 logger.info(f"Received response of type: {request_info.request_class}")
             else:
                 logger.info(
-                    "Error with response of type type: {}, error code {}".format(
-                        request_info.request_class, response.status_code
-                    )
+                    f"Error with response of type type: {request_info.request_class}, error code {response.status_code}"
                 )
 
             self.parse_queue.append((request_info, response))
