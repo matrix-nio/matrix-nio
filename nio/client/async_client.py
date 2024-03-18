@@ -1115,9 +1115,9 @@ class AsyncClient(Client):
         Returns either 'LogoutResponse' if the request was successful or
         a `Logouterror` if there was an error with the request.
         """
-        method, path, data = Api.logout(self.access_token, all_devices)
+        method, path = Api.logout(self.access_token, all_devices)
 
-        return await self._send(LogoutResponse, method, path, data)
+        return await self._send(LogoutResponse, method, path)
 
     @logged_in_async
     async def sync(
@@ -2492,8 +2492,8 @@ class AsyncClient(Client):
         Args:
             room_id: The room id or alias of the room to join.
         """
-        method, path, data = Api.join(self.access_token, room_id)
-        return await self._send(JoinResponse, method, path, data)
+        method, path = Api.join(self.access_token, room_id)
+        return await self._send(JoinResponse, method, path)
 
     @logged_in_async
     async def room_knock(
@@ -2581,8 +2581,8 @@ class AsyncClient(Client):
         Args:
             room_id: The room id of the room to leave.
         """
-        method, path, data = Api.room_leave(self.access_token, room_id)
-        return await self._send(RoomLeaveResponse, method, path, data)
+        method, path = Api.room_leave(self.access_token, room_id)
+        return await self._send(RoomLeaveResponse, method, path)
 
     @logged_in_async
     async def room_forget(
@@ -2602,9 +2602,9 @@ class AsyncClient(Client):
         Args:
             room_id (str): The room id of the room to forget.
         """
-        method, path, data = Api.room_forget(self.access_token, room_id)
+        method, path = Api.room_forget(self.access_token, room_id)
         return await self._send(
-            RoomForgetResponse, method, path, data, response_data=(room_id,)
+            RoomForgetResponse, method, path, response_data=(room_id,)
         )
 
     @logged_in_async
@@ -3076,7 +3076,7 @@ class AsyncClient(Client):
             ...    )
         """
 
-        http_method, path, _ = Api.upload(self.access_token, filename)
+        http_method, path = Api.upload(self.access_token, filename)
 
         decryption_dict: Dict[str, Any] = {}
 
@@ -3474,9 +3474,9 @@ class AsyncClient(Client):
             user_id (str): The user who requested the OpenID token
         """
 
-        method, path, data = Api.get_openid_token(self.access_token, user_id)
+        method, path = Api.get_openid_token(self.access_token, user_id)
 
-        return await self._send(GetOpenIDTokenResponse, method, path, data)
+        return await self._send(GetOpenIDTokenResponse, method, path)
 
     @logged_in_async
     async def upload_filter(
