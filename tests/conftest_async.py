@@ -1,12 +1,18 @@
+import json
+from pathlib import Path
+from typing import Tuple
+
 import pytest_asyncio
 from aioresponses import aioresponses
 
 from nio import AsyncClient, AsyncClientConfig, LoginResponse
 from nio.crypto import OlmDevice
 
+login_response: dict = json.loads(Path("tests/data/login_response.json").read_text())
+
 
 @pytest_asyncio.fixture
-async def async_client(tempdir) -> AsyncClient:
+async def unauthed_async_client(tempdir) -> AsyncClient:
     client = AsyncClient(
         "https://example.org",
         "ephemeral",
@@ -20,7 +26,16 @@ async def async_client(tempdir) -> AsyncClient:
 
 
 @pytest_asyncio.fixture
-async def async_client_pair(tempdir):
+async def async_client(unauthed_async_client) -> AsyncClient:
+    await unauthed_async_client.receive_response(
+        LoginResponse.from_dict(login_response)
+    )
+    assert unauthed_async_client.logged_in
+    yield unauthed_async_client
+
+
+@pytest_asyncio.fixture
+async def async_client_pair(tempdir) -> Tuple[AsyncClient, AsyncClient]:
     ALICE_ID = "@alice:example.org"
     ALICE_DEVICE = "JLAFKJWSCS"
 
@@ -46,14 +61,14 @@ async def async_client_pair(tempdir):
     await alice.receive_response(LoginResponse(ALICE_ID, ALICE_DEVICE, "alice_1234"))
     await bob.receive_response(LoginResponse(BOB_ID, BOB_DEVICE, "bob_1234"))
 
-    yield (alice, bob)
+    yield alice, bob
 
     await alice.close()
     await bob.close()
 
 
 @pytest_asyncio.fixture
-async def async_client_pair_same_user(tempdir):
+async def async_client_pair_same_user(tempdir) -> Tuple[AsyncClient, AsyncClient]:
     ALICE_ID = "@alice:example.org"
     FIRST_DEVICE = "JLAFKJWSCS"
 
@@ -94,6 +109,6 @@ async def async_client_pair_same_user(tempdir):
 
 
 @pytest_asyncio.fixture
-def aioresponse():
+def aioresponse() -> aioresponses:
     with aioresponses() as m:
         yield m

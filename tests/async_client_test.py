@@ -414,33 +414,33 @@ class TestClass:
     def whoami_response(self):
         return self._load_response("tests/data/whoami_response.json")
 
-    async def test_mxc_to_http(self, async_client):
+    async def test_mxc_to_http(self, unauthed_async_client):
         mxc = "mxc://privacytools.io/123foo"
         url_path = f"{MATRIX_MEDIA_API_PATH}/download/privacytools.io/123foo"
 
-        async_client.homeserver = "https://chat.privacytools.io"
-        expected = f"{async_client.homeserver}{url_path}"
-        assert await async_client.mxc_to_http(mxc) == expected
+        unauthed_async_client.homeserver = "https://chat.privacytools.io"
+        expected = f"{unauthed_async_client.homeserver}{url_path}"
+        assert await unauthed_async_client.mxc_to_http(mxc) == expected
 
         other_server = "http://localhost:8081"
         expected = f"{other_server}{url_path}"
-        assert await async_client.mxc_to_http(mxc, other_server) == expected
+        assert await unauthed_async_client.mxc_to_http(mxc, other_server) == expected
 
-    async def test_register(self, async_client, aioresponse):
-        assert not async_client.access_token
+    async def test_register(self, unauthed_async_client, aioresponse):
+        assert not unauthed_async_client.access_token
 
         aioresponse.post(
             f"{BASE_URL_V3}/register",
             status=200,
             payload=self.register_response,
         )
-        resp = await async_client.register("user", "password")
+        resp = await unauthed_async_client.register("user", "password")
 
         assert isinstance(resp, RegisterResponse)
-        assert async_client.access_token
+        assert unauthed_async_client.access_token
 
-    async def test_register_with_token(self, async_client, aioresponse):
-        assert not async_client.access_token
+    async def test_register_with_token(self, unauthed_async_client, aioresponse):
+        assert not unauthed_async_client.access_token
 
         # first response should return session token + flows
         aioresponse.post(
@@ -474,11 +474,13 @@ class TestClass:
             payload=self.register_response,
         )
 
-        resp = await async_client.register_with_token("user", "password", "token")
+        resp = await unauthed_async_client.register_with_token(
+            "user", "password", "token"
+        )
         assert isinstance(resp, RegisterResponse)
-        assert async_client.access_token
+        assert unauthed_async_client.access_token
 
-    async def test_discovery_info(self, async_client, aioresponse):
+    async def test_discovery_info(self, unauthed_async_client, aioresponse):
         aioresponse.get(
             "https://example.org/.well-known/matrix/client",
             status=200,
@@ -488,14 +490,14 @@ class TestClass:
             },
         )
 
-        resp = await async_client.discovery_info()
+        resp = await unauthed_async_client.discovery_info()
         assert isinstance(resp, DiscoveryInfoResponse)
         assert resp.homeserver_url == "https://an.example.org"
         assert resp.identity_server_url == "https://foo.bar"
 
     async def test_discovery_info_trailing_slashes(
         self,
-        async_client,
+        unauthed_async_client,
         aioresponse,
     ):
         aioresponse.get(
@@ -507,14 +509,14 @@ class TestClass:
             },
         )
 
-        resp = await async_client.discovery_info()
+        resp = await unauthed_async_client.discovery_info()
         assert isinstance(resp, DiscoveryInfoResponse)
         assert resp.homeserver_url == "https://an.example.org"
         assert resp.identity_server_url == "https://foo.bar"
 
     async def test_discovery_info_invalid_content_type(  # matrix.org does this
         self,
-        async_client,
+        unauthed_async_client,
         aioresponse,
     ):
         aioresponse.get(
@@ -524,22 +526,22 @@ class TestClass:
             content_type="",
         )
 
-        resp = await async_client.discovery_info()
+        resp = await unauthed_async_client.discovery_info()
         assert isinstance(resp, DiscoveryInfoResponse)
         assert resp.homeserver_url == "https://an.example.org"
         assert resp.identity_server_url is None
 
-    async def test_discovery_info_bad_url(self, async_client, aioresponse):
+    async def test_discovery_info_bad_url(self, unauthed_async_client, aioresponse):
         aioresponse.get(
             "https://example.org/.well-known/matrix/client",
             status=200,
             payload={"m.homeserver": {"base_url": "invalid://example.org"}},
         )
 
-        resp2 = await async_client.discovery_info()
+        resp2 = await unauthed_async_client.discovery_info()
         assert isinstance(resp2, DiscoveryInfoError)
 
-    async def test_login_info(self, async_client, aioresponse):
+    async def test_login_info(self, unauthed_async_client, aioresponse):
         """Test that we can get login info"""
 
         aioresponse.get(
@@ -547,41 +549,41 @@ class TestClass:
             status=200,
             payload={"flows": [{"type": "m.login.password"}]},
         )
-        resp = await async_client.login_info()
+        resp = await unauthed_async_client.login_info()
 
         assert isinstance(resp, LoginInfoResponse)
 
-    async def test_login(self, async_client, aioresponse):
-        assert not async_client.access_token
-        assert not async_client.logged_in
+    async def test_login(self, unauthed_async_client, aioresponse):
+        assert not unauthed_async_client.access_token
+        assert not unauthed_async_client.logged_in
 
         aioresponse.post(
             f"{BASE_URL_V3}/login",
             status=200,
             payload=self.login_response,
         )
-        resp = await async_client.login("wordpass")
+        resp = await unauthed_async_client.login("wordpass")
 
         assert isinstance(resp, LoginResponse)
-        assert async_client.access_token
-        assert async_client.logged_in
+        assert unauthed_async_client.access_token
+        assert unauthed_async_client.logged_in
 
-    async def test_failed_login(self, async_client, aioresponse):
-        assert not async_client.access_token
-        assert not async_client.logged_in
+    async def test_failed_login(self, unauthed_async_client, aioresponse):
+        assert not unauthed_async_client.access_token
+        assert not unauthed_async_client.logged_in
 
         aioresponse.post(f"{BASE_URL_V3}/login", status=400, body="")
-        resp = await async_client.login("wordpass")
+        resp = await unauthed_async_client.login("wordpass")
         assert isinstance(resp, LoginError)
-        assert not async_client.logged_in
+        assert not unauthed_async_client.logged_in
 
-        assert async_client.client_session
-        await async_client.close()
-        assert not async_client.client_session
+        assert unauthed_async_client.client_session
+        await unauthed_async_client.close()
+        assert not unauthed_async_client.client_session
 
-    async def test_login_raw(self, async_client, aioresponse):
-        assert not async_client.access_token
-        assert not async_client.logged_in
+    async def test_login_raw(self, unauthed_async_client, aioresponse):
+        assert not unauthed_async_client.access_token
+        assert not unauthed_async_client.logged_in
 
         aioresponse.post(
             f"{BASE_URL_V3}/login",
@@ -598,15 +600,15 @@ class TestClass:
             "password": "PASSWORDABCD",
             "initial_device_display_name": "Test user",
         }
-        resp = await async_client.login_raw(auth_dict)
+        resp = await unauthed_async_client.login_raw(auth_dict)
 
         assert isinstance(resp, LoginResponse)
-        assert async_client.access_token
-        assert async_client.logged_in
+        assert unauthed_async_client.access_token
+        assert unauthed_async_client.logged_in
 
-    async def test_failed_login_raw(self, async_client, aioresponse):
-        assert not async_client.access_token
-        assert not async_client.logged_in
+    async def test_failed_login_raw(self, unauthed_async_client, aioresponse):
+        assert not unauthed_async_client.access_token
+        assert not unauthed_async_client.logged_in
 
         aioresponse.post(f"{BASE_URL_V3}/login", status=400, body="")
 
@@ -621,51 +623,51 @@ class TestClass:
             "initial_device_display_name": "Test user",
         }
 
-        resp = await async_client.login_raw(auth_dict)
+        resp = await unauthed_async_client.login_raw(auth_dict)
 
         assert isinstance(resp, LoginError)
-        assert not async_client.logged_in
+        assert not unauthed_async_client.logged_in
 
-        assert async_client.client_session
-        await async_client.close()
-        assert not async_client.client_session
+        assert unauthed_async_client.client_session
+        await unauthed_async_client.close()
+        assert not unauthed_async_client.client_session
 
-    async def test_login_raw_with_empty_dict(self, async_client, aioresponse):
-        assert not async_client.access_token
-        assert not async_client.logged_in
+    async def test_login_raw_with_empty_dict(self, unauthed_async_client, aioresponse):
+        assert not unauthed_async_client.access_token
+        assert not unauthed_async_client.logged_in
 
         auth_dict = {}
         resp = None
 
         with pytest.raises(ValueError, match="Auth dictionary shall not be empty"):
-            resp = await async_client.login_raw(auth_dict)
+            resp = await unauthed_async_client.login_raw(auth_dict)
 
         assert not resp
-        assert not async_client.logged_in
+        assert not unauthed_async_client.logged_in
 
-        assert not async_client.client_session
-        await async_client.close()
-        assert not async_client.client_session
+        assert not unauthed_async_client.client_session
+        await unauthed_async_client.close()
+        assert not unauthed_async_client.client_session
 
-    async def test_login_raw_with_none_dict(self, async_client, aioresponse):
-        assert not async_client.access_token
-        assert not async_client.logged_in
+    async def test_login_raw_with_none_dict(self, unauthed_async_client, aioresponse):
+        assert not unauthed_async_client.access_token
+        assert not unauthed_async_client.logged_in
 
         auth_dict = None
         resp = None
 
         with pytest.raises(ValueError, match="Auth dictionary shall not be empty"):
-            resp = await async_client.login_raw(auth_dict)
+            resp = await unauthed_async_client.login_raw(auth_dict)
 
         assert not resp
-        assert not async_client.logged_in
+        assert not unauthed_async_client.logged_in
 
-        assert not async_client.client_session
-        await async_client.close()
-        assert not async_client.client_session
+        assert not unauthed_async_client.client_session
+        await unauthed_async_client.close()
+        assert not unauthed_async_client.client_session
 
-    async def test_whoami(self, async_client, aioresponse):
-        async_client.restore_login(
+    async def test_whoami(self, unauthed_async_client, aioresponse):
+        unauthed_async_client.restore_login(
             user_id="unknown",
             device_id="unknown",
             access_token="abc123",
@@ -675,11 +677,11 @@ class TestClass:
             status=200,
             payload=self.whoami_response,
         )
-        await async_client.whoami()
-        assert async_client.user_id != "unknown"
-        assert async_client.device_id != "unknown"
+        await unauthed_async_client.whoami()
+        assert unauthed_async_client.user_id != "unknown"
+        assert unauthed_async_client.device_id != "unknown"
 
-    async def test_logout(self, async_client, aioresponse):
+    async def test_logout(self, unauthed_async_client, aioresponse):
         aioresponse.post(
             f"{BASE_URL_V3}/login",
             status=200,
@@ -692,17 +694,17 @@ class TestClass:
             payload=self.logout_response,
         )
 
-        resp = await async_client.login("wordpass")
-        assert async_client.access_token
-        assert async_client.logged_in
-        resp2 = await async_client.logout()
+        resp = await unauthed_async_client.login("wordpass")
+        assert unauthed_async_client.access_token
+        assert unauthed_async_client.logged_in
+        resp2 = await unauthed_async_client.logout()
 
         assert isinstance(resp, LoginResponse)
         assert isinstance(resp2, LogoutResponse)
-        assert not async_client.access_token
-        assert not async_client.logged_in
+        assert not unauthed_async_client.access_token
+        assert not unauthed_async_client.logged_in
 
-    async def test_failed_logout(self, async_client, aioresponse):
+    async def test_failed_logout(self, unauthed_async_client, aioresponse):
         aioresponse.post(
             f"{BASE_URL_V3}/login",
             status=200,
@@ -715,17 +717,17 @@ class TestClass:
             body="",
         )
 
-        resp = await async_client.login("wordpass")
-        assert async_client.access_token
-        assert async_client.logged_in
-        resp2 = await async_client.logout()
+        resp = await unauthed_async_client.login("wordpass")
+        assert unauthed_async_client.access_token
+        assert unauthed_async_client.logged_in
+        resp2 = await unauthed_async_client.logout()
 
         assert isinstance(resp, LoginResponse)
         assert isinstance(resp2, LogoutError)
-        assert async_client.access_token
-        assert async_client.logged_in
+        assert unauthed_async_client.access_token
+        assert unauthed_async_client.logged_in
 
-    async def test_logout_all_devices(self, async_client, aioresponse):
+    async def test_logout_all_devices(self, unauthed_async_client, aioresponse):
         aioresponse.post(
             f"{BASE_URL_V3}/login",
             status=200,
@@ -738,17 +740,17 @@ class TestClass:
             payload=self.logout_response,
         )
 
-        resp = await async_client.login("wordpass")
-        assert async_client.access_token
-        assert async_client.logged_in
-        resp2 = await async_client.logout(all_devices=True)
+        resp = await unauthed_async_client.login("wordpass")
+        assert unauthed_async_client.access_token
+        assert unauthed_async_client.logged_in
+        resp2 = await unauthed_async_client.logout(all_devices=True)
 
         assert isinstance(resp, LoginResponse)
         assert isinstance(resp2, LogoutResponse)
-        assert not async_client.access_token
-        assert not async_client.logged_in
+        assert not unauthed_async_client.access_token
+        assert not unauthed_async_client.logged_in
 
-    async def test_failed_logout_all_devices(self, async_client, aioresponse):
+    async def test_failed_logout_all_devices(self, unauthed_async_client, aioresponse):
         aioresponse.post(
             f"{BASE_URL_V3}/login",
             status=200,
@@ -761,17 +763,19 @@ class TestClass:
             body="",
         )
 
-        resp = await async_client.login("wordpass")
-        assert async_client.access_token
-        assert async_client.logged_in
-        resp2 = await async_client.logout(all_devices=True)
+        resp = await unauthed_async_client.login("wordpass")
+        assert unauthed_async_client.access_token
+        assert unauthed_async_client.logged_in
+        resp2 = await unauthed_async_client.logout(all_devices=True)
 
         assert isinstance(resp, LoginResponse)
         assert isinstance(resp2, LogoutError)
-        assert async_client.access_token
-        assert async_client.logged_in
+        assert unauthed_async_client.access_token
+        assert unauthed_async_client.logged_in
 
-    async def test_sync(self, async_client: AsyncClient, aioresponse: aioresponses):
+    async def test_sync(
+        self, unauthed_async_client: AsyncClient, aioresponse: aioresponses
+    ):
         aioresponse.post(
             f"{BASE_URL_V3}/login",
             status=200,
@@ -783,10 +787,10 @@ class TestClass:
         aioresponse.get(re.compile(rf"{url}$"), status=200, payload=self.sync_response)
 
         with pytest.raises(LocalProtocolError):
-            resp2 = await async_client.sync()
+            resp2 = await unauthed_async_client.sync()
 
-        resp = await async_client.login("wordpass")
-        resp2 = await async_client.sync()
+        resp = await unauthed_async_client.login("wordpass")
+        resp2 = await unauthed_async_client.sync()
         assert isinstance(resp, LoginResponse)
         assert isinstance(resp2, SyncResponse)
 
@@ -797,7 +801,7 @@ class TestClass:
             status=200,
             payload=self.sync_response,
         )
-        resp3 = await async_client.sync(sync_filter="test_id")
+        resp3 = await unauthed_async_client.sync(sync_filter="test_id")
         assert isinstance(resp3, SyncResponse)
 
         # Test with filter dict
@@ -807,7 +811,7 @@ class TestClass:
             status=200,
             payload=self.sync_response,
         )
-        resp4 = await async_client.sync(sync_filter={})
+        resp4 = await unauthed_async_client.sync(sync_filter={})
         assert isinstance(resp4, SyncResponse)
 
         # Test with timeout
@@ -817,15 +821,11 @@ class TestClass:
             status=200,
             payload=self.sync_response,
         )
-        resp5 = await async_client.sync(timeout=None)
+        resp5 = await unauthed_async_client.sync(timeout=None)
         assert isinstance(resp5, SyncResponse)
 
     async def test_sync_presence(self, async_client, aioresponse):
         """Test if presences info in sync events are parsed correctly"""
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.get(
             f"{BASE_URL_V3}/sync?access_token={async_client.access_token}",
@@ -846,10 +846,6 @@ class TestClass:
         assert user.status_msg == "I am here."
 
     async def test_sync_notification_counts(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.get(
             f"{BASE_URL_V3}/sync?access_token=abc123",
@@ -865,10 +861,6 @@ class TestClass:
         assert room.unread_highlights == 1
 
     async def test_sync_push_rules(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.get(
             f"{BASE_URL_V3}/sync?access_token=abc123",
@@ -959,11 +951,11 @@ class TestClass:
             ),
         ]
 
-    async def test_keys_upload(self, async_client, aioresponse):
+    async def test_keys_upload(self, unauthed_async_client, aioresponse):
         with pytest.raises(LocalProtocolError):
-            resp2 = await async_client.keys_upload()
+            resp2 = await unauthed_async_client.keys_upload()
 
-        assert not async_client.should_upload_keys
+        assert not unauthed_async_client.should_upload_keys
 
         aioresponse.post(
             f"{BASE_URL_V3}/login",
@@ -976,17 +968,17 @@ class TestClass:
             payload=self.keys_upload_response,
         )
 
-        await async_client.login("wordpass")
-        assert async_client.should_upload_keys
-        assert not async_client.olm_account_shared
+        await unauthed_async_client.login("wordpass")
+        assert unauthed_async_client.should_upload_keys
+        assert not unauthed_async_client.olm_account_shared
 
-        resp2 = await async_client.keys_upload()
+        resp2 = await unauthed_async_client.keys_upload()
 
         assert isinstance(resp2, KeysUploadResponse)
-        assert async_client.olm_account_shared
-        assert async_client.should_upload_keys
+        assert unauthed_async_client.olm_account_shared
+        assert unauthed_async_client.should_upload_keys
 
-    async def test_keys_query(self, async_client, aioresponse):
+    async def test_keys_query(self, unauthed_async_client, aioresponse):
         aioresponse.post(
             f"{BASE_URL_V3}/login",
             status=200,
@@ -998,14 +990,14 @@ class TestClass:
             payload=self.keys_query_response,
         )
 
-        await async_client.login("wordpass")
-        assert not async_client.should_query_keys
+        await unauthed_async_client.login("wordpass")
+        assert not unauthed_async_client.should_query_keys
 
-        await async_client.receive_response(self.encryption_sync_response)
-        assert async_client.should_query_keys
+        await unauthed_async_client.receive_response(self.encryption_sync_response)
+        assert unauthed_async_client.should_query_keys
 
-        await async_client.keys_query()
-        assert not async_client.should_query_keys
+        await unauthed_async_client.keys_query()
+        assert not unauthed_async_client.should_query_keys
 
     async def test_message_sending(self, async_client, aioresponse):
         aioresponse.post(
@@ -1045,10 +1037,6 @@ class TestClass:
         assert isinstance(response, RoomSendResponse)
 
     async def test_room_get_event(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         response = {
             "content": {
@@ -1089,10 +1077,6 @@ class TestClass:
         assert isinstance(resp, RoomGetEventError)
 
     async def test_list_direct_rooms(self, async_client, aioresponse: aioresponses):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         response = {
             "@alice:example.org": ["!foobar:example.org"],
@@ -1125,10 +1109,6 @@ class TestClass:
     async def test_room_get_event_relations(
         self, async_client: AsyncClient, aioresponse: aioresponses
     ):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         event_id = "$y6bmOp_5DR5Wgz2Mygbrqg9pJe5ER4Yo66EgoRh8Wts"
 
@@ -1207,10 +1187,6 @@ class TestClass:
     async def test_room_get_threads(
         self, async_client: AsyncClient, aioresponse: aioresponses
     ):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         response1 = {
             "chunk": [
@@ -1265,10 +1241,6 @@ class TestClass:
             assert isinstance(event, RoomMessageText)
 
     async def test_room_put_state(self, async_client, aioresponse: aioresponses):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         # Test when key is set
         state_key = "a-state-key"
@@ -1304,10 +1276,6 @@ class TestClass:
         assert isinstance(resp, RoomPutStateResponse)
 
     async def test_room_get_state_event(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         # Test when state key is set
         state_key = "a-state-key"
@@ -1336,10 +1304,6 @@ class TestClass:
         assert isinstance(resp, RoomGetStateEventResponse)
 
     async def test_room_get_state(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.get(
             f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state?access_token=abc123",
@@ -1366,10 +1330,6 @@ class TestClass:
         }
 
     async def test_key_claiming(self, alice_client, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         await async_client.receive_response(self.encryption_sync_response)
 
@@ -1397,10 +1357,6 @@ class TestClass:
         assert async_client.olm.session_store.get(alice_device.curve25519)
 
     async def test_session_sharing(self, alice_client, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         await async_client.receive_response(self.encryption_sync_response)
 
@@ -1454,10 +1410,6 @@ class TestClass:
         assert async_client.olm.session_store.get(alice_device.curve25519)
 
     async def test_session_sharing_2(self, alice_client, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         await async_client.receive_response(self.encryption_sync_response)
 
@@ -1481,10 +1433,6 @@ class TestClass:
         )
 
     async def test_get_openid_token(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.post(
             f"{BASE_URL_V3}/user/{ALICE_ID}/openid/request_token?access_token=abc123",
@@ -1496,10 +1444,6 @@ class TestClass:
         assert isinstance(resp, GetOpenIDTokenResponse)
 
     async def test_joined_members(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         resp = self.encryption_sync_response
 
@@ -1540,10 +1484,6 @@ class TestClass:
         assert tuple(room.invited_users) == (CAROL_ID,)
 
     async def test_joined_rooms(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.get(
             f"{BASE_URL_V3}/joined_rooms?access_token=abc123",
@@ -1591,10 +1531,6 @@ class TestClass:
         assert imported_session.id == out_session.id
 
     async def test_room_create(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.post(
             f"{BASE_URL_V3}/createRoom" "?access_token=abc123",
@@ -1617,10 +1553,6 @@ class TestClass:
         assert resp.room_id == TEST_ROOM_ID
 
     async def test_room_create__space(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.post(
             f"{BASE_URL_V3}/createRoom" "?access_token=abc123",
@@ -1644,10 +1576,6 @@ class TestClass:
         assert resp.room_id == TEST_ROOM_ID
 
     async def test_room_create__typed(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.post(
             f"{BASE_URL_V3}/createRoom" "?access_token=abc123",
@@ -1672,10 +1600,6 @@ class TestClass:
         assert resp.room_id == TEST_ROOM_ID
 
     async def test_join(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.post(
             f"{BASE_URL_V3}/join/{TEST_ROOM_ID}?access_token=abc123",
@@ -1688,10 +1612,6 @@ class TestClass:
         assert resp.room_id == TEST_ROOM_ID
 
     async def test_room_invite(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.post(
             f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/invite?access_token=abc123",
@@ -1703,10 +1623,6 @@ class TestClass:
         assert isinstance(resp, RoomInviteResponse)
 
     async def test_room_knock(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.post(
             f"{BASE_URL_V3}/knock/{TEST_ROOM_ID}?access_token=abc123",
@@ -1718,10 +1634,6 @@ class TestClass:
         assert isinstance(resp, RoomKnockResponse)
 
     async def test_room_leave(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.post(
             f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/leave?access_token=abc123",
@@ -1732,10 +1644,7 @@ class TestClass:
         assert isinstance(resp, RoomLeaveResponse)
 
     async def test_room_forget(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
+
         await async_client.receive_response(self.encryption_sync_response)
 
         room_id = next(iter(async_client.rooms))
@@ -1750,10 +1659,7 @@ class TestClass:
         assert room_id not in async_client.rooms
 
     async def test_room_kick(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
+
         await async_client.receive_response(self.encryption_sync_response)
 
         room_id = next(iter(async_client.rooms))
@@ -1768,10 +1674,7 @@ class TestClass:
         assert isinstance(resp, RoomKickResponse)
 
     async def test_room_ban(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
+
         await async_client.receive_response(self.encryption_sync_response)
 
         room_id = next(iter(async_client.rooms))
@@ -1786,10 +1689,7 @@ class TestClass:
         assert isinstance(resp, RoomBanResponse)
 
     async def test_room_unban(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
+
         await async_client.receive_response(self.encryption_sync_response)
 
         room_id = next(iter(async_client.rooms))
@@ -1804,10 +1704,7 @@ class TestClass:
         assert isinstance(resp, RoomUnbanResponse)
 
     async def test_room_redact(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
+
         await async_client.receive_response(self.encryption_sync_response)
 
         room_id = next(iter(async_client.rooms))
@@ -1824,10 +1721,7 @@ class TestClass:
         assert isinstance(resp, RoomRedactResponse)
 
     async def test_context(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
+
         event_id = "$15163622445EBvZJ:localhost"
 
         await async_client.receive_response(self.encryption_sync_response)
@@ -1892,10 +1786,7 @@ class TestClass:
         assert isinstance(resp, RoomMessagesResponse)
 
     async def test_room_typing(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
+
         await async_client.receive_response(self.encryption_sync_response)
 
         room_id = list(async_client.rooms.keys())[0]
@@ -1909,10 +1800,6 @@ class TestClass:
         assert isinstance(resp, RoomTypingResponse)
 
     async def test_update_receipt_marker(self, async_client: AsyncClient, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         room_id = TEST_ROOM_ID
         event_id = "$event1:test.org"
@@ -2528,7 +2415,7 @@ class TestClass:
         async_client.user_id = ALICE_ID
 
         aioresponse.get(
-            f"{BASE_URL_V3}/profile/{async_client.user_id}",
+            f"{BASE_URL_V3}/profile/{async_client.user_id}?access_token=abc123",
             status=200,
             payload=self.get_profile_response(name, avatar),
         )
@@ -2538,7 +2425,7 @@ class TestClass:
         assert resp.avatar_url.replace("#auto", "") == avatar
 
     async def test_get_profile_auth_required(
-        self, async_client: AsyncClient, aioresponse: aioresponses
+        self, unauthed_async_client: AsyncClient, aioresponse: aioresponses
     ):
         login = self.login_response
         token = login["access_token"]
@@ -2559,21 +2446,17 @@ class TestClass:
             payload=self.get_profile_response(name, avatar),
         )
 
-        resp = await async_client.get_profile(user_id)
+        resp = await unauthed_async_client.get_profile(user_id)
         assert isinstance(resp, ProfileGetError)
 
-        await async_client.receive_response(LoginResponse.from_dict(login))
-        assert async_client.logged_in
+        await unauthed_async_client.receive_response(LoginResponse.from_dict(login))
+        assert unauthed_async_client.logged_in
 
-        resp = await async_client.get_profile()
+        resp = await unauthed_async_client.get_profile()
         assert isinstance(resp, ProfileGetResponse)
 
     async def test_get_presence(self, async_client, aioresponse):
         """Test if we can get the presence state of a user"""
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         user_id = "@alice:example.com"
 
@@ -2614,10 +2497,6 @@ class TestClass:
 
     async def test_set_presence(self, async_client, aioresponse):
         """Test if we can set the presence state of user"""
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         aioresponse.put(
             f"{BASE_URL_V3}/presence/{async_client.user_id}/"
@@ -2702,10 +2581,6 @@ class TestClass:
         self, async_client: AsyncClient, aioresponse: aioresponses
     ):
         """Test that we can update a device"""
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         device_id = "QBUAZIFURK"
         content = {"display_name": "My new device"}
@@ -2721,10 +2596,6 @@ class TestClass:
         assert isinstance(resp, UpdateDeviceResponse)
 
     async def test_get_set_displayname(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         url = f"{BASE_URL_V3}/profile/{async_client.user_id}/displayname?access_token={async_client.access_token}"
         aioresponse.get(url, status=200, payload=self.get_displayname_response(None))
@@ -2745,10 +2616,6 @@ class TestClass:
         assert resp3.displayname == new_name
 
     async def test_get_set_avatar(self, async_client, aioresponse):
-        await async_client.receive_response(
-            LoginResponse.from_dict(self.login_response)
-        )
-        assert async_client.logged_in
 
         url = f"{BASE_URL_V3}/profile/{async_client.user_id}/avatar_url?access_token={async_client.access_token}"
 
@@ -2860,7 +2727,7 @@ class TestClass:
         assert isinstance(resp, LoginResponse)
         assert async_client.logged_in
 
-    async def test_max_limit_exceeded(self, async_client, aioresponse):
+    async def test_max_limit_exceeded(self, unauthed_async_client, aioresponse):
         aioresponse.post(
             f"{BASE_URL_V3}/login",
             status=429,
@@ -2868,20 +2735,20 @@ class TestClass:
             repeat=True,
         )
 
-        async_client.config = AsyncClientConfig(max_limit_exceeded=2)
+        unauthed_async_client.config = AsyncClientConfig(max_limit_exceeded=2)
 
         got_error = []
 
         async def on_error(_):
             got_error.append(True)
 
-        async_client.add_response_callback(on_error, ErrorResponse)
+        unauthed_async_client.add_response_callback(on_error, ErrorResponse)
 
-        resp = await async_client.login("wordpass")
+        resp = await unauthed_async_client.login("wordpass")
         assert got_error == [True, True]
         assert isinstance(resp, ErrorResponse)
         assert resp.retry_after_ms
-        assert not async_client.logged_in
+        assert not unauthed_async_client.logged_in
 
     async def test_timeout(self, async_client, aioresponse):
         aioresponse.post(
