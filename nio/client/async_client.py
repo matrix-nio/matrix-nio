@@ -78,9 +78,12 @@ from ..crypto import (
 )
 from ..event_builders import ToDeviceMessage
 from ..events import (
+    AccountDataEvent,
     BadEventType,
+    EphemeralEvent,
     Event,
     MegolmEvent,
+    PresenceEvent,
     PushAction,
     PushCondition,
     RoomKeyRequest,
@@ -227,6 +230,7 @@ from ..responses import (
     WhoamiError,
     WhoamiResponse,
 )
+from ..rooms import MatrixRoom
 from . import Client, ClientConfig
 from .base_client import ClientCallback, logged_in_async, store_loaded
 
@@ -567,10 +571,6 @@ class AsyncClient(Client):
         resp.transport_response = transport_response
         return resp
 
-    async def _run_to_device_callbacks(self, event: Union[ToDeviceEvent]):
-        for cb in self.to_device_callbacks:
-            await cb.execute(event)
-
     async def _handle_to_device(self, response: SyncResponse):
         decrypted_to_device = []
 
@@ -589,7 +589,7 @@ class AsyncClient(Client):
             ):
                 continue
 
-            await self._run_to_device_callbacks(to_device_event)
+            await self._on_to_device(to_device_event)
 
         self._replace_decrypted_to_device(decrypted_to_device, response)
 
@@ -600,8 +600,7 @@ class AsyncClient(Client):
             for event in info.invite_state:
                 room.handle_event(event)
 
-                for cb in self.event_callbacks:
-                    await cb.execute(event, room)
+                await self._on_invited_rooms(event, room)
 
     async def _handle_joined_rooms(self, response: SyncResponse) -> None:
         encrypted_rooms: Set[str] = set()
@@ -621,8 +620,7 @@ class AsyncClient(Client):
                     event = decrypted_event
                     decrypted_events.append((index, decrypted_event))
 
-                for cb in self.event_callbacks:
-                    await cb.execute(event, room)
+                await self._on_event(event, room)
 
             # Replace the Megolm events with decrypted ones
             for index, event in decrypted_events:
@@ -630,15 +628,11 @@ class AsyncClient(Client):
 
             for event in join_info.ephemeral:
                 room.handle_ephemeral_event(event)
-
-                for cb in self.ephemeral_callbacks:
-                    await cb.execute(event, room)
+                await self._on_ephemeral(event, room)
 
             for event in join_info.account_data:
                 room.handle_account_data(event)
-
-                for cb in self.room_account_data_callbacks:
-                    await cb.execute(event, room)
+                await self._on_room_account_data(event, room)
 
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)
@@ -663,23 +657,56 @@ class AsyncClient(Client):
                 ].currently_active = event.currently_active
                 self.rooms[room_id].users[event.user_id].status_msg = event.status_msg
 
-            for cb in self.presence_callbacks:
-                await cb.execute(event)
+            await self._on_presence(event)
 
     async def _handle_global_account_data_events(  # type: ignore
         self,
         response: SyncResponse,
     ) -> None:
         for event in response.account_data_events:
-            for cb in self.global_account_data_callbacks:
-                await cb.execute(event)
+            await self._on_global_account_data(event)
 
     async def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()
 
         for event in expired_verifications:
-            for cb in self.to_device_callbacks:
-                await cb.execute(event)
+            await self._on_expired_verifications(event)
+
+    async def _on_to_device(self, event: ToDeviceEvent):
+        for cb in self.to_device_callbacks:
+            await cb.async_execute(event)
+
+    async def _on_invited_rooms(self, event: Event, room: MatrixRoom):
+        for cb in self.event_callbacks:
+            await cb.async_execute(event, room)
+
+    async def _on_event(self, event: Event, room: MatrixRoom):
+        for cb in self.event_callbacks:
+            await cb.async_execute(event, room)
+
+    async def _on_ephemeral(self, event: EphemeralEvent, room: MatrixRoom):
+        for cb in self.ephemeral_callbacks:
+            await cb.async_execute(event, room)
+
+    async def _on_room_account_data(self, event: AccountDataEvent, room: MatrixRoom):
+        for cb in self.room_account_data_callbacks:
+            await cb.async_execute(event, room)
+
+    async def _on_presence(self, event: PresenceEvent):
+        for cb in self.presence_callbacks:
+            await cb.async_execute(event)
+
+    async def _on_global_account_data(self, event: AccountDataEvent):
+        for cb in self.global_account_data_callbacks:
+            await cb.async_execute(event)
+
+    async def _on_expired_verifications(self, event: ToDeviceEvent):
+        for cb in self.to_device_callbacks:
+            await cb.async_execute(event)
+
+    async def _on_response(self, response: Union[Response, ErrorResponse]):
+        for cb in self.response_callbacks:
+            await cb.async_execute(response)
 
     async def _handle_sync(self, response: SyncResponse) -> None:
         # We already received such a sync response, do nothing in that case.
@@ -709,7 +736,7 @@ class AsyncClient(Client):
     async def _collect_key_requests(self):
         events = self.olm.collect_key_requests()
         for event in events:
-            await self._run_to_device_callbacks(event)
+            await self._on_to_device(event)
 
     async def receive_response(self, response: Response) -> None:
         """Receive a Matrix Response and change the client state accordingly.
@@ -1218,8 +1245,7 @@ class AsyncClient(Client):
         calling receive_response().
         """
         for response in responses:
-            for cb in self.response_callbacks:
-                await cb.execute(response)
+            await self._on_response(response)
 
     @logged_in_async
     async def sync_forever(
