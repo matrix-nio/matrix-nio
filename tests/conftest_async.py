@@ -6,7 +6,7 @@ from nio.crypto import OlmDevice
 
 
 @pytest_asyncio.fixture
-async def async_client(tempdir):
+async def async_client(tempdir) -> AsyncClient:
     client = AsyncClient(
         "https://example.org",
         "ephemeral",

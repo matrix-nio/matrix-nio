@@ -52,8 +52,9 @@ except ImportError:
     from urlparse import urlparse  # type: ignore
 
 
-MATRIX_API_PATH: str = "/_matrix/client/r0"
-MATRIX_MEDIA_API_PATH: str = "/_matrix/media/r0"
+MATRIX_API_PATH_V1: str = "/_matrix/client/v1"
+MATRIX_API_PATH_V3: str = "/_matrix/client/v3"
+MATRIX_MEDIA_API_PATH: str = "/_matrix/media/v3"
 
 _FilterT = Union[None, str, Dict[Any, Any]]
 
@@ -289,7 +290,7 @@ class Api:
     def _build_path(
         path: Union[str, Sequence[str]],
         query_parameters: Optional[Dict] = None,
-        base_path: str = MATRIX_API_PATH,
+        base_path: str = MATRIX_API_PATH_V3,
     ) -> str:
         """Builds a percent-encoded path from a list of strings.
 
@@ -300,7 +301,7 @@ class Api:
         Args:
             path (List[str]): the list of path elements.
             query_parameters (Dict, optional): [description]. Defaults to None.
-            base_path (str, optional): A base path to be prepended to path. Defaults to MATRIX_API_PATH.
+            base_path (str, optional): A base path to be prepended to path. Defaults to MATRIX_API_PATH_V3.
 
         Returns:
             str: [description]
