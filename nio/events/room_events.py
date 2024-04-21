@@ -619,7 +619,6 @@ class RoomCreateEvent(Event):
     """The first event in a room, signaling that the room was created.
 
     Attributes:
-        creator (str): The fully-qualified ID of the user who created the room.
         federate (bool): A boolean flag telling us whether users on other
             homeservers are able to join this room.
         room_version (str): The version of the room. Different room versions
@@ -632,7 +631,6 @@ class RoomCreateEvent(Event):
 
     """
 
-    creator: str = field()
     federate: bool = True
     room_version: str = "1"
     room_type: str = ""
@@ -642,13 +640,12 @@ class RoomCreateEvent(Event):
     def from_dict(
         cls, parsed_dict: Dict[Any, Any]
     ) -> Union[RoomCreateEvent, BadEventType]:
-        creator = parsed_dict["content"]["creator"]
         federate = parsed_dict["content"]["m.federate"]
         version = parsed_dict["content"]["room_version"]
         if "type" in parsed_dict["content"]:
             room_type = parsed_dict["content"]["type"]
 
-        return cls(parsed_dict, creator, federate, version, room_type)
+        return cls(parsed_dict, federate, version, room_type)
 
 
 @dataclass

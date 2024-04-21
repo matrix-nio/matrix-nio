@@ -68,7 +68,6 @@ class MatrixRoom:
         # yapf: disable
         self.room_id: str = room_id
         self.own_user_id = own_user_id
-        self.creator: str = ""
         self.federate: bool = True
         self.room_version: str = "1"
         self.room_type: Optional[str] = None
@@ -377,7 +376,6 @@ class MatrixRoom:
         )
 
         if isinstance(event, RoomCreateEvent):
-            self.creator = event.creator
             self.federate = event.federate
             self.room_version = event.room_version
             self.room_type = event.room_type

@@ -423,7 +423,6 @@ class TestClass:
 
     def test_create_event(self):
         room = self.test_room
-        assert not room.creator
         room.handle_event(
             RoomCreateEvent(
                 {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
@@ -431,7 +430,6 @@ class TestClass:
                 False,
             )
         )
-        assert room.creator == BOB_ID
         assert room.federate is False
         assert room.room_version == "1"
 

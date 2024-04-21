@@ -31,7 +31,6 @@
     },
     {
         "content": {
-            "creator": "@example:example.org",
             "room_version": "1",
             "m.federate": true,
             "predecessor": {
