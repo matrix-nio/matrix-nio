@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 import logging
 from collections import defaultdict
@@ -129,18 +130,27 @@ class ClientCallback:
     func: Union[Callable[..., None], Callable[..., Awaitable[None]]] = field()
     filter: Union[Tuple[Type, ...], Type, None] = None
 
-    def execute(self, event, room: Optional[MatrixRoom] = None) -> Optional[Awaitable]:
+    def _execute(self, event, room: Optional[MatrixRoom] = None) -> Optional[Awaitable]:
+        # Checks the filter and executes the function once.
+        # sync_execute and async_execute will each determine
+        # how to run an awaitable if one is returned.
         if self.filter is None or isinstance(event, self.filter):
             if room:
                 return self.func(room, event)
             else:
                 return self.func(event)
 
+    def sync_execute(self, event, room: Optional[MatrixRoom] = None) -> None:
+        """Execute callback from synchronous context."""
+        result = self._execute(event, room)
+        if inspect.isawaitable(result):
+            asyncio.run(result)
+
     async def async_execute(self, event, room: Optional[MatrixRoom] = None) -> None:
-        if self.filter is None or isinstance(event, self.filter):
-            result = self.execute(event, room)
-            if inspect.isawaitable(result):
-                await result
+        """Execute callback from asynchronous context."""
+        result = self._execute(event, room)
+        if inspect.isawaitable(result):
+            await result
 
 
 @dataclass(frozen=True)
@@ -859,35 +869,35 @@ class Client:
 
     def _on_to_device(self, event: ToDeviceEvent):
         for cb in self.to_device_callbacks:
-            cb.execute(event)
+            cb.sync_execute(event)
 
     def _on_invited_rooms(self, event: Event, room: MatrixRoom):
         for cb in self.event_callbacks:
-            cb.execute(event, room)
+            cb.sync_execute(event, room)
 
     def _on_event(self, event: Event, room: MatrixRoom):
         for cb in self.event_callbacks:
-            cb.execute(event, room)
+            cb.sync_execute(event, room)
 
     def _on_ephemeral(self, event: EphemeralEvent, room: MatrixRoom):
         for cb in self.ephemeral_callbacks:
-            cb.execute(event, room)
+            cb.sync_execute(event, room)
 
     def _on_room_account_data(self, event: AccountDataEvent, room: MatrixRoom):
         for cb in self.room_account_data_callbacks:
-            cb.execute(event, room)
+            cb.sync_execute(event, room)
 
     def _on_presence(self, event: PresenceEvent):
         for cb in self.presence_callbacks:
-            cb.execute(event)
+            cb.sync_execute(event)
 
     def _on_global_account_data(self, event: AccountDataEvent):
         for cb in self.global_account_data_callbacks:
-            cb.execute(event)
+            cb.sync_execute(event)
 
     def _on_expired_verifications(self, event: ToDeviceEvent):
         for cb in self.to_device_callbacks:
-            cb.execute(event)
+            cb.sync_execute(event)
 
     def _handle_sync(
         self, response: SyncResponse
