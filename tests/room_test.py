@@ -425,8 +425,7 @@ class TestClass:
         room = self.test_room
         room.handle_event(
             RoomCreateEvent(
-                {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0},
-                False
+                {"event_id": "event_id", "sender": BOB_ID, "origin_server_ts": 0}, False
             )
         )
         assert room.federate is False
