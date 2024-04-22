@@ -1,6 +1,5 @@
 {
     "content": {
-        "creator": "@example:localhost",
         "m.federate": true,
         "room_version": "1",
         "type": "nio.matrix.test"

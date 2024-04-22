@@ -94,9 +94,7 @@
                             }
                         },
                         {
-                            "content": {
-                                "creator": "@example:localhost"
-                            },
+                            "content": {},
                             "event_id": "$15139375510KUZHi:localhost",
                             "origin_server_ts": 1513937551203,
                             "sender": "@example:localhost",
