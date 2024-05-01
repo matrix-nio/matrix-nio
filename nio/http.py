@@ -82,9 +82,12 @@ class HttpRequest(TransportRequest):
         ]
 
         if data:
-            headers.append(("Content-Type", "application/json"))
-
-            headers.append(("Content-length", f"{len(data)}"))
+            headers.extend(
+                (
+                    ("Content-Type", "application/json"),
+                    ("Content-length", f"{len(data)}"),
+                )
+            )
 
         return headers
 
@@ -135,9 +138,12 @@ class Http2Request(TransportRequest):
         headers.append(("accept", "application/json"))
 
         if data:
-            headers.append(("content-type", "application/json"))
-
-            headers.append(("content-length", f"{len(data)}"))
+            headers.extend(
+                (
+                    ("content-type", "application/json"),
+                    ("content-length", f"{len(data)}"),
+                )
+            )
 
         return headers
 

@@ -1,7 +1,7 @@
 exclude: ^tests/data
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v4.6.0
     hooks:
       - id: check-yaml
       - id: end-of-file-fixer
@@ -11,11 +11,12 @@ repos:
     hooks:
       - id: sphinx-lint
   - repo: https://github.com/psf/black
-    rev: 24.3.0
+    rev: 24.4.2
     hooks:
       - id: black
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.3
+    rev: v0.4.2
     hooks:
       - id: ruff
-        args: [ --fix, --exit-non-zero-on-fix ]
+        args:
+        - --exit-non-zero-on-fix

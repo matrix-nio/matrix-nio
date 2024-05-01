@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 from nio.api import PushRuleKind
 from nio.events import (
@@ -73,8 +74,7 @@ from nio.rooms import MatrixRoom
 class TestClass:
     @staticmethod
     def _load_response(filename):
-        with open(filename) as f:
-            return json.loads(f.read())
+        return json.loads(Path(filename).read_text())
 
     def test_redacted_event(self):
         parsed_dict = TestClass._load_response("tests/data/events/redacted.json")

@@ -51,14 +51,8 @@ from nio.responses import (
 TEST_ROOM_ID = "!test:example.org"
 
 
-def _load_bytes(filename):
-    with open(filename, "rb") as f:
-        return f.read()
-
-
 def _load_response(filename):
-    with open(filename) as f:
-        return json.loads(f.read())
+    return json.loads(Path(filename).read_text())
 
 
 class TestClass:
@@ -132,7 +126,7 @@ class TestClass:
     @pytest.mark.parametrize(
         ("data", "response_class"),
         [
-            (_load_bytes("tests/data/file_response"), MemoryDownloadResponse),
+            (Path("tests/data/file_response").read_bytes(), MemoryDownloadResponse),
             (Path("tests/data/file_response"), DiskDownloadResponse),
         ],
     )
@@ -152,7 +146,7 @@ class TestClass:
         assert isinstance(response, DownloadError)
 
     def test_thumbnail(self):
-        data = _load_bytes("tests/data/file_response")
+        data = Path("tests/data/file_response").read_bytes()
         response = ThumbnailResponse.from_data(data, "image/png")
         assert isinstance(response, ThumbnailResponse)
         assert response.body == data

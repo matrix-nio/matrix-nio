@@ -8,7 +8,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import sys
+from pathlib import Path
 
 from atomicwrites import atomic_write
 from Crypto import Random
@@ -58,14 +59,15 @@ def decrypt_and_read(infile: str, passphrase: str) -> bytes:
         FileNotFoundError if the file was not found.
 
     """
-    with open(infile) as f:
-        encrypted_data = f.read()
-    encrypted_data = encrypted_data.replace("\n", "")
+    encrypted_data = Path(infile).read_text().replace("\n", "")
 
     if not encrypted_data.startswith(HEADER) or not encrypted_data.endswith(FOOTER):
         raise ValueError("Wrong file format.")
 
-    return decrypt(encrypted_data[len(HEADER) : -len(FOOTER)], passphrase)
+    if sys.version_info < (3, 9):
+        return decrypt(encrypted_data[len(HEADER) : -len(FOOTER)], passphrase)
+
+    return decrypt(encrypted_data.removeprefix(HEADER).removesuffix(FOOTER), passphrase)
 
 
 def prf(passphrase, salt):

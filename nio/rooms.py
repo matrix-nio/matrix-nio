@@ -143,7 +143,7 @@ class MatrixRoom:
     def group_name_structure(self) -> Tuple[bool, List[str], int]:
         """Get if room is empty, ID for listed users and the N others count."""
         try:
-            heroes, joined, invited = self._summary_details()
+            heroes, _joined, _invited = self._summary_details()
         except ValueError:
             users = [
                 u
@@ -269,7 +269,7 @@ class MatrixRoom:
         if invited:
             self.invited_users[user_id] = user
 
-        name = display_name if display_name else user_id
+        name = display_name or user_id
         self.names[name].append(user_id)
 
         return True

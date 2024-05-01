@@ -167,7 +167,7 @@ class BadEvent:
     def from_dict(cls, parsed_dict: Dict[Any, Any]) -> BadEvent:
         timestamp = parsed_dict["origin_server_ts"]
 
-        timestamp = timestamp if timestamp > 0 else 0
+        timestamp = max(0, timestamp)
         return cls(
             parsed_dict,
             parsed_dict["event_id"],

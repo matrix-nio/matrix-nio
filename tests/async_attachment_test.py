@@ -61,7 +61,7 @@ class TestClass:
             await self.test_encrypt(123)
 
     async def test_hash_verification(self):
-        data, ciphertext, keys = await self._get_data_cypher_keys()
+        _data, ciphertext, keys = await self._get_data_cypher_keys()
 
         with pytest.raises(EncryptionError):
             decrypt_attachment(
@@ -72,7 +72,7 @@ class TestClass:
             )
 
     async def test_invalid_key(self):
-        data, ciphertext, keys = await self._get_data_cypher_keys()
+        _data, ciphertext, keys = await self._get_data_cypher_keys()
 
         with pytest.raises(EncryptionError):
             decrypt_attachment(
@@ -83,7 +83,7 @@ class TestClass:
             )
 
     async def test_invalid_iv(self):
-        data, ciphertext, keys = await self._get_data_cypher_keys()
+        _data, ciphertext, keys = await self._get_data_cypher_keys()
 
         with pytest.raises(EncryptionError):
             decrypt_attachment(
@@ -94,7 +94,7 @@ class TestClass:
             )
 
     async def test_short_key(self):
-        data, ciphertext, keys = await self._get_data_cypher_keys()
+        _data, ciphertext, keys = await self._get_data_cypher_keys()
 
         with pytest.raises(EncryptionError):
             decrypt_attachment(

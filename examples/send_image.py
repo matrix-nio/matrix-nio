@@ -80,7 +80,7 @@ async def send_image(client, room_id, image):
     # first do an upload of image, then send URI of upload to room
     file_stat = await aiofiles.os.stat(image)
     async with aiofiles.open(image, "r+b") as f:
-        resp, maybe_keys = await client.upload(
+        resp, _maybe_keys = await client.upload(
             f,
             content_type=mime_type,  # image/jpeg
             filename=os.path.basename(image),
