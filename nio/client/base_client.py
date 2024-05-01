@@ -131,9 +131,11 @@ class ClientCallback:
     filter: Union[Tuple[Type, ...], Type, None] = None
 
     def _execute(self, event, room: Optional[MatrixRoom] = None) -> Optional[Awaitable]:
-        # Checks the filter and executes the function once.
-        # sync_execute and async_execute will each determine
-        # how to run an awaitable if one is returned.
+        """
+        Checks the filter and executes the function once.
+        sync_execute and async_execute will each determine
+        how to run an awaitable if one is returned.
+        """
         if self.filter is None or isinstance(event, self.filter):
             if room:
                 return self.func(room, event)
@@ -143,7 +145,7 @@ class ClientCallback:
     def sync_execute(self, event, room: Optional[MatrixRoom] = None) -> None:
         """Execute callback from synchronous context."""
         result = self._execute(event, room)
-        if inspect.isawaitable(result):
+        if inspect.iscoroutine(result):
             asyncio.run(result)
 
     async def async_execute(self, event, room: Optional[MatrixRoom] = None) -> None:
