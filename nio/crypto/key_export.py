@@ -9,6 +9,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from pathlib import Path
 
 from atomicwrites import atomic_write
 from Crypto import Random
@@ -22,7 +25,9 @@ HEADER = "-----BEGIN MEGOLM SESSION DATA-----"
 FOOTER = "-----END MEGOLM SESSION DATA-----"
 
 
-def encrypt_and_save(data: bytes, outfile: str, passphrase: str, count: int = 100000):
+def encrypt_and_save(
+    data: bytes, outfile: str | Path, passphrase: str, count: int = 100000
+):
     """Encrypt keys data and write it to file.
 
     Args:

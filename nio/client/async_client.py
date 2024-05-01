@@ -13,6 +13,8 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from __future__ import annotations
+
 import asyncio
 import io
 import json
@@ -377,7 +379,7 @@ class AsyncClient(Client):
     A simple example can be found bellow.
 
     Example:
-            >>> client = AsyncClient("https://example.org", "example")
+            >>> client = AsyncClient("https://example.org","example")
             >>> login_response = loop.run_until_complete(
             >>>     client.login("hunter1")
             >>> )
@@ -399,9 +401,7 @@ class AsyncClient(Client):
 
     Example:
             >>> config = ClientConfig(store_sync_tokens=True)
-            >>> client = AsyncClient("https://example.org", "example",
-            >>>                      store_path="/home/example",
-            >>>                      config=config)
+            >>> client = AsyncClient("https://example.org","example",store_path="/home/example",config=config)
             >>> login_response = loop.run_until_complete(
             >>>     client.login("hunter1")
             >>> )
@@ -414,7 +414,7 @@ class AsyncClient(Client):
         homeserver: str,
         user: str = "",
         device_id: Optional[str] = "",
-        store_path: Optional[str] = "",
+        store_path: Optional[Union[str, Path]] = None,
         config: Optional[AsyncClientConfig] = None,
         ssl: Optional[bool] = None,
         proxy: Optional[str] = None,
@@ -2307,7 +2307,9 @@ class AsyncClient(Client):
             self.client_session = None
 
     @store_loaded
-    async def export_keys(self, outfile: str, passphrase: str, count: int = 10000):
+    async def export_keys(
+        self, outfile: str | Path, passphrase: str, count: int = 10000
+    ):
         """Export all the Megolm decryption keys of this device.
 
         The keys will be encrypted using the passphrase.
@@ -2316,7 +2318,7 @@ class AsyncClient(Client):
         identity keys of the device.
 
         Args:
-            outfile (str): The file to write the keys to.
+            outfile (str, pathlib.Path): The file to write the keys to.
             passphrase (str): The encryption passphrase.
             count (int): Optional. Round count for the underlying key
                 derivation. It is not recommended to specify it unless

@@ -37,23 +37,23 @@ class TestClass:
         ):
             decrypt(ciphertext, "Fake key")
 
-    def test_encrypt_file(self, tempdir):
+    def test_encrypt_file(self, tmp_path):
         data = b"data"
         passphrase = "A secret"
-        file = path.join(tempdir, "keys_file")
+        file = path.join(tmp_path, "keys_file")
 
         encrypt_and_save(data, file, passphrase, count=10)
 
         plaintext = decrypt_and_read(file, passphrase)
         assert plaintext == data
 
-    def test_export(self, tempdir):
+    def test_export(self, tmp_path):
         user_id = "ephemeral"
         device_id = "DEVICEID"
 
-        file = path.join(tempdir, "keys_file")
+        file = path.join(tmp_path, "keys_file")
 
-        store = DefaultStore(user_id, device_id, tempdir, "")
+        store = DefaultStore(user_id, device_id, tmp_path, "")
         olm = Olm(user_id, device_id, store)
         olm.create_outbound_group_session(TEST_ROOM)
 
@@ -64,7 +64,7 @@ class TestClass:
         )
         olm.export_keys(file, "pass")
 
-        alice_store = DefaultStore("alice", device_id, tempdir, "")
+        alice_store = DefaultStore("alice", device_id, tmp_path, "")
         alice = Olm("alice", device_id, alice_store)
 
         assert not alice.inbound_group_store.get(
@@ -77,32 +77,32 @@ class TestClass:
             TEST_ROOM, olm.account.identity_keys["curve25519"], out_session.id
         )
 
-    def test_unencrypted_import(self, tempdir):
+    def test_unencrypted_import(self, tmp_path):
         device_id = "DEVICEID"
-        file = path.join(tempdir, "keys_file")
+        file = path.join(tmp_path, "keys_file")
 
         with open(file, "w") as f:
             f.write("{}")
 
-        alice_store = DefaultStore("alice", device_id, tempdir, "")
+        alice_store = DefaultStore("alice", device_id, tmp_path, "")
         alice = Olm("alice", device_id, alice_store)
         with pytest.raises(EncryptionError):
             alice.import_keys(file, "pass")
 
-    def test_invalid_json(self, tempdir):
+    def test_invalid_json(self, tmp_path):
         device_id = "DEVICEID"
-        file = path.join(tempdir, "keys_file")
+        file = path.join(tmp_path, "keys_file")
 
         encrypt_and_save(b"{sessions: [{}]}", file, "pass", count=10)
 
-        alice_store = DefaultStore("alice", device_id, tempdir, "")
+        alice_store = DefaultStore("alice", device_id, tmp_path, "")
         alice = Olm("alice", device_id, alice_store)
 
         with pytest.raises(EncryptionError):
             alice.import_keys(file, "pass")
 
-    def test_invalid_json_schema(self, tempdir):
-        file = path.join(tempdir, "keys_file")
+    def test_invalid_json_schema(self, tmp_path):
+        file = path.join(tmp_path, "keys_file")
 
         payload = {"sessions": [{"algorithm": "test"}]}
         encrypt_and_save(json.dumps(payload).encode(), file, "pass", count=10)

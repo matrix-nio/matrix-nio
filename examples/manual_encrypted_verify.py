@@ -66,7 +66,7 @@ class CustomEncryptedClient(AsyncClient):
         homeserver,
         user="",
         device_id="",
-        store_path="",
+        store_path=None,
         config=None,
         ssl=None,
         proxy=None,

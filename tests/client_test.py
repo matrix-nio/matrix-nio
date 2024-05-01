@@ -3,7 +3,7 @@ import random
 from uuid import uuid4
 
 import pytest
-from helpers import FrameFactory, ephemeral, ephemeral_dir, faker
+from helpers import FrameFactory, faker
 
 from nio import (
     Client,
@@ -68,8 +68,8 @@ CAROL_ID = "@carol:example.org"
 
 
 @pytest.fixture
-def synced_client(tempdir):
-    http_client = HttpClient("example.org", "ephemeral", "DEVICEID", tempdir)
+def synced_client(tmp_path):
+    http_client = HttpClient("example.org", "ephemeral", "DEVICEID", tmp_path)
     http_client.connect(TransportType.HTTP2)
 
     http_client.login("1234")
@@ -510,8 +510,8 @@ class TestClass:
         assert client.store
         assert client.olm
 
-    def test_client_restore_login(self, tempdir):
-        client = Client(BOB_ID, store_path=tempdir)
+    def test_client_restore_login(self, tmp_path):
+        client = Client(BOB_ID, store_path=tmp_path)
         assert not client.user_id
         assert not client.device_id
         assert not client.access_token
@@ -565,8 +565,8 @@ class TestClass:
         assert room.encrypted
         assert client.should_query_keys
 
-    def test_device_store(self, tempdir):
-        client = Client("ephemeral", "DEVICEID", tempdir)
+    def test_device_store(self, tmp_path):
+        client = Client("ephemeral", "DEVICEID", tmp_path)
         client.receive_response(self.login_response)
         client.receive_response(KeysUploadResponse(50, 50))
 
@@ -579,7 +579,7 @@ class TestClass:
         alice_device = client.device_store[ALICE_ID][ALICE_DEVICE_ID]
         assert alice_device
 
-        client = Client("ephemeral", "DEVICEID", tempdir)
+        client = Client("ephemeral", "DEVICEID", tmp_path)
         client.receive_response(self.login_response)
         assert list(client.device_store.users) == [ALICE_ID]
         alice_device = client.device_store[ALICE_ID][ALICE_DEVICE_ID]
@@ -624,8 +624,7 @@ class TestClass:
 
         assert client.users_for_key_query == {BOB_ID}
 
-    @ephemeral
-    def test_query_rule(self):
+    def test_query_rule(self, ephemeral_dir):
         client = Client("ephemeral", "DEVICEID", ephemeral_dir)
         client.receive_response(self.login_response)
         assert client.store is not None
@@ -666,8 +665,7 @@ class TestClass:
         assert client.users_for_key_query == {BOB_ID}
         assert client.should_query_keys
 
-    @ephemeral
-    def test_early_store_loading(self):
+    def test_early_store_loading(self, ephemeral_dir):
         client = Client("ephemeral")
 
         with pytest.raises(LocalProtocolError):

@@ -19,6 +19,7 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import wraps
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -197,7 +198,7 @@ class Client:
        device_id (str, optional): An unique identifier that distinguishes
            this client instance. If not set the server will provide one after
            log in.
-       store_dir (str, optional): The directory that should be used for state
+       store_path (str, pathlib.Path, optional): The directory that should be used for state
            storage.
        config (ClientConfig, optional): Configuration for the client.
 
@@ -207,7 +208,7 @@ class Client:
         self,
         user: str,
         device_id: Optional[str] = None,
-        store_path: Optional[str] = "",
+        store_path: Optional[Path] = None,
         config: Optional[ClientConfig] = None,
     ):
         self.user = user

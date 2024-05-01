@@ -5,7 +5,6 @@ import re
 import sys
 import time
 from datetime import datetime, timedelta
-from os import path
 from pathlib import Path
 from typing import Tuple
 from unittest.mock import AsyncMock
@@ -1495,8 +1494,8 @@ class TestClass:
 
         assert isinstance(response, JoinedRoomsResponse)
 
-    async def test_key_exports(self, async_client, tempdir):
-        file = path.join(tempdir, "keys_file")
+    async def test_key_exports(self, async_client, tmp_path):
+        file = tmp_path / "keys_file"
 
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
@@ -1514,7 +1513,7 @@ class TestClass:
         await async_client.export_keys(file, "pass")
 
         alice_client = AsyncClient(
-            "https://example.org", "alice", ALICE_DEVICE_ID, tempdir
+            "https://example.org", "alice", ALICE_DEVICE_ID, tmp_path
         )
 
         alice_client.user_id = ALICE_ID

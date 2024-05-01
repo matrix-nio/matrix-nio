@@ -16,7 +16,8 @@ import os
 import sqlite3
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import List, Optional
+from pathlib import Path
+from typing import List, Optional, Union
 
 from peewee import DoesNotExist, SqliteDatabase
 from playhouse.sqliteq import SqliteQueueDatabase
@@ -102,7 +103,7 @@ class MatrixStore:
 
     user_id: str = field()
     device_id: str = field()
-    store_path: str = field()
+    store_path: Union[str, Path] = field()
     pickle_key: str = ""
     database_name: str = ""
     database_path: str = field(init=False)
@@ -132,6 +133,7 @@ class MatrixStore:
         self._update_version(2)
 
     def __post_init__(self):
+        self.store_path = str(self.store_path)  # Coerce pathlib.Path -> str
         self.database_name = self.database_name or f"{self.user_id}_{self.device_id}.db"
         self.database_path = os.path.join(self.store_path, self.database_name)
         self.database = self._create_database()
@@ -591,7 +593,7 @@ class MatrixStore:
 class DefaultStore(MatrixStore):
     """The default nio Matrix Store.
 
-    This store uses an Sqlite database as the main storage format while device
+    This store uses a Sqlite database as the main storage format while device
     trust state is stored in plaintext files using a format similar to the ssh
     known_hosts file format. The files will be created in the same directory as
     the main Sqlite database.
@@ -603,7 +605,7 @@ class DefaultStore(MatrixStore):
     Args:
         user_id (str): The fully-qualified ID of the user that owns the store.
         device_id (str): The device id of the user's device.
-        store_path (str): The path where the store should be stored.
+        store_path (str, pathlib.Path): The path where the store should be stored.
         pickle_key (str, optional): A passphrase that will be used to encrypt
             encryption keys while they are in storage.
         database_name (str, optional): The file-name of the database that

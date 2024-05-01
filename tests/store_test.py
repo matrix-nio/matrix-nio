@@ -36,21 +36,28 @@ TEST_FORWARDING_CHAIN = [BOB_CURVE, BOB_ONETIME]
 
 
 @pytest.fixture
-def matrix_store(tempdir):
-    return MatrixStore("ephemeral", "DEVICEID", tempdir)
+def matrix_store(tmp_path):
+    return MatrixStore("ephemeral", "DEVICEID", tmp_path)
 
 
 @pytest.fixture
-def store(tempdir):
-    store = DefaultStore("ephemeral", "DEVICEID", tempdir)
+def olm_account(matrix_store):
+    account = OlmAccount()
+    matrix_store.save_account(account)
+    return account
+
+
+@pytest.fixture
+def store(tmp_path):
+    store = DefaultStore("ephemeral", "DEVICEID", tmp_path)
     account = OlmAccount()
     store.save_account(account)
     return store
 
 
 @pytest.fixture
-def sqlstore(tempdir):
-    store = SqliteStore("ephemeral", "DEVICEID", tempdir)
+def sqlstore(tmp_path):
+    store = SqliteStore("ephemeral", "DEVICEID", tmp_path)
     account = OlmAccount()
     store.save_account(account)
     return store
@@ -110,9 +117,9 @@ class TestClass:
         assert key.key == loaded_key.key
         assert key == loaded_key
 
-    def test_key_store(self, tempdir):
-        store_path = os.path.join(tempdir, "test_store")
-        store = KeyStore(os.path.join(tempdir, "test_store"))
+    def test_key_store(self, tmp_path):
+        store_path = os.path.join(tmp_path, "test_store")
+        store = KeyStore(os.path.join(tmp_path, "test_store"))
         assert repr(store) == f"KeyStore object, file: {store_path}"
 
         key = faker.ed25519_key()
@@ -121,9 +128,9 @@ class TestClass:
 
         assert key == store.get_key(key.user_id, key.device_id)
 
-    def test_key_store_add_invalid(self, tempdir):
-        os.path.join(tempdir, "test_store")
-        store = KeyStore(os.path.join(tempdir, "test_store"))
+    def test_key_store_add_invalid(self, tmp_path):
+        os.path.join(tmp_path, "test_store")
+        store = KeyStore(os.path.join(tmp_path, "test_store"))
 
         key = faker.ed25519_key()
         store.add(key)
@@ -134,9 +141,9 @@ class TestClass:
         with pytest.raises(OlmTrustError):
             store.add(fake_key)
 
-    def test_key_store_check_invalid(self, tempdir):
-        os.path.join(tempdir, "test_store")
-        store = KeyStore(os.path.join(tempdir, "test_store"))
+    def test_key_store_check_invalid(self, tmp_path):
+        os.path.join(tmp_path, "test_store")
+        store = KeyStore(os.path.join(tmp_path, "test_store"))
 
         key = faker.ed25519_key()
         store.add(key)
@@ -147,9 +154,9 @@ class TestClass:
         assert fake_key not in store
         assert key in store
 
-    def test_key_store_add_many(self, tempdir):
-        os.path.join(tempdir, "test_store")
-        store = KeyStore(os.path.join(tempdir, "test_store"))
+    def test_key_store_add_many(self, tmp_path):
+        os.path.join(tmp_path, "test_store")
+        store = KeyStore(os.path.join(tmp_path, "test_store"))
 
         keys = [
             faker.ed25519_key(),
@@ -160,14 +167,14 @@ class TestClass:
 
         store.add_many(keys)
 
-        store2 = KeyStore(os.path.join(tempdir, "test_store"))
+        store2 = KeyStore(os.path.join(tmp_path, "test_store"))
 
         for key in keys:
             assert key in store2
 
-    def test_key_store_remove_many(self, tempdir):
-        os.path.join(tempdir, "test_store")
-        store = KeyStore(os.path.join(tempdir, "test_store"))
+    def test_key_store_remove_many(self, tmp_path):
+        os.path.join(tmp_path, "test_store")
+        store = KeyStore(os.path.join(tmp_path, "test_store"))
 
         keys = [
             faker.ed25519_key(),
@@ -181,16 +188,14 @@ class TestClass:
             assert key in store
 
         store.remove_many(keys)
-        store2 = KeyStore(os.path.join(tempdir, "test_store"))
+        store2 = KeyStore(os.path.join(tmp_path, "test_store"))
 
         for key in keys:
             assert key not in store2
 
-    @ephemeral
-    def test_store_opening(self):
-        store = self.ephemeral_store
-        account = store.load_account()
-        assert not account
+    def test_store_opening(self, matrix_store, olm_account):
+        account = matrix_store.load_account()
+        assert account == olm_account
 
     @ephemeral
     def test_store_account_saving(self):
@@ -467,13 +472,13 @@ class TestClass:
         assert "ABCDF" in key_requests.keys()
         assert request == key_requests["ABCDF"]
 
-    def test_db_upgrade(self, tempdir):
+    def test_db_upgrade(self, tmp_path):
         user = "ephemeral"
         device_id = "DEVICE_ID"
         user2 = "alice"
         device_id2 = "ALICE_ID"
 
-        store = MatrixStore(user, device_id, tempdir, database_name="test.db")
+        store = MatrixStore(user, device_id, tmp_path, database_name="test.db")
         account = OlmAccount()
         session = OutboundSession(account, BOB_CURVE, BOB_ONETIME)
         out_group = OutboundGroupSession()
@@ -492,12 +497,12 @@ class TestClass:
         store.save_inbound_group_session(in_group)
         store.save_device_keys(devices)
 
-        store2 = MatrixStore(user2, device_id2, tempdir, database_name="test.db")
+        store2 = MatrixStore(user2, device_id2, tmp_path, database_name="test.db")
         account2 = OlmAccount()
         store2.save_account(account2)
         del store
 
-        store = MatrixStore(user, device_id, tempdir, database_name="test.db")
+        store = MatrixStore(user, device_id, tmp_path, database_name="test.db")
         loaded_account = store.load_account()
 
         assert account.identity_keys == loaded_account.identity_keys

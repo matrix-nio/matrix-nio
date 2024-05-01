@@ -1,5 +1,5 @@
 import shutil
-import tempfile
+from pathlib import Path
 
 import helpers
 import pytest
@@ -23,22 +23,24 @@ BOB_DEVICE = "@bob:example.org"
 BOB_DEVICE_ID = "JLAFKJWSRS"
 
 
-@pytest.fixture
-def tempdir():
-    newpath = tempfile.mkdtemp()
-    yield newpath
-    shutil.rmtree(newpath)
+_ephemeral_dir = Path.cwd() / "tests/data/encryption"
 
 
 @pytest.fixture
-def client(tempdir):
-    return Client("ephemeral", "DEVICEID", tempdir)
+def ephemeral_dir(tmp_path: Path):
+    shutil.copytree(_ephemeral_dir, tmp_path, dirs_exist_ok=True)
+    return tmp_path
 
 
 @pytest.fixture
-def client_no_e2e(tempdir):
+def client(tmp_path):
+    return Client("ephemeral", "DEVICEID", tmp_path)
+
+
+@pytest.fixture
+def client_no_e2e(tmp_path):
     config = ClientConfig(encryption_enabled=False)
-    return Client("ephemeral", "DEVICEID", tempdir, config)
+    return Client("ephemeral", "DEVICEID", tmp_path, config)
 
 
 @pytest.fixture
@@ -55,15 +57,15 @@ def olm_machine():
 
 
 @pytest.fixture
-def alice_client(tempdir):
-    client = Client(ALICE_ID, ALICE_DEVICE_ID, tempdir)
+def alice_client(tmp_path):
+    client = Client(ALICE_ID, ALICE_DEVICE_ID, tmp_path)
     client.user_id = ALICE_ID
     return client
 
 
 @pytest.fixture
-def http_client(tempdir):
-    return HttpClient("example.org", "ephemeral", "DEVICEID", tempdir)
+def http_client(tmp_path):
+    return HttpClient("example.org", "ephemeral", "DEVICEID", tmp_path)
 
 
 @pytest.fixture

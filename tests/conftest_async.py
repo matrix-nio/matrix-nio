@@ -12,12 +12,12 @@ login_response: dict = json.loads(Path("tests/data/login_response.json").read_te
 
 
 @pytest_asyncio.fixture
-async def unauthed_async_client(tempdir) -> AsyncClient:
+async def unauthed_async_client(tmp_path) -> AsyncClient:
     client = AsyncClient(
         "https://example.org",
         "ephemeral",
         "DEVICEID",
-        tempdir,
+        tmp_path,
         config=AsyncClientConfig(max_timeouts=3),
     )
     yield client
@@ -35,7 +35,7 @@ async def async_client(unauthed_async_client) -> AsyncClient:
 
 
 @pytest_asyncio.fixture
-async def async_client_pair(tempdir) -> Tuple[AsyncClient, AsyncClient]:
+async def async_client_pair(tmp_path) -> Tuple[AsyncClient, AsyncClient]:
     ALICE_ID = "@alice:example.org"
     ALICE_DEVICE = "JLAFKJWSCS"
 
@@ -44,18 +44,10 @@ async def async_client_pair(tempdir) -> Tuple[AsyncClient, AsyncClient]:
 
     config = AsyncClientConfig(max_timeouts=3)
     alice = AsyncClient(
-        "https://example.org",
-        ALICE_ID,
-        ALICE_DEVICE,
-        tempdir,
-        config=config,
+        "https://example.org", ALICE_ID, ALICE_DEVICE, tmp_path, config=config
     )
     bob = AsyncClient(
-        "https://example.org",
-        BOB_ID,
-        BOB_DEVICE,
-        tempdir,
-        config=config,
+        "https://example.org", BOB_ID, BOB_DEVICE, tmp_path, config=config
     )
 
     await alice.receive_response(LoginResponse(ALICE_ID, ALICE_DEVICE, "alice_1234"))
@@ -68,7 +60,7 @@ async def async_client_pair(tempdir) -> Tuple[AsyncClient, AsyncClient]:
 
 
 @pytest_asyncio.fixture
-async def async_client_pair_same_user(tempdir) -> Tuple[AsyncClient, AsyncClient]:
+async def async_client_pair_same_user(tmp_path) -> Tuple[AsyncClient, AsyncClient]:
     ALICE_ID = "@alice:example.org"
     FIRST_DEVICE = "JLAFKJWSCS"
 
@@ -76,18 +68,10 @@ async def async_client_pair_same_user(tempdir) -> Tuple[AsyncClient, AsyncClient
 
     config = AsyncClientConfig(max_timeouts=3)
     alice = AsyncClient(
-        "https://example.org",
-        ALICE_ID,
-        FIRST_DEVICE,
-        tempdir,
-        config=config,
+        "https://example.org", ALICE_ID, FIRST_DEVICE, tmp_path, config=config
     )
     bob = AsyncClient(
-        "https://example.org",
-        ALICE_ID,
-        SECOND_DEVICE,
-        tempdir,
-        config=config,
+        "https://example.org", ALICE_ID, SECOND_DEVICE, tmp_path, config=config
     )
 
     await alice.receive_response(LoginResponse(ALICE_ID, FIRST_DEVICE, "alice_1234"))

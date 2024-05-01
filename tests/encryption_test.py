@@ -3,6 +3,7 @@ import json
 import os
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 from helpers import faker
@@ -47,45 +48,36 @@ Malory_device = "MALORYDEVICE"
 PICKLE_KEY = "DEFAULT_KEY"
 TEST_ROOM = "!test_room"
 
-ephemeral_dir = os.path.join(os.curdir, "tests/data/encryption")
-
-
-def ephemeral(func):
-    def wrapper(*args, **kwargs):
-        try:
-            ret = func(*args, **kwargs)
-        finally:
-            os.remove(os.path.join(ephemeral_dir, "@ephemeral:localhost_DEVICEID.db"))
-        return ret
-
-    return wrapper
-
 
 @pytest.fixture
-def olm_account(tempdir):
+def olm_account(ephemeral_dir: Path):
     return Olm(
-        faker.mx_id(), faker.device_id(), DefaultStore("ephemeral", "DEVICEID", tempdir)
+        faker.mx_id(),
+        faker.device_id(),
+        DefaultStore("ephemeral", "DEVICEID", ephemeral_dir, PICKLE_KEY),
     )
 
 
 @pytest.fixture
-def bob_account(tempdir):
+def bob_account(tmp_path: Path):
     return Olm(
-        faker.mx_id(), faker.device_id(), DefaultStore("ephemeral", "DEVICEID", tempdir)
+        faker.mx_id(),
+        faker.device_id(),
+        DefaultStore("ephemeral", "DEVICEID", tmp_path),
     )
 
 
 @pytest.fixture
-def alice_account_pair(tempdir):
+def alice_account_pair(tmp_path):
     first_device_id = faker.device_id()
     second_device_id = faker.device_id()
 
     first = Olm(
-        AliceId, faker.device_id(), DefaultStore(AliceId, first_device_id, tempdir)
+        AliceId, faker.device_id(), DefaultStore(AliceId, first_device_id, tmp_path)
     )
 
     second = Olm(
-        AliceId, faker.device_id(), DefaultStore(AliceId, second_device_id, tempdir)
+        AliceId, faker.device_id(), DefaultStore(AliceId, second_device_id, tmp_path)
     )
 
     first_device = OlmDevice(
@@ -101,17 +93,18 @@ def alice_account_pair(tempdir):
     first.verify_device(second_device)
     second.verify_device(first_device)
 
-    return (first, second)
+    return first, second
 
 
 class TestClass:
     @staticmethod
     def _load_response(filename):
-        with open(filename) as f:
-            return json.loads(f.read())
+        return json.loads(Path(filename).read_text())
 
-    def _get_store(self, user_id, device_id, pickle_key=""):
-        return DefaultStore(user_id, device_id, ephemeral_dir, pickle_key)
+    def _load(self, user_id, device_id, store_dir, pickle_key=""):
+        return Olm(
+            user_id, device_id, DefaultStore(user_id, device_id, store_dir, pickle_key)
+        )
 
     @staticmethod
     def olm_message_to_event(message_dict, recipient, sender):
@@ -123,22 +116,12 @@ class TestClass:
             "content": olm_content,
         }
 
-    @property
-    def ephemeral_olm(self):
-        user_id = "@ephemeral:localhost"
-        device_id = "DEVICEID"
-        return Olm(user_id, device_id, self._get_store(user_id, device_id))
-
-    @ephemeral
-    def test_new_account_creation(self):
-        olm = self.ephemeral_olm
+    def test_new_account_creation(self, olm_account):
+        olm = olm_account
         assert isinstance(olm.account, Account)
 
-    def _load(self, user_id, device_id, pickle_key=""):
-        return Olm(user_id, device_id, self._get_store(user_id, device_id, pickle_key))
-
-    def test_account_loading(self):
-        olm = self._load("example", "DEVICEID", PICKLE_KEY)
+    def test_account_loading(self, ephemeral_dir):
+        olm = self._load("example", "DEVICEID", ephemeral_dir, PICKLE_KEY)
         assert isinstance(olm.account, Account)
         assert (
             olm.account.identity_keys["curve25519"]
@@ -149,7 +132,7 @@ class TestClass:
             == "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4"
         )
 
-    def test_fingerprint_store(self, monkeypatch):
+    def test_fingerprint_store(self, ephemeral_dir, monkeypatch):
         def mocksave(self):
             return
 
@@ -165,7 +148,7 @@ class TestClass:
         assert store.remove(key)
         assert store.check(key) is False
 
-    def test_fingerprint_store_loading(self):
+    def test_fingerprint_store_loading(self, ephemeral_dir):
         store = KeyStore(os.path.join(ephemeral_dir, "known_devices"))
         key = Ed25519Key(
             "example", "DEVICEID", "2MX1WOCAmE9eyywGdiMsQ4RxL2SIKVeyJXiSjVFycpA"
@@ -238,23 +221,22 @@ class TestClass:
         assert store.add(alice) is False
         assert alice in store
 
-    @ephemeral
-    def test_olm_outbound_session_create(self):
+    def test_olm_outbound_session_create(self, olm_account):
         bob = Account()
         bob.generate_one_time_keys(1)
         one_time = list(bob.one_time_keys["curve25519"].values())[0]
 
         bob_device = OlmDevice(BobId, Bob_device, bob.identity_keys)
 
-        olm = self.ephemeral_olm
+        olm = olm_account
         olm.device_store[bob_device.user_id][bob_device.id] = bob_device
         olm.create_session(one_time, bob_device.curve25519)
         assert isinstance(
             olm.session_store.get(bob.identity_keys["curve25519"]), OutboundSession
         )
 
-    def test_olm_session_load(self):
-        olm = self._load("example", "DEVICEID", PICKLE_KEY)
+    def test_olm_session_load(self, ephemeral_dir):
+        olm = self._load("example", "DEVICEID", ephemeral_dir, PICKLE_KEY)
 
         bob_session = olm.session_store.get(
             "+Qs131S/odNdWG6VJ8hiy9YZW0us24wnsDjYQbaxLk4"
@@ -262,9 +244,8 @@ class TestClass:
         assert bob_session
         assert bob_session.id == "EeEiqT9LjCtECaN7WTqcBQ7D5Dwm4+/L9Uxr1IyPAts"
 
-    @ephemeral
-    def test_olm_group_session_store(self):
-        olm = self.ephemeral_olm
+    def test_olm_group_session_store(self, ephemeral_dir, olm_account):
+        olm = olm_account
         bob_account = Account()
         outbound_session = OutboundGroupSession()
         olm.create_group_session(
@@ -275,10 +256,6 @@ class TestClass:
             outbound_session.session_key,
         )
 
-        del olm
-
-        olm = self.ephemeral_olm
-
         bob_session = olm.inbound_group_store.get(
             "!test_room", bob_account.identity_keys["curve25519"], outbound_session.id
         )
@@ -286,9 +263,8 @@ class TestClass:
         assert bob_session
         assert bob_session.id == outbound_session.id
 
-    @ephemeral
-    def test_keys_query(self):
-        olm = self.ephemeral_olm
+    def test_keys_query(self, ephemeral_dir, olm_account):
+        olm = olm_account
         parsed_dict = TestClass._load_response("tests/data/keys_query.json")
         response = KeysQueryResponse.from_dict(parsed_dict)
 
@@ -298,15 +274,11 @@ class TestClass:
         device = olm.device_store["@alice:example.org"]["JLAFKJWSCS"]
         assert device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
 
-        del olm
-
-        olm = self.ephemeral_olm
         device = olm.device_store["@alice:example.org"]["JLAFKJWSCS"]
         assert device.ed25519 == "nE6W2fCblxDcOFmeEtCHNl8/l8bXcu7GKyAswA4r3mM"
 
-    @ephemeral
-    def test_same_query_response_twice(self):
-        olm = self.ephemeral_olm
+    def test_same_query_response_twice(self, olm_account):
+        olm = olm_account
         parsed_dict = TestClass._load_response("tests/data/keys_query.json")
         response = KeysQueryResponse.from_dict(parsed_dict)
         olm.handle_response(response)
@@ -318,16 +290,16 @@ class TestClass:
         olm.handle_response(response)
         assert response2.changed
 
-    def test_olm_inbound_session(self, monkeypatch):
+    def test_olm_inbound_session(self, ephemeral_dir, monkeypatch):
         def mocksave(self):
             return
 
         monkeypatch.setattr(KeyStore, "_save", mocksave)
 
         # create three new accounts
-        alice = self._load(AliceId, Alice_device)
-        bob = self._load(BobId, Bob_device)
-        malory = self._load(BobId, Bob_device)
+        alice = self._load(AliceId, Alice_device, ephemeral_dir)
+        bob = self._load(BobId, Bob_device, ephemeral_dir)
+        malory = self._load(BobId, Bob_device, ephemeral_dir)
 
         # create olm devices for each others known devices list
         alice_device = OlmDevice(AliceId, Alice_device, alice.account.identity_keys)
@@ -445,16 +417,16 @@ class TestClass:
             os.remove(os.path.join(ephemeral_dir, f"{AliceId}_{Alice_device}.db"))
             os.remove(os.path.join(ephemeral_dir, f"{BobId}_{Bob_device}.db"))
 
-    def test_group_session_sharing(self, monkeypatch):
+    def test_group_session_sharing(self, ephemeral_dir, monkeypatch):
         def mocksave(self):
             return
 
         monkeypatch.setattr(KeyStore, "_save", mocksave)
 
         # create three new accounts
-        alice = self._load(AliceId, Alice_device)
-        bob = self._load(BobId, Bob_device)
-        malory = self._load(BobId, Bob_device)
+        alice = self._load(AliceId, Alice_device, ephemeral_dir)
+        bob = self._load(BobId, Bob_device, ephemeral_dir)
+        malory = self._load(BobId, Bob_device, ephemeral_dir)
 
         # create olm devices for each others known devices list
         alice_device = OlmDevice(AliceId, Alice_device, alice.account.identity_keys)
@@ -499,12 +471,8 @@ class TestClass:
 
         assert len(sharing_with) == 1
 
-        os.remove(os.path.join(ephemeral_dir, f"{AliceId}_{Alice_device}.db"))
-        os.remove(os.path.join(ephemeral_dir, f"{BobId}_{Bob_device}.db"))
-
-    @ephemeral
-    def test_room_key_event(self):
-        olm = self.ephemeral_olm
+    def test_room_key_event(self, olm_account):
+        olm = olm_account
 
         session = OutboundGroupSession()
 
@@ -589,15 +557,15 @@ class TestClass:
         event = olm._handle_olm_event(device.user_id, device.curve25519, payload)
         assert isinstance(event, ForwardedRoomKeyEvent)
 
-    def test_user_verification_status(self, monkeypatch):
+    def test_user_verification_status(self, ephemeral_dir, monkeypatch):
         def mocksave(self):
             return
 
         monkeypatch.setattr(KeyStore, "_save", mocksave)
 
         # create three new accounts
-        alice = self._load(AliceId, Alice_device)
-        bob = self._load(BobId, Bob_device)
+        alice = self._load(AliceId, Alice_device, ephemeral_dir)
+        bob = self._load(BobId, Bob_device, ephemeral_dir)
 
         # create olm devices for each others known devices list
         bob_device = OlmDevice(BobId, Bob_device, bob.account.identity_keys)
@@ -617,12 +585,8 @@ class TestClass:
         alice.verify_device(bob2_device)
         assert alice.user_fully_verified(BobId)
 
-        os.remove(os.path.join(ephemeral_dir, f"{AliceId}_{Alice_device}.db"))
-        os.remove(os.path.join(ephemeral_dir, f"{BobId}_{Bob_device}.db"))
-
-    @ephemeral
-    def test_group_decryption(self):
-        olm = self.ephemeral_olm
+    def test_group_decryption(self, olm_account):
+        olm = olm_account
         olm.create_outbound_group_session(TEST_ROOM)
 
         message = {
@@ -670,9 +634,8 @@ class TestClass:
         assert isinstance(event, RoomMessageText)
         assert event.decrypted
 
-    @ephemeral
-    def test_key_sharing(self):
-        olm = self.ephemeral_olm
+    def test_key_sharing(self, olm_account):
+        olm = olm_account
 
         assert olm.should_upload_keys
         to_share = olm.share_keys()
@@ -708,14 +671,14 @@ class TestClass:
         assert "one_time_keys" in to_share
         assert len(to_share["one_time_keys"]) == 1
 
-    def test_outbound_session_creation(self, monkeypatch):
+    def test_outbound_session_creation(self, ephemeral_dir, monkeypatch):
         def mocksave(self):
             return
 
         monkeypatch.setattr(KeyStore, "_save", mocksave)
 
-        alice = self._load(AliceId, Alice_device)
-        bob = self._load(BobId, Bob_device)
+        alice = self._load(AliceId, Alice_device, ephemeral_dir)
+        bob = self._load(BobId, Bob_device, ephemeral_dir)
 
         bob_device = OlmDevice(BobId, Bob_device, bob.account.identity_keys)
 
@@ -756,8 +719,8 @@ class TestClass:
         os.remove(os.path.join(ephemeral_dir, f"{AliceId}_{Alice_device}.db"))
         os.remove(os.path.join(ephemeral_dir, f"{BobId}_{Bob_device}.db"))
 
-    def test_group_session_sharing_new(self, olm_account, bob_account):
-        alice = olm_account
+    def test_group_session_sharing_new(self, alice_account_pair, bob_account):
+        alice = alice_account_pair[0]
         bob = bob_account
 
         alice_device = OlmDevice(
@@ -782,8 +745,8 @@ class TestClass:
         assert alice.outbound_group_sessions["!test:example.org"]
         assert alice.is_device_ignored(bob_device)
 
-    def test_session_unwedging(self, olm_account, bob_account):
-        alice = olm_account
+    def test_session_unwedging(self, alice_account_pair, bob_account):
+        alice = alice_account_pair[0]
         bob = bob_account
 
         alice_device = OlmDevice(
@@ -945,8 +908,8 @@ class TestClass:
         olm_account.handle_response(response)
         assert device.display_name == "Phoney"
 
-    def test_replay_attack_protection(self, olm_account, bob_account):
-        alice = olm_account
+    def test_replay_attack_protection(self, alice_account_pair, bob_account):
+        alice = alice_account_pair[0]
         bob = bob_account
 
         alice_device = OlmDevice(
@@ -1364,8 +1327,8 @@ class TestClass:
         assert isinstance(decrypted_event, RoomMessageText)
         assert decrypted_event.body == "It's a secret to everybody."
 
-    def test_key_forward_cancelling(self, olm_account, bob_account):
-        alice = olm_account
+    def test_key_forward_cancelling(self, alice_account_pair, bob_account):
+        alice = alice_account_pair[0]
         bob = bob_account
         bob.user_id = alice.user_id
 
@@ -1522,8 +1485,8 @@ class TestClass:
         assert bob.cancel_key_share(event_for_user)
         assert key_request_event not in bob.key_request_from_untrusted.values()
 
-    def test_invalid_key_requests(self, olm_account, bob_account):
-        alice = olm_account
+    def test_invalid_key_requests(self, alice_account_pair, bob_account):
+        alice = alice_account_pair[0]
         bob = bob_account
 
         alice_device = OlmDevice(

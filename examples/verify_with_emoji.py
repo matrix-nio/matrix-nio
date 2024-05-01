@@ -325,10 +325,7 @@ async def login() -> AsyncClient:
 
         # Initialize the matrix client
         client = AsyncClient(
-            homeserver,
-            user_id,
-            store_path=STORE_PATH,
-            config=client_config,
+            homeserver, user_id, store_path=STORE_PATH, config=client_config
         )
         pw = getpass.getpass()
 
