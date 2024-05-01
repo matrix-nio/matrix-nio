@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 import logging
 from collections import defaultdict
@@ -129,11 +130,29 @@ class ClientCallback:
     func: Union[Callable[..., None], Callable[..., Awaitable[None]]] = field()
     filter: Union[Tuple[Type, ...], Type, None] = None
 
-    async def execute(self, event, room: Optional[MatrixRoom] = None) -> None:
+    def _execute(self, event, room: Optional[MatrixRoom] = None) -> Optional[Awaitable]:
+        """
+        Checks the filter and executes the function once.
+        sync_execute and async_execute will each determine
+        how to run an awaitable if one is returned.
+        """
         if self.filter is None or isinstance(event, self.filter):
-            result = self.func(room, event) if room else self.func(event)
-            if inspect.isawaitable(result):
-                await result
+            if room:
+                return self.func(room, event)
+            else:
+                return self.func(event)
+
+    def sync_execute(self, event, room: Optional[MatrixRoom] = None) -> None:
+        """Execute callback from synchronous context."""
+        result = self._execute(event, room)
+        if inspect.iscoroutine(result):
+            asyncio.run(result)
+
+    async def async_execute(self, event, room: Optional[MatrixRoom] = None) -> None:
+        """Execute callback from asynchronous context."""
+        result = self._execute(event, room)
+        if inspect.isawaitable(result):
+            await result
 
 
 @dataclass(frozen=True)
@@ -657,11 +676,6 @@ class Client:
             index, event = decrypted_event
             response.to_device_events[index] = event
 
-    def _run_to_device_callbacks(self, event: ToDeviceEvent):
-        for cb in self.to_device_callbacks:
-            if cb.filter is None or isinstance(event, cb.filter):
-                cb.func(event)
-
     def _handle_to_device(self, response: SyncResponse):
         decrypted_to_device = []
 
@@ -680,7 +694,7 @@ class Client:
             ):
                 continue
 
-            self._run_to_device_callbacks(to_device_event)
+            self._on_to_device(to_device_event)
 
         self._replace_decrypted_to_device(decrypted_to_device, response)
 
@@ -697,10 +711,7 @@ class Client:
 
             for event in info.invite_state:
                 room.handle_event(event)
-
-                for cb in self.event_callbacks:
-                    if cb.filter is None or isinstance(event, cb.filter):
-                        cb.func(room, event)
+                self._on_invited_rooms(event, room)
 
     def _handle_joined_state(
         self, room_id: str, join_info: RoomInfo, encrypted_rooms: Set[str]
@@ -781,9 +792,7 @@ class Client:
                     event = decrypted_event
                     decrypted_events.append((index, decrypted_event))
 
-                for cb in self.event_callbacks:
-                    if cb.filter is None or isinstance(event, cb.filter):
-                        cb.func(room, event)
+                self._on_event(event, room)
 
             # Replace the Megolm events with decrypted ones
             for index, event in decrypted_events:
@@ -791,17 +800,11 @@ class Client:
 
             for event in join_info.ephemeral:
                 room.handle_ephemeral_event(event)
-
-                for cb in self.ephemeral_callbacks:
-                    if cb.filter is None or isinstance(event, cb.filter):
-                        cb.func(room, event)
+                self._on_ephemeral(event, room)
 
             for event in join_info.account_data:
                 room.handle_account_data(event)
-
-                for cb in self.room_account_data_callbacks:
-                    if cb.filter is None or isinstance(event, cb.filter):
-                        cb.func(room, event)
+                self._on_room_account_data(event, room)
 
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)
@@ -826,26 +829,20 @@ class Client:
                 ].currently_active = event.currently_active
                 self.rooms[room_id].users[event.user_id].status_msg = event.status_msg
 
-            for cb in self.presence_callbacks:
-                if cb.filter is None or isinstance(event, cb.filter):
-                    cb.func(event)
+            self._on_presence(event)
 
     def _handle_global_account_data_events(
         self,
         response: SyncResponse,
     ) -> None:
         for event in response.account_data_events:
-            for cb in self.global_account_data_callbacks:
-                if cb.filter is None or isinstance(event, cb.filter):
-                    cb.func(event)
+            self._on_global_account_data(event)
 
     def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()
 
         for event in expired_verifications:
-            for cb in self.to_device_callbacks:
-                if cb.filter is None or isinstance(event, cb.filter):
-                    cb.func(event)
+            self._on_expired_verifications(event)
 
     def _handle_olm_events(self, response: SyncResponse):
         assert self.olm
@@ -871,6 +868,38 @@ class Client:
                     changed_users.add(user)
 
         self.olm.add_changed_users(changed_users)
+
+    def _on_to_device(self, event: ToDeviceEvent):
+        for cb in self.to_device_callbacks:
+            cb.sync_execute(event)
+
+    def _on_invited_rooms(self, event: Event, room: MatrixRoom):
+        for cb in self.event_callbacks:
+            cb.sync_execute(event, room)
+
+    def _on_event(self, event: Event, room: MatrixRoom):
+        for cb in self.event_callbacks:
+            cb.sync_execute(event, room)
+
+    def _on_ephemeral(self, event: EphemeralEvent, room: MatrixRoom):
+        for cb in self.ephemeral_callbacks:
+            cb.sync_execute(event, room)
+
+    def _on_room_account_data(self, event: AccountDataEvent, room: MatrixRoom):
+        for cb in self.room_account_data_callbacks:
+            cb.sync_execute(event, room)
+
+    def _on_presence(self, event: PresenceEvent):
+        for cb in self.presence_callbacks:
+            cb.sync_execute(event)
+
+    def _on_global_account_data(self, event: AccountDataEvent):
+        for cb in self.global_account_data_callbacks:
+            cb.sync_execute(event)
+
+    def _on_expired_verifications(self, event: ToDeviceEvent):
+        for cb in self.to_device_callbacks:
+            cb.sync_execute(event)
 
     def _handle_sync(
         self, response: SyncResponse
@@ -904,7 +933,7 @@ class Client:
     def _collect_key_requests(self):
         events = self.olm.collect_key_requests()
         for event in events:
-            self._run_to_device_callbacks(event)
+            self._on_to_device(event)
 
     def _decrypt_event_array(self, array: List[Union[Event, BadEventType]]):
         if not self.olm:
