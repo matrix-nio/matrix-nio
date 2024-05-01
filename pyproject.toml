@@ -55,6 +55,10 @@ ruff = "^0.3.3"
 # Assume Python 3.8.
 target-version = "py38"
 
+fix = true
+show-fixes = true
+preview = true
+
 [tool.ruff.lint]
 select = [
     "E",     # pycodestyle
