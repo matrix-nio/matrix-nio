@@ -269,7 +269,7 @@ class Api:
         plumb_url = (
             f"{homeserver}{MATRIX_MEDIA_API_PATH}/download/" "{server_name}{mediaId}"
         ).format(
-            homeserver=host if host else f"emxc://{url.netloc}",
+            homeserver=host or f"emxc://{url.netloc}",
             server_name=url.hostname,
             mediaId=url.path,
         )

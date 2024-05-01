@@ -1,5 +1,6 @@
 import json
 from os import path
+from pathlib import Path
 
 import pytest
 from hypothesis import given
@@ -79,15 +80,13 @@ class TestClass:
 
     def test_unencrypted_import(self, tempdir):
         device_id = "DEVICEID"
-        file = path.join(tempdir, "keys_file")
-
-        with open(file, "w") as f:
-            f.write("{}")
+        file = Path(tempdir, "keys_file")
+        file.write_text("{}")
 
         alice_store = DefaultStore("alice", device_id, tempdir, "")
         alice = Olm("alice", device_id, alice_store)
         with pytest.raises(EncryptionError):
-            alice.import_keys(file, "pass")
+            alice.import_keys(str(file), "pass")
 
     def test_invalid_json(self, tempdir):
         device_id = "DEVICEID"

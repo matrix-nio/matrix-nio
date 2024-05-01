@@ -157,10 +157,6 @@ EIRIN_ID = "@eirin:example.org"
 
 @pytest.mark.asyncio()
 class TestClass:
-    @staticmethod
-    def _load_bytes(filename):
-        with open(filename, "rb") as f:
-            return f.read()
 
     @staticmethod
     def olm_message_to_event(message_dict, recipient, sender, type="m.room.encrypted"):
@@ -174,8 +170,7 @@ class TestClass:
 
     @staticmethod
     def _load_response(filename):
-        with open(filename) as f:
-            return json.loads(f.read())
+        return json.loads(Path(filename).read_text())
 
     @property
     def register_response(self):
@@ -384,7 +379,7 @@ class TestClass:
 
     @property
     def file_response(self):
-        return self._load_bytes("tests/data/file_response")
+        return Path("tests/data/file_response").read_bytes()
 
     @staticmethod
     def room_id_response(room_id):

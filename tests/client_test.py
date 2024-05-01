@@ -1,5 +1,6 @@
 import json
 import random
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -100,13 +101,7 @@ class TestClass:
 
     @staticmethod
     def _load_response(filename):
-        with open(filename) as f:
-            return json.loads(f.read())
-
-    @staticmethod
-    def _load_byte_response(filename):
-        with open(filename, "rb") as f:
-            return f.read()
+        return json.loads(Path(filename).read_text())
 
     @property
     def login_byte_response(self):
@@ -138,7 +133,7 @@ class TestClass:
             headers=self.example_response_headers, stream_id=3
         )
 
-        body = self._load_byte_response("tests/data/sync.json")
+        body = Path("tests/data/sync.json").read_bytes()
 
         data = frame_factory.build_data_frame(
             data=body, stream_id=3, flags=["END_STREAM"]
@@ -161,7 +156,7 @@ class TestClass:
 
         f = frame_factory.build_headers_frame(headers=headers, stream_id=stream_id)
 
-        body = self._load_byte_response("tests/data/file_response")
+        body = Path("tests/data/file_response").read_bytes()
 
         data = frame_factory.build_data_frame(
             data=body, stream_id=stream_id, flags=["END_STREAM"]
@@ -714,7 +709,7 @@ class TestClass:
         with pytest.raises(EncryptionError):
             client.olm.share_group_session(TEST_ROOM_ID, room.users)
 
-        shared_with, to_device = client.olm.share_group_session(
+        _shared_with, _to_device = client.olm.share_group_session(
             TEST_ROOM_ID, room.users, True
         )
 
@@ -952,7 +947,7 @@ class TestClass:
         response = http_client.next_response()
 
         assert isinstance(response, DownloadResponse)
-        assert response.body == self._load_byte_response("tests/data/file_response")
+        assert response.body == Path("tests/data/file_response").read_bytes()
         assert response.content_type == "image/png"
         assert response.filename is None
 
@@ -962,7 +957,7 @@ class TestClass:
         response = http_client.next_response()
 
         assert isinstance(response, DownloadResponse)
-        assert response.body == self._load_byte_response("tests/data/file_response")
+        assert response.body == Path("tests/data/file_response").read_bytes()
         assert response.content_type == "image/png"
         assert response.filename == filename
 
@@ -977,7 +972,7 @@ class TestClass:
         response = http_client.next_response()
 
         assert isinstance(response, ThumbnailResponse)
-        assert response.body == self._load_byte_response("tests/data/file_response")
+        assert response.body == Path("tests/data/file_response").read_bytes()
         assert response.content_type == "image/png"
 
     def test_http_client_get_profile(self, http_client: HttpClient):

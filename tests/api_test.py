@@ -34,7 +34,7 @@ class TestClass:
         ]
         for unencoded, encoded in encode_pairs:
             expected_path = f"{MATRIX_API_PATH_V3}/profile/{encoded}"
-            (method, actual_path) = api.profile_get(unencoded)
+            (_method, actual_path) = api.profile_get(unencoded)
             assert actual_path == expected_path
 
     def test_profile_get_authed(self) -> None:
