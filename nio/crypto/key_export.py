@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 from pathlib import Path
 
 from atomicwrites import atomic_write
@@ -62,6 +63,9 @@ def decrypt_and_read(infile: str, passphrase: str) -> bytes:
 
     if not encrypted_data.startswith(HEADER) or not encrypted_data.endswith(FOOTER):
         raise ValueError("Wrong file format.")
+
+    if sys.version_info < (3, 9):
+        return decrypt(encrypted_data[len(HEADER) : -len(FOOTER)], passphrase)
 
     return decrypt(encrypted_data.removeprefix(HEADER).removesuffix(FOOTER), passphrase)
 
