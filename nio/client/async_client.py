@@ -533,8 +533,10 @@ class AsyncClient(Client):
             name = transport_response.content_disposition.filename
 
         if issubclass(response_class, FileResponse) and is_json:
-            parsed_dict = await self.parse_body(transport_response)
-            resp = response_class.from_data(parsed_dict, content_type, name)
+            data = await transport_response.read()
+            # Data should NOT be parsed when passing to DownloadResponse,
+            # otherwise it will be parsed as an error!
+            resp = response_class.from_data(data, content_type, name)
 
         elif issubclass(response_class, FileResponse):
             if not save_to:
