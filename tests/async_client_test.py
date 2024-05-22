@@ -2838,6 +2838,53 @@ class TestClass:
         with pytest.raises(asyncio.CancelledError):
             await task
 
+    async def test_stop_sync_forever(self, async_client, aioresponse, event_loop):
+        sync_url = re.compile(
+            rf"^https://example\.org{MATRIX_API_PATH_V3}/sync\?access_token=.*"
+        )
+
+        aioresponse.get(
+            sync_url,
+            status=200,
+            payload=self.sync_response,
+        )
+
+        aioresponse.get(sync_url, status=200, payload=self.empty_sync, repeat=True)
+
+        aioresponse.post(
+            f"{BASE_URL_V3}/keys/upload?access_token=abc123",
+            status=200,
+            payload=self.final_keys_upload_response,
+        )
+
+        aioresponse.post(
+            f"{BASE_URL_V3}/keys/query?access_token=abc123",
+            status=200,
+            payload=self.keys_query_response,
+            repeat=True,
+        )
+
+        await async_client.receive_response(
+            LoginResponse.from_dict(self.login_response)
+        )
+
+        received = set()
+
+        async def event_callback(event: PresenceEvent):
+            received.add(event.user_id)
+            async_client.stop_sync_forever()
+
+        async_client.add_presence_callback(event_callback, PresenceEvent)
+
+        task: asyncio.Task = event_loop.create_task(
+            async_client.sync_forever(loop_sleep_time=100)
+        )
+
+        await asyncio.wait_for(task, 120)
+
+        assert "@example:localhost" in received
+        assert "@example2:localhost" in received
+
     async def test_session_unwedging(self, async_client_pair, aioresponse):
         alice, bob = async_client_pair
 
