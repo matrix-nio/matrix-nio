@@ -449,6 +449,9 @@ class AsyncClient(Client):
 
         self.config: AsyncClientConfig = config or AsyncClientConfig()
 
+        # The flag used to gracefully stop `sync_forever`.
+        self._stop_sync_forever = False
+
         super().__init__(user, device_id, store_path, self.config)
 
     def add_response_callback(
@@ -1320,8 +1323,9 @@ class AsyncClient(Client):
         """
 
         first_sync = True
+        self._stop_sync_forever = False
 
-        while True:
+        while not self._stop_sync_forever:
             try:
                 use_filter = (
                     first_sync_filter
@@ -1384,6 +1388,14 @@ class AsyncClient(Client):
                     task.cancel()
 
                 raise
+
+    def stop_sync_forever(self):
+        """Request that the `sync_forever` loop exits gracefully.
+
+        If a `sync_forever` function is running, it will finish its sync loop and exit, leaving this `AsyncClient` in
+        a consistent state. In particular, it will be possible to run `sync_forever` again at a later point.
+        """
+        self._stop_sync_forever = True
 
     @logged_in_async
     @store_loaded
