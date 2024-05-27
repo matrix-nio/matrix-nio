@@ -503,7 +503,7 @@ class AsyncClient(Client):
 
     async def create_matrix_response(
         self,
-        response_class: Type,
+        response_class: Type[Response],
         transport_response: ClientResponse,
         data: Optional[Tuple[Any, ...]] = None,
         save_to: Optional[os.PathLike] = None,
@@ -565,6 +565,7 @@ class AsyncClient(Client):
             resp = DeleteDevicesAuthResponse.from_dict(parsed_dict)
 
         else:
+            # TODO: hint to the validator if the status >= 400 to use the error dict only
             parsed_dict = await self.parse_body(transport_response)
             resp = response_class.from_dict(parsed_dict, *data)
 
@@ -770,7 +771,7 @@ class AsyncClient(Client):
 
     async def _send(
         self,
-        response_class: Type,
+        response_class: Type[Response],
         method: str,
         path: str,
         data: Union[None, str, AsyncDataT] = None,
@@ -782,11 +783,7 @@ class AsyncClient(Client):
         content_length: Optional[int] = None,
         save_to: Optional[os.PathLike] = None,
     ):
-        headers = (
-            {"Content-Type": content_type}
-            if content_type
-            else {"Content-Type": "application/json"}
-        )
+        headers = {"Content-Type": content_type or "application/json"}
 
         if content_length is not None:
             headers["Content-Length"] = str(content_length)
@@ -838,8 +835,7 @@ class AsyncClient(Client):
 
                     retry_after_ms = getattr(resp, "retry_after_ms", 0) or 5000
                     logger.warning(
-                        "Got 429 response (ratelimited), sleeping for %dms",
-                        retry_after_ms,
+                        f"Got 429 response (ratelimited), sleeping for {retry_after_ms}ms"
                     )
                     await asyncio.sleep(retry_after_ms / 1000)
                 else:
@@ -852,7 +848,7 @@ class AsyncClient(Client):
                     raise
 
                 wait = await self.get_timeout_retry_wait_time(got_timeouts)
-                logger.warning("Timed out, sleeping for %ds", wait)
+                logger.warning(f"Timed out, sleeping for {wait}s")
                 await asyncio.sleep(wait)
 
         await self.receive_response(resp)
@@ -948,7 +944,7 @@ class AsyncClient(Client):
         device_name: str = "",
     ) -> Union[RegisterInteractiveResponse, RegisterInteractiveError]:
         """Makes a request to the register endpoint using the provided
-        auth dictionary. This is allows for interactive registration flows
+        auth dictionary. This allows for interactive registration flows
         from the homeserver.
 
         Calls receive_response() to update the client state if necessary.
@@ -3298,7 +3294,7 @@ class AsyncClient(Client):
 
         This queries the display name and avatar matrix content URI of a user
         from the server. Additional profile information may be present.
-        The currently logged in user is queried if no user is specified.
+        The currently logged-in user is queried if no user is specified.
 
         Calls receive_response() to update the client state if necessary.
 
