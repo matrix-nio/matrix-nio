@@ -1,0 +1,37 @@
+on:
+  push:
+    tags:
+      - .*
+
+jobs:
+  build-wheel:
+    name: Build python wheel
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: [ "3.12" ]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+          cache: "pip"
+      - name: Install build
+        run: |
+          pip install build
+      - name: Build
+        run: |
+          python -m build .
+  pypi-publish:
+    if: false  # temporarily disabled
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/matrix-nio
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
