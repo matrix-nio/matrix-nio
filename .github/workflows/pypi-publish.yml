@@ -23,8 +23,14 @@ jobs:
       - name: Build
         run: |
           python -m build .
+      - name: Upload Wheel Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist/*
+
   pypi-publish:
-    if: false  # temporarily disabled
+    needs: build-wheel
     name: Upload release to PyPI
     runs-on: ubuntu-latest
     environment:
@@ -33,5 +39,11 @@ jobs:
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
+      - uses: actions/checkout@v3
+      - name: Download Wheel Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist/
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
