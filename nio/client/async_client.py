@@ -26,7 +26,6 @@ from json.decoder import JSONDecodeError
 from pathlib import Path
 from typing import (
     Any,
-    AsyncIterable,
     AsyncIterator,
     Callable,
     Coroutine,
@@ -1830,7 +1829,7 @@ class AsyncClient(Client):
         event_type: Optional[str] = None,
         direction: MessageDirection = MessageDirection.back,
         limit: Optional[int] = None,
-    ) -> AsyncIterable[Event]:
+    ) -> AsyncIterator[Event]:
         """Iterate through all related events of a given parent event.
 
         Args:
@@ -1844,9 +1843,6 @@ class AsyncClient(Client):
             limit (int, optional): The maximum events per request that will be
                 fetched per chunk while iterating. Changing this value can affect performance.
                 Homeservers will apply a default value, and override this with a maximum value.
-
-        Returns:
-            An AsyncIterable of Events.
         """
         paginate_from, paginate_to = None, None
         while True:
@@ -1891,9 +1887,6 @@ class AsyncClient(Client):
             limit (int, optional): The maximum events per request that will be
                 fetched per chunk while iterating. Changing this value can affect performance.
                 Homeservers will apply a default value, and override this with a maximum value.
-
-        Returns:
-            An AsyncIterator of Events.
         """
         paginate_from, paginate_to = None, None
         while True:

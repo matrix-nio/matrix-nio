@@ -98,19 +98,24 @@ def logged_in(func):
 
 
 def logged_in_async(func):
-    @wraps(func)
-    async def wrapper(self: Client, *args, **kwargs):
-        self._assert_logged_in()
-        return await func(self, *args, **kwargs)
-
-    async def wrapper_async_gen(self: Client, *args, **kwargs):
-        self._assert_logged_in()
-        async for item in func(self, *args, **kwargs):
-            yield item
-
     if inspect.isasyncgenfunction(func):
+
+        @wraps(func)
+        async def wrapper_async_gen(self, *args, **kwargs):
+            self._assert_logged_in()
+            async for item in func(self, *args, **kwargs):
+                yield item
+
         return wrapper_async_gen
-    return wrapper
+
+    else:
+
+        @wraps(func)
+        async def wrapper(self, *args, **kwargs):
+            self._assert_logged_in()
+            return await func(self, *args, **kwargs)
+
+        return wrapper
 
 
 def store_loaded(fn):
