@@ -661,6 +661,12 @@ class PresenceGetError(ErrorResponse):
     pass
 
 
+class PublicRoomsError(ErrorResponse):
+    """Response representing an unsuccessful public rooms request."""
+
+    pass
+
+
 class PresenceSetError(ErrorResponse):
     """Response representing a unsuccessful set presence request."""
 
@@ -1757,6 +1763,40 @@ class PresenceGetResponse(Response):
             parsed_dict.get("last_active_ago"),
             parsed_dict.get("currently_active"),
             parsed_dict.get("status_msg"),
+        )
+
+
+@dataclass
+class PublicRoom:
+    guest_can_join: bool
+    num_joined_members: int
+    room_id: str
+    world_readable: bool
+    avatar_url: Optional[str] = None
+    canonical_alias: Optional[str] = None
+    join_rule: Optional[str] = None
+    name: Optional[str] = None
+    room_type: Optional[str] = None
+    topic: Optional[str] = None
+
+
+@dataclass
+class PublicRoomsResponse(Response):
+    public_rooms: List[PublicRoom]
+    next_batch: Optional[str]
+    prev_batch: Optional[str]
+    total_room_count_estimate: Optional[int]
+
+    @classmethod
+    @verify(Schemas.public_rooms_response, PublicRoomsError)
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[PublicRoomsResponse, PublicRoomsError]:
+        return cls(
+            [PublicRoom(**chunk) for chunk in parsed_dict["chunk"]],
+            parsed_dict.get("next_batch"),
+            parsed_dict.get("prev_batch"),
+            parsed_dict.get("total_room_count_estimate"),
         )
 
 

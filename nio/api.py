@@ -723,7 +723,6 @@ class Api:
         room_id: str,
         include: ThreadInclusion = ThreadInclusion.all,
         paginate_from: str | None = None,
-        paginate_to: str | None = None,
         limit: int | None = None,
     ) -> Tuple[str, str]:
         """Paginate through the list of the thread roots in a given room.
@@ -747,8 +746,6 @@ class Api:
         query_parameters = {"access_token": access_token, "include": include.value}
         if paginate_from:
             query_parameters["from"] = paginate_from
-        if paginate_to:
-            query_parameters["to"] = paginate_to
         if limit:
             query_parameters["limit"] = limit
 
@@ -1818,6 +1815,71 @@ class Api:
         path = ["account", "whoami"]
 
         return "GET", Api._build_path(path, query_parameters)
+
+    @staticmethod
+    def public_rooms(
+        access_token: Optional[str] = None,
+        limit: Optional[int] = None,
+        server: Optional[str] = None,
+        since: Optional[str] = None,
+        filter_generic_search_term: Optional[str] = None,
+        filter_room_types: List[Union[str, None]] = None,
+        include_all_networks: Optional[bool] = None,
+        third_party_instance_id: Optional[str] = None,
+    ) -> Tuple[str, str, Optional[Dict[str:Any]]]:
+        """Lists the public rooms on the server, with optional filters.
+        Returns the appropriate HTTP method/query params/body based off of the combination of arguments.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            limit (int, optional): The maximum number of rooms to return.
+            server (str, optional): The server to fetch the public room lists from. Defaults to the local server. Case sensitive.
+            since (str, optional): A pagination token from a previous request's `next_batch`/`prev_batch`
+            filter_generic_search_term (str, optional): An optional string to search for in the room metadata, e.g. name, topic, canonical alias, etc.
+            filter_room_types (list[str, None], optional): A list of room types to filter for; including `None` includes rooms without a type.
+            include_all_networks (boolean, optional): Whether to include all known networks/protocols from application services on the homeserver
+            third_party_instance_id (str, optional): The specific third-party network/protocol to request from the homeserver. Can only be used if `include_all_networks` is false
+        """
+        path = ["publicRooms"]
+        if any(
+            (
+                filter_generic_search_term,
+                filter_room_types,
+                include_all_networks,
+                third_party_instance_id,
+            )
+        ):
+            method = "POST"
+        else:
+            method = "GET"
+        query_parameters = {}
+        if access_token:
+            query_parameters["access_token"] = access_token
+        if server:
+            query_parameters["server"] = server
+        if method == "GET":
+            if limit is not None:
+                query_parameters["limit"] = limit
+            if since is not None:
+                query_parameters["since"] = since
+            return method, Api._build_path(path, query_parameters), None
+        if method == "POST":
+            content: Dict[str, Any] = {}
+            if limit:
+                content["limit"] = limit
+            if since is not None:
+                content["since"] = since
+            if filter_generic_search_term is not None:
+                content.setdefault("filter", {})[
+                    "generic_search_term"
+                ] = filter_generic_search_term
+            if filter_room_types:
+                content.setdefault("filter", {})["room_types"] = filter_room_types
+            if include_all_networks is not None:
+                content["include_all_networks"] = include_all_networks
+            if third_party_instance_id:
+                content["third_party_instance_id"] = third_party_instance_id
+            return method, Api._build_path(path, query_parameters), Api.to_json(content)
 
     @staticmethod
     def room_context(
