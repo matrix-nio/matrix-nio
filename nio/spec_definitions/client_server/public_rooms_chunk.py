@@ -46,7 +46,7 @@ class PublicRoomsChunk(BaseModel):
     )
     join_rule: Optional[str] = Field(
         None,
-        description="The room's join rule. When not present, the room is assumed to\nbe `public`.",
+        description="The room's join rule. When not present, the room is assumed to\nbe `public`. Note that rooms with `invite` join rules are not\nexpected here, but rooms with `knock` rules are given their\nnear-public nature.",
         examples=["public"],
     )
     room_type: Optional[str] = Field(

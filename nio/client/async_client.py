@@ -55,6 +55,7 @@ from aiohttp import (
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.connector import Connection
 from aiohttp_socks import ProxyConnector
+from pydantic import BaseModel
 
 from ..api import (
     Api,
@@ -150,7 +151,6 @@ from ..responses import (
     ProfileSetDisplayNameError,
     ProfileSetDisplayNameResponse,
     PublicRoomsError,
-    PublicRoomsResponse,
     RegisterErrorResponse,
     RegisterInteractiveError,
     RegisterInteractiveResponse,
@@ -232,6 +232,7 @@ from ..responses import (
     WhoamiResponse,
 )
 from ..rooms import MatrixRoom
+from ..spec_definitions.client_server import PublicRoomsResponse
 from . import Client, ClientConfig
 from .base_client import ClientCallback, logged_in_async, store_loaded
 
@@ -570,11 +571,15 @@ class AsyncClient(Client):
             parsed_dict = await self.parse_body(transport_response)
             resp = DeleteDevicesAuthResponse.from_dict(parsed_dict)
 
+        elif issubclass(response_class, BaseModel):
+            parsed_dict = await self.parse_body(transport_response)
+            resp = response_class(**parsed_dict)
+
         else:
             parsed_dict = await self.parse_body(transport_response)
             resp = response_class.from_dict(parsed_dict, *data)
 
-        resp.transport_response = transport_response
+        # resp.transport_response = transport_response
         return resp
 
     async def _handle_to_device(self, response: SyncResponse):
@@ -757,7 +762,7 @@ class AsyncClient(Client):
         Args:
             response (Response): the response that we wish the client to handle
         """
-        if not isinstance(response, Response):
+        if not isinstance(response, (Response, BaseModel)):
             raise ValueError("Invalid response received")
 
         if isinstance(response, SyncResponse):
