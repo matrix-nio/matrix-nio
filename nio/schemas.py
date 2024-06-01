@@ -2079,3 +2079,36 @@ class Schemas:
         },
         "required": ["rooms"],
     }
+
+    public_rooms_chunk = {
+        "type": "object",
+        "properties": {
+            "avatar_url": {"type": "string"},
+            "canonical_alias": {"type": "string"},
+            "guest_can_join": {"type": "boolean"},
+            "join_rule": {"type": "string"},
+            "name": {"type": "string"},
+            "num_joined_members": {"type": "integer"},
+            "room_id": {"type": "string"},
+            "room_type": {"type": "string"},
+            "topic": {"type": "string"},
+            "world_readable": {"type": "boolean"},
+        },
+        "required": [
+            "guest_can_join",
+            "num_joined_members",
+            "room_id",
+            "world_readable",
+        ],
+    }
+
+    public_rooms_response = {
+        "type": "object",
+        "properties": {
+            "chunk": {"type": "array", "items": public_rooms_chunk},
+            "next_batch": {"type": "string"},
+            "prev_batch": {"type": "string"},
+            "total_room_count_estimate": {"type": "integer"},
+        },
+        "required": ["chunk"],
+    }
