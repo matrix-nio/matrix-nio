@@ -151,6 +151,7 @@ from ..responses import (
     ProfileSetDisplayNameError,
     ProfileSetDisplayNameResponse,
     PublicRoomsError,
+    PublicRoomsResponse,
     RegisterErrorResponse,
     RegisterInteractiveError,
     RegisterInteractiveResponse,
@@ -232,7 +233,6 @@ from ..responses import (
     WhoamiResponse,
 )
 from ..rooms import MatrixRoom
-from ..spec_definitions.client_server import PublicRoomsResponse
 from . import Client, ClientConfig
 from .base_client import ClientCallback, logged_in_async, store_loaded
 
@@ -577,7 +577,12 @@ class AsyncClient(Client):
 
         else:
             parsed_dict = await self.parse_body(transport_response)
-            resp = response_class.from_dict(parsed_dict, *data)
+            try:
+                resp = response_class(*data, **parsed_dict)
+            except TypeError:
+                resp = ErrorResponse(
+                    transport_response=transport_response, **(parsed_dict or {})
+                )
 
         # resp.transport_response = transport_response
         return resp

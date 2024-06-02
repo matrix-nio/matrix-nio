@@ -7,7 +7,7 @@ from __future__ import annotations
 from pydantic import AnyUrl, BaseModel, Field
 
 
-class IdentityServerInformation(BaseModel):
+class IdentityServer(BaseModel):
     base_url: AnyUrl = Field(
         ...,
         description="The base URL for the identity server for client-server connections.",
