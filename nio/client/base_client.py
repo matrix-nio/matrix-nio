@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -14,11 +12,16 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from __future__ import annotations
+
+import asyncio
+import inspect
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import wraps
 from typing import (
+    TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
@@ -32,7 +35,7 @@ from typing import (
     Union,
 )
 
-from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OlmDevice, OutgoingKeyRequest
+from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OutgoingKeyRequest
 from ..events import (
     AccountDataEvent,
     BadEvent,
@@ -76,36 +79,43 @@ from ..rooms import MatrixInvitedRoom, MatrixRoom
 if ENCRYPTION_ENABLED:
     from ..crypto import Olm
     from ..store import DefaultStore, MatrixStore, SqliteMemoryStore
+if TYPE_CHECKING:
+    from ..crypto import OlmDevice, Sas
+
 
 from ..event_builders import ToDeviceMessage
-
-try:
-    from json.decoder import JSONDecodeError
-except ImportError:
-    JSONDecodeError = ValueError  # type: ignore
-
 
 logger = logging.getLogger(__name__)
 
 
 def logged_in(func):
     @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        if not self.logged_in:
-            raise LocalProtocolError("Not logged in.")
+    def wrapper(self: Client, *args, **kwargs):
+        self._assert_logged_in()
         return func(self, *args, **kwargs)
 
     return wrapper
 
 
 def logged_in_async(func):
-    @wraps(func)
-    async def wrapper(self, *args, **kwargs):
-        if not self.logged_in:
-            raise LocalProtocolError("Not logged in.")
-        return await func(self, *args, **kwargs)
+    if inspect.isasyncgenfunction(func):
 
-    return wrapper
+        @wraps(func)
+        async def wrapper_async_gen(self, *args, **kwargs):
+            self._assert_logged_in()
+            async for item in func(self, *args, **kwargs):
+                yield item
+
+        return wrapper_async_gen
+
+    else:
+
+        @wraps(func)
+        async def wrapper(self, *args, **kwargs):
+            self._assert_logged_in()
+            return await func(self, *args, **kwargs)
+
+        return wrapper
 
 
 def store_loaded(fn):
@@ -122,8 +132,32 @@ def store_loaded(fn):
 class ClientCallback:
     """nio internal callback class."""
 
-    func: Callable = field()
+    func: Union[Callable[..., None], Callable[..., Awaitable[None]]] = field()
     filter: Union[Tuple[Type, ...], Type, None] = None
+
+    def _execute(self, event, room: Optional[MatrixRoom] = None) -> Optional[Awaitable]:
+        """
+        Checks the filter and executes the function once.
+        sync_execute and async_execute will each determine
+        how to run an awaitable if one is returned.
+        """
+        if self.filter is None or isinstance(event, self.filter):
+            if room:
+                return self.func(room, event)
+            else:
+                return self.func(event)
+
+    def sync_execute(self, event, room: Optional[MatrixRoom] = None) -> None:
+        """Execute callback from synchronous context."""
+        result = self._execute(event, room)
+        if inspect.iscoroutine(result):
+            asyncio.run(result)
+
+    async def async_execute(self, event, room: Optional[MatrixRoom] = None) -> None:
+        """Execute callback from asynchronous context."""
+        result = self._execute(event, room)
+        if inspect.isawaitable(result):
+            await result
 
 
 @dataclass(frozen=True)
@@ -148,14 +182,14 @@ class ClientConfig:
 
     """
 
-    store: Optional[Type["MatrixStore"]] = DefaultStore if ENCRYPTION_ENABLED else None
+    store: Optional[Type[MatrixStore]] = DefaultStore if ENCRYPTION_ENABLED else None
 
     encryption_enabled: bool = ENCRYPTION_ENABLED
 
     store_name: str = ""
     pickle_key: str = "DEFAULT_KEY"
     store_sync_tokens: bool = False
-    custom_headers: Dict[str, str] = None
+    custom_headers: Optional[Dict[str, str]] = None
 
     def __post_init__(self):
         if not ENCRYPTION_ENABLED and self.encryption_enabled:
@@ -203,18 +237,18 @@ class Client:
         self.user = user
         self.device_id = device_id
         self.store_path = store_path
-        self.olm: Optional["Olm"] = None
-        self.store: Optional["MatrixStore"] = None
+        self.olm: Optional[Olm] = None
+        self.store: Optional[MatrixStore] = None
         self.config = config or ClientConfig()
 
         self.user_id = ""
         # TODO Turn this into a optional string.
-        self.access_token = ""  # type: str
+        self.access_token: str = ""
         self.next_batch = ""
         self.loaded_sync_token = ""
 
-        self.rooms: Dict[str, MatrixRoom] = dict()
-        self.invited_rooms: Dict[str, MatrixInvitedRoom] = dict()
+        self.rooms: Dict[str, MatrixRoom] = {}
+        self.invited_rooms: Dict[str, MatrixInvitedRoom] = {}
         self.encrypted_rooms: Set[str] = set()
 
         self.event_callbacks: List[ClientCallback] = []
@@ -305,21 +339,24 @@ class Client:
     @property
     def outgoing_key_requests(self) -> Dict[str, OutgoingKeyRequest]:
         """Our active key requests that we made."""
-        return self.olm.outgoing_key_requests if self.olm else dict()
+        return self.olm.outgoing_key_requests if self.olm else {}
 
     @property
-    def key_verifications(self):
-        # type () -> Dict[str, Sas]
+    def key_verifications(self) -> Dict[str, Sas]:
         """Key verifications that the client is participating in."""
-        return self.olm.key_verifications if self.olm else dict()
+        return self.olm.key_verifications if self.olm else {}
 
     @property
     def outgoing_to_device_messages(self) -> List[ToDeviceMessage]:
         """To-device messages that we need to send out."""
         return self.olm.outgoing_to_device_messages if self.olm else []
 
-    def get_active_sas(self, user_id, device_id):
-        # type (str, str) -> Optional[Sas]
+    def _assert_logged_in(self):
+        """Assert that the client is logged in."""
+        if not self.logged_in:
+            raise LocalProtocolError("Not logged in.")
+
+    def get_active_sas(self, user_id: str, device_id: str) -> Optional[Sas]:
         """Find a non-canceled SAS verification object for the provided user.
 
         Args:
@@ -455,8 +492,7 @@ class Client:
         elif session:
             logger.info(f"Invalidating session for {room_id}")
 
-    def _invalidate_outbound_sessions(self, device):
-        # type: (OlmDevice) -> None
+    def _invalidate_outbound_sessions(self, device: OlmDevice) -> None:
         assert self.olm
 
         for room in self.rooms.values():
@@ -591,8 +627,9 @@ class Client:
 
         return changed
 
-    def _handle_register(self, response):
-        # type: (Union[RegisterResponse, ErrorResponse]) -> None
+    def _handle_register(
+        self, response: Union[RegisterResponse, ErrorResponse]
+    ) -> None:
         if isinstance(response, ErrorResponse):
             return
 
@@ -644,11 +681,6 @@ class Client:
             index, event = decrypted_event
             response.to_device_events[index] = event
 
-    def _run_to_device_callbacks(self, event: ToDeviceEvent):
-        for cb in self.to_device_callbacks:
-            if cb.filter is None or isinstance(event, cb.filter):
-                cb.func(event)
-
     def _handle_to_device(self, response: SyncResponse):
         decrypted_to_device = []
 
@@ -667,7 +699,7 @@ class Client:
             ):
                 continue
 
-            self._run_to_device_callbacks(to_device_event)
+            self._on_to_device(to_device_event)
 
         self._replace_decrypted_to_device(decrypted_to_device, response)
 
@@ -684,10 +716,7 @@ class Client:
 
             for event in info.invite_state:
                 room.handle_event(event)
-
-                for cb in self.event_callbacks:
-                    if cb.filter is None or isinstance(event, cb.filter):
-                        cb.func(room, event)
+                self._on_invited_rooms(event, room)
 
     def _handle_joined_state(
         self, room_id: str, join_info: RoomInfo, encrypted_rooms: Set[str]
@@ -768,9 +797,7 @@ class Client:
                     event = decrypted_event
                     decrypted_events.append((index, decrypted_event))
 
-                for cb in self.event_callbacks:
-                    if cb.filter is None or isinstance(event, cb.filter):
-                        cb.func(room, event)
+                self._on_event(event, room)
 
             # Replace the Megolm events with decrypted ones
             for index, event in decrypted_events:
@@ -778,17 +805,11 @@ class Client:
 
             for event in join_info.ephemeral:
                 room.handle_ephemeral_event(event)
-
-                for cb in self.ephemeral_callbacks:
-                    if cb.filter is None or isinstance(event, cb.filter):
-                        cb.func(room, event)
+                self._on_ephemeral(event, room)
 
             for event in join_info.account_data:
                 room.handle_account_data(event)
-
-                for cb in self.room_account_data_callbacks:
-                    if cb.filter is None or isinstance(event, cb.filter):
-                        cb.func(room, event)
+                self._on_room_account_data(event, room)
 
             if room.encrypted and self.olm is not None:
                 self.olm.update_tracked_users(room)
@@ -813,26 +834,20 @@ class Client:
                 ].currently_active = event.currently_active
                 self.rooms[room_id].users[event.user_id].status_msg = event.status_msg
 
-            for cb in self.presence_callbacks:
-                if cb.filter is None or isinstance(event, cb.filter):
-                    cb.func(event)
+            self._on_presence(event)
 
     def _handle_global_account_data_events(
         self,
         response: SyncResponse,
     ) -> None:
         for event in response.account_data_events:
-            for cb in self.global_account_data_callbacks:
-                if cb.filter is None or isinstance(event, cb.filter):
-                    cb.func(event)
+            self._on_global_account_data(event)
 
     def _handle_expired_verifications(self):
         expired_verifications = self.olm.clear_verifications()
 
         for event in expired_verifications:
-            for cb in self.to_device_callbacks:
-                if cb.filter is None or isinstance(event, cb.filter):
-                    cb.func(event)
+            self._on_expired_verifications(event)
 
     def _handle_olm_events(self, response: SyncResponse):
         assert self.olm
@@ -858,6 +873,38 @@ class Client:
                     changed_users.add(user)
 
         self.olm.add_changed_users(changed_users)
+
+    def _on_to_device(self, event: ToDeviceEvent):
+        for cb in self.to_device_callbacks:
+            cb.sync_execute(event)
+
+    def _on_invited_rooms(self, event: Event, room: MatrixRoom):
+        for cb in self.event_callbacks:
+            cb.sync_execute(event, room)
+
+    def _on_event(self, event: Event, room: MatrixRoom):
+        for cb in self.event_callbacks:
+            cb.sync_execute(event, room)
+
+    def _on_ephemeral(self, event: EphemeralEvent, room: MatrixRoom):
+        for cb in self.ephemeral_callbacks:
+            cb.sync_execute(event, room)
+
+    def _on_room_account_data(self, event: AccountDataEvent, room: MatrixRoom):
+        for cb in self.room_account_data_callbacks:
+            cb.sync_execute(event, room)
+
+    def _on_presence(self, event: PresenceEvent):
+        for cb in self.presence_callbacks:
+            cb.sync_execute(event)
+
+    def _on_global_account_data(self, event: AccountDataEvent):
+        for cb in self.global_account_data_callbacks:
+            cb.sync_execute(event)
+
+    def _on_expired_verifications(self, event: ToDeviceEvent):
+        for cb in self.to_device_callbacks:
+            cb.sync_execute(event)
 
     def _handle_sync(
         self, response: SyncResponse
@@ -891,7 +938,7 @@ class Client:
     def _collect_key_requests(self):
         events = self.olm.collect_key_requests()
         for event in events:
-            self._run_to_device_callbacks(event)
+            self._on_to_device(event)
 
     def _decrypt_event_array(self, array: List[Union[Event, BadEventType]]):
         if not self.olm:
@@ -1213,7 +1260,7 @@ class Client:
     def add_event_callback(
         self,
         callback: Callable[[MatrixRoom, Event], Optional[Awaitable[None]]],
-        filter: Union[Type[Event], Tuple[Type[Event], ...]],
+        filter: Union[Type[Event], Tuple[Type[Event], None]],
     ) -> None:
         """Add a callback that will be executed on room events.
 
@@ -1318,7 +1365,7 @@ class Client:
 
         Args:
             callback (Callable[[ToDeviceEvent], None]): A function that will be
-                called if the event type in the filter argument is found in a
+                called if the event type in the filter argument is found in
                 the to-device part of the sync response.
 
             filter
@@ -1340,7 +1387,7 @@ class Client:
 
         Args:
             callback (Callable[[PresenceEvent], None]): A function that will be
-                called if the event type in the filter argument is found in a
+                called if the event type in the filter argument is found in
                 the presence part of the sync response.
             filter (Union[Type, Tuple[Type]]): The event type or a tuple
                 containing multiple types for which the function
@@ -1370,7 +1417,7 @@ class Client:
             transaction_id (str): The transaction id of the interactive key
                 verification.
 
-        Returns a ``ToDeviceMessage`` that should be sent to to the homeserver.
+        Returns a ``ToDeviceMessage`` that should be sent to the homeserver.
 
         If the other user already confirmed the short auth string on their side
         this function will also verify the device that is partaking in the

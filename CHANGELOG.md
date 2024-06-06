@@ -2,6 +2,105 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.24.0] - 2024-01-18
+
+### Miscellaneous Tasks
+
+- [[#473]] Update pre-commit hooks, fix issues with sphinx-lint
+- [[#472]] [[#475]] Add content to `built-with-nio`
+- [[#468]] Bump `aiohttp` from 3.8.6 to 3.9.0
+- [[#461]] Support `python3.12`
+- [[#478]] Bump `pycryptodome` from 3.19.0 to 3.19.1
+
+[#461]: https://github.com/poljar/matrix-nio/pull/461
+[#468]: https://github.com/poljar/matrix-nio/pull/468
+[#472]: https://github.com/poljar/matrix-nio/pull/472
+[#473]: https://github.com/poljar/matrix-nio/pull/473
+[#475]: https://github.com/poljar/matrix-nio/pull/475
+[#478]: https://github.com/poljar/matrix-nio/pull/478
+
+## [0.23.0] - 2023-11-17
+
+### Bug Fixes
+
+- [[#460]] Allow custom `ToDeviceEvent`s via `UnknownToDeviceEvent`
+- [[#463]] Remove callback execution boilerplate + allow arbitrary callable/awaitable objects
+- [[#457]] Fix schemas for `m.room.avatar` and `m.room.canonical_alias`
+- [[#403]] Propagate `asyncio.CancelledError` in `sync_forever`
+
+### Features
+
+- [[#451]] Introduce the DM room account data (`m.direct`)
+
+### Miscellaneous Tasks
+
+- [[#458]] Update the `nio-bot` description
+- [[#462]] Don't manually build `libolm` during tests + `pre-commit autoupdate`
+- [[#464]] Bump `aiohttp` from 3.8.5 to 3.8.6
+
+[#460]: https://github.com/poljar/matrix-nio/pull/460
+[#458]: https://github.com/poljar/matrix-nio/pull/458
+[#462]: https://github.com/poljar/matrix-nio/pull/462
+[#451]: https://github.com/poljar/matrix-nio/pull/451
+[#463]: https://github.com/poljar/matrix-nio/pull/463
+[#464]: https://github.com/poljar/matrix-nio/pull/464
+[#457]: https://github.com/poljar/matrix-nio/pull/457
+[#403]: https://github.com/poljar/matrix-nio/pull/403
+
+
+## [0.22.1] - 2023-10-9
+
+### Bug Fixes
+- [[#453]] Fix `ImportError` from when e2e is not installed
+
+[#453]: https://github.com/poljar/matrix-nio/pull/453
+
+
+## [0.22.0] - 2023-10-6
+
+### Bug Fixes
+
+- [[#434]] Fix space handling to account for Matrix spec ambiguities.
+
+### Features
+
+- [[#426]] Add a simple streamed response to download to files
+- [[#436]] Add get space hierarchy capability
+- [[#437]] Support for Token-Authenticated Registration
+- [[#330]] Add `room_type` to `room_create` API function to allow for custom room types
+- [[#351]] Add support for `m.reaction` events (Closes [[#174]])
+
+### Miscellaneous Tasks
+
+- [[#427]], [[#446]] Add `.readthedocs.yaml` v2 to support ReadTheDocs migration
+- [[#440]] Remove `future` dependency
+- [[#438]] Fix `jsonschema` deprecations
+- [[#439]] Replace `cgi.parse_header()`
+- [[#441]] Run `pre-commit autoupdate` to fix deprecation
+- [[#442]] Introduce `ruff` as a `pre-commit` hook + run on whole codebase
+- [[#445]] Update `pre-commit` hooks
+- [[#447]] Replace ALL type comments with type hints
+- [[#448]] Add `pyupgrade`, `async`, various `flake8`, `Perflint`, and more `ruff` linting rules
+
+[#174]: https://github.com/poljar/matrix-nio/issues/174
+[#434]: https://github.com/poljar/matrix-nio/pull/434
+[#426]: https://github.com/poljar/matrix-nio/pull/426
+[#436]: https://github.com/poljar/matrix-nio/pull/436
+[#437]: https://github.com/poljar/matrix-nio/pull/437
+[#330]: https://github.com/poljar/matrix-nio/pull/330
+[#351]: https://github.com/poljar/matrix-nio/pull/351
+[#427]: https://github.com/poljar/matrix-nio/pull/427
+[#446]: https://github.com/poljar/matrix-nio/pull/446
+[#440]: https://github.com/poljar/matrix-nio/pull/440
+[#438]: https://github.com/poljar/matrix-nio/pull/438
+[#439]: https://github.com/poljar/matrix-nio/pull/439
+[#441]: https://github.com/poljar/matrix-nio/pull/441
+[#442]: https://github.com/poljar/matrix-nio/pull/442
+[#445]: https://github.com/poljar/matrix-nio/pull/445
+[#447]: https://github.com/poljar/matrix-nio/pull/447
+[#448]: https://github.com/poljar/matrix-nio/pull/448
+
+
 ## [0.21.2] - 2023-7-17
 
 ### Bug Fixes

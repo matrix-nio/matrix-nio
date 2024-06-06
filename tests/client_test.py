@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
 import json
 import random
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -101,13 +101,7 @@ class TestClass:
 
     @staticmethod
     def _load_response(filename):
-        with open(filename) as f:
-            return json.loads(f.read())
-
-    @staticmethod
-    def _load_byte_response(filename):
-        with open(filename, "rb") as f:
-            return f.read()
+        return json.loads(Path(filename).read_text())
 
     @property
     def login_byte_response(self):
@@ -139,7 +133,7 @@ class TestClass:
             headers=self.example_response_headers, stream_id=3
         )
 
-        body = self._load_byte_response("tests/data/sync.json")
+        body = Path("tests/data/sync.json").read_bytes()
 
         data = frame_factory.build_data_frame(
             data=body, stream_id=3, flags=["END_STREAM"]
@@ -162,7 +156,7 @@ class TestClass:
 
         f = frame_factory.build_headers_frame(headers=headers, stream_id=stream_id)
 
-        body = self._load_byte_response("tests/data/file_response")
+        body = Path("tests/data/file_response").read_bytes()
 
         data = frame_factory.build_data_frame(
             data=body, stream_id=stream_id, flags=["END_STREAM"]
@@ -497,7 +491,7 @@ class TestClass:
         assert not client.store
 
     def test_client_invalid_response(self, client):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Invalid response received"):
             client.receive_response(None)
 
     def test_client_login(self, client):
@@ -538,7 +532,10 @@ class TestClass:
     def test_client_account_sharing(self, client):
         client.receive_response(self.login_response)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="Invalid event, this function can only decrypt MegolmEvents",
+        ):
             client.decrypt_event(None)
 
         assert not client.olm_account_shared
@@ -712,7 +709,7 @@ class TestClass:
         with pytest.raises(EncryptionError):
             client.olm.share_group_session(TEST_ROOM_ID, room.users)
 
-        shared_with, to_device = client.olm.share_group_session(
+        _shared_with, _to_device = client.olm.share_group_session(
             TEST_ROOM_ID, room.users, True
         )
 
@@ -778,7 +775,7 @@ class TestClass:
         http_client.connect(TransportType.HTTP2)
         auth_dict = {}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Auth dictionary shall not be empty"):
             _, _ = http_client.login_raw(auth_dict)
 
         assert not http_client.access_token == "ABCD"
@@ -787,7 +784,7 @@ class TestClass:
         http_client.connect(TransportType.HTTP2)
         auth_dict = None
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Auth dictionary shall not be empty"):
             _, _ = http_client.login_raw(auth_dict)
 
         assert not http_client.access_token == "ABCD"
@@ -950,7 +947,7 @@ class TestClass:
         response = http_client.next_response()
 
         assert isinstance(response, DownloadResponse)
-        assert response.body == self._load_byte_response("tests/data/file_response")
+        assert response.body == Path("tests/data/file_response").read_bytes()
         assert response.content_type == "image/png"
         assert response.filename is None
 
@@ -960,7 +957,7 @@ class TestClass:
         response = http_client.next_response()
 
         assert isinstance(response, DownloadResponse)
-        assert response.body == self._load_byte_response("tests/data/file_response")
+        assert response.body == Path("tests/data/file_response").read_bytes()
         assert response.content_type == "image/png"
         assert response.filename == filename
 
@@ -975,7 +972,7 @@ class TestClass:
         response = http_client.next_response()
 
         assert isinstance(response, ThumbnailResponse)
-        assert response.body == self._load_byte_response("tests/data/file_response")
+        assert response.body == Path("tests/data/file_response").read_bytes()
         assert response.content_type == "image/png"
 
     def test_http_client_get_profile(self, http_client: HttpClient):
@@ -1068,7 +1065,7 @@ class TestClass:
 
         def cb(room, event):
             if isinstance(event, RoomMemberEvent):
-                raise CallbackException()
+                raise CallbackException
 
         client.add_event_callback(cb, (RoomMemberEvent, RoomEncryptionEvent))
 
@@ -1083,7 +1080,7 @@ class TestClass:
 
         def cb(event):
             if isinstance(event, RoomEncryptionEvent):
-                raise CallbackException()
+                raise CallbackException
 
         client.add_to_device_callback(cb, RoomEncryptionEvent)
 
@@ -1097,7 +1094,7 @@ class TestClass:
             pass
 
         def cb(_, event):
-            raise CallbackException()
+            raise CallbackException
 
         client.add_ephemeral_callback(cb, TypingNoticeEvent)
 
@@ -1131,7 +1128,7 @@ class TestClass:
             exceptions.append(exception_class)
 
             def callback(_, event):
-                raise exception_class()
+                raise exception_class
 
             client.add_ephemeral_callback(callback, event)
 
@@ -1145,7 +1142,7 @@ class TestClass:
             pass
 
         def cb(_, event):
-            raise CallbackException()
+            raise CallbackException
 
         client.add_room_account_data_callback(cb, FullyReadEvent)
 
@@ -1159,7 +1156,7 @@ class TestClass:
             pass
 
         def cb(_event):
-            raise CallbackCalled()
+            raise CallbackCalled
 
         client.add_global_account_data_callback(cb, PushRulesEvent)
 
@@ -1217,7 +1214,7 @@ class TestClass:
             pass
 
         def cb(_, event):
-            raise CallbackException()
+            raise CallbackException
 
         client.add_event_callback(cb, InviteMemberEvent)
 
@@ -1298,7 +1295,7 @@ class TestClass:
 
         def cb(event):
             if isinstance(event, PresenceEvent):
-                raise CallbackException()
+                raise CallbackException
 
         client.add_presence_callback(cb, PresenceEvent)
 

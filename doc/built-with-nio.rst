@@ -16,6 +16,7 @@ Projects built with nio
 - `matrix-archive <https://github.com/russelldavies/matrix-archive>`_ - creates a YAML log of all room messages and media
 - `matrix-eno-bot <https://github.com/8go/matrix-eno-bot>`_ - admin and personal assistence bot
 - `infinigpt-matrix <https://github.com/h1ddenpr0cess20/infinigpt-matrix>`_ - OpenAI GPT chatbot with infinite personalities
+- `ollamarama-matrix <https://github.com/h1ddenpr0cess20/ollamarama-matrix>`_ - AI chatbot with infinite personalities, using local LLMs via Ollama
 - `matrix-discord-bridge <https://github.com/git-bruh/matrix-discord-bridge>`_
 - `Matrix Nio - HACS <https://github.com/PaarthShah/matrix-nio-hacs>`_ - A HACS Integration to replace the core matrix Home Assistant integration
 - `Simple-Matrix-Bot-Lib <https://github.com/KrazyKirby99999/simple-matrix-bot-lib>`_
@@ -23,6 +24,8 @@ Projects built with nio
 - `matrix-webhook <https://github.com/nim65s/matrix-webhook>`_
 - `matrix-asgi <https://github.com/nim65s/matrix-asgi>`_
 - `opsdroid <https://github.com/opsdroid/opsdroid>`_
-- `niobot <https://github.com/EEKIM10/niobot>`_ - A bot-focused framework built on matrix-nio
+- `niobot <https://pypi.org/project/nio-bot>`_ - An extensive framework for building powerful Matrix bots with ease
+- `matrix-reminder-bot <https://github.com/anoadragon453/matrix-reminder-bot>`_ - A bot to remind you about stuff
+- `bartleby <https://github.com/gperdrizet/bartleby>`_ - A LLM chatbot and writing assistant using HuggingFace
 
 Are we missing a project? Submit a pull request and we'll get you added! Just edit ``doc/built-with-nio.rst``

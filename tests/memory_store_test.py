@@ -1,4 +1,4 @@
-from helpers import ephemeral, ephemeral_dir, faker
+from helpers import faker
 
 from nio.crypto import (
     DeviceStore,
@@ -9,8 +9,6 @@ from nio.crypto import (
     OutboundSession,
     SessionStore,
 )
-from nio.exceptions import OlmTrustError
-from nio.store import Ed25519Key, Key, KeyStore, MatrixStore
 
 BOB_ID = "@bob:example.org"
 BOB_DEVICE = "AGMTSWVYML"

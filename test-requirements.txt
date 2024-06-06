@@ -1,7 +1,8 @@
+setuptools
 poetry
 pytest
+pytest-asyncio
 pytest-flake8
-pytest-isort
 pytest-cov
 pytest-benchmark
 hyperframe
@@ -10,11 +11,11 @@ hpack
 faker
 mypy
 mypy_extensions
-aiohttp
+aiohttp < 4.0.0
 pytest-aiohttp
 aioresponses
-python-olm >= '3.1.0'
-peewee >= '3.9.5'
+python-olm>=3.2.16
+peewee>=3.17.0
 atomicwrites
 cachetools
 unpaddedbase64

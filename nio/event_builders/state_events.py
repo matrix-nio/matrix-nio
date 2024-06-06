@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2019 miruka <miruka@disroot.org>
 #
@@ -84,7 +82,7 @@ class ChangeNameBuilder(EventBuilder):
     def __post_init__(self):
         if len(self.name) > 255:
             raise ValueError(
-                f"Room names exceeds 255 characters: {self.name}",
+                f"Room name exceeds 255 characters: {self.name}",
             )
 
     def as_dict(self):

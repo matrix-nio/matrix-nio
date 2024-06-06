@@ -1,9 +1,5 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import unicode_literals
-
 import json
-import pdb
+from pathlib import Path
 
 from nio.api import PushRuleKind
 from nio.events import (
@@ -39,6 +35,7 @@ from nio.events import (
     PushRulesEvent,
     PushSenderNotificationPermission,
     PushUnknownCondition,
+    ReactionEvent,
     Receipt,
     ReceiptEvent,
     RedactedEvent,
@@ -67,6 +64,8 @@ from nio.events import (
     UnknownAccountDataEvent,
     UnknownBadEvent,
     UnknownEncryptedEvent,
+    UnknownEvent,
+    UnknownToDeviceEvent,
 )
 from nio.responses import RoomSummary
 from nio.rooms import MatrixRoom
@@ -75,8 +74,7 @@ from nio.rooms import MatrixRoom
 class TestClass:
     @staticmethod
     def _load_response(filename):
-        with open(filename) as f:
-            return json.loads(f.read())
+        return json.loads(Path(filename).read_text())
 
     def test_redacted_event(self):
         parsed_dict = TestClass._load_response("tests/data/events/redacted.json")
@@ -94,6 +92,12 @@ class TestClass:
         parsed_dict = TestClass._load_response("tests/data/events/create.json")
         event = RoomCreateEvent.from_dict(parsed_dict)
         assert isinstance(event, RoomCreateEvent)
+
+    def test_create_event_typed(self):
+        parsed_dict = TestClass._load_response("tests/data/events/create_typed.json")
+        event = RoomCreateEvent.from_dict(parsed_dict)
+        assert isinstance(event, RoomCreateEvent)
+        assert event.room_type == "nio.matrix.test"
 
     def test_guest_access_event(self):
         parsed_dict = TestClass._load_response("tests/data/events/guest_access.json")
@@ -126,7 +130,7 @@ class TestClass:
         parsed_dict = TestClass._load_response("tests/data/events/room_avatar.json")
         parsed_dict["content"].pop("url")
         event = RoomAvatarEvent.from_dict(parsed_dict)
-        assert isinstance(event, BadEvent)
+        assert isinstance(event, RoomAvatarEvent)
 
     def test_tag_event(self):
         parsed_dict = TestClass._load_response("tests/data/events/tag.json")
@@ -223,6 +227,11 @@ class TestClass:
         parsed_dict = TestClass._load_response("tests/data/events/sticker.json")
         event = StickerEvent.from_dict(parsed_dict)
         assert isinstance(event, StickerEvent)
+
+    def test_reaction(self):
+        parsed_dict = TestClass._load_response("tests/data/events/reaction.json")
+        event = ReactionEvent.from_dict(parsed_dict)
+        assert isinstance(event, ReactionEvent)
 
     def test_empty_event(self):
         parsed_dict = {}
@@ -443,6 +452,20 @@ class TestClass:
         event = Event.parse_event({"type": "m.unknown"})
 
         assert isinstance(event, UnknownBadEvent)
+
+    def test_unknown_room_event(self):
+        parsed_dict = TestClass._load_response("tests/data/events/unknown.json")
+        event = Event.parse_event(parsed_dict)
+
+        assert isinstance(event, UnknownEvent)
+
+    def test_unknown_to_device_event(self):
+        parsed_dict = TestClass._load_response(
+            "tests/data/events/unknown_to_device.json"
+        )
+        event = ToDeviceEvent.parse_event(parsed_dict)
+
+        assert isinstance(event, UnknownToDeviceEvent)
 
     def test_redacted_state_event(self):
         parsed_dict = TestClass._load_response("tests/data/events/redacted_state.json")

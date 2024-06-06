@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2021 Famedly GmbH
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -14,9 +12,8 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from urllib.parse import urlencode
 
-from nio.api import Api
+from nio.api import MATRIX_API_PATH_V3, Api
 
 
 class TestClass:
@@ -29,15 +26,15 @@ class TestClass:
             # an irregular but legal username
             (
                 "@a-z0-9._=-/:example.com",
-                "%40a-z0-9._%3D-%2F%3Aexample.com"
+                "%40a-z0-9._%3D-%2F%3Aexample.com",
                 # Why include this? https://github.com/poljar/matrix-nio/issues/211
                 # There were issues with a username that included slashes, which is
                 # legal by the standard: https://matrix.org/docs/spec/appendices#user-identifiers
             ),
         ]
         for unencoded, encoded in encode_pairs:
-            expected_path = f"/_matrix/client/r0/profile/{encoded}"
-            (method, actual_path) = api.profile_get(unencoded)
+            expected_path = f"{MATRIX_API_PATH_V3}/profile/{encoded}"
+            (_method, actual_path) = api.profile_get(unencoded)
             assert actual_path == expected_path
 
     def test_profile_get_authed(self) -> None:
@@ -47,7 +44,7 @@ class TestClass:
         encoded = "%40bob%3Aexample.com"
         token = "SECRET_TOKEN"
 
-        expected = f"/_matrix/client/r0/profile/{encoded}?access_token={token}"
+        expected = f"{MATRIX_API_PATH_V3}/profile/{encoded}?access_token={token}"
         resp = api.profile_get(user_id, token)
 
         assert resp == ("GET", expected)
@@ -59,7 +56,7 @@ class TestClass:
         encoded = "%23room%3Aexample.com"
         token = "SECRET_TOKEN"
 
-        expected = f"/_matrix/client/r0/directory/room/{encoded}?access_token={token}"
+        expected = f"{MATRIX_API_PATH_V3}/directory/room/{encoded}?access_token={token}"
         resp = api.delete_room_alias(token, room_alias)
 
         assert resp == ("DELETE", expected)
@@ -73,7 +70,7 @@ class TestClass:
         token = "SECRET_TOKEN"
 
         expected_path = (
-            f"/_matrix/client/r0/directory/room/{encoded}?access_token={token}"
+            f"{MATRIX_API_PATH_V3}/directory/room/{encoded}?access_token={token}"
         )
         expected_data = '{"room_id":"!room_id:example.com"}'
         resp = api.put_room_alias(token, room_alias, room_id)

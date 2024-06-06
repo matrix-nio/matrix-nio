@@ -7,43 +7,39 @@ on:
   pull_request:
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python }}
-      - name: Lint with Black
-        run: |
-          pip install black
-          black --check .
-      - name: Lint with isort
-        run: |
-          pip install isort
-          isort --check --profile=black .
-
-  build:
-
+  pre-commit-check:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.8", "3.9", "3.10", "3.11"]
-
+        python: [ "3.12" ]
     steps:
       - uses: actions/checkout@v3
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
-      - name: Install Tox and any other packages
+          cache: "pip"
+      - name: Install pre-commit
         run: |
-          wget https://gitlab.matrix.org/matrix-org/olm/-/archive/master/olm-master.tar.bz2
-          tar -xvf olm-master.tar.bz2
-          pushd olm-master && make && sudo make PREFIX="/usr" install && popd
-          rm -r olm-master
-          pip install tox
+          pip install pre-commit
+      - name: pre-commit run --all-files
+        run: |
+          pre-commit run --all-files
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+          cache: "pip"
+      - name: Install Tox
+        run: pip install tox
       - name: Run Tox
         # Run tox using the version of Python in `PATH`
         run: tox -e py
@@ -52,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: [ 3.11 ]
+        python: [ "3.12" ]
 
     steps:
       - uses: actions/checkout@v3
@@ -60,12 +56,12 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
-      - name: Install Tox and any other packages
-        run: |
-          wget https://gitlab.matrix.org/matrix-org/olm/-/archive/master/olm-master.tar.bz2
-          tar -xvf olm-master.tar.bz2
-          pushd olm-master && make && sudo make PREFIX="/usr" install && popd
-          rm -r olm-master
-          pip install tox
+          cache: "pip"
+      - name: Install Tox
+        run: pip install tox
       - name: Run Tox
         run: tox -e coverage
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.2.0
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

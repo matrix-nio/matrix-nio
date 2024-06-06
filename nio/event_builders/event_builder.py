@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2019 miruka <miruka@disroot.org>
 #
@@ -18,8 +16,8 @@
 
 # TODO: use abc.ABC when we drop py2
 class EventBuilder:
-    """The base class for event builders, should not be instancied."""
+    """The base class for event builders, should not be instantiated."""
 
     def as_dict(self):
         """Format the event as a dictionary, to be sent to the server."""
-        raise NotImplementedError()
+        raise NotImplementedError

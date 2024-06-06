@@ -154,9 +154,7 @@
       "age": 45889723877
     },
     {
-      "content": {
-        "creator": "@example:localhost"
-      },
+      "content": {},
       "event_id": "$15139375510KUZHi:localhost",
       "origin_server_ts": 1513937551203,
       "room_id": "!SVkFJHzfwvuaIEawgC:localhost",

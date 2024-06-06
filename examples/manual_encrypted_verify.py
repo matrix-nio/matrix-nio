@@ -4,18 +4,15 @@ import os
 import sys
 from typing import Optional
 
+import aiofiles
+
 from nio import (
     AsyncClient,
     ClientConfig,
-    DevicesError,
-    Event,
     InviteEvent,
-    LocalProtocolError,
     LoginResponse,
     MatrixRoom,
-    MatrixUser,
     RoomMessageText,
-    RoomSendResponse,
     crypto,
     exceptions,
 )
@@ -112,19 +109,20 @@ class CustomEncryptedClient(AsyncClient):
             SESSION_DETAILS_FILE
         ):
             try:
-                with open(SESSION_DETAILS_FILE, "r") as f:
-                    config = json.load(f)
-                    self.access_token = config["access_token"]
-                    self.user_id = config["user_id"]
-                    self.device_id = config["device_id"]
+                async with aiofiles.open(SESSION_DETAILS_FILE, "r") as f:
+                    contents = await f.read()
+                config = json.loads(contents)
+                self.access_token = config["access_token"]
+                self.user_id = config["user_id"]
+                self.device_id = config["device_id"]
 
-                    # This loads our verified/blacklisted devices and our keys
-                    self.load_store()
-                    print(
-                        f"Logged in using stored credentials: {self.user_id} on {self.device_id}"
-                    )
+                # This loads our verified/blacklisted devices and our keys
+                self.load_store()
+                print(
+                    f"Logged in using stored credentials: {self.user_id} on {self.device_id}"
+                )
 
-            except IOError as err:
+            except OSError as err:
                 print(f"Couldn't load session from file. Logging in. Error: {err}")
             except json.JSONDecodeError:
                 print("Couldn't read JSON file; overwriting")
@@ -218,9 +216,9 @@ class CustomEncryptedClient(AsyncClient):
                     "body": "Hello, this message is encrypted",
                 },
             )
-        except exceptions.OlmUnverifiedDeviceError as err:
+        except exceptions.OlmUnverifiedDeviceError:
             print("These are all known devices:")
-            device_store: crypto.DeviceStore = device_store
+            device_store: crypto.DeviceStore = device_store  # noqa: F821
             [
                 print(
                     f"\t{device.user_id}\t {device.device_id}\t {device.trust_state}\t  {device.display_name}"

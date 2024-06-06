@@ -1,23 +1,17 @@
-# -*- coding: utf-8 -*-
+from __future__ import annotations
 
-from __future__ import unicode_literals
+from pathlib import Path
 
 from nio.client import HttpClient
-from nio.http import TransportResponse
 
 
 class TestClass:
-    @staticmethod
-    def _load_response(filename):
-        # type: (str) -> Dict[Any, Any]
-        with open(filename, "rb") as f:
-            return f.read()
 
     def test_503(self):
         client = HttpClient("localhost", "example")
         client.connect()
         client.login("test")
-        transport_response = self._load_response("tests/data/http_503.txt")
+        transport_response = Path("tests/data/http_503.txt").read_bytes()
         client.receive(transport_response)
         response = client.next_response()
         assert response.status_code == 503
@@ -26,7 +20,7 @@ class TestClass:
         client = HttpClient("localhost", "example")
         client.connect()
         client.login("test")
-        transport_response = self._load_response("tests/data/http_502.txt")
+        transport_response = Path("tests/data/http_502.txt").read_bytes()
         client.receive(transport_response)
         response = client.next_response()
         assert response.status_code == 502

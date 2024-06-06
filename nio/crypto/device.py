@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2020 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -140,8 +138,7 @@ class DeviceStore:
 
     def __iter__(self) -> Iterator[OlmDevice]:
         for user_devices in self._entries.values():
-            for device in user_devices.values():
-                yield device
+            yield from user_devices.values()
 
     def __getitem__(self, user_id: str) -> Dict[str, OlmDevice]:
         return self._entries[user_id]

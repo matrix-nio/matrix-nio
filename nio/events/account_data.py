@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -23,7 +21,7 @@ across installations on a particular device.
 
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
@@ -47,7 +45,7 @@ class AccountDataEvent:
     @verify(Schemas.account_data)
     def parse_event(
         cls,
-        event_dict,  # type: Dict[Any, Any]
+        event_dict: Dict[Any, Any],
     ):
         if event_dict["type"] == "m.fully_read":
             return FullyReadEvent.from_dict(event_dict)
@@ -117,7 +115,7 @@ class PushCondition:
     """A condition for a push rule to match an event."""
 
     @classmethod
-    def from_dict(cls, condition: Dict[str, Any]) -> "PushCondition":
+    def from_dict(cls, condition: Dict[str, Any]) -> PushCondition:
         cnd = condition
 
         if cnd["kind"] == "event_match" and "key" in cnd and "pattern" in cnd:
@@ -136,12 +134,12 @@ class PushCondition:
 
     @property
     def as_value(self) -> Dict[str, Any]:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def matches(
         self,
         event: Event,
-        room: "MatrixRoom",
+        room: MatrixRoom,
         display_name: str,
     ) -> bool:
         """Return whether this condition holds true for a room event.
@@ -181,7 +179,7 @@ class PushEventMatch(PushCondition):
     def matches(
         self,
         event: Event,
-        room: "MatrixRoom",
+        room: MatrixRoom,
         display_name: str,
     ) -> bool:
         if self.key == "room_id":
@@ -213,7 +211,7 @@ class PushContainsDisplayName(PushCondition):
     def matches(
         self,
         event: Event,
-        room: "MatrixRoom",
+        room: MatrixRoom,
         display_name: str,
     ) -> bool:
         body = event.source.get("content", {}).get("body")
@@ -241,7 +239,7 @@ class PushRoomMemberCount(PushCondition):
     operator: str = "=="
 
     @classmethod
-    def from_dict(cls, condition: Dict[str, Any]) -> "PushRoomMemberCount":
+    def from_dict(cls, condition: Dict[str, Any]) -> PushRoomMemberCount:
         op, num = re.findall(r"(==|<|>|<=|>=)?([0-9.-]+)", condition["is"])[0]
         return cls(int(num), op or "==")
 
@@ -253,7 +251,7 @@ class PushRoomMemberCount(PushCondition):
     def matches(
         self,
         event: Event,
-        room: "MatrixRoom",
+        room: MatrixRoom,
         display_name: str,
     ) -> bool:
         if self.operator == "==":
@@ -292,7 +290,7 @@ class PushSenderNotificationPermission(PushCondition):
     def matches(
         self,
         event: Event,
-        room: "MatrixRoom",
+        room: MatrixRoom,
         display_name: str,
     ) -> bool:
         return room.power_levels.can_user_notify(event.sender, self.key)
@@ -319,7 +317,7 @@ class PushAction:
     """An action to apply for a push rule when matching."""
 
     @classmethod
-    def from_dict(cls, action: Union[str, Dict[str, Any]]) -> "PushAction":
+    def from_dict(cls, action: Union[str, Dict[str, Any]]) -> PushAction:
         # isinstance() to make mypy happy
 
         if isinstance(action, str) and action == "notify":
@@ -346,7 +344,7 @@ class PushAction:
 
     @property
     def as_value(self) -> Union[str, Dict[str, Any]]:
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 @dataclass
@@ -468,7 +466,7 @@ class PushRule:
     def matches(
         self,
         event: Event,
-        room: "MatrixRoom",
+        room: MatrixRoom,
         display_name: str,
     ) -> bool:
         """Return whether this push rule matches a room event.
@@ -495,7 +493,7 @@ class PushRule:
 
     @classmethod
     @verify_or_none(Schemas.push_rule)
-    def from_dict(cls, rule: Dict[str, Any], kind: PushRuleKind) -> "PushRule":
+    def from_dict(cls, rule: Dict[str, Any], kind: PushRuleKind) -> PushRule:
         return cls(
             kind,
             rule["rule_id"],
@@ -536,7 +534,7 @@ class PushRuleset:
     def matching_rule(
         self,
         event: Event,
-        room: "MatrixRoom",
+        room: MatrixRoom,
         display_name: str,
     ) -> Optional[PushRule]:
         """Return the push rule in this set that matches a room event, if any.
@@ -556,7 +554,7 @@ class PushRuleset:
 
     @classmethod
     @verify_or_none(Schemas.push_ruleset)
-    def from_dict(cls, ruleset: Dict[str, Any]) -> "PushRuleset":
+    def from_dict(cls, ruleset: Dict[str, Any]) -> PushRuleset:
         kwargs = {}
 
         for kind in PushRuleKind:
@@ -589,7 +587,7 @@ class PushRulesEvent(AccountDataEvent):
 
     @classmethod
     @verify(Schemas.push_rules)
-    def from_dict(cls, event: Dict[str, Any]) -> "PushRulesEvent":
+    def from_dict(cls, event: Dict[str, Any]) -> PushRulesEvent:
         content = event["content"]
 
         return cls(

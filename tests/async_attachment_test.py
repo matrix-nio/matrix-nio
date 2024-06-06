@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 
 import aiofiles
@@ -12,11 +11,7 @@ from nio.crypto import async_decrypt_attachment, async_encrypt_attachment
 FILEPATH = "tests/data/test_bytes"
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 5),
-    reason="Python 3 specific asyncio tests",
-)
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 class TestClass:
     async def _get_data_cypher_keys(self, data=b"Test bytes"):
         *chunks, keys = [i async for i in async_encrypt_attachment(data)]
@@ -61,7 +56,7 @@ class TestClass:
         await self.test_encrypt(async_gen())
 
     async def test_encrypt_file_object(self):
-        await self.test_encrypt(open(FILEPATH, "rb"))
+        await self.test_encrypt(open(FILEPATH, "rb"))  # noqa: ASYNC101
 
     async def test_encrypt_async_file_object(self):
         await self.test_encrypt(await aiofiles.open(FILEPATH, "rb"))
@@ -71,7 +66,7 @@ class TestClass:
             await self.test_encrypt(123)
 
     async def test_hash_verification(self):
-        data, ciphertext, keys = await self._get_data_cypher_keys()
+        _data, ciphertext, keys = await self._get_data_cypher_keys()
 
         plaintext_generator = async_decrypt_attachment(
             self._generate(ciphertext),
@@ -83,7 +78,7 @@ class TestClass:
             [i async for i in plaintext_generator]
 
     async def test_invalid_key(self):
-        data, ciphertext, keys = await self._get_data_cypher_keys()
+        _data, ciphertext, keys = await self._get_data_cypher_keys()
 
         plaintext_generator = async_decrypt_attachment(
             self._generate(ciphertext),
@@ -95,7 +90,7 @@ class TestClass:
             [i async for i in plaintext_generator]
 
     async def test_invalid_iv(self):
-        data, ciphertext, keys = await self._get_data_cypher_keys()
+        _data, ciphertext, keys = await self._get_data_cypher_keys()
 
         plaintext_generator = async_decrypt_attachment(
             self._generate(ciphertext),
@@ -107,7 +102,7 @@ class TestClass:
             [i async for i in plaintext_generator]
 
     async def test_short_key(self):
-        data, ciphertext, keys = await self._get_data_cypher_keys()
+        _data, ciphertext, keys = await self._get_data_cypher_keys()
 
         plaintext_generator = async_decrypt_attachment(
             self._generate(ciphertext),

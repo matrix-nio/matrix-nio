@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
 #
 # Permission to use, copy, modify, and/or distribute this software for
@@ -15,7 +13,7 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from collections import defaultdict
-from typing import DefaultDict, Dict, Iterator, KeysView, List, Optional
+from typing import DefaultDict, Dict, Iterator, List, Optional
 
 from .sessions import InboundGroupSession, Session
 
@@ -34,8 +32,7 @@ class SessionStore:
 
     def __iter__(self) -> Iterator[Session]:
         for session_list in self._entries.values():
-            for session in session_list:
-                yield session
+            yield from session_list
 
     def values(self):
         return self._entries.values()
@@ -60,8 +57,7 @@ class GroupSessionStore:
     def __iter__(self) -> Iterator[InboundGroupSession]:
         for room_sessions in self._entries.values():
             for sender_sessions in room_sessions.values():
-                for session in sender_sessions.values():
-                    yield session
+                yield from sender_sessions.values()
 
     def add(self, session: InboundGroupSession) -> bool:
         room_id = session.room_id

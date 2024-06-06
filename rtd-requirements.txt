@@ -1,17 +1,16 @@
-future
-peewee
-aiohttp
+peewee==3.16.3
+aiohttp==3.9.5
 h11
 h2
-jsonschema
+jsonschema==4.19.1
 atomicwrites
-cachetools
+cachetools==5.3.3
 unpaddedbase64
-pycryptodome
-sphinx >= 1.8
-aiohttp; python_version >= '3.5'
-aiohttp_socks
-aioresponses; python_version >= '3.5'
-aiofiles; python_version >= '3.5'
+pycryptodome==3.19.1
+sphinx==7.3.7
+sphinx-autodoc-typehints
+aiohttp_socks==0.8.3
+aioresponses==0.7.6
+aiofiles==23.2.1
 m2r2
-sphinx_rtd_theme
+sphinx_rtd_theme==2.0.0

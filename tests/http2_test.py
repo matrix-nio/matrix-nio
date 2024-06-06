@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import unicode_literals
+from pathlib import Path
 
 import h2
 import pytest
@@ -14,17 +12,12 @@ from nio.responses import LoginResponse, SyncResponse
 class TestClass:
     example_response_headers = [(":status", "200"), ("server", "fake-serv/0.1.0")]
 
-    @staticmethod
-    def _load_response(filename):
-        with open(filename, "rb") as f:
-            return f.read()
-
     def login_response(self, stream_id, frame_factory):
         f = frame_factory.build_headers_frame(
             headers=self.example_response_headers, stream_id=stream_id
         )
 
-        login_body = self._load_response("tests/data/login_response.json")
+        login_body = Path("tests/data/login_response.json").read_bytes()
 
         data = frame_factory.build_data_frame(
             data=login_body, stream_id=stream_id, flags=["END_STREAM"]
@@ -36,7 +29,7 @@ class TestClass:
             headers=self.example_response_headers, stream_id=stream_id
         )
 
-        body = self._load_response("tests/data/sync.json")
+        body = Path("tests/data/sync.json").read_bytes()
 
         data = frame_factory.build_data_frame(
             data=body, stream_id=stream_id, flags=["END_STREAM"]
@@ -67,17 +60,17 @@ class TestClass:
         client = HttpClient("localhost", "example")
 
         with pytest.raises(LocalProtocolError):
-            uuid, request = client.login("wordpass")
+            _uuid, _request = client.login("wordpass")
 
         client.connect(TransportType.HTTP2)
-        uuid, request = client.login("wordpass")
+        _uuid, _request = client.login("wordpass")
 
         with pytest.raises(LocalProtocolError):
-            uuid, request = client.sync()
+            _uuid, _request = client.sync()
 
         client.receive(self.login_response(1, frame_factory))
         client.next_response()
-        uuid, request = client.sync()
+        _uuid, _request = client.sync()
 
     def test_client_receive(self, frame_factory):
         client = HttpClient("localhost", "example")
@@ -91,7 +84,7 @@ class TestClass:
         server.initiate_connection()
         server.receive_data(frame_factory.preamble())
 
-        events = server.receive_data(request)
+        server.receive_data(request)
         # assert events[0].headers == []
 
         client.receive(self.login_response(1, frame_factory))
@@ -102,7 +95,7 @@ class TestClass:
 
         uuid, request = client.sync()
 
-        events = server.receive_data(request)
+        server.receive_data(request)
 
         client.receive(self.sync_response(3, frame_factory))
         response = client.next_response()
@@ -110,13 +103,13 @@ class TestClass:
         assert isinstance(response, SyncResponse)
         assert response.uuid == uuid
 
-        sync_uuid, request = client.sync()
+        _sync_uuid, request = client.sync()
 
         server.receive_data(request)
 
         content = {"body": "test", "msgtype": "m.text"}
 
-        send_uuid, send_request = client.room_send(
+        _send_uuid, _send_request = client.room_send(
             "!test:localhost", "m.room.message", content
         )
 
@@ -124,7 +117,7 @@ class TestClass:
         client = HttpClient("localhost", "example")
         data = client.connect(TransportType.HTTP2)
         client.connection._connection.outbound_flow_control_window = 5
-        uuid, request = client.login("wordpass")
+        _uuid, request = client.login("wordpass")
 
         assert client.connection._data_to_send
 

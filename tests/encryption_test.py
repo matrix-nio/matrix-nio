@@ -1,14 +1,13 @@
-# -*- coding: utf-8 -*-
-
 import copy
 import json
 import os
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 from helpers import faker
-from olm import Account, OlmMessage, OlmPreKeyMessage, OutboundGroupSession
+from olm import Account, OutboundGroupSession
 
 from nio.crypto import (
     DeviceStore,
@@ -21,7 +20,6 @@ from nio.crypto import (
     Session,
     SessionStore,
 )
-from nio.event_builders import RoomKeyRequestMessage
 from nio.events import (
     DummyEvent,
     ForwardedRoomKeyEvent,
@@ -110,8 +108,7 @@ def alice_account_pair(tempdir):
 class TestClass:
     @staticmethod
     def _load_response(filename):
-        with open(filename) as f:
-            return json.loads(f.read())
+        return json.loads(Path(filename).read_text())
 
     def _get_store(self, user_id, device_id, pickle_key=""):
         return DefaultStore(user_id, device_id, ephemeral_dir, pickle_key)
@@ -204,7 +201,7 @@ class TestClass:
         return alice, bob, s
 
     def test_session_store(self):
-        alice, bob, s = self._create_session()
+        _alice, bob, s = self._create_session()
         store = SessionStore()
         store.add(bob.identity_keys["curve25519"], s)
         assert s in store
@@ -358,7 +355,7 @@ class TestClass:
 
         # alice shares the group session with bob, but bob isn't verified
         with pytest.raises(OlmTrustError):
-            sharing_with, to_device = alice.share_group_session(
+            _sharing_with, to_device = alice.share_group_session(
                 "!test:example.org", [BobId]
             )
 
@@ -367,12 +364,12 @@ class TestClass:
         # alice shares the group session with bob and malory, but malory isn't
         # blocked
         with pytest.raises(OlmTrustError):
-            sharing_with, to_device = alice.share_group_session(
+            _sharing_with, to_device = alice.share_group_session(
                 "!test:example.org", [BobId, MaloryId]
             )
 
         alice.blacklist_device(malory_device)
-        sharing_with, to_device = alice.share_group_session(
+        _sharing_with, to_device = alice.share_group_session(
             "!test:example.org", [BobId, MaloryId]
         )
 
@@ -414,7 +411,7 @@ class TestClass:
             alice.create_outbound_group_session(TEST_ROOM)
             group_session = alice.outbound_group_sessions[TEST_ROOM]
 
-            sharing_with, to_device = alice.share_group_session(
+            _sharing_with, to_device = alice.share_group_session(
                 TEST_ROOM, [BobId, MaloryId]
             )
 
@@ -484,7 +481,7 @@ class TestClass:
 
         alice._maxToDeviceMessagesPerRequest = 1
 
-        sharing_with, to_device = alice.share_group_session(
+        sharing_with, _to_device = alice.share_group_session(
             "!test:example.org", [BobId, MaloryId]
         )
         group_session = alice.outbound_group_sessions["!test:example.org"]
@@ -496,7 +493,7 @@ class TestClass:
 
         group_session.users_shared_with.update(sharing_with)
 
-        sharing_with, to_device = alice.share_group_session(
+        sharing_with, _to_device = alice.share_group_session(
             "!test:example.org", [BobId, MaloryId]
         )
 
@@ -697,8 +694,10 @@ class TestClass:
 
         assert not olm.should_upload_keys
 
-        with pytest.raises(ValueError):
-            to_share = olm.share_keys()
+        with pytest.raises(
+            ValueError, match="Can't share any keys, too many keys already shared"
+        ):
+            olm.share_keys()
 
         olm.uploaded_key_count -= 1
 
@@ -775,7 +774,7 @@ class TestClass:
 
         alice.create_session(one_time, bob_device.curve25519)
 
-        sharing_with, to_device = alice.share_group_session(
+        sharing_with, _to_device = alice.share_group_session(
             "!test:example.org", [bob.user_id], ignore_unverified_devices=True
         )
 
