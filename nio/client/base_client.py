@@ -35,6 +35,8 @@ from typing import (
     Union,
 )
 
+from pydantic import BaseModel
+
 from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OutgoingKeyRequest
 from ..events import (
     AccountDataEvent,
@@ -1087,7 +1089,7 @@ class Client:
         Args:
             response (Response): the response that we wish the client to handle
         """
-        if not isinstance(response, Response):
+        if not isinstance(response, (Response, BaseModel)):
             raise ValueError("Invalid response received")
 
         if isinstance(response, LoginResponse):

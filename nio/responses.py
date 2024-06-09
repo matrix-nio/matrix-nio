@@ -36,6 +36,12 @@ from .events import (
 from .events.presence import PresenceEvent
 from .http import TransportResponse
 from .schemas import Schemas, validate_json
+from .spec_definitions.client_server import (  # noqa: F401
+    ErrorResponse,
+    LoginResponse,
+    PublicRoomsChunk,
+    PublicRoomsResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -182,17 +188,18 @@ __all__ = [
 def verify(schema, error_class, pass_arguments=True):
     def decorator(f):
         @wraps(f)
-        def wrapper(cls, parsed_dict, *args, **kwargs):
+        def wrapper(cls, parsed_dict: Dict | None, *args, **kwargs):
             try:
                 logger.debug("Validating response schema %r: %s", schema, parsed_dict)
                 validate_json(parsed_dict, schema)
             except (SchemaError, ValidationError) as e:
                 logger.warning("Error validating response: " + str(e.message))
 
+                parsed_dict = parsed_dict or {}
                 if pass_arguments:
-                    return error_class.from_dict(parsed_dict, *args, **kwargs)
+                    return error_class(*args, **parsed_dict, **kwargs)
                 else:
-                    return error_class.from_dict(parsed_dict)
+                    return error_class(**parsed_dict)
 
             return f(cls, parsed_dict, *args, **kwargs)
 
@@ -366,41 +373,41 @@ class DiskFileResponse(FileResponse):
     body: os.PathLike = field()
 
 
-@dataclass
-class ErrorResponse(Response):
-    message: str = field()
-    status_code: Optional[str] = None
-    retry_after_ms: Optional[int] = None
-    soft_logout: bool = False
-
-    def __str__(self) -> str:
-        if self.status_code and self.message:
-            e = f"{self.status_code} {self.message}"
-        elif self.message:
-            e = self.message
-        elif self.status_code:
-            e = f"{self.status_code} unknown error"
-        else:
-            e = "unknown error"
-
-        if self.retry_after_ms:
-            e = f"{e} - retry after {self.retry_after_ms}ms"
-
-        return f"{self.__class__.__name__}: {e}"
-
-    @classmethod
-    def from_dict(cls, parsed_dict: Dict[Any, Any]) -> ErrorResponse:
-        try:
-            validate_json(parsed_dict, Schemas.error)
-        except (SchemaError, ValidationError):
-            return cls("unknown error")
-
-        return cls(
-            parsed_dict["error"],
-            parsed_dict["errcode"],
-            parsed_dict.get("retry_after_ms"),
-            parsed_dict.get("soft_logout", False),
-        )
+# @dataclass
+# class ErrorResponse(Response):
+#     message: str = field()
+#     status_code: Optional[str] = None
+#     retry_after_ms: Optional[int] = None
+#     soft_logout: bool = False
+#
+#     def __str__(self) -> str:
+#         if self.status_code and self.message:
+#             e = f"{self.status_code} {self.message}"
+#         elif self.message:
+#             e = self.message
+#         elif self.status_code:
+#             e = f"{self.status_code} unknown error"
+#         else:
+#             e = "unknown error"
+#
+#         if self.retry_after_ms:
+#             e = f"{e} - retry after {self.retry_after_ms}ms"
+#
+#         return f"{self.__class__.__name__}: {e}"
+#
+#     @classmethod
+#     def from_dict(cls, parsed_dict: Dict[Any, Any]) -> ErrorResponse:
+#         try:
+#             validate_json(parsed_dict, Schemas.error)
+#         except (SchemaError, ValidationError):
+#             return cls("unknown error")
+#
+#         return cls(
+#             parsed_dict["error"],
+#             parsed_dict["errcode"],
+#             parsed_dict.get("retry_after_ms"),
+#             parsed_dict.get("soft_logout", False),
+#         )
 
 
 @dataclass
@@ -423,16 +430,9 @@ class _ErrorWithRoomId(ErrorResponse):
         )
 
 
-class LoginError(ErrorResponse):
-    pass
-
-
-class LogoutError(ErrorResponse):
-    pass
-
-
-class SyncError(ErrorResponse):
-    pass
+LoginError = ErrorResponse
+LogoutError = ErrorResponse
+SyncError = ErrorResponse
 
 
 class RoomSendError(_ErrorWithRoomId):
@@ -451,10 +451,7 @@ class RoomGetStateEventError(_ErrorWithRoomId):
     pass
 
 
-class RoomGetEventError(ErrorResponse):
-    """A response representing an unsuccessful room get event request."""
-
-    pass
+RoomGetEventError = ErrorResponse
 
 
 class RoomPutStateError(_ErrorWithRoomId):
@@ -794,25 +791,25 @@ class LoginInfoResponse(Response):
         return cls(flow_types)
 
 
-@dataclass
-class LoginResponse(Response):
-    user_id: str = field()
-    device_id: str = field()
-    access_token: str = field()
-
-    def __str__(self) -> str:
-        return f"Logged in as {self.user_id}, device id: {self.device_id}."
-
-    @classmethod
-    @verify(Schemas.login, LoginError)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[LoginResponse, ErrorResponse]:
-        return cls(
-            parsed_dict["user_id"],
-            parsed_dict["device_id"],
-            parsed_dict["access_token"],
-        )
+# @dataclass
+# class LoginResponse(Response):
+#     user_id: str = field()
+#     device_id: str = field()
+#     access_token: str = field()
+#
+#     def __str__(self) -> str:
+#         return f"Logged in as {self.user_id}, device id: {self.device_id}."
+#
+#     @classmethod
+#     @verify(Schemas.login, LoginError)
+#     def from_dict(
+#         cls, parsed_dict: Dict[Any, Any]
+#     ) -> Union[LoginResponse, ErrorResponse]:
+#         return cls(
+#             parsed_dict["user_id"],
+#             parsed_dict["device_id"],
+#             parsed_dict["access_token"],
+#         )
 
 
 @dataclass
@@ -1763,40 +1760,6 @@ class PresenceGetResponse(Response):
             parsed_dict.get("last_active_ago"),
             parsed_dict.get("currently_active"),
             parsed_dict.get("status_msg"),
-        )
-
-
-@dataclass
-class PublicRoom:
-    guest_can_join: bool
-    num_joined_members: int
-    room_id: str
-    world_readable: bool
-    avatar_url: Optional[str] = None
-    canonical_alias: Optional[str] = None
-    join_rule: Optional[str] = None
-    name: Optional[str] = None
-    room_type: Optional[str] = None
-    topic: Optional[str] = None
-
-
-@dataclass
-class PublicRoomsResponse(Response):
-    public_rooms: List[PublicRoom]
-    next_batch: Optional[str]
-    prev_batch: Optional[str]
-    total_room_count_estimate: Optional[int]
-
-    @classmethod
-    @verify(Schemas.public_rooms_response, PublicRoomsError)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[PublicRoomsResponse, PublicRoomsError]:
-        return cls(
-            [PublicRoom(**chunk) for chunk in parsed_dict["chunk"]],
-            parsed_dict.get("next_batch"),
-            parsed_dict.get("prev_batch"),
-            parsed_dict.get("total_room_count_estimate"),
         )
 
 
