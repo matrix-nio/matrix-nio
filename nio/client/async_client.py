@@ -1323,7 +1323,6 @@ class AsyncClient(Client):
         """
 
         first_sync = True
-        self._stop_sync_forever = False
 
         while not self._stop_sync_forever:
             try:
@@ -1388,6 +1387,7 @@ class AsyncClient(Client):
                     task.cancel()
 
                 raise
+        self._stop_sync_forever = False
 
     def stop_sync_forever(self):
         """Request that the `sync_forever` loop exits gracefully.
