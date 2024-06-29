@@ -191,6 +191,7 @@ from ..responses import (
     RoomPutAliasResponse,
     RoomPutStateError,
     RoomPutStateResponse,
+    RoomReadMarkersError,
     RoomReadMarkersResponse,
     RoomRedactError,
     RoomRedactResponse,
@@ -2911,7 +2912,7 @@ class AsyncClient(Client):
         fully_read_event: str,
         read_event: Optional[str] = None,
         private_read_event: Optional[str] = None,
-    ):
+    ) -> Union[RoomReadMarkersResponse, RoomReadMarkersError]:
         """Update the fully read marker (and optionally the read receipt
         and/or private read receipt) for a room.
 
