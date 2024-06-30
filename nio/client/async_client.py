@@ -1393,7 +1393,7 @@ class AsyncClient(Client):
         """Request that a running `sync_forever` loop exits gracefully or the next call to `sync_forever()` returns
         immediately without doing any sync.
 
-        If a `sync_forever` loop was running the loop exits and the `_stop_sync_forever` flag is reset.
+        As `sync_forever` fully shuts down, an internal flag will be reset, allowing `sync_forever` to be called again without shutting down.
         Also each call to `sync_forever()` after the flag was set, resets the flag.
 
         If a `sync_forever` function is running, it will finish its sync loop and exit, leaving this `AsyncClient` in
