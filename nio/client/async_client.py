@@ -1390,7 +1390,11 @@ class AsyncClient(Client):
         self._stop_sync_forever = False
 
     def stop_sync_forever(self):
-        """Request that the `sync_forever` loop exits gracefully.
+        """Request that a running `sync_forever` loop exits gracefully or the next call to `sync_forever()` returns
+        immediately without doing any sync.
+
+        If a `sync_forever` loop was running the loop exits and the `_stop_sync_forever` flag is reset.
+        Also each call to `sync_forever()` after the flag was set, resets the flag.
 
         If a `sync_forever` function is running, it will finish its sync loop and exit, leaving this `AsyncClient` in
         a consistent state. In particular, it will be possible to run `sync_forever` again at a later point.
