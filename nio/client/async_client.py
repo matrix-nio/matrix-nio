@@ -1324,7 +1324,6 @@ class AsyncClient(Client):
         """
 
         first_sync = True
-        self._stop_sync_forever = False
 
         while not self._stop_sync_forever:
             try:
@@ -1387,11 +1386,19 @@ class AsyncClient(Client):
             except asyncio.CancelledError:  # noqa: PERF203
                 for task in tasks:
                     task.cancel()
-
+                self._stop_sync_forever = False
                 raise
+            except:
+                self._stop_sync_forever = False
+                raise
+        self._stop_sync_forever = False
 
     def stop_sync_forever(self):
-        """Request that the `sync_forever` loop exits gracefully.
+        """Request that a running `sync_forever` loop exits gracefully or the next call to `sync_forever()` returns
+        immediately without doing any sync.
+
+        As `sync_forever` fully shuts down, an internal flag will be reset, allowing `sync_forever` to be called again without shutting down.
+        Also each call to `sync_forever()` after the flag was set, resets the flag.
 
         If a `sync_forever` function is running, it will finish its sync loop and exit, leaving this `AsyncClient` in
         a consistent state. In particular, it will be possible to run `sync_forever` again at a later point.
