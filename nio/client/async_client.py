@@ -1385,7 +1385,10 @@ class AsyncClient(Client):
             except asyncio.CancelledError:  # noqa: PERF203
                 for task in tasks:
                     task.cancel()
-
+                self._stop_sync_forever = False
+                raise
+            except:
+                self._stop_sync_forever = False
                 raise
         self._stop_sync_forever = False
 
