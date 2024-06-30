@@ -17,17 +17,20 @@
 
 import asyncio
 import io
+from binascii import Error as BinAsciiError
 from functools import partial
 from pathlib import Path
 from typing import Any, AsyncGenerator, AsyncIterable, Dict, Iterable, Union
 
 import aiofiles
+import unpaddedbase64
 from aiofiles.threadpool.binary import AsyncBufferedReader
 from Crypto import Random  # nosec
 from Crypto.Cipher import AES  # nosec
 from Crypto.Hash import SHA256  # nosec
 from Crypto.Util import Counter  # nosec
 
+from ..exceptions import EncryptionError
 from .attachments import _get_decryption_info_dict
 
 AsyncDataT = Union[
@@ -41,6 +44,57 @@ AsyncDataT = Union[
 ]
 
 _EncryptedReturnT = AsyncGenerator[Union[bytes, Dict[str, Any]], None]
+_DecryptedReturnT = AsyncGenerator[bytes, None]
+
+
+async def async_decrypt_attachment(
+    ciphertext_generator: AsyncGenerator[bytes, None],
+    key: str,
+    hash: str,
+    iv: str,
+) -> _DecryptedReturnT:
+    """Async generator to decrypt an attachment.
+
+    This function lazily decrypts and yields data. It can decrypt large files
+    without fully loading them into memory.
+
+    Args:
+        ciphertext_generator (AsyncGenerator[bytes, None]): An async generator
+            that yields the data to decrypt.
+
+    Yields:
+        The decrypted bytes for each chunk of data.
+    """
+
+    try:
+        byte_key: bytes = unpaddedbase64.decode_base64(key)
+    except (BinAsciiError, TypeError):
+        raise EncryptionError("Error decoding key.")
+
+    try:
+        byte_iv: bytes = unpaddedbase64.decode_base64(iv)
+    except (BinAsciiError, TypeError):
+        raise EncryptionError("Error decoding initial values.")
+
+    prefix: bytes = byte_iv[:8]
+    cnt: int = int.from_bytes(byte_iv[8:], "big")
+    ctr = Counter.new(64, prefix=prefix, initial_value=cnt)
+
+    try:
+        cipher = AES.new(byte_key, AES.MODE_CTR, counter=ctr)
+    except ValueError as e:
+        raise EncryptionError(e)
+
+    h = SHA256.new()
+
+    async for chunk in ciphertext_generator:
+        decrypted_chunk = cipher.decrypt(chunk)
+        h.update(chunk)
+        yield decrypted_chunk
+
+    expected_hash = unpaddedbase64.decode_base64(hash)
+    if h.digest() != expected_hash:
+        raise EncryptionError("Mismatched SHA-256 digest.")
 
 
 async def async_encrypt_attachment(data: AsyncDataT) -> _EncryptedReturnT:

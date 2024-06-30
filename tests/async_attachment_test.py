@@ -6,7 +6,7 @@ import unpaddedbase64
 from Crypto import Random  # nosec
 
 from nio import EncryptionError
-from nio.crypto import async_encrypt_attachment, decrypt_attachment
+from nio.crypto import async_decrypt_attachment, async_encrypt_attachment
 
 FILEPATH = "tests/data/test_bytes"
 
@@ -17,15 +17,20 @@ class TestClass:
         *chunks, keys = [i async for i in async_encrypt_attachment(data)]
         return (data, b"".join(chunks), keys)
 
+    async def _generate(self, ciphertext):
+        for i in range(0, len(ciphertext), 4):
+            yield ciphertext[i : i + 4]
+
     async def test_encrypt(self, data=b"Test bytes", large=False):
         _, ciphertext, keys = await self._get_data_cypher_keys(data)
 
-        plaintext = decrypt_attachment(
-            ciphertext,
+        plaintext_generator = async_decrypt_attachment(
+            self._generate(ciphertext),
             keys["key"]["k"],
             keys["hashes"]["sha256"],
             keys["iv"],
         )
+        plaintext = b"".join([i async for i in plaintext_generator])
 
         assert plaintext == b"Test bytes" * (16384 if large else 1)
 
@@ -63,56 +68,61 @@ class TestClass:
     async def test_hash_verification(self):
         _data, ciphertext, keys = await self._get_data_cypher_keys()
 
+        plaintext_generator = async_decrypt_attachment(
+            self._generate(ciphertext),
+            keys["key"]["k"],
+            "Fake hash",
+            keys["iv"],
+        )
         with pytest.raises(EncryptionError):
-            decrypt_attachment(
-                ciphertext,
-                keys["key"]["k"],
-                "Fake hash",
-                keys["iv"],
-            )
+            [i async for i in plaintext_generator]
 
     async def test_invalid_key(self):
         _data, ciphertext, keys = await self._get_data_cypher_keys()
 
+        plaintext_generator = async_decrypt_attachment(
+            self._generate(ciphertext),
+            "Fake key",
+            keys["hashes"]["sha256"],
+            keys["iv"],
+        )
         with pytest.raises(EncryptionError):
-            decrypt_attachment(
-                ciphertext,
-                "Fake key",
-                keys["hashes"]["sha256"],
-                keys["iv"],
-            )
+            [i async for i in plaintext_generator]
 
     async def test_invalid_iv(self):
         _data, ciphertext, keys = await self._get_data_cypher_keys()
 
+        plaintext_generator = async_decrypt_attachment(
+            self._generate(ciphertext),
+            keys["key"]["k"],
+            keys["hashes"]["sha256"],
+            "Fake iv",
+        )
         with pytest.raises(EncryptionError):
-            decrypt_attachment(
-                ciphertext,
-                keys["key"]["k"],
-                keys["hashes"]["sha256"],
-                "Fake iv",
-            )
+            [i async for i in plaintext_generator]
 
     async def test_short_key(self):
         _data, ciphertext, keys = await self._get_data_cypher_keys()
 
+        plaintext_generator = async_decrypt_attachment(
+            self._generate(ciphertext),
+            unpaddedbase64.encode_base64(b"Fake key", urlsafe=True),
+            keys["hashes"]["sha256"],
+            keys["iv"],
+        )
         with pytest.raises(EncryptionError):
-            decrypt_attachment(
-                ciphertext,
-                unpaddedbase64.encode_base64(b"Fake key", urlsafe=True),
-                keys["hashes"]["sha256"],
-                keys["iv"],
-            )
+            [i async for i in plaintext_generator]
 
     async def test_short_iv(self):
         data, ciphertext, keys = await self._get_data_cypher_keys()
 
-        plaintext = decrypt_attachment(
-            ciphertext,
+        plaintext_generator = async_decrypt_attachment(
+            self._generate(ciphertext),
             keys["key"]["k"],
             keys["hashes"]["sha256"],
             unpaddedbase64.encode_base64(b"F" + b"\x00" * 8),
         )
+        plaintext = b"".join([i async for i in plaintext_generator])
         assert plaintext != data
 
     async def test_fake_key(self):
@@ -120,10 +130,11 @@ class TestClass:
 
         fake_key = Random.new().read(32)
 
-        plaintext = decrypt_attachment(
-            ciphertext,
+        plaintext_generator = async_decrypt_attachment(
+            self._generate(ciphertext),
             unpaddedbase64.encode_base64(fake_key, urlsafe=True),
             keys["hashes"]["sha256"],
             keys["iv"],
         )
+        plaintext = b"".join([i async for i in plaintext_generator])
         assert plaintext != data
