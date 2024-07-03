@@ -17,6 +17,7 @@ from .attachments import decrypt_attachment, encrypt_attachment
 
 from .async_attachments import (
     AsyncDataT,
+    async_decrypt_attachment,
     async_encrypt_attachment,
     async_generator_from_data,
 )
