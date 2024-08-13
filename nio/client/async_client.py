@@ -215,6 +215,8 @@ from ..responses import (
     ShareGroupSessionResponse,
     SpaceGetHierarchyError,
     SpaceGetHierarchyResponse,
+    StreamError,
+    StreamResponse,
     SyncError,
     SyncResponse,
     ThumbnailError,
@@ -561,6 +563,10 @@ class AsyncClient(Client):
                         await f.write(chunk)
                 body = save_to
             resp = response_class.from_data(body, content_type, name)
+
+        elif issubclass(response_class, StreamResponse):
+            resp = response_class.from_reader(transport_response.content)
+
         elif (
             issubclass(response_class, RoomGetStateEventResponse)
             and transport_response.status == 404
@@ -3183,6 +3189,53 @@ class AsyncClient(Client):
         # is True, decryption_dict will have been updated from inside the
         # self._encrypted_data_generator().
         return (response, decryption_dict if encrypt else None)
+
+    @client_session
+    async def stream(
+        self,
+        mxc: str,
+        filename: Optional[str] = None,
+        allow_remote: bool = True,
+    ) -> Union[StreamResponse, StreamError]:
+        """Stream the content of a file from the content repository.
+
+        This method has the same functionality as `download()`, but it does not
+        load the entire file into memory.
+
+        This method ignores `AsyncClient.config.request_timeout` and uses `0`.
+
+        Calls `receive_response()` to update the client state if necessary.
+
+        Returns either a `StreamResponse` if the request was successful or
+        a `StreamError` if there was an error with the request.
+
+        Args:
+            mxc (str): The mxc:// URI.
+            filename (str, optional): A filename to be returned in the response
+                by the server. If None (default), the original name of the
+                file will be returned instead, if there is one.
+            allow_remote (bool): Indicates to the server that it should not
+                attempt to fetch the media if it is deemed remote.
+                This is to prevent routing loops where the server contacts
+                itself.
+        """
+        url = urlparse(mxc)
+        server_name = url.netloc
+        media_id = url.path.replace("/", "")
+
+        http_method, path = Api.download(
+            server_name,
+            media_id,
+            filename,
+            allow_remote,
+        )
+
+        return await self._send(
+            StreamResponse,
+            http_method,
+            path,
+            timeout=0,
+        )
 
     @client_session
     async def download(

@@ -22,6 +22,7 @@ from datetime import datetime
 from functools import wraps
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
 
+from aiohttp import StreamReader
 from jsonschema.exceptions import SchemaError, ValidationError
 
 from .event_builders import ToDeviceMessage
@@ -142,6 +143,8 @@ __all__ = [
     "RoomTypingError",
     "RoomReadMarkersResponse",
     "RoomReadMarkersError",
+    "StreamResponse",
+    "StreamError",
     "UploadResponse",
     "UploadError",
     "ProfileGetResponse",
@@ -367,6 +370,32 @@ class DiskFileResponse(FileResponse):
 
 
 @dataclass
+class StreamResponse(Response):
+    """A response representing a successful request to stream file content.
+
+    Attributes:
+        reader (StreamReader): The reader from incoming stream.
+        content_type (str, optional): The content MIME type of the file,
+            e.g. "image/png".
+    """
+
+    reader: StreamReader = field()
+    content_type: Optional[str] = field()
+
+    @property
+    async def generator(self):
+        async for chunk, _ in self.reader.iter_chunks():
+            yield chunk
+
+    @classmethod
+    def from_reader(cls, reader: StreamReader, content_type: Optional[str] = None):
+        if isinstance(reader, StreamReader):
+            return cls(reader, content_type)
+
+        return StreamError("invalid reader")
+
+
+@dataclass
 class ErrorResponse(Response):
     message: str = field()
     status_code: Optional[str] = None
@@ -589,6 +618,10 @@ class ContentRepositoryConfigError(ErrorResponse):
 
 class UploadError(ErrorResponse):
     """A response representing a unsuccessful upload request."""
+
+
+class StreamError(ErrorResponse):
+    """A response representing an unsuccessful streamed download request."""
 
 
 class DownloadError(ErrorResponse):
