@@ -1,5 +1,5 @@
 peewee==3.16.3
-aiohttp==3.10.2
+aiohttp==3.10.3
 h11
 h2
 jsonschema==4.19.1
@@ -11,6 +11,6 @@ sphinx==7.3.7
 sphinx-autodoc-typehints
 aiohttp_socks==0.8.3
 aioresponses==0.7.6
-aiofiles==23.2.1
+aiofiles==24.1.0
 m2r2
 sphinx_rtd_theme==2.0.0
