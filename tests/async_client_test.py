@@ -141,7 +141,10 @@ from nio.api import (
 )
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
 from nio.crypto import OlmDevice, Session, decrypt_attachment
-from nio.responses import PublicRoom, PublicRoomsResponse
+from nio.spec_definitions.client_server import (
+    PublicRoomsChunk,
+    PublicRoomsResponse,
+)
 
 BASE_URL_V1 = f"https://example.org{MATRIX_API_PATH_V1}"
 BASE_URL_V3 = f"https://example.org{MATRIX_API_PATH_V3}"
@@ -719,8 +722,8 @@ class TestClass:
         for response in [get_response, post_response]:
             assert isinstance(response, PublicRoomsResponse)
             assert response.total_room_count_estimate == 115
-            assert len(response.public_rooms) == 1
-            assert isinstance(response.public_rooms[0], PublicRoom)
+            assert len(response.chunk) == 1
+            assert isinstance(response.chunk[0], PublicRoomsChunk)
 
     async def test_logout(self, unauthed_async_client, aioresponse):
         aioresponse.post(
