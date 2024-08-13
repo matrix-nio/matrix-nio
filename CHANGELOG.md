@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.25.0] - 2024-08-13
+
+### Features
+- [[#449]] Aggregated Event Relations + Threading + Threaded/Private Read Receipts
+- [[#489]] Compliance with MSC2844. BREAKING CHANGE.
+- [[#490]] Moved callback execution to separate methods.
+- [[#499]] Add stop_sync_forever method, to gracefully exit sync_forever loop.
+
+### Bug Fixes
+- [[#471]] Changing room_messages to conform to MSC3567
+- [[#482]] [[#483]] [[#486]] Spec-compliant bugfixes for joined_member, e2ee, RoomContext
+- [[#495]] remove creator property from event
+- [[#498]] Properly pass JSON content to DownloadResponse
+- [[#508]] Add room_read_markers type hints
+
+### Miscellaneous Tasks
+- Tagged releases will automatically be published to PyPI
+- Many dependency bumps
+
+[#449]: https://github.com/matrix-nio/matrix-nio/pull/449
+[#471]: https://github.com/matrix-nio/matrix-nio/pull/471
+[#482]: https://github.com/matrix-nio/matrix-nio/pull/482
+[#483]: https://github.com/matrix-nio/matrix-nio/pull/483
+[#486]: https://github.com/matrix-nio/matrix-nio/pull/486
+[#489]: https://github.com/matrix-nio/matrix-nio/pull/489
+[#498]: https://github.com/matrix-nio/matrix-nio/pull/498
+[#499]: https://github.com/matrix-nio/matrix-nio/pull/499
+[#490]: https://github.com/matrix-nio/matrix-nio/pull/490
+[#495]: https://github.com/matrix-nio/matrix-nio/pull/495
+[#508]: https://github.com/matrix-nio/matrix-nio/pull/508
+
+
 ## [0.24.0] - 2024-01-18
 
 ### Miscellaneous Tasks
