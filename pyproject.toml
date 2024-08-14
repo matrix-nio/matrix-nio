@@ -25,7 +25,8 @@ dependencies = [
 ]
 
 [tool.setuptools.packages]
-find = { include = ["nio"]}
+find = { include = ["nio", "nio.*", "nio.*.*"] }
+# TODO: an `src/` directory should be used for setuptools. This is an incredibly horrible hack for the time being.
 
 [project.optional-dependencies]
 e2e = [
@@ -43,6 +44,7 @@ dev = [
     "pytest-flake8~=1.2",
     "pytest-cov~=2.11",
     "pytest-benchmark~=3.2",
+    "py~=1.11",  # for some reason, pytest-benchmark depends on this, but doesn't explicitly? but fails w/o it anyway?
     "hyperframe~=6.0",
     "hypothesis~=6.8",
     "hpack~=4.0",
