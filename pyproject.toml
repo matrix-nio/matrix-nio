@@ -24,10 +24,6 @@ dependencies = [
     "aiohttp-socks~=0.8"
 ]
 
-[tool.setuptools.packages]
-find = { include = ["nio", "nio.*", "nio.*.*"] }
-# TODO: an `src/` directory should be used for setuptools. This is an incredibly horrible hack for the time being.
-
 [project.optional-dependencies]
 e2e = [
     "python-olm~=3.2",
