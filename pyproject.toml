@@ -36,7 +36,6 @@ e2e = [
     "atomicwrites~=1.4"
 ]
 
-# TODO: Should e2e dependencies be included in test/test dependencies? or just rely on the e2e extra being installed?
 dev = [
     "pytest~=8.2",
     "pytest-asyncio~=0.23",
@@ -57,7 +56,6 @@ dev = [
 ]
 
 # Read the docs specific requirements.
-# TODO: as with [dev], e2e dependencies have been ommitted. Should they be included?
 docs = [
     "sphinx<8,>=7.3.7",  # TODO: Evaluate if sphinx can be bumped to >=8.0.0. See: https://pypi.org/p/Sphinx/#history
     "sphinx-autodoc-typehints~=2.1",
