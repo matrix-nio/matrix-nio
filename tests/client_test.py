@@ -5,7 +5,6 @@ from uuid import uuid4
 
 import pytest
 from helpers import FrameFactory, ephemeral, ephemeral_dir, faker
-
 from nio import (
     Client,
     ClientConfig,
@@ -249,7 +248,10 @@ class TestClass:
         )
 
         body = json.dumps(
-            {"displayname": displayname, "avatar_url": avatar_url}
+            {
+                "displayname": displayname,
+                "avatar_url": avatar_url,
+            }
         ).encode("utf-8")
 
         data = frame_factory.build_data_frame(

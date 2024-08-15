@@ -6,7 +6,6 @@ from nio.client import HttpClient
 
 
 class TestClass:
-
     def test_503(self):
         client = HttpClient("localhost", "example")
         client.connect()
