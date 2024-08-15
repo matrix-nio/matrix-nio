@@ -89,10 +89,7 @@ from ..events import (
     RoomKeyRequestCancellation,
     ToDeviceEvent,
 )
-from ..exceptions import (
-    LocalProtocolError,
-    TransferCancelledError,
-)
+from ..exceptions import LocalProtocolError, TransferCancelledError
 from ..monitors import TransferMonitor
 from ..responses import (
     ContentRepositoryConfigError,
