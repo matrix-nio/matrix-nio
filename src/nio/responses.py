@@ -1932,7 +1932,7 @@ class SyncResponse(Response):
 
     @staticmethod
     def _get_room_events(
-        parsed_dict: List[Dict[Any, Any]]
+        parsed_dict: List[Dict[Any, Any]],
     ) -> List[Union[Event, BadEventType]]:
         events: List[Union[Event, BadEventType]] = []
 

@@ -197,12 +197,10 @@ class MatrixStore:
             account=account.pickle(self.pickle_key),
         ).on_conflict_ignore().execute()
 
-        Accounts.update(
-            {
-                Accounts.account: account.pickle(self.pickle_key),
-                Accounts.shared: account.shared,
-            }
-        ).where(
+        Accounts.update({
+            Accounts.account: account.pickle(self.pickle_key),
+            Accounts.shared: account.shared,
+        }).where(
             (Accounts.user_id == self.user_id) & (Accounts.device_id == self.device_id)
         ).execute()
 
@@ -295,9 +293,9 @@ class MatrixStore:
             session_id=session.id,
         ).on_conflict_ignore().execute()
 
-        MegolmInboundSessions.update(
-            {MegolmInboundSessions.session: session.pickle(self.pickle_key)}
-        ).where(MegolmInboundSessions.session_id == session.id).execute()
+        MegolmInboundSessions.update({
+            MegolmInboundSessions.session: session.pickle(self.pickle_key)
+        }).where(MegolmInboundSessions.session_id == session.id).execute()
 
         # TODO, use replace many here
         for chain in session.forwarding_chain:
@@ -343,15 +341,13 @@ class MatrixStore:
 
         for user_id, devices_dict in device_keys.items():
             for device_id, device in devices_dict.items():
-                rows.append(
-                    {
-                        "account": account,
-                        "user_id": user_id,
-                        "device_id": device_id,
-                        "display_name": device.display_name,
-                        "deleted": device.deleted,
-                    }
-                )
+                rows.append({
+                    "account": account,
+                    "user_id": user_id,
+                    "device_id": device_id,
+                    "display_name": device.display_name,
+                    "deleted": device.deleted,
+                })
 
         if not rows:
             return
