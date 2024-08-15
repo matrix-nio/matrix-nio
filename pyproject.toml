@@ -120,6 +120,7 @@ exclude = [
     "node_modules",
     "venv",
     "venv*",
+    "tests"
 ]
 
 [tool.ruff.lint.pyupgrade]
