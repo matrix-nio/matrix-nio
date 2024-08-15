@@ -52,7 +52,8 @@ dev = [
     "mypy<1.0,>=0.812",  # TODO: Evaluate if we can bump this to >= 1.0. See: https://pypi.org/p/mypy/#history
     "mypy_extensions~=0.4",
     "aioresponses~=0.7",
-    "ruff~=0.4"
+    "ruff~=0.4",
+    'matrix-nio[e2e]'
 ]
 
 # Read the docs specific requirements.
@@ -61,7 +62,8 @@ docs = [
     "sphinx<8,>=7.3.7",  # TODO: Evaluate if sphinx can be bumped to >=8.0.0. See: https://pypi.org/p/Sphinx/#history
     "sphinx-autodoc-typehints~=2.1",
     "m2r2~=0.3",
-    "sphinx_rtd_theme~=2.0"
+    "sphinx_rtd_theme~=2.0",
+    'matrix-nio[dev]'
 ]
 
 [project.urls]
