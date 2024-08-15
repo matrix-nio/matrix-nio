@@ -53,6 +53,7 @@ dev = [
 
 # Read the docs specific requirements.
 docs = [
+    "setuptools>=61.0",
     "sphinx~=7.4",
     "sphinx-autodoc-typehints~=2.1",
     "m2r2~=0.3",
