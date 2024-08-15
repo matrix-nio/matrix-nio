@@ -44,8 +44,8 @@ dev = [
     "hypothesis~=6.8",
     "hpack~=4.0",
     "faker~=8.0",
-    "mypy<1.0,>=0.812",  # TODO: Evaluate if we can bump this to >= 1.0. See: https://pypi.org/p/mypy/#history
-    "mypy_extensions~=0.4",
+    "mypy~=1.11",
+    "mypy_extensions~=1.0",
     "aioresponses~=0.7",
     "ruff~=0.4",
     'matrix-nio[e2e]'
