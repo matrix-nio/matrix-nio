@@ -53,7 +53,7 @@ dev = [
 
 # Read the docs specific requirements.
 docs = [
-    "sphinx<8,>=7.3.7",  # TODO: Evaluate if sphinx can be bumped to >=8.0.0. See: https://pypi.org/p/Sphinx/#history
+    "sphinx~=7.4",
     "sphinx-autodoc-typehints~=2.1",
     "m2r2~=0.3",
     "sphinx_rtd_theme~=2.0",
