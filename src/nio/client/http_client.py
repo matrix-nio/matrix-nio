@@ -168,7 +168,6 @@ class HttpClient(Client):
         return path
 
     def _build_request(self, api_response, timeout=0):
-
         method, *api_data = api_response
         if len(api_data) == 2:
             path, data = api_data

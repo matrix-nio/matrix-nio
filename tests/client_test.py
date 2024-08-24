@@ -249,7 +249,10 @@ class TestClass:
         )
 
         body = json.dumps(
-            {"displayname": displayname, "avatar_url": avatar_url}
+            {
+                "displayname": displayname,
+                "avatar_url": avatar_url,
+            }
         ).encode("utf-8")
 
         data = frame_factory.build_data_frame(

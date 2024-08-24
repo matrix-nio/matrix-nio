@@ -170,7 +170,7 @@ class TestClass:
     def test_sync_parse(self):
         parsed_dict = _load_response("tests/data/sync.json")
         response = SyncResponse.from_dict(parsed_dict)
-        assert type(response) == SyncResponse
+        assert isinstance(response, SyncResponse)
 
     def test_keyshare_request(self):
         parsed_dict = {

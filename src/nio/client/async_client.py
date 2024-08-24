@@ -89,10 +89,7 @@ from ..events import (
     RoomKeyRequestCancellation,
     ToDeviceEvent,
 )
-from ..exceptions import (
-    LocalProtocolError,
-    TransferCancelledError,
-)
+from ..exceptions import LocalProtocolError, TransferCancelledError
 from ..monitors import TransferMonitor
 from ..responses import (
     ContentRepositoryConfigError,
@@ -233,8 +230,13 @@ from ..responses import (
     WhoamiResponse,
 )
 from ..rooms import MatrixRoom
-from . import Client, ClientConfig
-from .base_client import ClientCallback, logged_in_async, store_loaded
+from .base_client import (
+    Client,
+    ClientCallback,
+    ClientConfig,
+    logged_in_async,
+    store_loaded,
+)
 
 _ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
 

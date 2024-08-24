@@ -156,9 +156,8 @@ DAVE_ID = "@dave:example.org"
 EIRIN_ID = "@eirin:example.org"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 class TestClass:
-
     @staticmethod
     def olm_message_to_event(message_dict, recipient, sender, type="m.room.encrypted"):
         olm_content = message_dict["messages"][recipient.user_id][recipient.device_id]
@@ -887,7 +886,6 @@ class TestClass:
         assert user.status_msg == "I am here."
 
     async def test_sync_notification_counts(self, async_client, aioresponse):
-
         aioresponse.get(
             f"{BASE_URL_V3}/sync?access_token=abc123",
             status=200,
@@ -902,7 +900,6 @@ class TestClass:
         assert room.unread_highlights == 1
 
     async def test_sync_push_rules(self, async_client, aioresponse):
-
         aioresponse.get(
             f"{BASE_URL_V3}/sync?access_token=abc123",
             status=200,
@@ -1078,7 +1075,6 @@ class TestClass:
         assert isinstance(response, RoomSendResponse)
 
     async def test_room_get_event(self, async_client, aioresponse):
-
         response = {
             "content": {
                 "body": "This is an example text message",
@@ -1118,7 +1114,6 @@ class TestClass:
         assert isinstance(resp, RoomGetEventError)
 
     async def test_list_direct_rooms(self, async_client, aioresponse: aioresponses):
-
         response = {
             "@alice:example.org": ["!foobar:example.org"],
             "@bob:example.org": ["!dingle:example.org", "!dongle:example.org"],
@@ -1150,7 +1145,6 @@ class TestClass:
     async def test_room_get_event_relations(
         self, async_client: AsyncClient, aioresponse: aioresponses
     ):
-
         event_id = "$y6bmOp_5DR5Wgz2Mygbrqg9pJe5ER4Yo66EgoRh8Wts"
 
         response1 = {
@@ -1228,7 +1222,6 @@ class TestClass:
     async def test_room_get_threads(
         self, async_client: AsyncClient, aioresponse: aioresponses
     ):
-
         response1 = {
             "chunk": [
                 {
@@ -1282,7 +1275,6 @@ class TestClass:
             assert isinstance(event, RoomMessageText)
 
     async def test_room_put_state(self, async_client, aioresponse: aioresponses):
-
         # Test when key is set
         state_key = "a-state-key"
         aioresponse.put(
@@ -1317,7 +1309,6 @@ class TestClass:
         assert isinstance(resp, RoomPutStateResponse)
 
     async def test_room_get_state_event(self, async_client, aioresponse):
-
         # Test when state key is set
         state_key = "a-state-key"
         aioresponse.get(
@@ -1345,7 +1336,6 @@ class TestClass:
         assert isinstance(resp, RoomGetStateEventResponse)
 
     async def test_room_get_state(self, async_client, aioresponse):
-
         aioresponse.get(
             f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state?access_token=abc123",
             status=200,
@@ -1371,7 +1361,6 @@ class TestClass:
         }
 
     async def test_key_claiming(self, alice_client, async_client, aioresponse):
-
         await async_client.receive_response(self.encryption_sync_response)
 
         alice_client.load_store()
@@ -1398,7 +1387,6 @@ class TestClass:
         assert async_client.olm.session_store.get(alice_device.curve25519)
 
     async def test_session_sharing(self, alice_client, async_client, aioresponse):
-
         await async_client.receive_response(self.encryption_sync_response)
 
         alice_client.load_store()
@@ -1451,7 +1439,6 @@ class TestClass:
         assert async_client.olm.session_store.get(alice_device.curve25519)
 
     async def test_session_sharing_2(self, alice_client, async_client, aioresponse):
-
         await async_client.receive_response(self.encryption_sync_response)
 
         alice_client.load_store()
@@ -1474,7 +1461,6 @@ class TestClass:
         )
 
     async def test_get_openid_token(self, async_client, aioresponse):
-
         aioresponse.post(
             f"{BASE_URL_V3}/user/{ALICE_ID}/openid/request_token?access_token=abc123",
             status=200,
@@ -1485,7 +1471,6 @@ class TestClass:
         assert isinstance(resp, GetOpenIDTokenResponse)
 
     async def test_joined_members(self, async_client, aioresponse):
-
         resp = self.encryption_sync_response
 
         # Mimic an outdated initial sync (synapse bug?) with a member that
@@ -1525,7 +1510,6 @@ class TestClass:
         assert tuple(room.invited_users) == (CAROL_ID,)
 
     async def test_joined_rooms(self, async_client, aioresponse):
-
         aioresponse.get(
             f"{BASE_URL_V3}/joined_rooms?access_token=abc123",
             status=200,
@@ -1572,7 +1556,6 @@ class TestClass:
         assert imported_session.id == out_session.id
 
     async def test_room_create(self, async_client, aioresponse):
-
         aioresponse.post(
             f"{BASE_URL_V3}/createRoom" "?access_token=abc123",
             status=200,
@@ -1594,7 +1577,6 @@ class TestClass:
         assert resp.room_id == TEST_ROOM_ID
 
     async def test_room_create__space(self, async_client, aioresponse):
-
         aioresponse.post(
             f"{BASE_URL_V3}/createRoom" "?access_token=abc123",
             status=200,
@@ -1617,7 +1599,6 @@ class TestClass:
         assert resp.room_id == TEST_ROOM_ID
 
     async def test_room_create__typed(self, async_client, aioresponse):
-
         aioresponse.post(
             f"{BASE_URL_V3}/createRoom" "?access_token=abc123",
             status=200,
@@ -1641,7 +1622,6 @@ class TestClass:
         assert resp.room_id == TEST_ROOM_ID
 
     async def test_join(self, async_client, aioresponse):
-
         aioresponse.post(
             f"{BASE_URL_V3}/join/{TEST_ROOM_ID}?access_token=abc123",
             status=200,
@@ -1653,7 +1633,6 @@ class TestClass:
         assert resp.room_id == TEST_ROOM_ID
 
     async def test_room_invite(self, async_client, aioresponse):
-
         aioresponse.post(
             f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/invite?access_token=abc123",
             status=200,
@@ -1664,7 +1643,6 @@ class TestClass:
         assert isinstance(resp, RoomInviteResponse)
 
     async def test_room_knock(self, async_client, aioresponse):
-
         aioresponse.post(
             f"{BASE_URL_V3}/knock/{TEST_ROOM_ID}?access_token=abc123",
             status=200,
@@ -1675,7 +1653,6 @@ class TestClass:
         assert isinstance(resp, RoomKnockResponse)
 
     async def test_room_leave(self, async_client, aioresponse):
-
         aioresponse.post(
             f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/leave?access_token=abc123",
             status=200,
@@ -1685,7 +1662,6 @@ class TestClass:
         assert isinstance(resp, RoomLeaveResponse)
 
     async def test_room_forget(self, async_client, aioresponse):
-
         await async_client.receive_response(self.encryption_sync_response)
 
         room_id = next(iter(async_client.rooms))
@@ -1700,7 +1676,6 @@ class TestClass:
         assert room_id not in async_client.rooms
 
     async def test_room_kick(self, async_client, aioresponse):
-
         await async_client.receive_response(self.encryption_sync_response)
 
         room_id = next(iter(async_client.rooms))
@@ -1715,7 +1690,6 @@ class TestClass:
         assert isinstance(resp, RoomKickResponse)
 
     async def test_room_ban(self, async_client, aioresponse):
-
         await async_client.receive_response(self.encryption_sync_response)
 
         room_id = next(iter(async_client.rooms))
@@ -1730,7 +1704,6 @@ class TestClass:
         assert isinstance(resp, RoomBanResponse)
 
     async def test_room_unban(self, async_client, aioresponse):
-
         await async_client.receive_response(self.encryption_sync_response)
 
         room_id = next(iter(async_client.rooms))
@@ -1745,7 +1718,6 @@ class TestClass:
         assert isinstance(resp, RoomUnbanResponse)
 
     async def test_room_redact(self, async_client, aioresponse):
-
         await async_client.receive_response(self.encryption_sync_response)
 
         room_id = next(iter(async_client.rooms))
@@ -1762,7 +1734,6 @@ class TestClass:
         assert isinstance(resp, RoomRedactResponse)
 
     async def test_context(self, async_client, aioresponse):
-
         event_id = "$15163622445EBvZJ:localhost"
 
         await async_client.receive_response(self.encryption_sync_response)
@@ -1827,7 +1798,6 @@ class TestClass:
         assert isinstance(resp, RoomMessagesResponse)
 
     async def test_room_typing(self, async_client, aioresponse):
-
         await async_client.receive_response(self.encryption_sync_response)
 
         room_id = list(async_client.rooms.keys())[0]
@@ -1841,7 +1811,6 @@ class TestClass:
         assert isinstance(resp, RoomTypingResponse)
 
     async def test_update_receipt_marker(self, async_client: AsyncClient, aioresponse):
-
         room_id = TEST_ROOM_ID
         event_id = "$event1:test.org"
 
@@ -2637,7 +2606,6 @@ class TestClass:
         assert isinstance(resp, UpdateDeviceResponse)
 
     async def test_get_set_displayname(self, async_client, aioresponse):
-
         url = f"{BASE_URL_V3}/profile/{async_client.user_id}/displayname?access_token={async_client.access_token}"
         aioresponse.get(url, status=200, payload=self.get_displayname_response(None))
         resp = await async_client.get_displayname()
@@ -2657,7 +2625,6 @@ class TestClass:
         assert resp3.displayname == new_name
 
     async def test_get_set_avatar(self, async_client, aioresponse):
-
         url = f"{BASE_URL_V3}/profile/{async_client.user_id}/avatar_url?access_token={async_client.access_token}"
 
         aioresponse.get(url, status=200, payload=self.get_avatar_response(None))

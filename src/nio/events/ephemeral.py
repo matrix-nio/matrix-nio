@@ -20,6 +20,7 @@ history.
 Ephemeral events are used for typing notifications and read receipts.
 
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
