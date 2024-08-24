@@ -305,9 +305,8 @@ class Olm:
                 "device_id": self.device_id,
                 "user_id": self.user_id,
                 "keys": {
-                    "curve25519:" + self.device_id: self.account.identity_keys[
-                        "curve25519"
-                    ],
+                    "curve25519:"
+                    + self.device_id: self.account.identity_keys["curve25519"],
                     "ed25519:" + self.device_id: self.account.identity_keys["ed25519"],
                 },
             }

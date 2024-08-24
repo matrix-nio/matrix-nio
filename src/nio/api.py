@@ -1841,12 +1841,14 @@ class Api:
             third_party_instance_id (str, optional): The specific third-party network/protocol to request from the homeserver. Can only be used if `include_all_networks` is false
         """
         path = ["publicRooms"]
-        if any((
-            filter_generic_search_term,
-            filter_room_types,
-            include_all_networks,
-            third_party_instance_id,
-        )):
+        if any(
+            (
+                filter_generic_search_term,
+                filter_room_types,
+                include_all_networks,
+                third_party_instance_id,
+            )
+        ):
             method = "POST"
         else:
             method = "GET"
@@ -1868,9 +1870,9 @@ class Api:
             if since is not None:
                 content["since"] = since
             if filter_generic_search_term is not None:
-                content.setdefault("filter", {})["generic_search_term"] = (
-                    filter_generic_search_term
-                )
+                content.setdefault("filter", {})[
+                    "generic_search_term"
+                ] = filter_generic_search_term
             if filter_room_types:
                 content.setdefault("filter", {})["room_types"] = filter_room_types
             if include_all_networks is not None:

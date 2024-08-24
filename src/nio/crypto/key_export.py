@@ -91,14 +91,16 @@ def encrypt(data: bytes, passphrase: str, count: int = 100000):
     cipher = AES.new(aes_key, AES.MODE_CTR, counter=ctr)
     encrypted_data = cipher.encrypt(data)
 
-    payload = b"".join((
-        bytes([1]),  # Version
-        salt,
-        int.to_bytes(iv, length=16, byteorder="big"),
-        # 32 bits big-endian round count
-        int.to_bytes(count, length=4, byteorder="big"),
-        encrypted_data,
-    ))
+    payload = b"".join(
+        (
+            bytes([1]),  # Version
+            salt,
+            int.to_bytes(iv, length=16, byteorder="big"),
+            # 32 bits big-endian round count
+            int.to_bytes(count, length=4, byteorder="big"),
+            encrypted_data,
+        )
+    )
 
     hmac = HMAC.new(hmac_key, payload, SHA256).digest()
     return encode_base64(payload + hmac)

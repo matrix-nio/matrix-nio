@@ -22,6 +22,8 @@ from aiohttp import (
 )
 from aioresponses import CallbackResult, aioresponses
 from helpers import faker
+from yarl import URL
+
 from nio import (
     AsyncClient,
     AsyncClientConfig,
@@ -140,7 +142,6 @@ from nio.api import (
 from nio.client.async_client import connect_wrapper, on_request_chunk_sent
 from nio.crypto import OlmDevice, Session, decrypt_attachment
 from nio.responses import PublicRoom, PublicRoomsResponse
-from yarl import URL
 
 BASE_URL_V1 = f"https://example.org{MATRIX_API_PATH_V1}"
 BASE_URL_V3 = f"https://example.org{MATRIX_API_PATH_V3}"
@@ -155,7 +156,7 @@ DAVE_ID = "@dave:example.org"
 EIRIN_ID = "@eirin:example.org"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 class TestClass:
     @staticmethod
     def olm_message_to_event(message_dict, recipient, sender, type="m.room.encrypted"):
