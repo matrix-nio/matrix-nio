@@ -33,7 +33,7 @@ e2e = [
 ]
 
 dev = [
-    "matrix-nio[e2e]",  # include all e2e deps
+    "matrix-nio[e2e]",
     "aioresponses~=0.7",
     "hpack~=4.0",
     "hyperframe~=6.0",
@@ -52,12 +52,12 @@ dev = [
 
 # Read the docs specific requirements.
 docs = [
+    "matrix-nio[dev]",
     "setuptools>=61.0",
     "sphinx~=7.4",
     "sphinx-autodoc-typehints~=2.1",
     "m2r2~=0.3",
     "sphinx_rtd_theme~=2.0",
-    'matrix-nio[dev]'
 ]
 
 [project.urls]

@@ -24,4 +24,3 @@ python:
       path: .
       extra_requirements:
         - docs
-        - e2e  # TODO: is e2e a required extra in this case  for the docs?
