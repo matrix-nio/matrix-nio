@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "matrix-nio"
-version = "0.25.0+nexy7574.dependencies"
+version = "0.25.0"
 description = "A Python Matrix client library, designed according to sans I/O principles."
 authors = [
     { name = "Damir Jelić", email = "poljar@termina.org.uk" },
@@ -26,29 +26,28 @@ dependencies = [
 
 [project.optional-dependencies]
 e2e = [
-    "python-olm~=3.2",
-    "peewee~=3.14",
+    "atomicwrites~=1.4",
     "cachetools~=5.3",
-    "atomicwrites~=1.4"
+    "peewee~=3.14",
+    "python-olm~=3.2",
 ]
 
 dev = [
-    "pytest~=8.2",
-    "pytest-asyncio~=0.23",
-    "pytest-aiohttp~=0.3",
-    "pytest-flake8~=1.2",
-    "pytest-cov~=2.11",
-    "pytest-benchmark~=3.2",
-    "py~=1.11",  # for some reason, pytest-benchmark depends on this, but doesn't explicitly? but fails w/o it anyway?
+    "matrix-nio[e2e]",  # include all e2e deps
+    "aioresponses~=0.7",
+    "hpack~=4.0",
     "hyperframe~=6.0",
     "hypothesis~=6.8",
-    "hpack~=4.0",
     "faker~=8.0",
     "mypy~=1.11",
     "mypy_extensions~=1.0",
-    "aioresponses~=0.7",
-    "ruff~=0.4",
-    'matrix-nio[e2e]'
+    "pre-commit",
+    "pytest~=8.2",
+    "pytest-asyncio~=0.23",
+    "pytest-aiohttp~=0.3",
+    "pytest-benchmark~=4.0",
+    "pytest-cov~=2.11",
+    "pytest-flake8~=1.2",
 ]
 
 # Read the docs specific requirements.
