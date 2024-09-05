@@ -207,7 +207,7 @@ class Api:
 
         parsed_homeserver = urlparse(homeserver) if homeserver else None
 
-        if access_token is None:
+        if not access_token:
             # Unauthenticated media
             http_url = ("{homeserver}{path}/download/{server_name}{mediaId}").format(
                 homeserver=(
