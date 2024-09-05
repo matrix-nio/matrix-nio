@@ -915,7 +915,9 @@ class AsyncClient(Client):
         homeserver: Optional[str] = None,
     ) -> Optional[str]:
         """Convert a matrix content URI to a HTTP URI."""
-        return Api.mxc_to_http(mxc, homeserver or self.homeserver)
+        return Api.mxc_to_http(
+            mxc, homeserver or self.homeserver, access_token=self.access_token
+        )
 
     async def login_raw(
         self, auth_dict: Dict[str, Any]
