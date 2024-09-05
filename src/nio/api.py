@@ -54,7 +54,7 @@ except ImportError:
 
 MATRIX_API_PATH_V1: str = "/_matrix/client/v1"
 MATRIX_API_PATH_V3: str = "/_matrix/client/v3"
-MATRIX_MEDIA_API_PATH: str = "/_matrix/media/v3"
+MATRIX_MEDIA_API_PATH: str = "/_matrix/client/v1/media"
 
 _FilterT = Union[None, str, Dict[Any, Any]]
 
