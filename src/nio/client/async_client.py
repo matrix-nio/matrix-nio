@@ -3257,6 +3257,7 @@ class AsyncClient(Client):
             media_id,
             filename,
             allow_remote,
+            access_token=self.access_token,
         )
 
         response_class = MemoryDownloadResponse
@@ -3303,7 +3304,13 @@ class AsyncClient(Client):
                 itself.
         """
         http_method, path = Api.thumbnail(
-            server_name, media_id, width, height, method, allow_remote
+            server_name,
+            media_id,
+            width,
+            height,
+            method,
+            allow_remote,
+            access_token=self.access_token,
         )
 
         return await self._send(
