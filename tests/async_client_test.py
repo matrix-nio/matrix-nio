@@ -2284,7 +2284,7 @@ class TestClass:
         server_name, media_id = _extract_parts(mxc)
 
         aioresponse.get(
-            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}?allow_remote=true",
+            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}?access_token=abc123&allow_remote=true",
             status=200,
             content_type="image/png",
             body=self.file_response,
@@ -2295,7 +2295,7 @@ class TestClass:
         assert resp.filename is None
 
         aioresponse.get(
-            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}/{filename}?allow_remote=true",
+            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}/{filename}?access_token=abc123&allow_remote=true",
             status=200,
             content_type="image/png",
             headers={"content-disposition": f'inline; filename="{filename}"'},
@@ -2308,7 +2308,7 @@ class TestClass:
 
         async_client.config = AsyncClientConfig(max_limit_exceeded=0)
         aioresponse.get(
-            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}?allow_remote=true",
+            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}?access_token=abc123&allow_remote=true",
             status=429,
             content_type="application/json",
             body=b'{"errcode": "M_LIMIT_EXCEEDED", "retry_after_ms": 1}',
@@ -2326,7 +2326,7 @@ class TestClass:
 
         aioresponse.get(
             f"{BASE_MEDIA_URL}/thumbnail/{server_name}/{media_id}"
-            f"?width={width}&height={height}&method={method.value}&allow_remote=true",
+            f"?access_token=abc123&width={width}&height={height}&method={method.value}&allow_remote=true",
             status=200,
             content_type="image/png",
             body=self.file_response,
@@ -2341,7 +2341,7 @@ class TestClass:
 
         aioresponse.get(
             f"{BASE_MEDIA_URL}/thumbnail/{server_name}/{media_id}"
-            f"?width={width}&height={height}&method={method.value}&allow_remote=true",
+            f"?access_token=abc123&width={width}&height={height}&method={method.value}&allow_remote=true",
             status=429,
             content_type="application/json",
             body=b'{"errcode": "M_LIMIT_EXCEEDED", "retry_after_ms": 1}',
