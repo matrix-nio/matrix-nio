@@ -24,7 +24,6 @@ client like AsyncClient or HttpClient.
 from __future__ import annotations
 
 import json
-import os
 from collections import defaultdict
 from collections.abc import Iterable
 from enum import Enum, unique
@@ -1615,7 +1614,7 @@ class Api:
         media_id: str,
         filename: Optional[str] = None,
         allow_remote: bool = True,
-        file: Optional[os.PathLike] = None,
+        access_token: Optional[str] = None,
     ) -> Tuple[str, str]:
         """Get the content of a file from the content repository.
 
@@ -1631,10 +1630,11 @@ class Api:
                 attempt to fetch the media if it is deemed remote.
                 This is to prevent routing loops where the server contacts
                 itself.
-            file (os.PathLike): The file to stream the downloaded content to.
+            access_token (str): The access token to be used with the request.
         """
         query_parameters = {
             "allow_remote": "true" if allow_remote else "false",
+            "access_token": access_token,
         }
         end = ""
         if filename:
@@ -1651,6 +1651,7 @@ class Api:
         height: int,
         method: ResizingMethod = ResizingMethod.scale,
         allow_remote: bool = True,
+        access_token: Optional[str] = None,
     ) -> Tuple[str, str]:
         """Get the thumbnail of a file from the content repository.
 
@@ -1668,12 +1669,14 @@ class Api:
                 attempt to fetch the media if it is deemed remote.
                 This is to prevent routing loops where the server contacts
                 itself.
+            access_token (str): The access token to be used with the request.
         """
         query_parameters = {
             "width": width,
             "height": height,
             "method": method.value,
             "allow_remote": "true" if allow_remote else "false",
+            "access_token": access_token,
         }
         path = ["thumbnail", server_name, media_id]
 
