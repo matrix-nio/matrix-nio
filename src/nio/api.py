@@ -221,10 +221,17 @@ class Api:
             return http_url
 
         # Authenticated media
-        return Api._build_path(
-            ["download", url.hostname, url.path.lstrip("/")],
-            {"access_token": access_token},
-            base_path=MATRIX_MEDIA_API_PATH,
+        return "{homeserver}{path}".format(
+            homeserver=(
+                parsed_homeserver.geturl()
+                if parsed_homeserver
+                else f"https://{url.netloc}"
+            ),
+            path=Api._build_path(
+                ["download", url.hostname, url.path.lstrip("/")],
+                {"access_token": access_token},
+                base_path=MATRIX_MEDIA_API_PATH,
+            )
         )
 
     @staticmethod
