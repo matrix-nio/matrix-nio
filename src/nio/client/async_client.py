@@ -39,7 +39,7 @@ from typing import (
     Type,
     Union,
 )
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from uuid import UUID, uuid4
 
 import aiofiles
@@ -799,6 +799,16 @@ class AsyncClient(Client):
             if content_type
             else {"Content-Type": "application/json"}
         )
+        if self.access_token:
+            # add header
+            headers["Authorization"] = f"Bearer {self.access_token}"
+            # remove access token in query string
+            url = list(urlparse(path))
+            qs = parse_qs(url[4])
+            if "access_token" in qs:
+                del qs["access_token"]
+            url[4] = urlencode(qs, doseq=True)
+            path = urlunparse(url)
 
         if content_length is not None:
             headers["Content-Length"] = str(content_length)
