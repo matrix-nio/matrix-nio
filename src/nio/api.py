@@ -23,6 +23,7 @@ client like AsyncClient or HttpClient.
 
 from __future__ import annotations
 
+import warnings
 import json
 from collections import defaultdict
 from collections.abc import Iterable
@@ -221,6 +222,13 @@ class Api:
             return http_url
 
         # Authenticated media
+        warnings.warn(
+            UserWarning(
+                "mxc_to_http is using authenticated media. The returned URL will contain an access token."
+                " Do not share this URL, as it will grant anyone you send it to access to your account."
+            ),
+            stacklevel=2
+        )
         return "{homeserver}{path}".format(
             homeserver=(
                 parsed_homeserver.geturl()
