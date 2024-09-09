@@ -73,20 +73,18 @@ class TransferMonitor:
     speed_period: float = 10
 
     average_speed: float = field(init=False, default=0.0)
-    start_time: datetime = field(init=False)
+    start_time: datetime = field(default_factory=datetime.now)
     end_time: Optional[datetime] = field(init=False, default=None)
     pause: bool = field(init=False, default=False)
     cancel: bool = field(init=False, default=False)
 
     _transferred: int = field(init=False, default=0)
     _updater: Thread = field(init=False)
-    _last_transferred_sizes: List[int] = field(init=False)
+    _last_transferred_sizes: List[int] = field(default_factory=list)
 
     _update_loop_sleep_time: float = field(default=1)
 
     def __post_init__(self) -> None:
-        self.start_time = datetime.now()
-        self._last_transferred_sizes = []
         self._start_update_loop()
 
     def _start_update_loop(self) -> None:
