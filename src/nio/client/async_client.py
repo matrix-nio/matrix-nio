@@ -799,16 +799,23 @@ class AsyncClient(Client):
             if content_type
             else {"Content-Type": "application/json"}
         )
-        if self.access_token:
+
+        # remove access token in query string
+        url = list(urlparse(path))
+        qs = parse_qs(url[4])
+        url_access_token = qs.pop("access_token", None)
+        if "access_token" in qs:
+            del qs["access_token"]
+        url[4] = urlencode(qs, doseq=True)
+        path = urlunparse(url)
+
+        if isinstance(url_access_token, list):
+            access_token = url_access_token[0]
+        else:
+            access_token = url_access_token
+        if access_token:
             # add header
-            headers["Authorization"] = f"Bearer {self.access_token}"
-            # remove access token in query string
-            url = list(urlparse(path))
-            qs = parse_qs(url[4])
-            if "access_token" in qs:
-                del qs["access_token"]
-            url[4] = urlencode(qs, doseq=True)
-            path = urlunparse(url)
+            headers["Authorization"] = f"Bearer {access_token}"
 
         if content_length is not None:
             headers["Content-Length"] = str(content_length)
