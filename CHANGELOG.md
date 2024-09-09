@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.25.1] - 2024-09-08
+
+### Features
+- [[#516]] Improve dependency resolution + tidy up dependencies
+- [[#520]] Use authenticated media + Authorization header
+  - This restores support for use on the popular [matrix.org](https://matrix.org) homeserver, which has recently [disabled unauthenticated media access](https://matrix.org/blog/2024/06/26/sunsetting-unauthenticated-media/).
+  - Your homeserver MUST be compliant with matrix `v1.11`.
+
+### Miscellaneous Tasks
+- Fix `pytest-asyncio` warning during unit tests
+
+[#516]: https://github.com/matrix-nio/matrix-nio/pull/516
+[#520]: https://github.com/matrix-nio/matrix-nio/pull/520
+
 ## [0.25.0] - 2024-08-13
 
 ### Features
