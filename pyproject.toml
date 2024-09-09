@@ -43,7 +43,7 @@ dev = [
     "mypy_extensions~=1.0",
     "pre-commit",
     "pytest~=8.2",
-    "pytest-asyncio~=0.23",
+    "pytest-asyncio~=0.24",
     "pytest-aiohttp~=0.3",
     "pytest-benchmark~=4.0",
     "pytest-cov~=2.11",
@@ -136,3 +136,6 @@ keep-runtime-typing = true
 ]
 [tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
