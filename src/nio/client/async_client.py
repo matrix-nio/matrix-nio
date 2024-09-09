@@ -800,20 +800,15 @@ class AsyncClient(Client):
             else {"Content-Type": "application/json"}
         )
 
-        # Pop access_token from query string
-        url = list(urlparse(path))
-        qs = parse_qs(url[4])
-        url_access_token = qs.pop("access_token", None)
-        url[4] = urlencode(qs, doseq=True)
-        path = urlunparse(url)
-
-        # Add authorization header, either from self or from the popped query param
-        if isinstance(url_access_token, list):
-            access_token = url_access_token[0]
-        else:
-            access_token = self.access_token or url_access_token
-        if access_token:
-            headers["Authorization"] = f"Bearer {access_token}"
+        if self.access_token:
+            # add authorization header
+            headers["Authorization"] = f"Bearer {self.access_token}"
+            # remove access_token from query params
+            url = list(urlparse(path))
+            qs = parse_qs(url[4])
+            qs.pop("access_token", None)
+            url[4] = urlencode(qs, doseq=True)
+            path = urlunparse(url)
 
         if content_length is not None:
             headers["Content-Length"] = str(content_length)
