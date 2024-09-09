@@ -968,7 +968,11 @@ class TestClass:
         http_client.connect(TransportType.HTTP2)
 
         _, _ = http_client.thumbnail(
-            "example.org", "ascERGshawAWawugaAcauga", 32, 32, allow_remote=False
+            "example.org",
+            "ascERGshawAWawugaAcauga",
+            32,
+            32,
+            allow_remote=False,
         )
 
         http_client.receive(self.file_byte_response(1))

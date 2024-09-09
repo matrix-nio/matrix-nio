@@ -286,7 +286,7 @@ class TestClass:
             [],
         )
 
-    def synce_response_for(self, own_user, other_user):
+    def sync_response_for(self, own_user, other_user):
         timeline = Timeline(
             [
                 RoomMemberEvent(
@@ -672,7 +672,7 @@ class TestClass:
             access_token="abc123",
         )
         aioresponse.get(
-            f"{BASE_URL_V3}/account/whoami?access_token=abc123",
+            f"{BASE_URL_V3}/account/whoami",
             status=200,
             payload=self.whoami_response,
         )
@@ -682,12 +682,12 @@ class TestClass:
 
     async def test_list_public_rooms(self, async_client, aioresponse):
         aioresponse.get(
-            f"{BASE_URL_V3}/publicRooms?access_token=abc123&limit=1&server=bleecker.street",
+            f"{BASE_URL_V3}/publicRooms?&limit=1&server=bleecker.street",
             status=200,
             payload=self.list_public_rooms_response,
         )
         aioresponse.post(
-            f"{BASE_URL_V3}/publicRooms?access_token=abc123&server=bleecker.street",
+            f"{BASE_URL_V3}/publicRooms?&server=bleecker.street",
             status=200,
             body={
                 "filter": {
@@ -729,7 +729,7 @@ class TestClass:
         )
 
         aioresponse.post(
-            f"{BASE_URL_V3}/logout?access_token=abc123",
+            f"{BASE_URL_V3}/logout",
             status=200,
             payload=self.logout_response,
         )
@@ -752,7 +752,7 @@ class TestClass:
         )
 
         aioresponse.post(
-            f"{BASE_URL_V3}/logout?access_token=abc123",
+            f"{BASE_URL_V3}/logout",
             status=400,
             body="",
         )
@@ -775,7 +775,7 @@ class TestClass:
         )
 
         aioresponse.post(
-            f"{BASE_URL_V3}/logout/all?access_token=abc123",
+            f"{BASE_URL_V3}/logout/all",
             status=200,
             payload=self.logout_response,
         )
@@ -798,7 +798,7 @@ class TestClass:
         )
 
         aioresponse.post(
-            f"{BASE_URL_V3}/logout/all?access_token=abc123",
+            f"{BASE_URL_V3}/logout/all",
             status=400,
             body="",
         )
@@ -822,7 +822,7 @@ class TestClass:
             payload=self.login_response,
         )
 
-        url = rf"^https://example\.org{MATRIX_API_PATH_V3}/sync\?access_token=abc123"
+        url = rf"^https://example\.org{MATRIX_API_PATH_V3}/sync"
 
         aioresponse.get(re.compile(rf"{url}$"), status=200, payload=self.sync_response)
 
@@ -837,7 +837,7 @@ class TestClass:
         # Test with filter ID
 
         aioresponse.get(
-            re.compile(rf"{url}&filter=test_id&since=[\w\d_]*"),
+            re.compile(rf"{url}\?filter=test_id&since=[\w\d_]*"),
             status=200,
             payload=self.sync_response,
         )
@@ -847,7 +847,7 @@ class TestClass:
         # Test with filter dict
 
         aioresponse.get(
-            re.compile(rf"{url}&filter=[\w\d%]*&since=[\w\d_]*"),
+            re.compile(rf"{url}\?filter=[\w\d%]*&since=[\w\d_]*"),
             status=200,
             payload=self.sync_response,
         )
@@ -857,7 +857,7 @@ class TestClass:
         # Test with timeout
 
         aioresponse.get(
-            re.compile(rf"{url}&since=[\w\d_]*&timeout=60000"),
+            re.compile(rf"{url}\?since=[\w\d_]*&timeout=60000"),
             status=200,
             payload=self.sync_response,
         )
@@ -868,7 +868,7 @@ class TestClass:
         """Test if presences info in sync events are parsed correctly"""
 
         aioresponse.get(
-            f"{BASE_URL_V3}/sync?access_token={async_client.access_token}",
+            f"{BASE_URL_V3}/sync",
             status=200,
             payload=self.sync_response,
         )
@@ -887,7 +887,7 @@ class TestClass:
 
     async def test_sync_notification_counts(self, async_client, aioresponse):
         aioresponse.get(
-            f"{BASE_URL_V3}/sync?access_token=abc123",
+            f"{BASE_URL_V3}/sync",
             status=200,
             payload=self.sync_response,
         )
@@ -901,7 +901,7 @@ class TestClass:
 
     async def test_sync_push_rules(self, async_client, aioresponse):
         aioresponse.get(
-            f"{BASE_URL_V3}/sync?access_token=abc123",
+            f"{BASE_URL_V3}/sync",
             status=200,
             payload=self.sync_response,
         )
@@ -1001,7 +1001,7 @@ class TestClass:
             payload=self.login_response,
         )
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/upload?access_token=abc123",
+            f"{BASE_URL_V3}/keys/upload",
             status=200,
             payload=self.keys_upload_response,
         )
@@ -1023,7 +1023,7 @@ class TestClass:
             payload=self.login_response,
         )
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/query?access_token=abc123",
+            f"{BASE_URL_V3}/keys/query",
             status=200,
             payload=self.keys_query_response,
         )
@@ -1044,17 +1044,17 @@ class TestClass:
             payload=self.login_response,
         )
         aioresponse.put(
-            f"{BASE_URL_V3}/rooms/!testroom:example.org/send/m.room.encrypted/1?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/!testroom:example.org/send/m.room.encrypted/1",
             status=200,
             payload={"event_id": "$1555:example.org"},
         )
         aioresponse.get(
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/joined_members?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/joined_members",
             status=200,
             payload=self.joined_members_response,
         )
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/query?access_token=abc123",
+            f"{BASE_URL_V3}/keys/query",
             status=200,
             payload=self.keys_query_response,
         )
@@ -1091,7 +1091,7 @@ class TestClass:
         }
 
         aioresponse.get(
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/event/$15163622445EBvZJ:localhost?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/event/$15163622445EBvZJ:localhost",
             status=200,
             payload=response,
         )
@@ -1104,7 +1104,7 @@ class TestClass:
         assert isinstance(resp.event, RoomMessageText)
 
         aioresponse.get(
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/event/$not-found:localhost?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/event/$not-found:localhost",
             status=200,
             payload={"errcode": "M_NOT_FOUND", "error": "Event not found."},
         )
@@ -1120,7 +1120,7 @@ class TestClass:
         }
 
         aioresponse.get(
-            f"{BASE_URL_V3}/user/{async_client.user_id}/account_data/m.direct?access_token=abc123",
+            f"{BASE_URL_V3}/user/{async_client.user_id}/account_data/m.direct",
             status=200,
             payload=response,
         )
@@ -1134,7 +1134,7 @@ class TestClass:
         }
 
         aioresponse.get(
-            f"{BASE_URL_V3}/user/{async_client.user_id}/account_data/m.direct?access_token=abc123",
+            f"{BASE_URL_V3}/user/{async_client.user_id}/account_data/m.direct",
             status=404,
             payload=response,
         )
@@ -1191,12 +1191,12 @@ class TestClass:
         }
 
         aioresponse.get(
-            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/relations/{event_id}/{RelationshipType.annotation.value}/m.reaction?access_token=abc123&dir=b&limit=1",
+            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/relations/{event_id}/{RelationshipType.annotation.value}/m.reaction?&dir=b&limit=1",
             status=200,
             payload=response1,
         )
         aioresponse.get(
-            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/relations/{event_id}/{RelationshipType.annotation.value}/m.reaction?access_token=abc123&dir=b&from={next_batch}&limit=1",
+            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/relations/{event_id}/{RelationshipType.annotation.value}/m.reaction?&dir=b&from={next_batch}&limit=1",
             status=200,
             payload=response2,
         )
@@ -1250,12 +1250,12 @@ class TestClass:
             ],
         }
         aioresponse.get(
-            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/threads?access_token=abc123&include=all&limit=1",
+            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/threads?&include=all&limit=1",
             status=200,
             payload=response1,
         )
         aioresponse.get(
-            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/threads?access_token=abc123&include=all&from={next_batch}&limit=1",
+            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/threads?&include=all&from={next_batch}&limit=1",
             status=200,
             payload=response2,
         )
@@ -1278,7 +1278,7 @@ class TestClass:
         # Test when key is set
         state_key = "a-state-key"
         aioresponse.put(
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/org.example.event_type/{state_key}?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/org.example.event_type/{state_key}",
             status=200,
             payload={"event_id": "$1337stateeventid2342:example.org"},
         )
@@ -1294,7 +1294,7 @@ class TestClass:
 
         # Test when key is empty (and slash is optional)
         aioresponse.put(
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/org.example.event_type?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/org.example.event_type",
             status=200,
             payload={"event_id": "$1337stateeventid2342:example.org"},
         )
@@ -1312,7 +1312,7 @@ class TestClass:
         # Test when state key is set
         state_key = "a-state-key"
         aioresponse.get(
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.name/{state_key}?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.name/{state_key}",
             status=200,
             payload={"name": "Test Room"},
         )
@@ -1324,7 +1324,7 @@ class TestClass:
 
         # without state key
         aioresponse.get(
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.name?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.name",
             status=200,
             payload={"name": "Test Room"},
         )
@@ -1337,7 +1337,7 @@ class TestClass:
 
     async def test_room_get_state(self, async_client, aioresponse):
         aioresponse.get(
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state",
             status=200,
             payload=self.room_get_state_response,
         )
@@ -1375,7 +1375,7 @@ class TestClass:
         assert ALICE_DEVICE_ID in missing[ALICE_ID]
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/claim?access_token=abc123",
+            f"{BASE_URL_V3}/keys/claim",
             status=200,
             payload=self.keys_claim_dict(alice_client),
         )
@@ -1415,13 +1415,13 @@ class TestClass:
         }
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/claim?access_token=abc123",
+            f"{BASE_URL_V3}/keys/claim",
             status=200,
             payload=key_claim_dict,
         )
 
         aioresponse.put(
-            f"{BASE_URL_V3}/sendToDevice/m.room.encrypted/1?access_token=abc123",
+            f"{BASE_URL_V3}/sendToDevice/m.room.encrypted/1",
             status=200,
             payload={},
         )
@@ -1444,7 +1444,7 @@ class TestClass:
         alice_client.load_store()
 
         aioresponse.put(
-            f"{BASE_URL_V3}/sendToDevice/m.room_key_request/1?access_token=abc123",
+            f"{BASE_URL_V3}/sendToDevice/m.room_key_request/1",
             status=200,
             payload={},
         )
@@ -1462,7 +1462,7 @@ class TestClass:
 
     async def test_get_openid_token(self, async_client, aioresponse):
         aioresponse.post(
-            f"{BASE_URL_V3}/user/{ALICE_ID}/openid/request_token?access_token=abc123",
+            f"{BASE_URL_V3}/user/{ALICE_ID}/openid/request_token",
             status=200,
             payload=self.get_openid_token_response,
         )
@@ -1492,7 +1492,7 @@ class TestClass:
         await async_client.receive_response(resp)
 
         aioresponse.get(
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/" "joined_members?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/" "joined_members",
             status=200,
             payload=self.joined_members_response,
         )
@@ -1511,7 +1511,7 @@ class TestClass:
 
     async def test_joined_rooms(self, async_client, aioresponse):
         aioresponse.get(
-            f"{BASE_URL_V3}/joined_rooms?access_token=abc123",
+            f"{BASE_URL_V3}/joined_rooms",
             status=200,
             payload=self.joined_rooms_response,
         )
@@ -1557,7 +1557,7 @@ class TestClass:
 
     async def test_room_create(self, async_client, aioresponse):
         aioresponse.post(
-            f"{BASE_URL_V3}/createRoom" "?access_token=abc123",
+            f"{BASE_URL_V3}/createRoom" "",
             status=200,
             payload=self.room_id_response(TEST_ROOM_ID),
         )
@@ -1578,7 +1578,7 @@ class TestClass:
 
     async def test_room_create__space(self, async_client, aioresponse):
         aioresponse.post(
-            f"{BASE_URL_V3}/createRoom" "?access_token=abc123",
+            f"{BASE_URL_V3}/createRoom" "",
             status=200,
             payload=self.room_id_response(TEST_ROOM_ID),
         )
@@ -1600,7 +1600,7 @@ class TestClass:
 
     async def test_room_create__typed(self, async_client, aioresponse):
         aioresponse.post(
-            f"{BASE_URL_V3}/createRoom" "?access_token=abc123",
+            f"{BASE_URL_V3}/createRoom" "",
             status=200,
             payload=self.room_id_response(TEST_ROOM_ID),
         )
@@ -1623,7 +1623,7 @@ class TestClass:
 
     async def test_join(self, async_client, aioresponse):
         aioresponse.post(
-            f"{BASE_URL_V3}/join/{TEST_ROOM_ID}?access_token=abc123",
+            f"{BASE_URL_V3}/join/{TEST_ROOM_ID}",
             status=200,
             payload=self.room_id_response(TEST_ROOM_ID),
         )
@@ -1634,7 +1634,7 @@ class TestClass:
 
     async def test_room_invite(self, async_client, aioresponse):
         aioresponse.post(
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/invite?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/invite",
             status=200,
             payload={},
         )
@@ -1644,7 +1644,7 @@ class TestClass:
 
     async def test_room_knock(self, async_client, aioresponse):
         aioresponse.post(
-            f"{BASE_URL_V3}/knock/{TEST_ROOM_ID}?access_token=abc123",
+            f"{BASE_URL_V3}/knock/{TEST_ROOM_ID}",
             status=200,
             payload=self.room_id_response(TEST_ROOM_ID),
         )
@@ -1654,7 +1654,7 @@ class TestClass:
 
     async def test_room_leave(self, async_client, aioresponse):
         aioresponse.post(
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/leave?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/leave",
             status=200,
             payload={},
         )
@@ -1667,7 +1667,7 @@ class TestClass:
         room_id = next(iter(async_client.rooms))
 
         aioresponse.post(
-            f"{BASE_URL_V3}/rooms/{room_id}/forget?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{room_id}/forget",
             status=200,
             payload={},
         )
@@ -1681,7 +1681,7 @@ class TestClass:
         room_id = next(iter(async_client.rooms))
 
         aioresponse.post(
-            f"{BASE_URL_V3}/rooms/{room_id}/kick" f"?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{room_id}/kick" f"",
             status=200,
             body={"user_id": ALICE_ID, "reason": "test"},
             payload={},
@@ -1695,7 +1695,7 @@ class TestClass:
         room_id = next(iter(async_client.rooms))
 
         aioresponse.post(
-            f"{BASE_URL_V3}/rooms/{room_id}/ban" f"?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{room_id}/ban" f"",
             status=200,
             body={"user_id": ALICE_ID, "reason": "test"},
             payload={},
@@ -1709,7 +1709,7 @@ class TestClass:
         room_id = next(iter(async_client.rooms))
 
         aioresponse.post(
-            f"{BASE_URL_V3}/rooms/{room_id}/unban" f"?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{room_id}/unban" f"",
             status=200,
             body={"user_id": ALICE_ID},
             payload={},
@@ -1726,7 +1726,7 @@ class TestClass:
         reason = "for no reason"
 
         aioresponse.put(
-            f"{BASE_URL_V3}/rooms/{room_id}/redact/{event_id}/{tx_id}?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{room_id}/redact/{event_id}/{tx_id}",
             status=200,
             payload={"event_id": "$90813622447EBvZJ:localhost"},
         )
@@ -1738,7 +1738,7 @@ class TestClass:
 
         await async_client.receive_response(self.encryption_sync_response)
         aioresponse.get(
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/context/{event_id}?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/context/{event_id}",
             status=200,
             payload=self.context_response,
         )
@@ -1758,8 +1758,8 @@ class TestClass:
 
         url = (
             f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/"
-            "messages?access_token=abc123"
-            "&dir=b&from=start_token&limit=10"
+            "messages"
+            "?dir=b&from=start_token&limit=10"
         )
         aioresponse.get(url, status=200, payload=self.messages_response)
         resp = await async_client.room_messages(TEST_ROOM_ID, "start_token")
@@ -1782,9 +1782,7 @@ class TestClass:
         # Dict filter no start token (MSC3567)
 
         no_start_param_url = (
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/"
-            "messages?access_token=abc123"
-            "&dir=b&limit=10"
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/messages?dir=b&limit=10"
         )
         aioresponse.get(
             no_start_param_url + '&filter={"room":{"state":{"limit":1}}}',
@@ -1803,7 +1801,7 @@ class TestClass:
         room_id = list(async_client.rooms.keys())[0]
 
         aioresponse.put(
-            f"{BASE_URL_V3}/rooms/{room_id}/typing/{async_client.user_id}?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{room_id}/typing/{async_client.user_id}",
             status=200,
             payload={},
         )
@@ -1815,8 +1813,7 @@ class TestClass:
         event_id = "$event1:test.org"
 
         aioresponse.post(
-            f"{BASE_URL_V3}/rooms/{room_id}/receipt/"
-            f"m.read/{event_id}?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{room_id}/receipt/" f"m.read/{event_id}",
             status=200,
             payload={},
         )
@@ -1840,7 +1837,7 @@ class TestClass:
         receipt_event_id = "$15163700000EBvZJ:localhost"
 
         aioresponse.post(
-            f"{BASE_URL_V3}/rooms/{room_id}" + "/read_markers?access_token=abc123",
+            f"{BASE_URL_V3}/rooms/{room_id}" + "/read_markers",
             status=200,
             payload={},
         )
@@ -1857,7 +1854,7 @@ class TestClass:
         assert async_client.logged_in
 
         aioresponse.get(
-            f"{BASE_MEDIA_URL}/config?access_token=abc123",
+            f"{BASE_MEDIA_URL}/config",
             status=200,
             payload={"m.upload.size": 1024},
         )
@@ -1877,7 +1874,7 @@ class TestClass:
         monitor = TransferMonitor(filesize)
 
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?access_token=abc123&filename=test.png",
+            f"{BASE_MEDIA_URL}/upload?&filename=test.png",
             status=200,
             payload=self.upload_response,
             repeat=True,
@@ -1911,7 +1908,7 @@ class TestClass:
         monitor = TransferMonitor(filesize)
 
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?access_token=abc123&filename=test.png",
+            f"{BASE_MEDIA_URL}/upload?&filename=test.png",
             status=200,
             payload=self.upload_response,
             repeat=True,
@@ -1958,7 +1955,7 @@ class TestClass:
         monitor = TransferMonitor(filesize)
 
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?access_token=abc123&filename=test.py",
+            f"{BASE_MEDIA_URL}/upload?&filename=test.py",
             status=200,
             payload=self.upload_response,
             repeat=True,
@@ -2008,13 +2005,13 @@ class TestClass:
         # We make sure to read the data in the first post response to verify
         # that we can read the full file in a subsequent post.
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?access_token=abc123&filename=test.py",
+            f"{BASE_MEDIA_URL}/upload?&filename=test.py",
             status=429,
             payload=self.limit_exceeded_error_response,
             callback=check_content,
         )
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?access_token=abc123&filename=test.py",
+            f"{BASE_MEDIA_URL}/upload?&filename=test.py",
             status=200,
             payload=self.upload_response,
             callback=check_content,
@@ -2045,13 +2042,13 @@ class TestClass:
         monitor = TransferMonitor(filesize)
 
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?access_token=abc123&filename=test.png",
+            f"{BASE_MEDIA_URL}/upload?&filename=test.png",
             status=429,
             payload=self.limit_exceeded_error_response,
         )
 
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?access_token=abc123&filename=test.png",
+            f"{BASE_MEDIA_URL}/upload?&filename=test.png",
             status=200,
             payload=self.upload_response,
             repeat=True,
@@ -2284,7 +2281,7 @@ class TestClass:
         server_name, media_id = _extract_parts(mxc)
 
         aioresponse.get(
-            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}?allow_remote=true",
+            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}?&allow_remote=true",
             status=200,
             content_type="image/png",
             body=self.file_response,
@@ -2295,7 +2292,7 @@ class TestClass:
         assert resp.filename is None
 
         aioresponse.get(
-            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}/{filename}?allow_remote=true",
+            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}/{filename}?&allow_remote=true",
             status=200,
             content_type="image/png",
             headers={"content-disposition": f'inline; filename="{filename}"'},
@@ -2308,7 +2305,7 @@ class TestClass:
 
         async_client.config = AsyncClientConfig(max_limit_exceeded=0)
         aioresponse.get(
-            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}?allow_remote=true",
+            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}?&allow_remote=true",
             status=429,
             content_type="application/json",
             body=b'{"errcode": "M_LIMIT_EXCEEDED", "retry_after_ms": 1}',
@@ -2326,7 +2323,7 @@ class TestClass:
 
         aioresponse.get(
             f"{BASE_MEDIA_URL}/thumbnail/{server_name}/{media_id}"
-            f"?width={width}&height={height}&method={method.value}&allow_remote=true",
+            f"?&width={width}&height={height}&method={method.value}&allow_remote=true",
             status=200,
             content_type="image/png",
             body=self.file_response,
@@ -2341,7 +2338,7 @@ class TestClass:
 
         aioresponse.get(
             f"{BASE_MEDIA_URL}/thumbnail/{server_name}/{media_id}"
-            f"?width={width}&height={height}&method={method.value}&allow_remote=true",
+            f"?&width={width}&height={height}&method={method.value}&allow_remote=true",
             status=429,
             content_type="application/json",
             body=b'{"errcode": "M_LIMIT_EXCEEDED", "retry_after_ms": 1}',
@@ -2425,7 +2422,7 @@ class TestClass:
         async_client.user_id = ALICE_ID
 
         aioresponse.get(
-            f"{BASE_URL_V3}/profile/{async_client.user_id}?access_token=abc123",
+            f"{BASE_URL_V3}/profile/{async_client.user_id}",
             status=200,
             payload=self.get_profile_response(name, avatar),
         )
@@ -2438,7 +2435,6 @@ class TestClass:
         self, unauthed_async_client: AsyncClient, aioresponse: aioresponses
     ):
         login = self.login_response
-        token = login["access_token"]
         user_id = login["user_id"]
 
         name = faker.name()
@@ -2450,14 +2446,14 @@ class TestClass:
             url, status=401, payload=self.get_profile_unauth_error_response()
         )
 
+        resp = await unauthed_async_client.get_profile(user_id)
+        assert isinstance(resp, ProfileGetError)
+
         aioresponse.get(
-            f"{url}?access_token={token}",
+            url,
             status=200,
             payload=self.get_profile_response(name, avatar),
         )
-
-        resp = await unauthed_async_client.get_profile(user_id)
-        assert isinstance(resp, ProfileGetError)
 
         await unauthed_async_client.receive_response(LoginResponse.from_dict(login))
         assert unauthed_async_client.logged_in
@@ -2471,7 +2467,7 @@ class TestClass:
         user_id = "@alice:example.com"
 
         aioresponse.get(
-            f"{BASE_URL_V3}/presence/{user_id}/status?access_token={async_client.access_token}",
+            f"{BASE_URL_V3}/presence/{user_id}/status",
             status=200,
             payload={"presence": "unavailable", "last_active_ago": 420845},
         )
@@ -2486,7 +2482,7 @@ class TestClass:
         assert not resp.status_msg
 
         aioresponse.get(
-            f"{BASE_URL_V3}/presence/{user_id}/status?access_token={async_client.access_token}",
+            f"{BASE_URL_V3}/presence/{user_id}/status",
             status=200,
             payload={
                 "presence": "online",
@@ -2509,8 +2505,7 @@ class TestClass:
         """Test if we can set the presence state of user"""
 
         aioresponse.put(
-            f"{BASE_URL_V3}/presence/{async_client.user_id}/"
-            f"status?access_token={async_client.access_token}",
+            f"{BASE_URL_V3}/presence/{async_client.user_id}/" f"status",
             status=200,
             payload={},
         )
@@ -2534,7 +2529,7 @@ class TestClass:
 
         async_client.add_presence_callback(cb, PresenceEvent)
 
-        url = rf"^https://example\.org{MATRIX_API_PATH_V3}/sync\?access_token=abc123"
+        url = rf"^https://example\.org{MATRIX_API_PATH_V3}/sync"
 
         aioresponse.get(re.compile(rf"{url}$"), status=200, payload=self.sync_response)
 
@@ -2565,16 +2560,12 @@ class TestClass:
         }
 
         aioresponse.post(
-            f"{BASE_URL_V3}/delete_devices?access_token=abc123",
+            f"{BASE_URL_V3}/delete_devices",
             status=401,
             payload=delete_auth,
         )
-        aioresponse.post(
-            f"{BASE_URL_V3}/delete_devices?access_token=abc123", status=200, payload={}
-        )
-        aioresponse.get(
-            f"{BASE_URL_V3}/devices?access_token=abc123", status=200, payload=devices
-        )
+        aioresponse.post(f"{BASE_URL_V3}/delete_devices", status=200, payload={})
+        aioresponse.get(f"{BASE_URL_V3}/devices", status=200, payload=devices)
 
         resp = await async_client.devices()
         assert isinstance(resp, DevicesResponse)
@@ -2596,7 +2587,7 @@ class TestClass:
         content = {"display_name": "My new device"}
 
         aioresponse.put(
-            f"{BASE_URL_V3}/devices/{device_id}?access_token={async_client.access_token}",
+            f"{BASE_URL_V3}/devices/{device_id}",
             status=200,
             payload={},
         )
@@ -2606,7 +2597,7 @@ class TestClass:
         assert isinstance(resp, UpdateDeviceResponse)
 
     async def test_get_set_displayname(self, async_client, aioresponse):
-        url = f"{BASE_URL_V3}/profile/{async_client.user_id}/displayname?access_token={async_client.access_token}"
+        url = f"{BASE_URL_V3}/profile/{async_client.user_id}/displayname"
         aioresponse.get(url, status=200, payload=self.get_displayname_response(None))
         resp = await async_client.get_displayname()
         assert isinstance(resp, ProfileGetDisplayNameResponse)
@@ -2625,7 +2616,7 @@ class TestClass:
         assert resp3.displayname == new_name
 
     async def test_get_set_avatar(self, async_client, aioresponse):
-        url = f"{BASE_URL_V3}/profile/{async_client.user_id}/avatar_url?access_token={async_client.access_token}"
+        url = f"{BASE_URL_V3}/profile/{async_client.user_id}/avatar_url"
 
         aioresponse.get(url, status=200, payload=self.get_avatar_response(None))
         resp = await async_client.get_avatar()
@@ -2658,7 +2649,7 @@ class TestClass:
             LoginResponse.from_dict(self.login_response)
         )
         aioresponse.delete(
-            f"{BASE_URL_V3}/directory/room/%23test%3Aexample.org?access_token={async_client.access_token}",
+            f"{BASE_URL_V3}/directory/room/%23test%3Aexample.org",
             status=200,
             payload={},
         )
@@ -2672,7 +2663,7 @@ class TestClass:
             LoginResponse.from_dict(self.login_response)
         )
         aioresponse.put(
-            f"{BASE_URL_V3}/directory/room/%23test%3Aexample.org?access_token={async_client.access_token}",
+            f"{BASE_URL_V3}/directory/room/%23test%3Aexample.org",
             status=200,
             payload={
                 "room_id": "!foobar:example.org",
@@ -2810,7 +2801,7 @@ class TestClass:
 
     async def test_sync_forever(self, async_client, aioresponse, event_loop):
         sync_url = re.compile(
-            rf"^https://example\.org{MATRIX_API_PATH_V3}/sync\?access_token=.*"
+            rf"^https://example\.org{MATRIX_API_PATH_V3}/sync",
         )
 
         aioresponse.get(
@@ -2822,13 +2813,13 @@ class TestClass:
         aioresponse.get(sync_url, status=200, payload=self.empty_sync, repeat=True)
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/upload?access_token=abc123",
+            f"{BASE_URL_V3}/keys/upload",
             status=200,
             payload=self.final_keys_upload_response,
         )
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/query?access_token=abc123",
+            f"{BASE_URL_V3}/keys/query",
             status=200,
             payload=self.keys_query_response,
             repeat=True,
@@ -2852,9 +2843,7 @@ class TestClass:
             await task
 
     async def test_stop_sync_forever(self, async_client, aioresponse, event_loop):
-        sync_url = re.compile(
-            rf"^https://example\.org{MATRIX_API_PATH_V3}/sync\?access_token=.*"
-        )
+        sync_url = re.compile(rf"^https://example\.org{MATRIX_API_PATH_V3}/sync")
 
         aioresponse.get(
             sync_url,
@@ -2865,13 +2854,13 @@ class TestClass:
         aioresponse.get(sync_url, status=200, payload=self.empty_sync, repeat=True)
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/upload?access_token=abc123",
+            f"{BASE_URL_V3}/keys/upload",
             status=200,
             payload=self.final_keys_upload_response,
         )
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/query?access_token=abc123",
+            f"{BASE_URL_V3}/keys/query",
             status=200,
             payload=self.keys_query_response,
             repeat=True,
@@ -2904,10 +2893,8 @@ class TestClass:
         assert alice.logged_in
         assert bob.logged_in
 
-        await alice.receive_response(
-            self.synce_response_for(alice.user_id, bob.user_id)
-        )
-        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+        await alice.receive_response(self.sync_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.sync_response_for(bob.user_id, alice.user_id))
 
         alice_device = OlmDevice(
             alice.user_id, alice.device_id, alice.olm.account.identity_keys
@@ -2934,36 +2921,28 @@ class TestClass:
         to_device_for_alice = None
         to_device_for_bob = None
 
-        sync_url = re.compile(
-            rf"^https://example\.org{MATRIX_API_PATH_V3}/sync\?access_token=.*"
+        sync_url = re.compile(rf"^https://example\.org{MATRIX_API_PATH_V3}/sync")
+
+        to_device_url = re.compile(
+            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room.encrypted/[0-9a-fA-f-]*",
         )
 
-        bob_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room.encrypted/[0-9a-fA-f-]*\?access_token=bob_1234",
-        )
-
-        alice_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room.encrypted/[0-9a-f-A-f-]*\?access_token=alice_1234",
-        )
-
-        def alice_to_device_cb(url, data, **kwargs):
-            nonlocal to_device_for_alice
-            to_device_for_alice = json.loads(data)
-            return CallbackResult(status=200, payload={})
-
-        def bob_to_device_cb(url, data, **kwargs):
-            nonlocal to_device_for_bob
-            to_device_for_bob = json.loads(data)
+        def to_device_cb(url, data, headers, **kwargs):
+            """When Alice/Bob send a to_device event, record it."""
+            nonlocal to_device_for_alice, to_device_for_bob
+            if headers["Authorization"] == f"Bearer {bob.access_token}":
+                to_device_for_alice = json.loads(data)
+            elif headers["Authorization"] == f"Bearer {alice.access_token}":
+                to_device_for_bob = json.loads(data)
             return CallbackResult(status=200, payload={})
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/claim?access_token=bob_1234",
+            f"{BASE_URL_V3}/keys/claim",
             status=200,
             payload=key_claim_dict,
         )
 
-        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb, repeat=True)
-        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb, repeat=True)
+        aioresponse.put(to_device_url, callback=to_device_cb, repeat=True)
 
         session = alice.olm.session_store.get(bob_device.curve25519)
         assert not session
@@ -3088,7 +3067,7 @@ class TestClass:
         }
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/claim?access_token=bob_1234",
+            f"{BASE_URL_V3}/keys/claim",
             status=200,
             payload=key_claim_dict,
         )
@@ -3138,10 +3117,8 @@ class TestClass:
         assert alice.logged_in
         assert bob.logged_in
 
-        await alice.receive_response(
-            self.synce_response_for(alice.user_id, bob.user_id)
-        )
-        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+        await alice.receive_response(self.sync_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.sync_response_for(bob.user_id, alice.user_id))
 
         alice_to_share = alice.olm.share_keys()
         alice_one_time = list(alice_to_share["one_time_keys"].items())[0]
@@ -3158,16 +3135,14 @@ class TestClass:
         to_device_for_alice = None
         to_device_for_bob = None
 
-        sync_url = re.compile(
-            rf"^https://example\.org{MATRIX_API_PATH_V3}/sync\?access_token=.*"
-        )
+        sync_url = re.compile(rf"^https://example\.org{MATRIX_API_PATH_V3}/sync")
 
         bob_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room.encrypted/[0-9a-fA-f-]*\?access_token=bob_1234",
+            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room.encrypted/[0-9a-fA-f-]*",
         )
 
         alice_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room[\._][_a-z]+/[0-9a-fA-f-]*\?access_token=alice_1234",
+            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room[\._][_a-z]+/[0-9a-fA-f-]*",
         )
 
         def alice_to_device_cb(url, data, **kwargs):
@@ -3181,7 +3156,7 @@ class TestClass:
             return CallbackResult(status=200, payload={})
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/claim?access_token=bob_1234",
+            f"{BASE_URL_V3}/keys/claim",
             status=200,
             payload=key_claim_dict,
         )
@@ -3300,10 +3275,8 @@ class TestClass:
         assert alice.logged_in
         assert bob.logged_in
 
-        await alice.receive_response(
-            self.synce_response_for(alice.user_id, bob.user_id)
-        )
-        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+        await alice.receive_response(self.sync_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.sync_response_for(bob.user_id, alice.user_id))
 
         alice_device = OlmDevice(
             alice.user_id, alice.device_id, alice.olm.account.identity_keys
@@ -3330,36 +3303,28 @@ class TestClass:
         to_device_for_alice = None
         to_device_for_bob = None
 
-        sync_url = re.compile(
-            rf"^https://example\.org{MATRIX_API_PATH_V3}/sync\?access_token=.*"
+        sync_url = re.compile(rf"^https://example\.org{MATRIX_API_PATH_V3}/sync")
+
+        to_device_url = re.compile(
+            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.(room|key)[a-z_\.]+/[0-9a-fA-f-]*",
         )
 
-        bob_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.(room|key)[a-z_\.]+/[0-9a-fA-f-]*\?access_token=bob_1234",
-        )
-
-        alice_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.(room|key)[a-z_\.]+/[0-9a-fA-f-]*\?access_token=alice_1234",
-        )
-
-        def alice_to_device_cb(url, data, **kwargs):
-            nonlocal to_device_for_alice
-            to_device_for_alice = json.loads(data)
-            return CallbackResult(status=200, payload={})
-
-        def bob_to_device_cb(url, data, **kwargs):
-            nonlocal to_device_for_bob
-            to_device_for_bob = json.loads(data)
+        def to_device_cb(url, data, headers, **kwargs):
+            """When Alice/Bob send a to_device event, record it."""
+            nonlocal to_device_for_alice, to_device_for_bob
+            if headers["Authorization"] == f"Bearer {bob.access_token}":
+                to_device_for_alice = json.loads(data)
+            elif headers["Authorization"] == f"Bearer {alice.access_token}":
+                to_device_for_bob = json.loads(data)
             return CallbackResult(status=200, payload={})
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/claim?access_token=bob_1234",
+            f"{BASE_URL_V3}/keys/claim",
             status=200,
             payload=key_claim_dict,
         )
 
-        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb, repeat=True)
-        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb, repeat=True)
+        aioresponse.put(to_device_url, callback=to_device_cb, repeat=True)
 
         session = alice.olm.session_store.get(bob_device.curve25519)
         assert not session
@@ -3501,10 +3466,8 @@ class TestClass:
         bob.user_id = alice.user_id
         bob.olm.user_id = alice.user_id
 
-        await alice.receive_response(
-            self.synce_response_for(alice.user_id, bob.user_id)
-        )
-        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+        await alice.receive_response(self.sync_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.sync_response_for(bob.user_id, alice.user_id))
 
         alice_device = OlmDevice(
             alice.user_id, alice.device_id, alice.olm.account.identity_keys
@@ -3545,16 +3508,14 @@ class TestClass:
         to_device_for_alice = None
         to_device_for_bob = None
 
-        sync_url = re.compile(
-            rf"^https://example\.org{MATRIX_API_PATH_V3}/sync\?access_token=.*"
-        )
+        sync_url = re.compile(rf"^https://example\.org{MATRIX_API_PATH_V3}/sync")
 
         bob_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room.encrypted/[0-9a-fA-f-]*\?access_token=bob_1234",
+            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room.encrypted/[0-9a-fA-f-]*",
         )
 
         alice_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room[\._][_a-z]+/[0-9a-fA-f-]*\?access_token=alice_1234",
+            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room[\._][_a-z]+/[0-9a-fA-f-]*",
         )
 
         def alice_to_device_cb(url, data, **kwargs):
@@ -3568,7 +3529,7 @@ class TestClass:
             return CallbackResult(status=200, payload={})
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/claim?access_token=bob_1234",
+            f"{BASE_URL_V3}/keys/claim",
             status=200,
             payload=key_claim_dict,
         )
@@ -3684,10 +3645,8 @@ class TestClass:
     async def test_key_invalidation(self, async_client_pair, aioresponse):
         alice, bob = async_client_pair
 
-        await alice.receive_response(
-            self.synce_response_for(alice.user_id, bob.user_id)
-        )
-        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+        await alice.receive_response(self.sync_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.sync_response_for(bob.user_id, alice.user_id))
 
         alice_device = OlmDevice(
             alice.user_id, alice.device_id, alice.olm.account.identity_keys
@@ -3712,11 +3671,11 @@ class TestClass:
         }
 
         bob_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.(room|key)[a-z_\.]+/[0-9a-fA-f-]*\?access_token=bob_1234",
+            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.(room|key)[a-z_\.]+/[0-9a-fA-f-]*",
         )
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/claim?access_token=bob_1234",
+            f"{BASE_URL_V3}/keys/claim",
             status=200,
             payload=key_claim_dict,
         )
@@ -3755,10 +3714,8 @@ class TestClass:
         assert alice.logged_in
         assert bob.logged_in
 
-        await alice.receive_response(
-            self.synce_response_for(alice.user_id, bob.user_id)
-        )
-        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+        await alice.receive_response(self.sync_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.sync_response_for(bob.user_id, alice.user_id))
 
         alice_device = OlmDevice(
             alice.user_id, alice.device_id, alice.olm.account.identity_keys
@@ -3785,16 +3742,14 @@ class TestClass:
         to_device_for_alice = None
         to_device_for_bob = None
 
-        sync_url = re.compile(
-            rf"^https://example\.org{MATRIX_API_PATH_V3}/sync\?access_token=.*"
-        )
+        sync_url = re.compile(rf"^https://example\.org{MATRIX_API_PATH_V3}/sync")
 
         bob_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room.encrypted/[0-9a-fA-f-]*\?access_token=bob_1234",
+            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room.encrypted/[0-9a-fA-f-]*",
         )
 
         alice_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room[\._][_a-z]+/[0-9a-fA-f-]*\?access_token=alice_1234",
+            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room[\._][_a-z]+/[0-9a-fA-f-]*",
         )
 
         def alice_to_device_cb(url, data, **kwargs):
@@ -3808,7 +3763,7 @@ class TestClass:
             return CallbackResult(status=200, payload={})
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/claim?access_token=bob_1234",
+            f"{BASE_URL_V3}/keys/claim",
             status=200,
             payload=key_claim_dict,
         )
@@ -3915,10 +3870,8 @@ class TestClass:
         assert alice.logged_in
         assert bob.logged_in
 
-        await alice.receive_response(
-            self.synce_response_for(alice.user_id, bob.user_id)
-        )
-        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+        await alice.receive_response(self.sync_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.sync_response_for(bob.user_id, alice.user_id))
 
         alice_device = OlmDevice(
             alice.user_id, alice.device_id, alice.olm.account.identity_keys
@@ -3945,36 +3898,28 @@ class TestClass:
         to_device_for_alice = None
         to_device_for_bob = None
 
-        sync_url = re.compile(
-            rf"^https://example\.org{MATRIX_API_PATH_V3}/sync\?access_token=.*"
+        sync_url = re.compile(rf"^https://example\.org{MATRIX_API_PATH_V3}/sync")
+
+        to_device_url = re.compile(
+            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.(room|key)[a-z_\.]+/[0-9a-fA-f-]*",
         )
 
-        bob_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.(room|key)[a-z_\.]+/[0-9a-fA-f-]*\?access_token=bob_1234",
-        )
-
-        alice_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.(room|key)[a-z_\.]+/[0-9a-fA-f-]*\?access_token=alice_1234",
-        )
-
-        def alice_to_device_cb(url, data, **kwargs):
-            nonlocal to_device_for_alice
-            to_device_for_alice = json.loads(data)
-            return CallbackResult(status=200, payload={})
-
-        def bob_to_device_cb(url, data, **kwargs):
-            nonlocal to_device_for_bob
-            to_device_for_bob = json.loads(data)
+        def to_device_cb(url, data, headers, **kwargs):
+            """When Alice/Bob send a to_device event, record it."""
+            nonlocal to_device_for_alice, to_device_for_bob
+            if headers["Authorization"] == f"Bearer {bob.access_token}":
+                to_device_for_alice = json.loads(data)
+            elif headers["Authorization"] == f"Bearer {alice.access_token}":
+                to_device_for_bob = json.loads(data)
             return CallbackResult(status=200, payload={})
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/claim?access_token=bob_1234",
+            f"{BASE_URL_V3}/keys/claim",
             status=200,
             payload=key_claim_dict,
         )
 
-        aioresponse.put(bob_to_device_url, callback=alice_to_device_cb, repeat=True)
-        aioresponse.put(alice_to_device_url, callback=bob_to_device_cb, repeat=True)
+        aioresponse.put(to_device_url, callback=to_device_cb, repeat=True)
 
         session = alice.olm.session_store.get(bob_device.curve25519)
         assert not session
@@ -4095,10 +4040,8 @@ class TestClass:
         assert alice.logged_in
         assert bob.logged_in
 
-        await alice.receive_response(
-            self.synce_response_for(alice.user_id, bob.user_id)
-        )
-        await bob.receive_response(self.synce_response_for(bob.user_id, alice.user_id))
+        await alice.receive_response(self.sync_response_for(alice.user_id, bob.user_id))
+        await bob.receive_response(self.sync_response_for(bob.user_id, alice.user_id))
 
         cb_ran = False
 
@@ -4136,21 +4079,19 @@ class TestClass:
         to_device_for_bob = None
         room_event_for_alice = None
 
-        sync_url = re.compile(
-            rf"^https://example\.org{MATRIX_API_PATH_V3}/sync\?access_token=.*"
-        )
+        sync_url = re.compile(rf"^https://example\.org{MATRIX_API_PATH_V3}/sync")
 
         bob_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room.encrypted/[0-9a-fA-f-]*\?access_token=bob_1234",
+            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room.encrypted/[0-9a-fA-f-]*",
         )
 
         alice_to_device_url = re.compile(
-            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room\.encrypted/[0-9]\?access_token=alice_1234",
+            rf"https://example\.org{MATRIX_API_PATH_V3}/sendToDevice/m\.room\.encrypted/[0-9]",
         )
 
         bob_room_send_url = re.compile(
             rf"https://example\.org{MATRIX_API_PATH_V3}/rooms/{TEST_ROOM_ID}/"
-            rf"send/m\.room\.encrypted/[0-9]\?access_token=bob_1234",
+            rf"send/m\.room\.encrypted/[0-9]",
         )
 
         def alice_to_device_cb(url, data, **kwargs):
@@ -4169,20 +4110,19 @@ class TestClass:
             return CallbackResult(status=200, payload={})
 
         aioresponse.get(
-            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/"
-            f"joined_members?access_token=bob_1234",
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/" f"joined_members",
             status=200,
             payload=self.joined_members_response,
         )
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/query?" "access_token=bob_1234",
+            f"{BASE_URL_V3}/keys/query",
             status=200,
             payload=self.keys_query_response,
         )
 
         aioresponse.post(
-            f"{BASE_URL_V3}/keys/claim?access_token=bob_1234",
+            f"{BASE_URL_V3}/keys/claim",
             status=200,
             payload=key_claim_dict,
         )
@@ -4286,7 +4226,7 @@ class TestClass:
         assert async_client.logged_in
 
         aioresponse.post(
-            f"{BASE_URL_V3}/user/" f"{async_client.user_id}/filter?access_token=abc123",
+            f"{BASE_URL_V3}/user/" f"{async_client.user_id}/filter",
             status=200,
             payload={"filter_id": "abc123"},
         )
@@ -4314,7 +4254,7 @@ class TestClass:
         async_client.add_global_account_data_callback(cb, PushRulesEvent)
 
         aioresponse.get(
-            f"{BASE_URL_V3}/sync?access_token=abc123",
+            f"{BASE_URL_V3}/sync",
             status=200,
             payload=self.sync_response,
         )
@@ -4337,8 +4277,7 @@ class TestClass:
 
         # Test before + override with condition
         aioresponse.put(
-            f"{BASE_URL_V3}/pushrules/"
-            "global/override/foo?access_token=abc123&before=ov1",
+            f"{BASE_URL_V3}/pushrules/" "global/override/foo?&before=ov1",
             body={
                 "actions": [],
                 "conditions": [{"kind": "contains_display_name"}],
@@ -4356,8 +4295,7 @@ class TestClass:
 
         # Test after + override with action
         aioresponse.put(
-            f"{BASE_URL_V3}/pushrules/"
-            "global/override/foo?access_token=abc123&after=ov1",
+            f"{BASE_URL_V3}/pushrules/" "global/override/foo?&after=ov1",
             body={"actions": ["notify"], "conditions": []},
             status=200,
             payload={},
@@ -4381,7 +4319,7 @@ class TestClass:
 
         # Test content pattern rule
         aioresponse.put(
-            f"{BASE_URL_V3}/pushrules/" "global/content/bar?access_token=abc123",
+            f"{BASE_URL_V3}/pushrules/" "global/content/bar",
             body={"actions": [], "pattern": "foo*bar"},
             status=200,
             payload={},
@@ -4397,7 +4335,7 @@ class TestClass:
         assert async_client.logged_in
 
         aioresponse.delete(
-            f"{BASE_URL_V3}/pushrules/" "global/override/foo?access_token=abc123",
+            f"{BASE_URL_V3}/pushrules/" "global/override/foo",
             status=200,
             payload={},
         )
@@ -4416,8 +4354,7 @@ class TestClass:
         assert async_client.logged_in
 
         aioresponse.put(
-            f"{BASE_URL_V3}/pushrules/"
-            "global/override/foo/enabled?access_token=abc123",
+            f"{BASE_URL_V3}/pushrules/" "global/override/foo/enabled",
             body={"enabled": True},
             status=200,
             payload={},
@@ -4438,8 +4375,7 @@ class TestClass:
         assert async_client.logged_in
 
         aioresponse.put(
-            f"{BASE_URL_V3}/pushrules/"
-            "global/override/foo/actions?access_token=abc123",
+            f"{BASE_URL_V3}/pushrules/" "global/override/foo/actions",
             body={"actions": [{"set_tweak": "highlight", "value": True}]},
             status=200,
             payload={},
@@ -4472,7 +4408,7 @@ class TestClass:
         assert async_client.logged_in
 
         aioresponse.get(
-            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/hierarchy?access_token=abc123",
+            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/hierarchy",
             status=200,
             payload=self.hierarchy_response,
         )
@@ -4483,7 +4419,7 @@ class TestClass:
         assert isinstance(resp.rooms, list)
 
         aioresponse.get(
-            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/hierarchy?access_token=abc123",
+            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/hierarchy",
             status=403,
             payload={
                 "errcode": "M_FORBIDDEN",
@@ -4496,7 +4432,7 @@ class TestClass:
         assert isinstance(resp, SpaceGetHierarchyError)
 
         aioresponse.get(
-            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/hierarchy?access_token=abc123&from=invalid",
+            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/hierarchy?&from=invalid",
             status=400,
             payload={
                 "errcode": "M_INVALID_PARAM",
@@ -4511,7 +4447,7 @@ class TestClass:
         async_client.config = AsyncClientConfig(max_limit_exceeded=0)
 
         aioresponse.get(
-            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/hierarchy?access_token=abc123",
+            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/hierarchy",
             status=429,
             payload={
                 "errcode": "M_LIMIT_EXCEEDED",

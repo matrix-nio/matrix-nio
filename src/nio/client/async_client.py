@@ -39,7 +39,7 @@ from typing import (
     Type,
     Union,
 )
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from uuid import UUID, uuid4
 
 import aiofiles
@@ -800,6 +800,16 @@ class AsyncClient(Client):
             else {"Content-Type": "application/json"}
         )
 
+        if self.access_token:
+            # add authorization header
+            headers["Authorization"] = f"Bearer {self.access_token}"
+            # remove access_token from query params
+            url = list(urlparse(path))
+            qs = parse_qs(url[4])
+            qs.pop("access_token", None)
+            url[4] = urlencode(qs, doseq=True)
+            path = urlunparse(url)
+
         if content_length is not None:
             headers["Content-Length"] = str(content_length)
 
@@ -915,7 +925,9 @@ class AsyncClient(Client):
         homeserver: Optional[str] = None,
     ) -> Optional[str]:
         """Convert a matrix content URI to a HTTP URI."""
-        return Api.mxc_to_http(mxc, homeserver or self.homeserver)
+        return Api.mxc_to_http(
+            mxc, homeserver or self.homeserver, access_token=self.access_token
+        )
 
     async def login_raw(
         self, auth_dict: Dict[str, Any]
@@ -3255,6 +3267,7 @@ class AsyncClient(Client):
             media_id,
             filename,
             allow_remote,
+            access_token=self.access_token,
         )
 
         response_class = MemoryDownloadResponse
@@ -3301,7 +3314,13 @@ class AsyncClient(Client):
                 itself.
         """
         http_method, path = Api.thumbnail(
-            server_name, media_id, width, height, method, allow_remote
+            server_name,
+            media_id,
+            width,
+            height,
+            method,
+            allow_remote,
+            access_token=self.access_token,
         )
 
         return await self._send(
