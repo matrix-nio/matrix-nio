@@ -403,9 +403,13 @@ class TestClass:
     def test_invalid_call_events(self):
         for _, event_file in [
             (CallInviteEvent, "call_invite.json"),
+            (CallInviteEvent, "call_invite_legacy.json"),
             (CallAnswerEvent, "call_answer.json"),
+            (CallAnswerEvent, "call_answer_legacy.json"),
             (CallCandidatesEvent, "call_candidates.json"),
+            (CallCandidatesEvent, "call_candidates_legacy.json"),
             (CallHangupEvent, "call_hangup.json"),
+            (CallHangupEvent, "call_hangup_legacy.json"),
         ]:
             parsed_dict = TestClass._load_response(f"tests/data/events/{event_file}")
             parsed_dict["content"].pop("call_id")
@@ -415,9 +419,13 @@ class TestClass:
     def test_call_events(self):
         for event_type, event_file in [
             (CallInviteEvent, "call_invite.json"),
+            (CallInviteEvent, "call_invite_legacy.json"),
             (CallAnswerEvent, "call_answer.json"),
+            (CallAnswerEvent, "call_answer_legacy.json"),
             (CallCandidatesEvent, "call_candidates.json"),
+            (CallCandidatesEvent, "call_candidates_legacy.json"),
             (CallHangupEvent, "call_hangup.json"),
+            (CallHangupEvent, "call_hangup_legacy.json"),
         ]:
             parsed_dict = TestClass._load_response(f"tests/data/events/{event_file}")
             event = CallEvent.parse_event(parsed_dict)

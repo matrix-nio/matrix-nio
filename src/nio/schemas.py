@@ -1506,7 +1506,7 @@ class Schemas:
                 "properties": {
                     "call_id": {"type": "string"},
                     "lifetime": {"type": "integer"},
-                    "version": {"type": "integer"},
+                    "version": {"type": ["integer", "string"]},
                     "offer": {
                         "type": "object",
                         "properties": {
@@ -1538,7 +1538,7 @@ class Schemas:
                 "type": "object",
                 "properties": {
                     "call_id": {"type": "string"},
-                    "version": {"type": "integer"},
+                    "version": {"type": ["integer", "string"]},
                     "answer": {
                         "type": "object",
                         "properties": {
@@ -1569,7 +1569,7 @@ class Schemas:
                 "type": "object",
                 "properties": {
                     "call_id": {"type": "string"},
-                    "version": {"type": "integer"},
+                    "version": {"type": ["integer", "string"]},
                 },
                 "required": [
                     "call_id",
@@ -1591,7 +1591,7 @@ class Schemas:
                 "type": "object",
                 "properties": {
                     "call_id": {"type": "string"},
-                    "version": {"type": "integer"},
+                    "version": {"type": ["integer", "string"]},
                     "candidates": {
                         "type": "array",
                         "items": {

@@ -417,7 +417,7 @@ class CallEvent(Event):
     """
 
     call_id: str = field()
-    version: int = field()
+    version: str = field()
 
     @staticmethod
     def parse_event(event_dict):
