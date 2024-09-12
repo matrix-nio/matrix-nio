@@ -1614,7 +1614,9 @@ class Api:
         if filename:
             query_parameters["filename"] = filename
 
-        return "POST", Api._build_path(path, query_parameters, MATRIX_LEGACY_MEDIA_API_PATH)
+        return "POST", Api._build_path(
+            path, query_parameters, MATRIX_LEGACY_MEDIA_API_PATH
+        )
 
     @staticmethod
     def download(

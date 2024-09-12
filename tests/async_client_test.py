@@ -131,6 +131,7 @@ from nio import (
 from nio.api import (
     MATRIX_API_PATH_V1,
     MATRIX_API_PATH_V3,
+    MATRIX_LEGACY_MEDIA_API_PATH,
     MATRIX_MEDIA_API_PATH,
     EventFormat,
     RelationshipType,
@@ -146,6 +147,7 @@ from nio.responses import PublicRoom, PublicRoomsResponse
 BASE_URL_V1 = f"https://example.org{MATRIX_API_PATH_V1}"
 BASE_URL_V3 = f"https://example.org{MATRIX_API_PATH_V3}"
 BASE_MEDIA_URL = f"https://example.org{MATRIX_MEDIA_API_PATH}"
+BASE_LEGACY_MEDIA_URL = f"https://example.org{MATRIX_LEGACY_MEDIA_API_PATH}"
 TEST_ROOM_ID = "!testroom:example.org"
 
 ALICE_ID = "@alice:example.org"
@@ -1874,7 +1876,7 @@ class TestClass:
         monitor = TransferMonitor(filesize)
 
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?&filename=test.png",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.png",
             status=200,
             payload=self.upload_response,
             repeat=True,
@@ -1908,7 +1910,7 @@ class TestClass:
         monitor = TransferMonitor(filesize)
 
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?&filename=test.png",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.png",
             status=200,
             payload=self.upload_response,
             repeat=True,
@@ -1955,7 +1957,7 @@ class TestClass:
         monitor = TransferMonitor(filesize)
 
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?&filename=test.py",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.py",
             status=200,
             payload=self.upload_response,
             repeat=True,
@@ -2005,13 +2007,13 @@ class TestClass:
         # We make sure to read the data in the first post response to verify
         # that we can read the full file in a subsequent post.
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?&filename=test.py",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.py",
             status=429,
             payload=self.limit_exceeded_error_response,
             callback=check_content,
         )
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?&filename=test.py",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.py",
             status=200,
             payload=self.upload_response,
             callback=check_content,
@@ -2042,13 +2044,13 @@ class TestClass:
         monitor = TransferMonitor(filesize)
 
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?&filename=test.png",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.png",
             status=429,
             payload=self.limit_exceeded_error_response,
         )
 
         aioresponse.post(
-            f"{BASE_MEDIA_URL}/upload?&filename=test.png",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.png",
             status=200,
             payload=self.upload_response,
             repeat=True,
