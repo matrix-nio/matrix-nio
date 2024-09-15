@@ -790,7 +790,7 @@ class AsyncClient(Client):
         content_type: Optional[str] = None,
         trace_context: Optional[Any] = None,
         data_provider: Optional[DataProvider] = None,
-        timeout: Optional[float] = None,
+        timeout: Optional[float] = None,  # noqa: ASYNC109
         content_length: Optional[int] = None,
         save_to: Optional[os.PathLike] = None,
     ):
@@ -888,7 +888,7 @@ class AsyncClient(Client):
         data: Union[None, str, AsyncDataT] = None,
         headers: Optional[Dict[str, str]] = None,
         trace_context: Optional[Any] = None,
-        timeout: Optional[float] = None,
+        timeout: Optional[float] = None,  # noqa: ASYNC109
     ) -> ClientResponse:
         """Send a request to the homeserver.
 
@@ -1173,7 +1173,7 @@ class AsyncClient(Client):
     @logged_in_async
     async def sync(
         self,
-        timeout: Optional[int] = 0,
+        timeout: Optional[int] = 0,  # noqa: ASYNC109
         sync_filter: Optional[_FilterT] = None,
         since: Optional[str] = None,
         full_state: Optional[bool] = None,
@@ -1274,7 +1274,7 @@ class AsyncClient(Client):
     @logged_in_async
     async def sync_forever(
         self,
-        timeout: Optional[int] = None,
+        timeout: Optional[int] = None,  # noqa: ASYNC109
         sync_filter: Optional[_FilterT] = None,
         since: Optional[str] = None,
         full_state: Optional[bool] = None,
@@ -2854,7 +2854,7 @@ class AsyncClient(Client):
         self,
         room_id: str,
         typing_state: bool = True,
-        timeout: int = 30000,
+        timeout: int = 30_000,  # noqa: ASYNC109
     ) -> Union[RoomTypingResponse, RoomTypingError]:
         """Send a typing notice to the server.
 
@@ -2996,11 +2996,11 @@ class AsyncClient(Client):
         return await self._send(ContentRepositoryConfigResponse, method, path)
 
     @staticmethod
-    async def _process_data_chunk(chunk, monitor=None):
+    async def _process_data_chunk(chunk, monitor: Optional[TransferMonitor] = None):
         if monitor and monitor.cancel:
             raise TransferCancelledError
 
-        while monitor and monitor.pause:
+        while monitor and monitor.pause:  # noqa: ASYNC110
             await asyncio.sleep(0.1)
 
         return chunk

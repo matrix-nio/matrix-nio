@@ -1917,7 +1917,7 @@ class TestClass:
         )
 
         # Upload binary file using a standard file object
-        with open("tests/data/file_response", "r+b") as f:  # noqa: ASYNC101
+        async with aiofiles.open("tests/data/file_response", "r+b") as f:
             resp, decryption_info = await async_client.upload(
                 f,
                 "image/png",
