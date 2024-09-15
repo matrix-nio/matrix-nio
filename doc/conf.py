@@ -50,7 +50,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
     "sphinx.ext.napoleon",
-    "m2r2",
+    "sphinx_mdinclude",
     "sphinx_autodoc_typehints",
 ]
 

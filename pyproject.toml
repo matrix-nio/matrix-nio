@@ -56,7 +56,7 @@ docs = [
     "setuptools>=61.0",
     "sphinx~=7.4",
     "sphinx-autodoc-typehints~=2.1",
-    "m2r2~=0.3",
+    "sphinx_mdinclude>=0.5",
     "sphinx_rtd_theme~=2.0",
 ]
 
