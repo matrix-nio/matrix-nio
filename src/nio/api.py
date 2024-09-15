@@ -24,7 +24,6 @@ client like AsyncClient or HttpClient.
 from __future__ import annotations
 
 import json
-import os
 from collections import defaultdict
 from collections.abc import Iterable
 from enum import Enum, unique
@@ -54,7 +53,8 @@ except ImportError:
 
 MATRIX_API_PATH_V1: str = "/_matrix/client/v1"
 MATRIX_API_PATH_V3: str = "/_matrix/client/v3"
-MATRIX_MEDIA_API_PATH: str = "/_matrix/media/v3"
+MATRIX_MEDIA_API_PATH: str = "/_matrix/client/v1/media"
+MATRIX_LEGACY_MEDIA_API_PATH: str = "/_matrix/media/v3"
 
 _FilterT = Union[None, str, Dict[Any, Any]]
 
@@ -193,7 +193,9 @@ class Api:
         return "m.file"
 
     @staticmethod
-    def mxc_to_http(mxc: str, homeserver: Optional[str] = None) -> Optional[str]:
+    def mxc_to_http(
+        mxc: str, homeserver: Optional[str] = None, access_token: Optional[str] = None
+    ) -> Optional[str]:
         """Convert a matrix content URI to a HTTP URI."""
         url = urlparse(mxc)
 
@@ -205,19 +207,33 @@ class Api:
 
         parsed_homeserver = urlparse(homeserver) if homeserver else None
 
-        http_url = (
-            f"{homeserver}{MATRIX_MEDIA_API_PATH}/download/" "{server_name}{mediaId}"
-        ).format(
+        if not access_token:
+            # Unauthenticated media
+            http_url = ("{homeserver}{path}/download/{server_name}{mediaId}").format(
+                homeserver=(
+                    parsed_homeserver.geturl()
+                    if parsed_homeserver
+                    else f"https://{url.netloc}"
+                ),
+                path=MATRIX_MEDIA_API_PATH,
+                server_name=url.hostname,
+                mediaId=url.path,
+            )
+            return http_url
+
+        # Authenticated media
+        return "{homeserver}{path}".format(
             homeserver=(
                 parsed_homeserver.geturl()
                 if parsed_homeserver
                 else f"https://{url.netloc}"
             ),
-            server_name=url.hostname,
-            mediaId=url.path,
+            path=Api._build_path(
+                ["download", url.hostname, url.path.lstrip("/")],
+                {"access_token": access_token},
+                base_path=MATRIX_MEDIA_API_PATH,
+            ),
         )
-
-        return http_url
 
     @staticmethod
     def encrypted_mxc_to_plumb(
@@ -227,6 +243,7 @@ class Api:
         iv: str,
         homeserver: Optional[str] = None,
         mimetype: Optional[str] = None,
+        access_token: Optional[str] = None,
     ) -> Optional[str]:
         """Convert a matrix content URI to a encrypted mxc URI.
 
@@ -266,10 +283,13 @@ class Api:
             else None
         )
 
-        plumb_url = (
-            f"{homeserver}{MATRIX_MEDIA_API_PATH}/download/" "{server_name}{mediaId}"
-        ).format(
+        if access_token is None:
+            _path = "/_matrix/media/v3"
+        else:
+            _path = MATRIX_MEDIA_API_PATH
+        plumb_url = ("{homeserver}{_path}/download/{server_name}{mediaId}").format(
             homeserver=host or f"emxc://{url.netloc}",
+            _path=_path,
             server_name=url.hostname,
             mediaId=url.path,
         )
@@ -281,6 +301,8 @@ class Api:
         }
         if mimetype is not None:
             query_parameters["mimetype"] = mimetype
+        if access_token:
+            query_parameters["access_token"] = access_token
 
         plumb_url += f"?{urlencode(query_parameters)}"
 
@@ -1592,7 +1614,9 @@ class Api:
         if filename:
             query_parameters["filename"] = filename
 
-        return "POST", Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH)
+        return "POST", Api._build_path(
+            path, query_parameters, MATRIX_LEGACY_MEDIA_API_PATH
+        )
 
     @staticmethod
     def download(
@@ -1600,7 +1624,7 @@ class Api:
         media_id: str,
         filename: Optional[str] = None,
         allow_remote: bool = True,
-        file: Optional[os.PathLike] = None,
+        access_token: Optional[str] = None,
     ) -> Tuple[str, str]:
         """Get the content of a file from the content repository.
 
@@ -1616,10 +1640,11 @@ class Api:
                 attempt to fetch the media if it is deemed remote.
                 This is to prevent routing loops where the server contacts
                 itself.
-            file (os.PathLike): The file to stream the downloaded content to.
+            access_token (str): The access token to be used with the request.
         """
         query_parameters = {
             "allow_remote": "true" if allow_remote else "false",
+            "access_token": access_token,
         }
         end = ""
         if filename:
@@ -1636,6 +1661,7 @@ class Api:
         height: int,
         method: ResizingMethod = ResizingMethod.scale,
         allow_remote: bool = True,
+        access_token: Optional[str] = None,
     ) -> Tuple[str, str]:
         """Get the thumbnail of a file from the content repository.
 
@@ -1653,12 +1679,14 @@ class Api:
                 attempt to fetch the media if it is deemed remote.
                 This is to prevent routing loops where the server contacts
                 itself.
+            access_token (str): The access token to be used with the request.
         """
         query_parameters = {
             "width": width,
             "height": height,
             "method": method.value,
             "allow_remote": "true" if allow_remote else "false",
+            "access_token": access_token,
         }
         path = ["thumbnail", server_name, media_id]
 
