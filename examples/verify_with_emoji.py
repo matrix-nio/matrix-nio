@@ -350,7 +350,7 @@ async def login() -> AsyncClient:
     # Otherwise the config file exists, so we'll use the stored credentials
     else:
         # open the file in read-only mode
-        async with aiofiles.open(CONFIG_FILE, "r") as f:
+        async with aiofiles.open(CONFIG_FILE) as f:
             contents = await f.read()
         config = json.loads(contents)
         # Initialize the matrix client based on credentials from file

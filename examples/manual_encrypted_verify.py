@@ -109,7 +109,7 @@ class CustomEncryptedClient(AsyncClient):
             SESSION_DETAILS_FILE
         ):
             try:
-                async with aiofiles.open(SESSION_DETAILS_FILE, "r") as f:
+                async with aiofiles.open(SESSION_DETAILS_FILE) as f:
                     contents = await f.read()
                 config = json.loads(contents)
                 self.access_token = config["access_token"]
