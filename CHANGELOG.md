@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.25.2] - 2024-10-04
+
+### Bug Fixes
+- [[#523]] Utilize old media path for uploads (fix [[#520]])
+- [[#521]] Fix type of call event version
+
+### Miscellaneous Tasks
+- [[#522]] Replace m2r2 with sphinx_mdinclude
+
+[#523]: https://github.com/matrix-nio/matrix-nio/pull/523
+[#521]: https://github.com/matrix-nio/matrix-nio/pull/521
+[#522]: https://github.com/matrix-nio/matrix-nio/pull/522
+
 ## [0.25.1] - 2024-09-08
 
 ### Features
