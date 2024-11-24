@@ -13,7 +13,8 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-from nio.api import MATRIX_API_PATH_V3, Api
+from nio.api import MATRIX_API_PATH_V3
+from nio.api import Api_old as Api
 
 
 class TestClass:
