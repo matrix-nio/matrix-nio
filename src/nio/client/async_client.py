@@ -57,8 +57,9 @@ from aiohttp.connector import Connection
 from aiohttp_socks import ProxyConnector
 
 from ..api import (
-    Api_old,
+    Api_new,
     EventFormat,
+    HttpRequest,
     MessageDirection,
     PushRuleKind,
     ReceiptType,
@@ -780,7 +781,7 @@ class AsyncClient(Client):
             self.config.max_timeout_retry_wait_time,
         )
 
-    async def _send(
+    async def _send_old(
         self,
         response_class: Type,
         method: str,
@@ -880,6 +881,91 @@ class AsyncClient(Client):
         await self.receive_response(resp)
         return resp
 
+    async def _send_new(
+        self,
+        response_class: Type,
+        request: HttpRequest,
+        response_data: Optional[Tuple[Any, ...]] = None,
+        trace_context: Optional[Any] = None,
+        data_provider: Optional[DataProvider] = None,
+        timeout: Optional[float] = None,  # noqa: ASYNC109
+        content_length: Optional[int] = None,
+        save_to: Optional[os.PathLike] = None,
+    ):
+        headers = request.headers.copy()
+
+        if content_length is not None:
+            headers["Content-Length"] = str(content_length)
+
+        if self.config.custom_headers is not None:
+            headers.update(self.config.custom_headers)
+
+        data = request.data
+
+        got_429 = 0
+        max_429 = self.config.max_limit_exceeded
+
+        got_timeouts = 0
+        max_timeouts = self.config.max_timeouts
+
+        while True:
+            if data_provider:
+                # mypy expects an "Awaitable[Any]" but data_provider is a
+                # method generated during runtime that may or may not be
+                # Awaitable. The actual type is a union of the types that we
+                # can receive from reading files.
+                data = await data_provider(got_429, got_timeouts)  # type: ignore
+
+            try:
+                transport_resp = await self.send(
+                    request.method,
+                    request.path,
+                    data,
+                    headers,
+                    trace_context,
+                    timeout,
+                )
+
+                resp = await self.create_matrix_response(
+                    response_class=response_class,
+                    transport_response=transport_resp,
+                    data=response_data,
+                    save_to=save_to,
+                )
+
+                if transport_resp.status == 429 or (
+                    isinstance(resp, ErrorResponse)
+                    and resp.status_code in ("M_LIMIT_EXCEEDED", 429)
+                ):
+                    got_429 += 1
+
+                    if max_429 is not None and got_429 > max_429:
+                        break
+
+                    await self.run_response_callbacks([resp])
+
+                    retry_after_ms = getattr(resp, "retry_after_ms", 0) or 5000
+                    logger.warning(
+                        "Got 429 response (ratelimited), sleeping for %dms",
+                        retry_after_ms,
+                    )
+                    await asyncio.sleep(retry_after_ms / 1000)
+                else:
+                    break
+
+            except (ClientConnectionError, TimeoutError, asyncio.TimeoutError):
+                got_timeouts += 1
+
+                if max_timeouts is not None and got_timeouts > max_timeouts:
+                    raise
+
+                wait = await self.get_timeout_retry_wait_time(got_timeouts)
+                logger.warning("Timed out, sleeping for %ds", wait)
+                await asyncio.sleep(wait)
+
+        await self.receive_response(resp)
+        return resp
+
     @client_session
     async def send(
         self,
@@ -925,7 +1011,7 @@ class AsyncClient(Client):
         homeserver: Optional[str] = None,
     ) -> Optional[str]:
         """Convert a matrix content URI to a HTTP URI."""
-        return Api_old.mxc_to_http(
+        return Api_new.mxc_to_http(
             mxc, homeserver or self.homeserver, access_token=self.access_token
         )
 
@@ -960,9 +1046,9 @@ class AsyncClient(Client):
         if auth_dict is None or auth_dict == {}:
             raise ValueError("Auth dictionary shall not be empty")
 
-        method, path, data = Api_old.login_raw(auth_dict)
+        request = Api_new.login_raw(auth_dict)
 
-        return await self._send(LoginResponse, method, path, data)
+        return await self._send_new(LoginResponse, request)
 
     async def register_interactive(
         self,
@@ -987,7 +1073,7 @@ class AsyncClient(Client):
 
         Returns a 'RegisterInteractiveResponse' if successful.
         """
-        method, path, data = Api_old.register(
+        request = Api_new.register(
             user=username,
             password=password,
             device_name=device_name,
@@ -995,7 +1081,7 @@ class AsyncClient(Client):
             auth_dict=auth_dict,
         )
 
-        return await self._send(RegisterInteractiveResponse, method, path, data)
+        return await self._send_new(RegisterInteractiveResponse, request)
 
     async def register_with_token(
         self,
@@ -1071,7 +1157,7 @@ class AsyncClient(Client):
         if session_token is not None:
             auth_dict["session"] = session_token
 
-        method, path, data = Api_old.register(
+        request = Api_new.register(
             user=username,
             password=password,
             device_name=device_name,
@@ -1079,7 +1165,7 @@ class AsyncClient(Client):
             auth_dict=auth_dict,
         )
 
-        return await self._send(RegisterResponse, method, path, data)
+        return await self._send_new(RegisterResponse, request)
 
     async def discovery_info(
         self,
@@ -1104,8 +1190,8 @@ class AsyncClient(Client):
             >>> if isinstance(response, DiscoveryInfoResponse):
             >>>     client.homeserver = response.homeserver_url
         """
-        method, path = Api_old.discovery_info()
-        return await self._send(DiscoveryInfoResponse, method, path)
+        request = Api_new.discovery_info()
+        return await self._send_new(DiscoveryInfoResponse, request)
 
     async def login_info(self) -> Union[LoginInfoResponse, LoginInfoError]:
         """Get the available login methods from the server
@@ -1114,9 +1200,9 @@ class AsyncClient(Client):
         a `LoginInfoError` if there was an error with the request.
 
         """
-        method, path = Api_old.login_info()
+        request = Api_new.login_info()
 
-        return await self._send(LoginInfoResponse, method, path)
+        return await self._send_new(LoginInfoResponse, request)
 
     async def login(
         self,
@@ -1145,7 +1231,7 @@ class AsyncClient(Client):
         if password is None and token is None:
             raise ValueError("Either a password or a token needs to be provided")
 
-        method, path, data = Api_old.login(
+        request = Api_new.login(
             self.user,
             password=password,
             device_name=device_name,
@@ -1153,7 +1239,7 @@ class AsyncClient(Client):
             token=token,
         )
 
-        return await self._send(LoginResponse, method, path, data)
+        return await self._send_new(LoginResponse, request)
 
     @logged_in_async
     async def logout(
@@ -1166,9 +1252,9 @@ class AsyncClient(Client):
         Returns either 'LogoutResponse' if the request was successful or
         a `Logouterror` if there was an error with the request.
         """
-        method, path = Api_old.logout(self.access_token, all_devices)
+        request = Api_new.logout(self.access_token, all_devices)
 
-        return await self._send(LogoutResponse, method, path)
+        return await self._send_new(LogoutResponse, request)
 
     @logged_in_async
     async def sync(
@@ -1216,7 +1302,7 @@ class AsyncClient(Client):
 
         sync_token = since or self.next_batch
         presence = set_presence or self._presence
-        method, path = Api_old.sync(
+        request = Api_new.sync(
             self.access_token,
             since=sync_token or self.loaded_sync_token,
             timeout=(
@@ -1229,10 +1315,9 @@ class AsyncClient(Client):
             set_presence=presence,
         )
 
-        response = await self._send(
+        response = await self._send_new(
             SyncResponse,
-            method,
-            path,
+            request,
             # 0 if full_state: server doesn't respect timeout if full_state
             # + 15: give server a chance to naturally return before we timeout
             timeout=0 if full_state else timeout / 1000 + 15 if timeout else timeout,
@@ -1538,13 +1623,11 @@ class AsyncClient(Client):
         """
         uuid = tx_id or uuid4()
 
-        method, path, data = Api_old.to_device(
+        request = Api_new.to_device(
             self.access_token, message.type, message.as_dict(), uuid
         )
 
-        return await self._send(
-            ToDeviceResponse, method, path, data, response_data=(message,)
-        )
+        return await self._send_new(ToDeviceResponse, request, response_data=(message,))
 
     @logged_in_async
     @store_loaded
@@ -1567,9 +1650,9 @@ class AsyncClient(Client):
         assert self.olm
         keys_dict = self.olm.share_keys()
 
-        method, path, data = Api_old.keys_upload(self.access_token, keys_dict)
+        request = Api_new.keys_upload(self.access_token, keys_dict)
 
-        return await self._send(KeysUploadResponse, method, path, data)
+        return await self._send_new(KeysUploadResponse, request)
 
     @logged_in_async
     @store_loaded
@@ -1593,9 +1676,9 @@ class AsyncClient(Client):
 
         # TODO pass the sync token here if it's a device update that triggered
         # our need for a key query.
-        method, path, data = Api_old.keys_query(self.access_token, user_list)
+        request = Api_new.keys_query(self.access_token, user_list)
 
-        return await self._send(KeysQueryResponse, method, path, data)
+        return await self._send_new(KeysQueryResponse, request)
 
     @logged_in_async
     async def devices(self) -> Union[DevicesResponse, DevicesError]:
@@ -1606,9 +1689,9 @@ class AsyncClient(Client):
         Returns either a `DevicesResponse` if the request was successful
         or a `DevicesError` if there was an error with the request.
         """
-        method, path = Api_old.devices(self.access_token)
+        request = Api_new.devices(self.access_token)
 
-        return await self._send(DevicesResponse, method, path)
+        return await self._send_new(DevicesResponse, request)
 
     @logged_in_async
     async def update_device(
@@ -1630,11 +1713,9 @@ class AsyncClient(Client):
             >>> await client.update_device(device_id, content)
 
         """
-        method, path, data = Api_old.update_device(
-            self.access_token, device_id, content
-        )
+        request = Api_new.update_device(self.access_token, device_id, content)
 
-        return await self._send(UpdateDeviceResponse, method, path, data)
+        return await self._send_new(UpdateDeviceResponse, request)
 
     @logged_in_async
     async def delete_devices(
@@ -1669,11 +1750,9 @@ class AsyncClient(Client):
 
 
         """
-        method, path, data = Api_old.delete_devices(
-            self.access_token, devices, auth_dict=auth
-        )
+        request = Api_new.delete_devices(self.access_token, devices, auth_dict=auth)
 
-        return await self._send(DeleteDevicesResponse, method, path, data)
+        return await self._send_new(DeleteDevicesResponse, request)
 
     @logged_in_async
     async def space_get_hierarchy(
@@ -1700,7 +1779,7 @@ class AsyncClient(Client):
             suggested_only (bool, optional): Whether or not to only return
                 rooms that are considered suggested. Defaults to False.
         """
-        method, path = Api_old.space_get_hierarchy(
+        request = Api_new.space_get_hierarchy(
             self.access_token,
             space_id,
             from_page=from_page,
@@ -1709,7 +1788,7 @@ class AsyncClient(Client):
             suggested_only=suggested_only,
         )
 
-        return await self._send(SpaceGetHierarchyResponse, method, path)
+        return await self._send_new(SpaceGetHierarchyResponse, request)
 
     @logged_in_async
     async def joined_members(
@@ -1726,10 +1805,10 @@ class AsyncClient(Client):
             room_id(str): The room id of the room for which we wan't to request
                 the joined member list.
         """
-        method, path = Api_old.joined_members(self.access_token, room_id)
+        request = Api_new.joined_members(self.access_token, room_id)
 
-        return await self._send(
-            JoinedMembersResponse, method, path, response_data=(room_id,)
+        return await self._send_new(
+            JoinedMembersResponse, request, response_data=(room_id,)
         )
 
     @logged_in_async
@@ -1743,9 +1822,9 @@ class AsyncClient(Client):
         Returns either a `JoinedRoomsResponse` if the request was successful
         or a `JoinedRoomsError` if there was an error with the request.
         """
-        method, path = Api_old.joined_rooms(self.access_token)
+        request = Api_new.joined_rooms(self.access_token)
 
-        return await self._send(JoinedRoomsResponse, method, path)
+        return await self._send_new(JoinedRoomsResponse, request)
 
     @logged_in_async
     async def room_send(
@@ -1820,11 +1899,11 @@ class AsyncClient(Client):
                     # Encrypt our content and change the message type.
                     message_type, content = self.encrypt(room_id, message_type, content)
 
-        method, path, data = Api_old.room_send(
+        request = Api_new.room_send(
             self.access_token, room_id, message_type, content, uuid
         )
 
-        return await self._send(RoomSendResponse, method, path, data, (room_id,))
+        return await self._send_new(RoomSendResponse, request, (room_id,))
 
     @logged_in_async
     @client_session
@@ -1836,8 +1915,8 @@ class AsyncClient(Client):
 
         Returns a DirectRoomListResponse if the request was successful, or DirectRoomListErrorResponse if there was an error, or the current user has never marked any rooms marked with m.direct
         """
-        method, path = Api_old.direct_room_list(self.access_token, self.user_id)
-        return await self._send(DirectRoomsResponse, method, path)
+        request = Api_new.direct_room_list(self.access_token, self.user_id)
+        return await self._send_new(DirectRoomsResponse, request)
 
     @logged_in_async
     async def room_get_event(
@@ -1854,9 +1933,9 @@ class AsyncClient(Client):
             room_id (str): The room id of the room where the event is in.
             event_id (str): The event id to get.
         """
-        method, path = Api_old.room_get_event(self.access_token, room_id, event_id)
+        request = Api_new.room_get_event(self.access_token, room_id, event_id)
 
-        return await self._send(RoomGetEventResponse, method, path)
+        return await self._send_new(RoomGetEventResponse, request)
 
     @logged_in_async
     async def room_get_event_relations(
@@ -1884,7 +1963,7 @@ class AsyncClient(Client):
         """
         paginate_from, paginate_to = None, None
         while True:
-            method, path = Api_old.room_get_event_relations(
+            request = Api_new.room_get_event_relations(
                 self.access_token,
                 room_id,
                 event_id,
@@ -1895,10 +1974,9 @@ class AsyncClient(Client):
                 paginate_to,
                 limit,
             )
-            response = await self._send(
+            response = await self._send_new(
                 RoomEventRelationsResponse,
-                method,
-                path,
+                request,
                 response_data=(room_id, event_id),
             )
 
@@ -1928,17 +2006,16 @@ class AsyncClient(Client):
         """
         paginate_from = None
         while True:
-            method, path = Api_old.room_get_threads(
+            request = Api_new.room_get_threads(
                 self.access_token,
                 room_id,
                 include,
                 paginate_from,
                 limit,
             )
-            response = await self._send(
+            response = await self._send_new(
                 RoomThreadsResponse,
-                method,
-                path,
+                request,
                 response_data=(room_id,),
             )
 
@@ -1971,7 +2048,7 @@ class AsyncClient(Client):
             state_key (str): The key of the state event to send.
         """
 
-        method, path, data = Api_old.room_put_state(
+        request = Api_new.room_put_state(
             self.access_token,
             room_id,
             event_type,
@@ -1979,11 +2056,9 @@ class AsyncClient(Client):
             state_key=state_key,
         )
 
-        return await self._send(
+        return await self._send_new(
             RoomPutStateResponse,
-            method,
-            path,
-            data,
+            request,
             response_data=(room_id,),
         )
 
@@ -2003,15 +2078,14 @@ class AsyncClient(Client):
             room_id (str): The room id of the room to fetch state from.
         """
 
-        method, path = Api_old.room_get_state(
+        request = Api_new.room_get_state(
             self.access_token,
             room_id,
         )
 
-        return await self._send(
+        return await self._send_new(
             RoomGetStateResponse,
-            method,
-            path,
+            request,
             response_data=(room_id,),
         )
 
@@ -2033,14 +2107,13 @@ class AsyncClient(Client):
             state_key (str): The key of the state event to fetch.
         """
 
-        method, path = Api_old.room_get_state_event(
+        request = Api_new.room_get_state_event(
             self.access_token, room_id, event_type, state_key=state_key
         )
 
-        return await self._send(
+        return await self._send_new(
             RoomGetStateEventResponse,
-            method,
-            path,
+            request,
             response_data=(
                 event_type,
                 state_key,
@@ -2071,7 +2144,7 @@ class AsyncClient(Client):
             reason(str, optional): A description explaining why the
                 event was redacted.
         """
-        method, path, data = Api_old.room_redact(
+        request = Api_new.room_redact(
             self.access_token,
             room_id,
             event_id,
@@ -2079,11 +2152,9 @@ class AsyncClient(Client):
             reason=reason,
         )
 
-        return await self._send(
+        return await self._send_new(
             RoomRedactResponse,
-            method,
-            path,
-            data,
+            request,
             response_data=(room_id,),
         )
 
@@ -2102,12 +2173,11 @@ class AsyncClient(Client):
         Args:
             room_alias (str): The alias to resolve
         """
-        method, path = Api_old.room_resolve_alias(room_alias)
+        request = Api_new.room_resolve_alias(room_alias)
 
-        return await self._send(
+        return await self._send_new(
             RoomResolveAliasResponse,
-            method,
-            path,
+            request,
             response_data=(room_alias,),
         )
 
@@ -2127,15 +2197,14 @@ class AsyncClient(Client):
         Args:
             room_alias (str): The alias to delete
         """
-        method, path = Api_old.room_delete_alias(
+        request = Api_new.room_delete_alias(
             self.access_token,
             room_alias,
         )
 
-        return await self._send(
+        return await self._send_new(
             RoomDeleteAliasResponse,
-            method,
-            path,
+            request,
             response_data=(room_alias,),
         )
 
@@ -2157,17 +2226,15 @@ class AsyncClient(Client):
             room_alias (str): The alias to add
             room_id (str): The room ID to map to
         """
-        method, path, data = Api_old.room_put_alias(
+        request = Api_new.room_put_alias(
             self.access_token,
             room_alias,
             room_id,
         )
 
-        return await self._send(
+        return await self._send_new(
             RoomPutAliasResponse,
-            method,
-            path,
-            data=data,
+            request,
             response_data=(room_alias, room_id),
         )
 
@@ -2186,12 +2253,11 @@ class AsyncClient(Client):
         Args:
             room_id (str): The room ID to get visibility for
         """
-        method, path = Api_old.room_get_visibility(room_id)
+        request = Api_new.room_get_visibility(room_id)
 
-        return await self._send(
+        return await self._send_new(
             RoomGetVisibilityResponse,
-            method,
-            path,
+            request,
             response_data=(room_id,),
         )
 
@@ -2216,9 +2282,9 @@ class AsyncClient(Client):
         store isn't loaded, no room with the given room id exists or the room
         isn't an encrypted room.
         """
-        method, path, data = Api_old.keys_claim(self.access_token, user_set)
+        request = Api_new.keys_claim(self.access_token, user_set)
 
-        return await self._send(KeysClaimResponse, method, path, data)
+        return await self._send_new(KeysClaimResponse, request)
 
     @logged_in_async
     @store_loaded
@@ -2278,16 +2344,14 @@ class AsyncClient(Client):
                 list(room.users.keys()),
                 ignore_unverified_devices=ignore_unverified_devices,
             ):
-                method, path, data = Api_old.to_device(
+                request = Api_new.to_device(
                     self.access_token, "m.room.encrypted", to_device_dict, uuid4()
                 )
 
                 requests.append(
-                    self._send(
+                    self._send_new(
                         ShareGroupSessionResponse,
-                        method,
-                        path,
-                        data,
+                        request,
                         response_data=(room_id, sharing_with),
                     )
                 )
@@ -2344,15 +2408,13 @@ class AsyncClient(Client):
 
         message = event.as_key_request(self.user_id, self.device_id)
 
-        method, path, data = Api_old.to_device(
+        request = Api_new.to_device(
             self.access_token, message.type, message.as_dict(), uuid
         )
 
-        return await self._send(
+        return await self._send_new(
             RoomKeyRequestResponse,
-            method,
-            path,
-            data,
+            request,
             (
                 event.session_id,
                 event.session_id,
@@ -2518,7 +2580,7 @@ class AsyncClient(Client):
             space (bool): Create as a Space (defaults to False).
         """
 
-        method, path, data = Api_old.room_create(
+        request = Api_new.room_create(
             self.access_token,
             visibility=visibility,
             alias=alias,
@@ -2536,7 +2598,7 @@ class AsyncClient(Client):
             space=space,
         )
 
-        return await self._send(RoomCreateResponse, method, path, data)
+        return await self._send_new(RoomCreateResponse, request)
 
     @logged_in_async
     async def join(self, room_id: str) -> Union[JoinResponse, JoinError]:
@@ -2553,8 +2615,8 @@ class AsyncClient(Client):
         Args:
             room_id: The room id or alias of the room to join.
         """
-        method, path = Api_old.join(self.access_token, room_id)
-        return await self._send(JoinResponse, method, path)
+        request = Api_new.join(self.access_token, room_id)
+        return await self._send_new(JoinResponse, request)
 
     @logged_in_async
     async def room_knock(
@@ -2574,12 +2636,12 @@ class AsyncClient(Client):
                 knocking on.
             reason (str, optional): The reason for the knock.
         """
-        method, path, data = Api_old.room_knock(
+        request = Api_new.room_knock(
             self.access_token,
             room_id,
             reason,
         )
-        return await self._send(RoomKnockResponse, method, path, data)
+        return await self._send_new(RoomKnockResponse, request)
 
     @logged_in_async
     async def room_enable_knocking(
@@ -2618,12 +2680,12 @@ class AsyncClient(Client):
                 invited to.
             user_id (str): The user id of the user that should be invited.
         """
-        method, path, data = Api_old.room_invite(
+        request = Api_new.room_invite(
             self.access_token,
             room_id,
             user_id,
         )
-        return await self._send(RoomInviteResponse, method, path, data)
+        return await self._send_new(RoomInviteResponse, request)
 
     @logged_in_async
     async def room_leave(
@@ -2642,8 +2704,8 @@ class AsyncClient(Client):
         Args:
             room_id: The room id of the room to leave.
         """
-        method, path = Api_old.room_leave(self.access_token, room_id)
-        return await self._send(RoomLeaveResponse, method, path)
+        request = Api_new.room_leave(self.access_token, room_id)
+        return await self._send_new(RoomLeaveResponse, request)
 
     @logged_in_async
     async def room_forget(
@@ -2663,9 +2725,9 @@ class AsyncClient(Client):
         Args:
             room_id (str): The room id of the room to forget.
         """
-        method, path = Api_old.room_forget(self.access_token, room_id)
-        return await self._send(
-            RoomForgetResponse, method, path, response_data=(room_id,)
+        request = Api_new.room_forget(self.access_token, room_id)
+        return await self._send_new(
+            RoomForgetResponse, request, response_data=(room_id,)
         )
 
     @logged_in_async
@@ -2692,13 +2754,13 @@ class AsyncClient(Client):
             reason (str, optional): A reason for which the user is kicked.
         """
 
-        method, path, data = Api_old.room_kick(
+        request = Api_new.room_kick(
             self.access_token,
             room_id,
             user_id,
             reason,
         )
-        return await self._send(RoomKickResponse, method, path, data)
+        return await self._send_new(RoomKickResponse, request)
 
     @logged_in_async
     async def room_ban(
@@ -2726,13 +2788,13 @@ class AsyncClient(Client):
             reason (str, optional): A reason for which the user is banned.
         """
 
-        method, path, data = Api_old.room_ban(
+        request = Api_new.room_ban(
             self.access_token,
             room_id,
             user_id,
             reason,
         )
-        return await self._send(RoomBanResponse, method, path, data)
+        return await self._send_new(RoomBanResponse, request)
 
     @logged_in_async
     async def room_unban(
@@ -2755,12 +2817,12 @@ class AsyncClient(Client):
             user_id (str): The user_id of the user that should be unbanned.
         """
 
-        method, path, data = Api_old.room_unban(
+        request = Api_new.room_unban(
             self.access_token,
             room_id,
             user_id,
         )
-        return await self._send(RoomUnbanResponse, method, path, data)
+        return await self._send_new(RoomUnbanResponse, request)
 
     @logged_in_async
     async def room_context(
@@ -2786,10 +2848,10 @@ class AsyncClient(Client):
             limit(int, optional): The maximum number of events to request.
         """
 
-        method, path = Api_old.room_context(self.access_token, room_id, event_id, limit)
+        request = Api_new.room_context(self.access_token, room_id, event_id, limit)
 
-        return await self._send(
-            RoomContextResponse, method, path, response_data=(room_id,)
+        return await self._send_new(
+            RoomContextResponse, request, response_data=(room_id,)
         )
 
     @logged_in_async
@@ -2837,7 +2899,7 @@ class AsyncClient(Client):
 
 
         """
-        method, path = Api_old.room_messages(
+        request = Api_new.room_messages(
             self.access_token,
             room_id,
             start=start,
@@ -2847,8 +2909,8 @@ class AsyncClient(Client):
             message_filter=message_filter,
         )
 
-        return await self._send(
-            RoomMessagesResponse, method, path, response_data=(room_id,)
+        return await self._send_new(
+            RoomMessagesResponse, request, response_data=(room_id,)
         )
 
     @logged_in_async
@@ -2875,12 +2937,12 @@ class AsyncClient(Client):
             timeout (int): For how long should the new typing notice be
                 valid for in milliseconds.
         """
-        method, path, data = Api_old.room_typing(
+        request = Api_new.room_typing(
             self.access_token, room_id, self.user_id, typing_state, timeout
         )
 
-        return await self._send(
-            RoomTypingResponse, method, path, data, response_data=(room_id,)
+        return await self._send_new(
+            RoomTypingResponse, request, response_data=(room_id,)
         )
 
     @logged_in_async
@@ -2913,7 +2975,7 @@ class AsyncClient(Client):
                 DeprecationWarning,
                 stacklevel=2,
             )
-        method, path, data = Api_old.update_receipt_marker(
+        request = Api_new.update_receipt_marker(
             self.access_token,
             room_id,
             event_id,
@@ -2921,11 +2983,9 @@ class AsyncClient(Client):
             thread_id,
         )
 
-        return await self._send(
+        return await self._send_new(
             UpdateReceiptMarkerResponse,
-            method,
-            path,
-            data,
+            request,
         )
 
     @logged_in_async
@@ -2973,12 +3033,12 @@ class AsyncClient(Client):
             private_read_event (Optional[str]): The event ID to set the private
                 read receipt location at.
         """
-        method, path, data = Api_old.room_read_markers(
+        request = Api_new.room_read_markers(
             self.access_token, room_id, fully_read_event, read_event, private_read_event
         )
 
-        return await self._send(
-            RoomReadMarkersResponse, method, path, data, response_data=(room_id,)
+        return await self._send_new(
+            RoomReadMarkersResponse, request, response_data=(room_id,)
         )
 
     @logged_in_async
@@ -2993,9 +3053,9 @@ class AsyncClient(Client):
         was successful or a `ContentRepositoryConfigError` if there was an
         error with the request.
         """
-        method, path = Api_old.content_repository_config(self.access_token)
+        request = Api_new.content_repository_config(self.access_token)
 
-        return await self._send(ContentRepositoryConfigResponse, method, path)
+        return await self._send_new(ContentRepositoryConfigResponse, request)
 
     @staticmethod
     async def _process_data_chunk(chunk, monitor: Optional[TransferMonitor] = None):
@@ -3137,7 +3197,11 @@ class AsyncClient(Client):
             ...    )
         """
 
-        http_method, path = Api_old.upload(self.access_token, filename)
+        request = Api_new.upload(
+            self.access_token,
+            "application/octet-stream" if encrypt else content_type,
+            filename,
+        )
 
         decryption_dict: Dict[str, Any] = {}
 
@@ -3184,12 +3248,10 @@ class AsyncClient(Client):
 
             return self._plain_data_generator(data, monitor)
 
-        response = await self._send(
+        response = await self._send_new(
             UploadResponse,
-            http_method,
-            path,
+            request,
             data_provider=provider,
-            content_type="application/octet-stream" if encrypt else content_type,
             trace_context=monitor,
             timeout=0,
             content_length=filesize,
@@ -3264,7 +3326,7 @@ class AsyncClient(Client):
                 server_name = url.netloc
                 media_id = url.path.replace("/", "")
 
-        http_method, path = Api_old.download(
+        request = Api_new.download(
             server_name,
             media_id,
             filename,
@@ -3276,10 +3338,9 @@ class AsyncClient(Client):
         if save_to is not None:
             response_class = DiskDownloadResponse
 
-        return await self._send(
+        return await self._send_new(
             response_class,
-            http_method,
-            path,
+            request,
             timeout=0,
             save_to=save_to,
         )
@@ -3315,7 +3376,7 @@ class AsyncClient(Client):
                 This is to prevent routing loops where the server contacts
                 itself.
         """
-        http_method, path = Api_old.thumbnail(
+        request = Api_new.thumbnail(
             server_name,
             media_id,
             width,
@@ -3325,10 +3386,9 @@ class AsyncClient(Client):
             access_token=self.access_token,
         )
 
-        return await self._send(
+        return await self._send_new(
             ThumbnailResponse,
-            http_method,
-            path,
+            request,
             timeout=0,
         )
 
@@ -3351,14 +3411,13 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the profile for.
         """
-        method, path = Api_old.profile_get(
+        request = Api_new.profile_get(
             user_id or self.user_id, access_token=self.access_token or None
         )
 
-        return await self._send(
+        return await self._send_new(
             ProfileGetResponse,
-            method,
-            path,
+            request,
         )
 
     @client_session
@@ -3379,10 +3438,10 @@ class AsyncClient(Client):
             user_id (str): User id of the user to get the presence state for.
         """
 
-        method, path = Api_old.get_presence(self.access_token, user_id)
+        request = Api_new.get_presence(self.access_token, user_id)
 
-        return await self._send(
-            PresenceGetResponse, method, path, response_data=(user_id,)
+        return await self._send_new(
+            PresenceGetResponse, request, response_data=(user_id,)
         )
 
     @client_session
@@ -3405,11 +3464,11 @@ class AsyncClient(Client):
             status_msg (str, optional): The status message to attach to this state.
         """
 
-        method, path, data = Api_old.set_presence(
+        request = Api_new.set_presence(
             self.access_token, self.user_id, presence, status_msg
         )
 
-        resp = await self._send(PresenceSetResponse, method, path, data)
+        resp = await self._send_new(PresenceSetResponse, request)
         if isinstance(resp, PresenceSetResponse):
             self._presence = presence
 
@@ -3433,14 +3492,13 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the display name for.
         """
-        method, path = Api_old.profile_get_displayname(
+        request = Api_new.profile_get_displayname(
             user_id or self.user_id, access_token=self.access_token or None
         )
 
-        return await self._send(
+        return await self._send_new(
             ProfileGetDisplayNameResponse,
-            method,
-            path,
+            request,
         )
 
     @logged_in_async
@@ -3459,15 +3517,13 @@ class AsyncClient(Client):
         Args:
             displayname (str): Display name to set.
         """
-        method, path, data = Api_old.profile_set_displayname(
+        request = Api_new.profile_set_displayname(
             self.access_token, self.user_id, displayname
         )
 
-        return await self._send(
+        return await self._send_new(
             ProfileSetDisplayNameResponse,
-            method,
-            path,
-            data,
+            request,
         )
 
     @client_session
@@ -3488,14 +3544,13 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the avatar for.
         """
-        method, path = Api_old.profile_get_avatar(
+        request = Api_new.profile_get_avatar(
             user_id or self.user_id, access_token=self.access_token or None
         )
 
-        return await self._send(
+        return await self._send_new(
             ProfileGetAvatarResponse,
-            method,
-            path,
+            request,
         )
 
     @logged_in_async
@@ -3516,15 +3571,13 @@ class AsyncClient(Client):
         Args:
             avatar_url (str): matrix content URI of the avatar to set.
         """
-        method, path, data = Api_old.profile_set_avatar(
+        request = Api_new.profile_set_avatar(
             self.access_token, self.user_id, avatar_url
         )
 
-        return await self._send(
+        return await self._send_new(
             ProfileSetAvatarResponse,
-            method,
-            path,
-            data,
+            request,
         )
 
     @logged_in_async
@@ -3542,9 +3595,9 @@ class AsyncClient(Client):
             user_id (str): The user who requested the OpenID token
         """
 
-        method, path, data = Api_old.get_openid_token(self.access_token, user_id)
+        request = Api_new.get_openid_token(self.access_token, user_id)
 
-        return await self._send(GetOpenIDTokenResponse, method, path, data)
+        return await self._send_new(GetOpenIDTokenResponse, request)
 
     @logged_in_async
     async def upload_filter(
@@ -3591,7 +3644,7 @@ class AsyncClient(Client):
                 The dict corresponds to the `RoomFilter` type described
                 in https://matrix.org/docs/spec/client_server/latest#id240
         """
-        method, path, data = Api_old.upload_filter(
+        request = Api_new.upload_filter(
             self.access_token,
             user_id or self.user_id,
             event_fields,
@@ -3601,7 +3654,7 @@ class AsyncClient(Client):
             room,
         )
 
-        return await self._send(UploadFilterResponse, method, path, data)
+        return await self._send_new(UploadFilterResponse, request)
 
     async def whoami(self) -> Union[WhoamiResponse, WhoamiError]:
         """Get information about the logged-in user from the homeserver.
@@ -3615,8 +3668,8 @@ class AsyncClient(Client):
         if self.access_token is None:
             raise ValueError("No access_token is set.")
 
-        method, path = Api_old.whoami(self.access_token)
-        return await self._send(WhoamiResponse, method, path)
+        request = Api_new.whoami(self.access_token)
+        return await self._send_new(WhoamiResponse, request)
 
     async def list_public_rooms(
         self,
@@ -3644,7 +3697,7 @@ class AsyncClient(Client):
             third_party_instance_id (str, optional): The specific third-party network/protocol to request from the homeserver. Can only be used if `include_all_networks` is false
         """
 
-        method, path, data = Api_old.public_rooms(
+        request = Api_new.public_rooms(
             self.access_token,
             limit,
             server,
@@ -3654,7 +3707,7 @@ class AsyncClient(Client):
             include_all_networks,
             third_party_instance_id,
         )
-        return await self._send(PublicRoomsResponse, method, path, data)
+        return await self._send_new(PublicRoomsResponse, request)
 
     @logged_in_async
     async def set_pushrule(
@@ -3736,7 +3789,7 @@ class AsyncClient(Client):
 
         """
 
-        method, path, data = Api_old.set_pushrule(
+        request = Api_new.set_pushrule(
             self.access_token,
             scope,
             kind,
@@ -3748,7 +3801,7 @@ class AsyncClient(Client):
             pattern,
         )
 
-        return await self._send(SetPushRuleResponse, method, path, data)
+        return await self._send_new(SetPushRuleResponse, request)
 
     @logged_in_async
     async def delete_pushrule(
@@ -3775,14 +3828,14 @@ class AsyncClient(Client):
                 within its scope and kind.
         """
 
-        method, path = Api_old.delete_pushrule(
+        request = Api_new.delete_pushrule(
             self.access_token,
             scope,
             kind,
             rule_id,
         )
 
-        return await self._send(DeletePushRuleResponse, method, path)
+        return await self._send_new(DeletePushRuleResponse, request)
 
     @logged_in_async
     async def enable_pushrule(
@@ -3812,7 +3865,7 @@ class AsyncClient(Client):
             enable (bool): Whether to enable or disable this rule.
         """
 
-        method, path, data = Api_old.enable_pushrule(
+        request = Api_new.enable_pushrule(
             self.access_token,
             scope,
             kind,
@@ -3820,7 +3873,7 @@ class AsyncClient(Client):
             enable,
         )
 
-        return await self._send(EnablePushRuleResponse, method, path, data)
+        return await self._send_new(EnablePushRuleResponse, request)
 
     @logged_in_async
     async def set_pushrule_actions(
@@ -3855,7 +3908,7 @@ class AsyncClient(Client):
                 the existing ones.
         """
 
-        method, path, data = Api_old.set_pushrule_actions(
+        request = Api_new.set_pushrule_actions(
             self.access_token,
             scope,
             kind,
@@ -3863,7 +3916,7 @@ class AsyncClient(Client):
             actions,
         )
 
-        return await self._send(SetPushRuleActionsResponse, method, path, data)
+        return await self._send_new(SetPushRuleActionsResponse, request)
 
     @logged_in_async
     async def room_update_aliases(
@@ -4040,7 +4093,7 @@ class AsyncClient(Client):
             if isinstance(
                 await self.room_update_aliases(old_room_id), RoomDeleteAliasError
             ):
-                return RoomUpgradeError("Could update the old rooms aliases")
+                return RoomUpgradeError("Could not update the old rooms aliases")
 
             # Assign new aliases
             if isinstance(
@@ -4051,7 +4104,7 @@ class AsyncClient(Client):
                 ),
                 RoomDeleteAliasError,
             ):
-                return RoomUpgradeError("Could update the new rooms aliases")
+                return RoomUpgradeError("Could not update the new rooms aliases")
 
         return RoomUpgradeResponse(new_room.room_id)
 
