@@ -25,7 +25,7 @@ Features
 
 nio has most of the features you'd expect in a Matrix library, but it's still a work in progress.
 
-- ✅ transparent end-to-end encryption (EE2E)
+- ✅ transparent end-to-end encryption (E2EE)
 - ✅ encrypted file uploads & downloads
 - ✅ space parents/children
 - ✅ manual and emoji verification
