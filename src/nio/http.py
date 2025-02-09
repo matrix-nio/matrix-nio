@@ -47,15 +47,19 @@ class TransportRequest:
         self.timeout = timeout
 
     @classmethod
-    def get(cls, host, target, timeout=0):
+    def get(cls, host, target, headers=None, timeout=0):
         raise NotImplementedError
 
     @classmethod
-    def post(cls, host, target, data, timeout=0):
+    def post(cls, host, target, data, headers=None, timeout=0):
         raise NotImplementedError
 
     @classmethod
-    def put(cls, host, target, data, timeout=0):
+    def put(cls, host, target, data, headers=None, timeout=0):
+        raise NotImplementedError
+
+    @classmethod
+    def delete(cls, host, target, headers=None, timeout=0):
         raise NotImplementedError
 
 
@@ -64,16 +68,10 @@ class HttpRequest(TransportRequest):
         super().__init__(request, data, timeout)
         self._end_of_message = h11.EndOfMessage()
 
-    @classmethod
-    def get(cls, host, target, timeout=0):
-        request = h11.Request(
-            method="GET", target=target, headers=HttpRequest._headers(host)
-        )
-
-        return cls(request, timeout=timeout)
-
     @staticmethod
-    def _headers(host: str, data: Optional[bytes] = None) -> List[Tuple[str, str]]:
+    def _headers(
+        host: str, data: Optional[bytes] = None, other_headers: Optional[dict] = None
+    ) -> List[Tuple[str, str]]:
         headers = [
             ("User-Agent", f"{USER_AGENT}"),
             ("Host", f"{host}"),
@@ -89,12 +87,35 @@ class HttpRequest(TransportRequest):
                 )
             )
 
+        if other_headers:
+            headers.extend(other_headers.items())
+
         return headers
 
     @classmethod
-    def _post_or_put(cls, method, host, target, data, timeout=0):
+    def _get_or_delete(cls, method, host, target, headers=None, timeout=0):
+        request = h11.Request(
+            method=method,
+            target=target,
+            headers=HttpRequest._headers(host, other_headers=headers),
+        )
+
+        return cls(request, timeout=timeout)
+
+    @classmethod
+    def get(cls, host, target, headers=None, timeout=0):
+        return cls._get_or_delete("GET", host, target, headers, timeout)
+
+    @classmethod
+    def delete(cls, host, target, headers=None, timeout=0):
+        return cls._get_or_delete("DELETE", host, target, headers, timeout)
+
+    @classmethod
+    def _post_or_put(cls, method, host, target, data, headers=None, timeout=0):
         request_data = (
-            json.dumps(data, separators=(",", ":")) if isinstance(data, dict) else data
+            json.dumps(data, separators=(",", ":"))
+            if isinstance(data, dict)
+            else "" if data is None else data
         )
 
         request_data = bytes(request_data, "utf-8")
@@ -102,7 +123,7 @@ class HttpRequest(TransportRequest):
         request = h11.Request(
             method=method,
             target=target,
-            headers=HttpRequest._headers(host, request_data),
+            headers=HttpRequest._headers(host, request_data, other_headers=headers),
         )
 
         d = h11.Data(data=request_data)
@@ -110,12 +131,12 @@ class HttpRequest(TransportRequest):
         return cls(request, d, timeout)
 
     @classmethod
-    def post(cls, host, target, data, timeout=0):
-        return cls._post_or_put("POST", host, target, data, timeout)
+    def post(cls, host, target, data, headers=None, timeout=0):
+        return cls._post_or_put("POST", host, target, data, headers, timeout)
 
     @classmethod
-    def put(cls, host, target, data, timeout=0):
-        return cls._post_or_put("PUT", host, target, data, timeout)
+    def put(cls, host, target, data, headers=None, timeout=0):
+        return cls._post_or_put("PUT", host, target, data, headers, timeout)
 
 
 class Http2Request(TransportRequest):
@@ -128,7 +149,9 @@ class Http2Request(TransportRequest):
         return h
 
     @staticmethod
-    def _headers(host: str, data: Optional[bytes] = None) -> List[Tuple[str, str]]:
+    def _headers(
+        host: str, data: Optional[bytes] = None, other_headers: Optional[dict] = None
+    ) -> List[Tuple[str, str]]:
         headers = [
             (":authority", f"{host}"),
             (":scheme", "https"),
@@ -145,12 +168,17 @@ class Http2Request(TransportRequest):
                 )
             )
 
+        if other_headers:
+            headers.extend(other_headers.items())
+
         return headers
 
     @classmethod
-    def _post_or_put(cls, method, host, target, data, timeout):
+    def _post_or_put(cls, method, host, target, data, headers, timeout):
         request_data = (
-            json.dumps(data, separators=(",", ":")) if isinstance(data, dict) else data
+            json.dumps(data, separators=(",", ":"))
+            if isinstance(data, dict)
+            else "" if data is None else data
         )
 
         request_data = bytes(request_data, "utf-8")
@@ -158,28 +186,36 @@ class Http2Request(TransportRequest):
         request = Http2Request._request(
             method=method,
             target=target,
-            headers=Http2Request._headers(host, request_data),
+            headers=Http2Request._headers(host, request_data, other_headers=headers),
         )
 
         return cls(request, request_data, timeout)
 
     @classmethod
-    def put(cls, host, target, data, timeout=0):
-        return cls._post_or_put("PUT", host, target, data, timeout)
+    def put(cls, host, target, data, headers=None, timeout=0):
+        return cls._post_or_put("PUT", host, target, data, headers, timeout)
 
     @classmethod
-    def post(cls, host, target, data, timeout=0):
-        return cls._post_or_put("POST", host, target, data, timeout)
+    def post(cls, host, target, data, headers=None, timeout=0):
+        return cls._post_or_put("POST", host, target, data, headers, timeout)
 
     @classmethod
-    def get(cls, host, target, timeout=0):
+    def _get_or_delete(cls, method, host, target, headers, timeout):
         request = Http2Request._request(
-            method="GET",
+            method=method,
             target=target,
-            headers=Http2Request._headers(host),
+            headers=Http2Request._headers(host, other_headers=headers),
         )
 
         return cls(request, timeout=timeout)
+
+    @classmethod
+    def get(cls, host, target, headers=None, timeout=0):
+        return cls._get_or_delete("GET", host, target, headers, timeout)
+
+    @classmethod
+    def delete(cls, host, target, headers=None, timeout=0):
+        return cls._get_or_delete("DELETE", host, target, headers, timeout)
 
 
 class HeaderDict(dict):
