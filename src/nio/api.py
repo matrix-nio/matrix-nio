@@ -1989,7 +1989,7 @@ class Api:
         return "POST", Api._build_path(path, query_parameters), Api.to_json(content)
 
     @staticmethod
-    def get_openid_token(access_token: str, user_id: str) -> Tuple[str, str]:
+    def get_openid_token(access_token: str, user_id: str) -> Tuple[str, str, str]:
         """Gets an OpenID token object that the requester may supply to another service
         to verify their identity in matrix.
 
@@ -2003,7 +2003,7 @@ class Api:
         path = ["user", user_id, "openid", "request_token"]
         query_parameters = {"access_token": access_token}
 
-        return "POST", Api._build_path(path, query_parameters)
+        return "POST", Api._build_path(path, query_parameters), Api.to_json({})
 
     @staticmethod
     def set_pushrule(

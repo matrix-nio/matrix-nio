@@ -3540,9 +3540,9 @@ class AsyncClient(Client):
             user_id (str): The user who requested the OpenID token
         """
 
-        method, path = Api.get_openid_token(self.access_token, user_id)
+        method, path, data = Api.get_openid_token(self.access_token, user_id)
 
-        return await self._send(GetOpenIDTokenResponse, method, path)
+        return await self._send(GetOpenIDTokenResponse, method, path, data)
 
     @logged_in_async
     async def upload_filter(
