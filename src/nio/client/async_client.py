@@ -39,7 +39,7 @@ from typing import (
     Type,
     Union,
 )
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 import aiofiles
@@ -57,7 +57,7 @@ from aiohttp.connector import Connection
 from aiohttp_socks import ProxyConnector
 
 from ..api import (
-    Api_new,
+    Api,
     EventFormat,
     HttpRequest,
     MessageDirection,
@@ -781,107 +781,7 @@ class AsyncClient(Client):
             self.config.max_timeout_retry_wait_time,
         )
 
-    async def _send_old(
-        self,
-        response_class: Type,
-        method: str,
-        path: str,
-        data: Union[None, str, AsyncDataT] = None,
-        response_data: Optional[Tuple[Any, ...]] = None,
-        content_type: Optional[str] = None,
-        trace_context: Optional[Any] = None,
-        data_provider: Optional[DataProvider] = None,
-        timeout: Optional[float] = None,  # noqa: ASYNC109
-        content_length: Optional[int] = None,
-        save_to: Optional[os.PathLike] = None,
-    ):
-        headers = (
-            {"Content-Type": content_type}
-            if content_type
-            else {"Content-Type": "application/json"}
-        )
-
-        if self.access_token:
-            # add authorization header
-            headers["Authorization"] = f"Bearer {self.access_token}"
-            # remove access_token from query params
-            url = list(urlparse(path))
-            qs = parse_qs(url[4])
-            qs.pop("access_token", None)
-            url[4] = urlencode(qs, doseq=True)
-            path = urlunparse(url)
-
-        if content_length is not None:
-            headers["Content-Length"] = str(content_length)
-
-        if self.config.custom_headers is not None:
-            headers.update(self.config.custom_headers)
-
-        got_429 = 0
-        max_429 = self.config.max_limit_exceeded
-
-        got_timeouts = 0
-        max_timeouts = self.config.max_timeouts
-
-        while True:
-            if data_provider:
-                # mypy expects an "Awaitable[Any]" but data_provider is a
-                # method generated during runtime that may or may not be
-                # Awaitable. The actual type is a union of the types that we
-                # can receive from reading files.
-                data = await data_provider(got_429, got_timeouts)  # type: ignore
-
-            try:
-                transport_resp = await self.send(
-                    method,
-                    path,
-                    data,
-                    headers,
-                    trace_context,
-                    timeout,
-                )
-
-                resp = await self.create_matrix_response(
-                    response_class=response_class,
-                    transport_response=transport_resp,
-                    data=response_data,
-                    save_to=save_to,
-                )
-
-                if transport_resp.status == 429 or (
-                    isinstance(resp, ErrorResponse)
-                    and resp.status_code in ("M_LIMIT_EXCEEDED", 429)
-                ):
-                    got_429 += 1
-
-                    if max_429 is not None and got_429 > max_429:
-                        break
-
-                    await self.run_response_callbacks([resp])
-
-                    retry_after_ms = getattr(resp, "retry_after_ms", 0) or 5000
-                    logger.warning(
-                        "Got 429 response (ratelimited), sleeping for %dms",
-                        retry_after_ms,
-                    )
-                    await asyncio.sleep(retry_after_ms / 1000)
-                else:
-                    break
-
-            except (ClientConnectionError, TimeoutError, asyncio.TimeoutError):
-                got_timeouts += 1
-
-                if max_timeouts is not None and got_timeouts > max_timeouts:
-                    raise
-
-                wait = await self.get_timeout_retry_wait_time(got_timeouts)
-                logger.warning("Timed out, sleeping for %ds", wait)
-                await asyncio.sleep(wait)
-
-        await self.receive_response(resp)
-        return resp
-
-    async def _send_new(
+    async def _send(
         self,
         response_class: Type,
         request: HttpRequest,
@@ -1011,7 +911,7 @@ class AsyncClient(Client):
         homeserver: Optional[str] = None,
     ) -> Optional[str]:
         """Convert a matrix content URI to a HTTP URI."""
-        return Api_new.mxc_to_http(
+        return Api.mxc_to_http(
             mxc, homeserver or self.homeserver, access_token=self.access_token
         )
 
@@ -1046,9 +946,9 @@ class AsyncClient(Client):
         if auth_dict is None or auth_dict == {}:
             raise ValueError("Auth dictionary shall not be empty")
 
-        request = Api_new.login_raw(auth_dict)
+        request = Api.login_raw(auth_dict)
 
-        return await self._send_new(LoginResponse, request)
+        return await self._send(LoginResponse, request)
 
     async def register_interactive(
         self,
@@ -1073,7 +973,7 @@ class AsyncClient(Client):
 
         Returns a 'RegisterInteractiveResponse' if successful.
         """
-        request = Api_new.register(
+        request = Api.register(
             user=username,
             password=password,
             device_name=device_name,
@@ -1081,7 +981,7 @@ class AsyncClient(Client):
             auth_dict=auth_dict,
         )
 
-        return await self._send_new(RegisterInteractiveResponse, request)
+        return await self._send(RegisterInteractiveResponse, request)
 
     async def register_with_token(
         self,
@@ -1157,7 +1057,7 @@ class AsyncClient(Client):
         if session_token is not None:
             auth_dict["session"] = session_token
 
-        request = Api_new.register(
+        request = Api.register(
             user=username,
             password=password,
             device_name=device_name,
@@ -1165,7 +1065,7 @@ class AsyncClient(Client):
             auth_dict=auth_dict,
         )
 
-        return await self._send_new(RegisterResponse, request)
+        return await self._send(RegisterResponse, request)
 
     async def discovery_info(
         self,
@@ -1190,8 +1090,8 @@ class AsyncClient(Client):
             >>> if isinstance(response, DiscoveryInfoResponse):
             >>>     client.homeserver = response.homeserver_url
         """
-        request = Api_new.discovery_info()
-        return await self._send_new(DiscoveryInfoResponse, request)
+        request = Api.discovery_info()
+        return await self._send(DiscoveryInfoResponse, request)
 
     async def login_info(self) -> Union[LoginInfoResponse, LoginInfoError]:
         """Get the available login methods from the server
@@ -1200,9 +1100,9 @@ class AsyncClient(Client):
         a `LoginInfoError` if there was an error with the request.
 
         """
-        request = Api_new.login_info()
+        request = Api.login_info()
 
-        return await self._send_new(LoginInfoResponse, request)
+        return await self._send(LoginInfoResponse, request)
 
     async def login(
         self,
@@ -1231,7 +1131,7 @@ class AsyncClient(Client):
         if password is None and token is None:
             raise ValueError("Either a password or a token needs to be provided")
 
-        request = Api_new.login(
+        request = Api.login(
             self.user,
             password=password,
             device_name=device_name,
@@ -1239,7 +1139,7 @@ class AsyncClient(Client):
             token=token,
         )
 
-        return await self._send_new(LoginResponse, request)
+        return await self._send(LoginResponse, request)
 
     @logged_in_async
     async def logout(
@@ -1252,9 +1152,9 @@ class AsyncClient(Client):
         Returns either 'LogoutResponse' if the request was successful or
         a `Logouterror` if there was an error with the request.
         """
-        request = Api_new.logout(self.access_token, all_devices)
+        request = Api.logout(self.access_token, all_devices)
 
-        return await self._send_new(LogoutResponse, request)
+        return await self._send(LogoutResponse, request)
 
     @logged_in_async
     async def sync(
@@ -1302,7 +1202,7 @@ class AsyncClient(Client):
 
         sync_token = since or self.next_batch
         presence = set_presence or self._presence
-        request = Api_new.sync(
+        request = Api.sync(
             self.access_token,
             since=sync_token or self.loaded_sync_token,
             timeout=(
@@ -1315,7 +1215,7 @@ class AsyncClient(Client):
             set_presence=presence,
         )
 
-        response = await self._send_new(
+        response = await self._send(
             SyncResponse,
             request,
             # 0 if full_state: server doesn't respect timeout if full_state
@@ -1623,11 +1523,11 @@ class AsyncClient(Client):
         """
         uuid = tx_id or uuid4()
 
-        request = Api_new.to_device(
+        request = Api.to_device(
             self.access_token, message.type, message.as_dict(), uuid
         )
 
-        return await self._send_new(ToDeviceResponse, request, response_data=(message,))
+        return await self._send(ToDeviceResponse, request, response_data=(message,))
 
     @logged_in_async
     @store_loaded
@@ -1650,9 +1550,9 @@ class AsyncClient(Client):
         assert self.olm
         keys_dict = self.olm.share_keys()
 
-        request = Api_new.keys_upload(self.access_token, keys_dict)
+        request = Api.keys_upload(self.access_token, keys_dict)
 
-        return await self._send_new(KeysUploadResponse, request)
+        return await self._send(KeysUploadResponse, request)
 
     @logged_in_async
     @store_loaded
@@ -1676,9 +1576,9 @@ class AsyncClient(Client):
 
         # TODO pass the sync token here if it's a device update that triggered
         # our need for a key query.
-        request = Api_new.keys_query(self.access_token, user_list)
+        request = Api.keys_query(self.access_token, user_list)
 
-        return await self._send_new(KeysQueryResponse, request)
+        return await self._send(KeysQueryResponse, request)
 
     @logged_in_async
     async def devices(self) -> Union[DevicesResponse, DevicesError]:
@@ -1689,9 +1589,9 @@ class AsyncClient(Client):
         Returns either a `DevicesResponse` if the request was successful
         or a `DevicesError` if there was an error with the request.
         """
-        request = Api_new.devices(self.access_token)
+        request = Api.devices(self.access_token)
 
-        return await self._send_new(DevicesResponse, request)
+        return await self._send(DevicesResponse, request)
 
     @logged_in_async
     async def update_device(
@@ -1713,9 +1613,9 @@ class AsyncClient(Client):
             >>> await client.update_device(device_id, content)
 
         """
-        request = Api_new.update_device(self.access_token, device_id, content)
+        request = Api.update_device(self.access_token, device_id, content)
 
-        return await self._send_new(UpdateDeviceResponse, request)
+        return await self._send(UpdateDeviceResponse, request)
 
     @logged_in_async
     async def delete_devices(
@@ -1750,9 +1650,9 @@ class AsyncClient(Client):
 
 
         """
-        request = Api_new.delete_devices(self.access_token, devices, auth_dict=auth)
+        request = Api.delete_devices(self.access_token, devices, auth_dict=auth)
 
-        return await self._send_new(DeleteDevicesResponse, request)
+        return await self._send(DeleteDevicesResponse, request)
 
     @logged_in_async
     async def space_get_hierarchy(
@@ -1779,7 +1679,7 @@ class AsyncClient(Client):
             suggested_only (bool, optional): Whether or not to only return
                 rooms that are considered suggested. Defaults to False.
         """
-        request = Api_new.space_get_hierarchy(
+        request = Api.space_get_hierarchy(
             self.access_token,
             space_id,
             from_page=from_page,
@@ -1788,7 +1688,7 @@ class AsyncClient(Client):
             suggested_only=suggested_only,
         )
 
-        return await self._send_new(SpaceGetHierarchyResponse, request)
+        return await self._send(SpaceGetHierarchyResponse, request)
 
     @logged_in_async
     async def joined_members(
@@ -1805,9 +1705,9 @@ class AsyncClient(Client):
             room_id(str): The room id of the room for which we wan't to request
                 the joined member list.
         """
-        request = Api_new.joined_members(self.access_token, room_id)
+        request = Api.joined_members(self.access_token, room_id)
 
-        return await self._send_new(
+        return await self._send(
             JoinedMembersResponse, request, response_data=(room_id,)
         )
 
@@ -1822,9 +1722,9 @@ class AsyncClient(Client):
         Returns either a `JoinedRoomsResponse` if the request was successful
         or a `JoinedRoomsError` if there was an error with the request.
         """
-        request = Api_new.joined_rooms(self.access_token)
+        request = Api.joined_rooms(self.access_token)
 
-        return await self._send_new(JoinedRoomsResponse, request)
+        return await self._send(JoinedRoomsResponse, request)
 
     @logged_in_async
     async def room_send(
@@ -1899,11 +1799,9 @@ class AsyncClient(Client):
                     # Encrypt our content and change the message type.
                     message_type, content = self.encrypt(room_id, message_type, content)
 
-        request = Api_new.room_send(
-            self.access_token, room_id, message_type, content, uuid
-        )
+        request = Api.room_send(self.access_token, room_id, message_type, content, uuid)
 
-        return await self._send_new(RoomSendResponse, request, (room_id,))
+        return await self._send(RoomSendResponse, request, (room_id,))
 
     @logged_in_async
     @client_session
@@ -1915,8 +1813,8 @@ class AsyncClient(Client):
 
         Returns a DirectRoomListResponse if the request was successful, or DirectRoomListErrorResponse if there was an error, or the current user has never marked any rooms marked with m.direct
         """
-        request = Api_new.direct_room_list(self.access_token, self.user_id)
-        return await self._send_new(DirectRoomsResponse, request)
+        request = Api.direct_room_list(self.access_token, self.user_id)
+        return await self._send(DirectRoomsResponse, request)
 
     @logged_in_async
     async def room_get_event(
@@ -1933,9 +1831,9 @@ class AsyncClient(Client):
             room_id (str): The room id of the room where the event is in.
             event_id (str): The event id to get.
         """
-        request = Api_new.room_get_event(self.access_token, room_id, event_id)
+        request = Api.room_get_event(self.access_token, room_id, event_id)
 
-        return await self._send_new(RoomGetEventResponse, request)
+        return await self._send(RoomGetEventResponse, request)
 
     @logged_in_async
     async def room_get_event_relations(
@@ -1963,7 +1861,7 @@ class AsyncClient(Client):
         """
         paginate_from, paginate_to = None, None
         while True:
-            request = Api_new.room_get_event_relations(
+            request = Api.room_get_event_relations(
                 self.access_token,
                 room_id,
                 event_id,
@@ -1974,7 +1872,7 @@ class AsyncClient(Client):
                 paginate_to,
                 limit,
             )
-            response = await self._send_new(
+            response = await self._send(
                 RoomEventRelationsResponse,
                 request,
                 response_data=(room_id, event_id),
@@ -2006,14 +1904,14 @@ class AsyncClient(Client):
         """
         paginate_from = None
         while True:
-            request = Api_new.room_get_threads(
+            request = Api.room_get_threads(
                 self.access_token,
                 room_id,
                 include,
                 paginate_from,
                 limit,
             )
-            response = await self._send_new(
+            response = await self._send(
                 RoomThreadsResponse,
                 request,
                 response_data=(room_id,),
@@ -2048,7 +1946,7 @@ class AsyncClient(Client):
             state_key (str): The key of the state event to send.
         """
 
-        request = Api_new.room_put_state(
+        request = Api.room_put_state(
             self.access_token,
             room_id,
             event_type,
@@ -2056,7 +1954,7 @@ class AsyncClient(Client):
             state_key=state_key,
         )
 
-        return await self._send_new(
+        return await self._send(
             RoomPutStateResponse,
             request,
             response_data=(room_id,),
@@ -2078,12 +1976,12 @@ class AsyncClient(Client):
             room_id (str): The room id of the room to fetch state from.
         """
 
-        request = Api_new.room_get_state(
+        request = Api.room_get_state(
             self.access_token,
             room_id,
         )
 
-        return await self._send_new(
+        return await self._send(
             RoomGetStateResponse,
             request,
             response_data=(room_id,),
@@ -2107,11 +2005,11 @@ class AsyncClient(Client):
             state_key (str): The key of the state event to fetch.
         """
 
-        request = Api_new.room_get_state_event(
+        request = Api.room_get_state_event(
             self.access_token, room_id, event_type, state_key=state_key
         )
 
-        return await self._send_new(
+        return await self._send(
             RoomGetStateEventResponse,
             request,
             response_data=(
@@ -2144,7 +2042,7 @@ class AsyncClient(Client):
             reason(str, optional): A description explaining why the
                 event was redacted.
         """
-        request = Api_new.room_redact(
+        request = Api.room_redact(
             self.access_token,
             room_id,
             event_id,
@@ -2152,7 +2050,7 @@ class AsyncClient(Client):
             reason=reason,
         )
 
-        return await self._send_new(
+        return await self._send(
             RoomRedactResponse,
             request,
             response_data=(room_id,),
@@ -2173,9 +2071,9 @@ class AsyncClient(Client):
         Args:
             room_alias (str): The alias to resolve
         """
-        request = Api_new.room_resolve_alias(room_alias)
+        request = Api.room_resolve_alias(room_alias)
 
-        return await self._send_new(
+        return await self._send(
             RoomResolveAliasResponse,
             request,
             response_data=(room_alias,),
@@ -2197,12 +2095,12 @@ class AsyncClient(Client):
         Args:
             room_alias (str): The alias to delete
         """
-        request = Api_new.room_delete_alias(
+        request = Api.room_delete_alias(
             self.access_token,
             room_alias,
         )
 
-        return await self._send_new(
+        return await self._send(
             RoomDeleteAliasResponse,
             request,
             response_data=(room_alias,),
@@ -2226,13 +2124,13 @@ class AsyncClient(Client):
             room_alias (str): The alias to add
             room_id (str): The room ID to map to
         """
-        request = Api_new.room_put_alias(
+        request = Api.room_put_alias(
             self.access_token,
             room_alias,
             room_id,
         )
 
-        return await self._send_new(
+        return await self._send(
             RoomPutAliasResponse,
             request,
             response_data=(room_alias, room_id),
@@ -2253,9 +2151,9 @@ class AsyncClient(Client):
         Args:
             room_id (str): The room ID to get visibility for
         """
-        request = Api_new.room_get_visibility(room_id)
+        request = Api.room_get_visibility(room_id)
 
-        return await self._send_new(
+        return await self._send(
             RoomGetVisibilityResponse,
             request,
             response_data=(room_id,),
@@ -2282,9 +2180,9 @@ class AsyncClient(Client):
         store isn't loaded, no room with the given room id exists or the room
         isn't an encrypted room.
         """
-        request = Api_new.keys_claim(self.access_token, user_set)
+        request = Api.keys_claim(self.access_token, user_set)
 
-        return await self._send_new(KeysClaimResponse, request)
+        return await self._send(KeysClaimResponse, request)
 
     @logged_in_async
     @store_loaded
@@ -2344,12 +2242,12 @@ class AsyncClient(Client):
                 list(room.users.keys()),
                 ignore_unverified_devices=ignore_unverified_devices,
             ):
-                request = Api_new.to_device(
+                request = Api.to_device(
                     self.access_token, "m.room.encrypted", to_device_dict, uuid4()
                 )
 
                 requests.append(
-                    self._send_new(
+                    self._send(
                         ShareGroupSessionResponse,
                         request,
                         response_data=(room_id, sharing_with),
@@ -2408,11 +2306,11 @@ class AsyncClient(Client):
 
         message = event.as_key_request(self.user_id, self.device_id)
 
-        request = Api_new.to_device(
+        request = Api.to_device(
             self.access_token, message.type, message.as_dict(), uuid
         )
 
-        return await self._send_new(
+        return await self._send(
             RoomKeyRequestResponse,
             request,
             (
@@ -2580,7 +2478,7 @@ class AsyncClient(Client):
             space (bool): Create as a Space (defaults to False).
         """
 
-        request = Api_new.room_create(
+        request = Api.room_create(
             self.access_token,
             visibility=visibility,
             alias=alias,
@@ -2598,7 +2496,7 @@ class AsyncClient(Client):
             space=space,
         )
 
-        return await self._send_new(RoomCreateResponse, request)
+        return await self._send(RoomCreateResponse, request)
 
     @logged_in_async
     async def join(self, room_id: str) -> Union[JoinResponse, JoinError]:
@@ -2615,8 +2513,8 @@ class AsyncClient(Client):
         Args:
             room_id: The room id or alias of the room to join.
         """
-        request = Api_new.join(self.access_token, room_id)
-        return await self._send_new(JoinResponse, request)
+        request = Api.join(self.access_token, room_id)
+        return await self._send(JoinResponse, request)
 
     @logged_in_async
     async def room_knock(
@@ -2636,12 +2534,12 @@ class AsyncClient(Client):
                 knocking on.
             reason (str, optional): The reason for the knock.
         """
-        request = Api_new.room_knock(
+        request = Api.room_knock(
             self.access_token,
             room_id,
             reason,
         )
-        return await self._send_new(RoomKnockResponse, request)
+        return await self._send(RoomKnockResponse, request)
 
     @logged_in_async
     async def room_enable_knocking(
@@ -2680,12 +2578,12 @@ class AsyncClient(Client):
                 invited to.
             user_id (str): The user id of the user that should be invited.
         """
-        request = Api_new.room_invite(
+        request = Api.room_invite(
             self.access_token,
             room_id,
             user_id,
         )
-        return await self._send_new(RoomInviteResponse, request)
+        return await self._send(RoomInviteResponse, request)
 
     @logged_in_async
     async def room_leave(
@@ -2704,8 +2602,8 @@ class AsyncClient(Client):
         Args:
             room_id: The room id of the room to leave.
         """
-        request = Api_new.room_leave(self.access_token, room_id)
-        return await self._send_new(RoomLeaveResponse, request)
+        request = Api.room_leave(self.access_token, room_id)
+        return await self._send(RoomLeaveResponse, request)
 
     @logged_in_async
     async def room_forget(
@@ -2725,10 +2623,8 @@ class AsyncClient(Client):
         Args:
             room_id (str): The room id of the room to forget.
         """
-        request = Api_new.room_forget(self.access_token, room_id)
-        return await self._send_new(
-            RoomForgetResponse, request, response_data=(room_id,)
-        )
+        request = Api.room_forget(self.access_token, room_id)
+        return await self._send(RoomForgetResponse, request, response_data=(room_id,))
 
     @logged_in_async
     async def room_kick(
@@ -2754,13 +2650,13 @@ class AsyncClient(Client):
             reason (str, optional): A reason for which the user is kicked.
         """
 
-        request = Api_new.room_kick(
+        request = Api.room_kick(
             self.access_token,
             room_id,
             user_id,
             reason,
         )
-        return await self._send_new(RoomKickResponse, request)
+        return await self._send(RoomKickResponse, request)
 
     @logged_in_async
     async def room_ban(
@@ -2788,13 +2684,13 @@ class AsyncClient(Client):
             reason (str, optional): A reason for which the user is banned.
         """
 
-        request = Api_new.room_ban(
+        request = Api.room_ban(
             self.access_token,
             room_id,
             user_id,
             reason,
         )
-        return await self._send_new(RoomBanResponse, request)
+        return await self._send(RoomBanResponse, request)
 
     @logged_in_async
     async def room_unban(
@@ -2817,12 +2713,12 @@ class AsyncClient(Client):
             user_id (str): The user_id of the user that should be unbanned.
         """
 
-        request = Api_new.room_unban(
+        request = Api.room_unban(
             self.access_token,
             room_id,
             user_id,
         )
-        return await self._send_new(RoomUnbanResponse, request)
+        return await self._send(RoomUnbanResponse, request)
 
     @logged_in_async
     async def room_context(
@@ -2848,11 +2744,9 @@ class AsyncClient(Client):
             limit(int, optional): The maximum number of events to request.
         """
 
-        request = Api_new.room_context(self.access_token, room_id, event_id, limit)
+        request = Api.room_context(self.access_token, room_id, event_id, limit)
 
-        return await self._send_new(
-            RoomContextResponse, request, response_data=(room_id,)
-        )
+        return await self._send(RoomContextResponse, request, response_data=(room_id,))
 
     @logged_in_async
     async def room_messages(
@@ -2899,7 +2793,7 @@ class AsyncClient(Client):
 
 
         """
-        request = Api_new.room_messages(
+        request = Api.room_messages(
             self.access_token,
             room_id,
             start=start,
@@ -2909,9 +2803,7 @@ class AsyncClient(Client):
             message_filter=message_filter,
         )
 
-        return await self._send_new(
-            RoomMessagesResponse, request, response_data=(room_id,)
-        )
+        return await self._send(RoomMessagesResponse, request, response_data=(room_id,))
 
     @logged_in_async
     async def room_typing(
@@ -2937,13 +2829,11 @@ class AsyncClient(Client):
             timeout (int): For how long should the new typing notice be
                 valid for in milliseconds.
         """
-        request = Api_new.room_typing(
+        request = Api.room_typing(
             self.access_token, room_id, self.user_id, typing_state, timeout
         )
 
-        return await self._send_new(
-            RoomTypingResponse, request, response_data=(room_id,)
-        )
+        return await self._send(RoomTypingResponse, request, response_data=(room_id,))
 
     @logged_in_async
     async def update_receipt_marker(
@@ -2975,7 +2865,7 @@ class AsyncClient(Client):
                 DeprecationWarning,
                 stacklevel=2,
             )
-        request = Api_new.update_receipt_marker(
+        request = Api.update_receipt_marker(
             self.access_token,
             room_id,
             event_id,
@@ -2983,7 +2873,7 @@ class AsyncClient(Client):
             thread_id,
         )
 
-        return await self._send_new(
+        return await self._send(
             UpdateReceiptMarkerResponse,
             request,
         )
@@ -3033,11 +2923,11 @@ class AsyncClient(Client):
             private_read_event (Optional[str]): The event ID to set the private
                 read receipt location at.
         """
-        request = Api_new.room_read_markers(
+        request = Api.room_read_markers(
             self.access_token, room_id, fully_read_event, read_event, private_read_event
         )
 
-        return await self._send_new(
+        return await self._send(
             RoomReadMarkersResponse, request, response_data=(room_id,)
         )
 
@@ -3053,9 +2943,9 @@ class AsyncClient(Client):
         was successful or a `ContentRepositoryConfigError` if there was an
         error with the request.
         """
-        request = Api_new.content_repository_config(self.access_token)
+        request = Api.content_repository_config(self.access_token)
 
-        return await self._send_new(ContentRepositoryConfigResponse, request)
+        return await self._send(ContentRepositoryConfigResponse, request)
 
     @staticmethod
     async def _process_data_chunk(chunk, monitor: Optional[TransferMonitor] = None):
@@ -3197,7 +3087,7 @@ class AsyncClient(Client):
             ...    )
         """
 
-        request = Api_new.upload(
+        request = Api.upload(
             self.access_token,
             "application/octet-stream" if encrypt else content_type,
             filename,
@@ -3248,7 +3138,7 @@ class AsyncClient(Client):
 
             return self._plain_data_generator(data, monitor)
 
-        response = await self._send_new(
+        response = await self._send(
             UploadResponse,
             request,
             data_provider=provider,
@@ -3326,7 +3216,7 @@ class AsyncClient(Client):
                 server_name = url.netloc
                 media_id = url.path.replace("/", "")
 
-        request = Api_new.download(
+        request = Api.download(
             server_name,
             media_id,
             filename,
@@ -3338,7 +3228,7 @@ class AsyncClient(Client):
         if save_to is not None:
             response_class = DiskDownloadResponse
 
-        return await self._send_new(
+        return await self._send(
             response_class,
             request,
             timeout=0,
@@ -3376,7 +3266,7 @@ class AsyncClient(Client):
                 This is to prevent routing loops where the server contacts
                 itself.
         """
-        request = Api_new.thumbnail(
+        request = Api.thumbnail(
             server_name,
             media_id,
             width,
@@ -3386,7 +3276,7 @@ class AsyncClient(Client):
             access_token=self.access_token,
         )
 
-        return await self._send_new(
+        return await self._send(
             ThumbnailResponse,
             request,
             timeout=0,
@@ -3411,11 +3301,11 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the profile for.
         """
-        request = Api_new.profile_get(
+        request = Api.profile_get(
             user_id or self.user_id, access_token=self.access_token or None
         )
 
-        return await self._send_new(
+        return await self._send(
             ProfileGetResponse,
             request,
         )
@@ -3438,11 +3328,9 @@ class AsyncClient(Client):
             user_id (str): User id of the user to get the presence state for.
         """
 
-        request = Api_new.get_presence(self.access_token, user_id)
+        request = Api.get_presence(self.access_token, user_id)
 
-        return await self._send_new(
-            PresenceGetResponse, request, response_data=(user_id,)
-        )
+        return await self._send(PresenceGetResponse, request, response_data=(user_id,))
 
     @client_session
     async def set_presence(
@@ -3464,11 +3352,11 @@ class AsyncClient(Client):
             status_msg (str, optional): The status message to attach to this state.
         """
 
-        request = Api_new.set_presence(
+        request = Api.set_presence(
             self.access_token, self.user_id, presence, status_msg
         )
 
-        resp = await self._send_new(PresenceSetResponse, request)
+        resp = await self._send(PresenceSetResponse, request)
         if isinstance(resp, PresenceSetResponse):
             self._presence = presence
 
@@ -3492,11 +3380,11 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the display name for.
         """
-        request = Api_new.profile_get_displayname(
+        request = Api.profile_get_displayname(
             user_id or self.user_id, access_token=self.access_token or None
         )
 
-        return await self._send_new(
+        return await self._send(
             ProfileGetDisplayNameResponse,
             request,
         )
@@ -3517,11 +3405,11 @@ class AsyncClient(Client):
         Args:
             displayname (str): Display name to set.
         """
-        request = Api_new.profile_set_displayname(
+        request = Api.profile_set_displayname(
             self.access_token, self.user_id, displayname
         )
 
-        return await self._send_new(
+        return await self._send(
             ProfileSetDisplayNameResponse,
             request,
         )
@@ -3544,11 +3432,11 @@ class AsyncClient(Client):
         Args:
             user_id (str): User id of the user to get the avatar for.
         """
-        request = Api_new.profile_get_avatar(
+        request = Api.profile_get_avatar(
             user_id or self.user_id, access_token=self.access_token or None
         )
 
-        return await self._send_new(
+        return await self._send(
             ProfileGetAvatarResponse,
             request,
         )
@@ -3571,11 +3459,9 @@ class AsyncClient(Client):
         Args:
             avatar_url (str): matrix content URI of the avatar to set.
         """
-        request = Api_new.profile_set_avatar(
-            self.access_token, self.user_id, avatar_url
-        )
+        request = Api.profile_set_avatar(self.access_token, self.user_id, avatar_url)
 
-        return await self._send_new(
+        return await self._send(
             ProfileSetAvatarResponse,
             request,
         )
@@ -3595,9 +3481,9 @@ class AsyncClient(Client):
             user_id (str): The user who requested the OpenID token
         """
 
-        request = Api_new.get_openid_token(self.access_token, user_id)
+        request = Api.get_openid_token(self.access_token, user_id)
 
-        return await self._send_new(GetOpenIDTokenResponse, request)
+        return await self._send(GetOpenIDTokenResponse, request)
 
     @logged_in_async
     async def upload_filter(
@@ -3644,7 +3530,7 @@ class AsyncClient(Client):
                 The dict corresponds to the `RoomFilter` type described
                 in https://matrix.org/docs/spec/client_server/latest#id240
         """
-        request = Api_new.upload_filter(
+        request = Api.upload_filter(
             self.access_token,
             user_id or self.user_id,
             event_fields,
@@ -3654,7 +3540,7 @@ class AsyncClient(Client):
             room,
         )
 
-        return await self._send_new(UploadFilterResponse, request)
+        return await self._send(UploadFilterResponse, request)
 
     async def whoami(self) -> Union[WhoamiResponse, WhoamiError]:
         """Get information about the logged-in user from the homeserver.
@@ -3668,8 +3554,8 @@ class AsyncClient(Client):
         if self.access_token is None:
             raise ValueError("No access_token is set.")
 
-        request = Api_new.whoami(self.access_token)
-        return await self._send_new(WhoamiResponse, request)
+        request = Api.whoami(self.access_token)
+        return await self._send(WhoamiResponse, request)
 
     async def list_public_rooms(
         self,
@@ -3697,7 +3583,7 @@ class AsyncClient(Client):
             third_party_instance_id (str, optional): The specific third-party network/protocol to request from the homeserver. Can only be used if `include_all_networks` is false
         """
 
-        request = Api_new.public_rooms(
+        request = Api.public_rooms(
             self.access_token,
             limit,
             server,
@@ -3707,7 +3593,7 @@ class AsyncClient(Client):
             include_all_networks,
             third_party_instance_id,
         )
-        return await self._send_new(PublicRoomsResponse, request)
+        return await self._send(PublicRoomsResponse, request)
 
     @logged_in_async
     async def set_pushrule(
@@ -3789,7 +3675,7 @@ class AsyncClient(Client):
 
         """
 
-        request = Api_new.set_pushrule(
+        request = Api.set_pushrule(
             self.access_token,
             scope,
             kind,
@@ -3801,7 +3687,7 @@ class AsyncClient(Client):
             pattern,
         )
 
-        return await self._send_new(SetPushRuleResponse, request)
+        return await self._send(SetPushRuleResponse, request)
 
     @logged_in_async
     async def delete_pushrule(
@@ -3828,14 +3714,14 @@ class AsyncClient(Client):
                 within its scope and kind.
         """
 
-        request = Api_new.delete_pushrule(
+        request = Api.delete_pushrule(
             self.access_token,
             scope,
             kind,
             rule_id,
         )
 
-        return await self._send_new(DeletePushRuleResponse, request)
+        return await self._send(DeletePushRuleResponse, request)
 
     @logged_in_async
     async def enable_pushrule(
@@ -3865,7 +3751,7 @@ class AsyncClient(Client):
             enable (bool): Whether to enable or disable this rule.
         """
 
-        request = Api_new.enable_pushrule(
+        request = Api.enable_pushrule(
             self.access_token,
             scope,
             kind,
@@ -3873,7 +3759,7 @@ class AsyncClient(Client):
             enable,
         )
 
-        return await self._send_new(EnablePushRuleResponse, request)
+        return await self._send(EnablePushRuleResponse, request)
 
     @logged_in_async
     async def set_pushrule_actions(
@@ -3908,7 +3794,7 @@ class AsyncClient(Client):
                 the existing ones.
         """
 
-        request = Api_new.set_pushrule_actions(
+        request = Api.set_pushrule_actions(
             self.access_token,
             scope,
             kind,
@@ -3916,7 +3802,7 @@ class AsyncClient(Client):
             actions,
         )
 
-        return await self._send_new(SetPushRuleActionsResponse, request)
+        return await self._send(SetPushRuleActionsResponse, request)
 
     @logged_in_async
     async def room_update_aliases(

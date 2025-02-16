@@ -30,7 +30,7 @@ import h2
 import h11
 
 from ..api import (
-    Api_new,
+    Api,
     MessageDirection,
     ResizingMethod,
     RoomPreset,
@@ -176,29 +176,7 @@ class HttpClient(Client):
             return f"/{self.extra_path}{path}"
         return path
 
-    def _build_request_old(self, api_response, timeout=0):
-        method, *api_data = api_response
-        if len(api_data) == 2:
-            path, data = api_data
-        else:
-            path, data = api_data[0], ""
-        path = self._add_extra_path(path)
-
-        if isinstance(self.connection, HttpConnection):
-            Request = HttpRequest
-        elif isinstance(self.connection, Http2Connection):
-            Request = Http2Request
-        else:
-            raise RuntimeError(f"Unsupported connection type: {type(self.connection)}")
-
-        if method == "GET":
-            return Request.get(self.host, path, None, timeout)
-        elif method == "POST":
-            return Request.post(self.host, path, data, None, timeout)
-        elif method == "PUT":
-            return Request.put(self.host, path, data, None, timeout)
-
-    def _build_request_new(self, api_response: HttpRequestParams, timeout=0):
+    def _build_request(self, api_response: HttpRequestParams, timeout=0):
         method, path, headers, data = api_response
         path = self._add_extra_path(path)
 
@@ -263,7 +241,7 @@ class HttpClient(Client):
         should be sent to the socket.
 
         """
-        request = self._build_request_new(Api_new.login_info())
+        request = self._build_request(Api.login_info())
 
         return self._send(request, RequestInfo(LoginInfoResponse))
 
@@ -277,8 +255,8 @@ class HttpClient(Client):
         if password is None and token is None:
             raise ValueError("Either a password or a token needs to be " "provided")
 
-        request = self._build_request_new(
-            Api_new.login(
+        request = self._build_request(
+            Api.login(
                 self.user,
                 password=password,
                 device_name=device_name,
@@ -294,16 +272,14 @@ class HttpClient(Client):
         if auth_dict is None or auth_dict == {}:
             raise ValueError("Auth dictionary shall not be empty")
 
-        request = self._build_request_new(Api_new.login_raw(auth_dict))
+        request = self._build_request(Api.login_raw(auth_dict))
 
         return self._send(request, RequestInfo(LoginResponse))
 
     @connected
     @logged_in
     def logout(self, all_devices=False):
-        request = self._build_request_new(
-            Api_new.logout(self.access_token, all_devices)
-        )
+        request = self._build_request(Api.logout(self.access_token, all_devices))
 
         return self._send(request, RequestInfo(LogoutResponse))
 
@@ -325,8 +301,8 @@ class HttpClient(Client):
 
         uuid = tx_id or uuid4()
 
-        request = self._build_request_new(
-            Api_new.room_send(self.access_token, room_id, message_type, content, uuid)
+        request = self._build_request(
+            Api.room_send(self.access_token, room_id, message_type, content, uuid)
         )
 
         return self._send(request, RequestInfo(RoomSendResponse, (room_id,)), uuid)
@@ -334,8 +310,8 @@ class HttpClient(Client):
     @connected
     @logged_in
     def room_put_state(self, room_id, event_type, body):
-        request = self._build_request_new(
-            Api_new.room_put_state(self.access_token, room_id, event_type, body)
+        request = self._build_request(
+            Api.room_put_state(self.access_token, room_id, event_type, body)
         )
 
         return self._send(request, RequestInfo(RoomPutStateResponse, (room_id,)))
@@ -358,8 +334,8 @@ class HttpClient(Client):
         """
         uuid = tx_id or uuid4()
 
-        request = self._build_request_new(
-            Api_new.room_redact(
+        request = self._build_request(
+            Api.room_redact(
                 self.access_token,
                 room_id,
                 event_id,
@@ -373,8 +349,8 @@ class HttpClient(Client):
     @connected
     @logged_in
     def room_kick(self, room_id, user_id, reason=None):
-        request = self._build_request_new(
-            Api_new.room_kick(self.access_token, room_id, user_id, reason=reason)
+        request = self._build_request(
+            Api.room_kick(self.access_token, room_id, user_id, reason=reason)
         )
 
         return self._send(request, RequestInfo(RoomKickResponse))
@@ -382,8 +358,8 @@ class HttpClient(Client):
     @connected
     @logged_in
     def room_invite(self, room_id, user_id):
-        request = self._build_request_new(
-            Api_new.room_invite(self.access_token, room_id, user_id)
+        request = self._build_request(
+            Api.room_invite(self.access_token, room_id, user_id)
         )
 
         return self._send(request, RequestInfo(RoomInviteResponse))
@@ -466,8 +442,8 @@ class HttpClient(Client):
                 ``m.room.power_levels`` event before it is sent to the room.
         """
 
-        request = self._build_request_new(
-            Api_new.room_create(
+        request = self._build_request(
+            Api.room_create(
                 self.access_token,
                 visibility=visibility,
                 alias=alias,
@@ -500,7 +476,7 @@ class HttpClient(Client):
         Args:
             room_id: The room id or alias of the room to join.
         """
-        request = self._build_request_new(Api_new.join(self.access_token, room_id))
+        request = self._build_request(Api.join(self.access_token, room_id))
         return self._send(request, RequestInfo(JoinResponse))
 
     @connected
@@ -517,9 +493,7 @@ class HttpClient(Client):
         Args:
             room_id: The room id of the room to leave.
         """
-        request = self._build_request_new(
-            Api_new.room_leave(self.access_token, room_id)
-        )
+        request = self._build_request(Api.room_leave(self.access_token, room_id))
         return self._send(request, RequestInfo(RoomLeaveResponse))
 
     @connected
@@ -537,9 +511,7 @@ class HttpClient(Client):
         Args:
             room_id (str): The room id of the room to forget.
         """
-        request = self._build_request_new(
-            Api_new.room_forget(self.access_token, room_id)
-        )
+        request = self._build_request(Api.room_forget(self.access_token, room_id))
         return self._send(request, RequestInfo(RoomForgetResponse, (room_id,)))
 
     @connected
@@ -547,8 +519,8 @@ class HttpClient(Client):
     def room_messages(
         self, room_id, start, end=None, direction=MessageDirection.back, limit=10
     ):
-        request = self._build_request_new(
-            Api_new.room_messages(
+        request = self._build_request(
+            Api.room_messages(
                 self.access_token,
                 room_id,
                 start,
@@ -582,8 +554,8 @@ class HttpClient(Client):
             timeout (int): For how long should the new typing notice be
                 valid for in milliseconds.
         """
-        request = self._build_request_new(
-            Api_new.room_typing(
+        request = self._build_request(
+            Api.room_typing(
                 self.access_token, room_id, self.user_id, typing_state, timeout
             )
         )
@@ -630,8 +602,8 @@ class HttpClient(Client):
             read_event (Optional[str]): The event ID to set the read receipt
                 location at.
         """
-        request = self._build_request_new(
-            Api_new.room_read_markers(
+        request = self._build_request(
+            Api.room_read_markers(
                 self.access_token, room_id, fully_read_event, read_event
             )
         )
@@ -661,8 +633,8 @@ class HttpClient(Client):
                 This is to prevent routing loops where the server contacts
                 itself.
         """
-        request = self._build_request_new(
-            Api_new.download(
+        request = self._build_request(
+            Api.download(
                 server_name,
                 media_id,
                 filename,
@@ -701,8 +673,8 @@ class HttpClient(Client):
                 This is to prevent routing loops where the server contacts
                 itself.
         """
-        request = self._build_request_new(
-            Api_new.thumbnail(
+        request = self._build_request(
+            Api.thumbnail(
                 server_name,
                 media_id,
                 width,
@@ -723,9 +695,7 @@ class HttpClient(Client):
 
         logger.debug(pprint.pformat(keys_dict))
 
-        request = self._build_request_new(
-            Api_new.keys_upload(self.access_token, keys_dict)
-        )
+        request = self._build_request(Api.keys_upload(self.access_token, keys_dict))
         return self._send(request, RequestInfo(KeysUploadResponse))
 
     @connected
@@ -745,9 +715,7 @@ class HttpClient(Client):
         if not user_list:
             raise LocalProtocolError("No key query required.")
 
-        request = self._build_request_new(
-            Api_new.keys_query(self.access_token, user_list)
-        )
+        request = self._build_request(Api.keys_query(self.access_token, user_list))
         return self._send(request, RequestInfo(KeysQueryResponse))
 
     @connected
@@ -756,9 +724,7 @@ class HttpClient(Client):
     def keys_claim(self, room_id):
         user_list = self.get_missing_sessions(room_id)
 
-        request = self._build_request_new(
-            Api_new.keys_claim(self.access_token, user_list)
-        )
+        request = self._build_request(Api.keys_claim(self.access_token, user_list))
         return self._send(request, RequestInfo(KeysClaimResponse, (room_id,)))
 
     @connected
@@ -807,10 +773,8 @@ class HttpClient(Client):
 
         uuid = tx_id or uuid4()
 
-        request = self._build_request_new(
-            Api_new.to_device(
-                self.access_token, "m.room.encrypted", to_device_dict, uuid
-            )
+        request = self._build_request(
+            Api.to_device(self.access_token, "m.room.encrypted", to_device_dict, uuid)
         )
 
         return self._send(
@@ -820,7 +784,7 @@ class HttpClient(Client):
     @connected
     @logged_in
     def devices(self) -> Tuple[UUID, bytes]:
-        request = self._build_request_new(Api_new.devices(self.access_token))
+        request = self._build_request(Api.devices(self.access_token))
         return self._send(request, RequestInfo(DevicesResponse))
 
     @connected
@@ -828,8 +792,8 @@ class HttpClient(Client):
     def update_device(
         self, device_id: str, content: Dict[str, str]
     ) -> Tuple[UUID, bytes]:
-        request = self._build_request_new(
-            Api_new.update_device(self.access_token, device_id, content)
+        request = self._build_request(
+            Api.update_device(self.access_token, device_id, content)
         )
 
         return self._send(request, RequestInfo(UpdateDeviceResponse))
@@ -839,8 +803,8 @@ class HttpClient(Client):
     def delete_devices(
         self, devices: List[str], auth: Optional[Dict[str, str]] = None
     ) -> Tuple[UUID, bytes]:
-        request = self._build_request_new(
-            Api_new.delete_devices(self.access_token, devices, auth_dict=auth)
+        request = self._build_request(
+            Api.delete_devices(self.access_token, devices, auth_dict=auth)
         )
 
         return self._send(request, RequestInfo(DeleteDevicesResponse))
@@ -848,9 +812,7 @@ class HttpClient(Client):
     @connected
     @logged_in
     def joined_members(self, room_id: str) -> Tuple[UUID, bytes]:
-        request = self._build_request_new(
-            Api_new.joined_members(self.access_token, room_id)
-        )
+        request = self._build_request(Api.joined_members(self.access_token, room_id))
 
         return self._send(request, RequestInfo(JoinedMembersResponse, (room_id,)))
 
@@ -868,8 +830,8 @@ class HttpClient(Client):
         Args:
             user_id (str): User id of the user to get the profile for.
         """
-        request = self._build_request_new(
-            Api_new.profile_get(
+        request = self._build_request(
+            Api.profile_get(
                 user_id or self.user_id, access_token=self.access_token or None
             )
         )
@@ -889,8 +851,8 @@ class HttpClient(Client):
         Args:
             user_id (str): User id of the user to get the display name for.
         """
-        request = self._build_request_new(
-            Api_new.profile_get_displayname(
+        request = self._build_request(
+            Api.profile_get_displayname(
                 user_id or self.user_id, access_token=self.access_token or None
             )
         )
@@ -911,10 +873,8 @@ class HttpClient(Client):
         Args:
             displayname (str): Display name to set.
         """
-        request = self._build_request_new(
-            Api_new.profile_set_displayname(
-                self.access_token, self.user_id, displayname
-            )
+        request = self._build_request(
+            Api.profile_set_displayname(self.access_token, self.user_id, displayname)
         )
         return self._send(request, RequestInfo(ProfileSetDisplayNameResponse))
 
@@ -931,8 +891,8 @@ class HttpClient(Client):
         Args:
             user_id (str): User id of the user to get the avatar for.
         """
-        request = self._build_request_new(
-            Api_new.profile_get_avatar(
+        request = self._build_request(
+            Api.profile_get_avatar(
                 user_id or self.user_id, access_token=self.access_token or None
             )
         )
@@ -953,8 +913,8 @@ class HttpClient(Client):
         Args:
             avatar_url (str): matrix content URI of the avatar to set.
         """
-        request = self._build_request_new(
-            Api_new.profile_set_avatar(self.access_token, self.user_id, avatar_url)
+        request = self._build_request(
+            Api.profile_set_avatar(self.access_token, self.user_id, avatar_url)
         )
         return self._send(request, RequestInfo(ProfileSetAvatarResponse))
 
@@ -988,8 +948,8 @@ class HttpClient(Client):
 
         message = event.as_key_request(self.user_id, self.device_id)
 
-        request = self._build_request_new(
-            Api_new.to_device(self.access_token, message.type, message.as_dict(), uuid)
+        request = self._build_request(
+            Api.to_device(self.access_token, message.type, message.as_dict(), uuid)
         )
         return self._send(
             request,
@@ -1105,8 +1065,8 @@ class HttpClient(Client):
         """
         uuid = tx_id or uuid4()
 
-        request = self._build_request_new(
-            Api_new.to_device(self.access_token, message.type, message.as_dict(), uuid)
+        request = self._build_request(
+            Api.to_device(self.access_token, message.type, message.as_dict(), uuid)
         )
         return self._send(request, RequestInfo(ToDeviceResponse, (message,)))
 
@@ -1118,8 +1078,8 @@ class HttpClient(Client):
         filter: Optional[Dict[Any, Any]] = None,
         full_state: bool = False,
     ) -> Tuple[UUID, bytes]:
-        request = self._build_request_new(
-            Api_new.sync(
+        request = self._build_request(
+            Api.sync(
                 self.access_token,
                 since=self.next_batch or self.loaded_sync_token,
                 timeout=timeout,

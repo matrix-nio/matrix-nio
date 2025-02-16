@@ -1,6 +1,5 @@
 from .api import (
     Api,
-    Api_old,
     MessageDirection,
     PushRuleKind,
     ResizingMethod,
