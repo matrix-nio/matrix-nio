@@ -29,7 +29,16 @@ from uuid import UUID, uuid4
 import h2
 import h11
 
-from ..api import Api, MessageDirection, ResizingMethod, RoomPreset, RoomVisibility
+from ..api import (
+    Api,
+    MessageDirection,
+    ResizingMethod,
+    RoomPreset,
+    RoomVisibility,
+)
+from ..api import (
+    HttpRequest as HttpRequestParams,
+)
 from ..crypto import OlmDevice
 from ..event_builders import ToDeviceMessage
 from ..events import MegolmEvent
@@ -167,12 +176,8 @@ class HttpClient(Client):
             return f"/{self.extra_path}{path}"
         return path
 
-    def _build_request(self, api_response, timeout=0):
-        method, *api_data = api_response
-        if len(api_data) == 2:
-            path, data = api_data
-        else:
-            path, data = api_data[0], ""
+    def _build_request(self, api_response: HttpRequestParams, timeout=0):
+        method, path, headers, data = api_response
         path = self._add_extra_path(path)
 
         if isinstance(self.connection, HttpConnection):
@@ -183,11 +188,13 @@ class HttpClient(Client):
             raise RuntimeError(f"Unsupported connection type: {type(self.connection)}")
 
         if method == "GET":
-            return Request.get(self.host, path, timeout)
+            return Request.get(self.host, path, headers, timeout)
         elif method == "POST":
-            return Request.post(self.host, path, data, timeout)
+            return Request.post(self.host, path, data, headers, timeout)
         elif method == "PUT":
-            return Request.put(self.host, path, data, timeout)
+            return Request.put(self.host, path, data, headers, timeout)
+        elif method == "DELETE":
+            return Request.delete(self.host, path, headers, timeout)
 
     @property
     def lag(self) -> float:
@@ -274,7 +281,7 @@ class HttpClient(Client):
     def logout(self, all_devices=False):
         request = self._build_request(Api.logout(self.access_token, all_devices))
 
-        return self.send(request, RequestInfo(LogoutResponse))
+        return self._send(request, RequestInfo(LogoutResponse))
 
     @connected
     @logged_in

@@ -24,7 +24,9 @@ client like AsyncClient or HttpClient.
 from __future__ import annotations
 
 import json
-from collections import defaultdict
+import re
+import warnings
+from collections import defaultdict, namedtuple
 from collections.abc import Iterable
 from enum import Enum, unique
 from typing import (
@@ -35,7 +37,6 @@ from typing import (
     List,
     Optional,
     Sequence,
-    Tuple,
     Union,
 )
 from uuid import UUID
@@ -159,6 +160,11 @@ class ThreadInclusion(Enum):
     participated = "participated"
 
 
+HttpRequest = namedtuple(
+    "HttpRequest", ["method", "path", "headers", "data"], defaults=[{}, None]
+)
+
+
 class Api:
     """Matrix API class.
 
@@ -222,6 +228,11 @@ class Api:
             return http_url
 
         # Authenticated media
+        warnings.warn(
+            "mxc_to_http() exposes the access token in the url, which is deprecated. "
+            "Consider using download() instead.",
+            DeprecationWarning,
+        )
         return "{homeserver}{path}".format(
             homeserver=(
                 parsed_homeserver.geturl()
@@ -245,6 +256,7 @@ class Api:
         mimetype: Optional[str] = None,
         access_token: Optional[str] = None,
     ) -> Optional[str]:
+        # TODO!!!
         """Convert a matrix content URI to a encrypted mxc URI.
 
         The return value of this function will have a URI schema of emxc://.
@@ -346,24 +358,24 @@ class Api:
         return built_path
 
     @staticmethod
-    def discovery_info() -> Tuple[str, str]:
+    def discovery_info() -> HttpRequest:
         """Get discovery information about a domain.
 
         Returns the HTTP method and HTTP path for the request.
         """
         path = [".well-known", "matrix", "client"]
 
-        return "GET", Api._build_path(path, base_path="")
+        return HttpRequest("GET", Api._build_path(path, base_path=""))
 
     @staticmethod
-    def login_info() -> Tuple[str, str]:
+    def login_info() -> HttpRequest:
         """Get the Homeserver's supported login types
 
         Returns the HTTP method and HTTP path for the request.
         """
         path = ["login"]
 
-        return "GET", Api._build_path(path)
+        return HttpRequest("GET", Api._build_path(path))
 
     @staticmethod
     def register(
@@ -372,8 +384,10 @@ class Api:
         device_name: Optional[str] = "",
         device_id: Optional[str] = "",
         auth_dict: Optional[dict[str, Any]] = None,
-    ):
+    ) -> HttpRequest:
         """Register a new user.
+
+        Returns the HTTP request parameters as an HttpRequest.
 
         Args:
             user (str): The fully qualified user ID or just local part of the
@@ -412,7 +426,7 @@ class Api:
         if device_name:
             content_dict["initial_device_display_name"] = device_name
 
-        return "POST", Api._build_path(path), Api.to_json(content_dict)
+        return HttpRequest("POST", Api._build_path(path), {}, Api.to_json(content_dict))
 
     @staticmethod
     def login(
@@ -421,10 +435,10 @@ class Api:
         device_name: Optional[str] = "",
         device_id: Optional[str] = "",
         token: Optional[str] = None,
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Authenticate the user.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters as an HttpRequest.
 
         Args:
             user (str): The fully qualified user ID or just local part of the
@@ -474,15 +488,15 @@ class Api:
         if device_name:
             content_dict["initial_device_display_name"] = device_name
 
-        return "POST", Api._build_path(path), Api.to_json(content_dict)
+        return HttpRequest("POST", Api._build_path(path), {}, Api.to_json(content_dict))
 
     @staticmethod
     def login_raw(
         auth_dict: Dict[str, Any],
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Login to the homeserver using a raw dictionary.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters as an HttpRequest.
 
         Args:
             auth_dict (Dict[str, Any): The authentication dictionary
@@ -507,28 +521,28 @@ class Api:
             raise ValueError("Auth dictionary cannot be empty")
         path = ["login"]
 
-        return "POST", Api._build_path(path), Api.to_json(auth_dict)
+        return HttpRequest("POST", Api._build_path(path), data=Api.to_json(auth_dict))
 
     @staticmethod
     def logout(
         access_token: str,
         all_devices: bool = False,
-    ):
+    ) -> HttpRequest:
         """Logout the session.
 
-        Returns nothing.
+        Returns the HTTP request parameters as an HttpRequest.
 
         Args:
             access_token (str): the access token to be used with the request.
             all_devices (bool): Logout all sessions from all devices if set to True.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
         path = ["logout"]
         if all_devices:
             path.append("all")
 
-        return "POST", Api._build_path(path, query_parameters)
+        return HttpRequest("POST", Api._build_path(path), headers)
 
     @staticmethod
     def sync(
@@ -538,10 +552,10 @@ class Api:
         filter: Optional[_FilterT] = None,
         full_state: Optional[bool] = None,
         set_presence: Optional[str] = None,
-    ) -> Tuple[str, str]:
+    ) -> HttpRequest:
         """Synchronise the client's state with the latest state on the server.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters as an HttpRequest.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -564,8 +578,10 @@ class Api:
                 the client is marked as being idle.
                 One of: ["offline", "online", "unavailable"]
         """
-        query_parameters = {"access_token": access_token}
+
+        query_parameters = {}
         path = ["sync"]
+        headers = {"Authorization": "Bearer " + access_token}
 
         if since:
             query_parameters["since"] = since
@@ -585,7 +601,7 @@ class Api:
         elif isinstance(filter, str):
             query_parameters["filter"] = filter
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path, query_parameters), headers)
 
     @staticmethod
     def room_send(
@@ -594,10 +610,10 @@ class Api:
         event_type: str,
         body: Dict[Any, Any],
         tx_id: Union[str, UUID],
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Send a message event to a room.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -608,11 +624,11 @@ class Api:
                 object will vary depending on the type of event.
             tx_id (str): The transaction ID for this event.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
         path = ["rooms", room_id, "send", event_type, str(tx_id)]
 
-        return "PUT", Api._build_path(path, query_parameters), Api.to_json(body)
+        return HttpRequest("PUT", Api._build_path(path), headers, Api.to_json(body))
 
     @staticmethod
     def space_get_hierarchy(
@@ -622,10 +638,10 @@ class Api:
         limit: Optional[int] = None,
         max_depth: Optional[int] = None,
         suggested_only: bool = False,
-    ) -> Tuple[str, str]:
+    ) -> HttpRequest:
         """Get rooms/spaces that are a part of the provided space.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -637,7 +653,8 @@ class Api:
             suggested_only (bool, optional): Whether to only return
                 rooms that are considered suggested. Defaults to False.
         """
-        query_parameters = {"access_token": access_token}
+        query_parameters = {}
+        headers = {"Authorization": "Bearer " + access_token}
 
         if from_page:
             query_parameters["from"] = from_page
@@ -653,42 +670,44 @@ class Api:
 
         path = ["rooms", space_id, "hierarchy"]
 
-        return "GET", Api._build_path(path, query_parameters, "/_matrix/client/v1")
+        return HttpRequest(
+            "GET",
+            Api._build_path(path, query_parameters, MATRIX_API_PATH_V1),
+            headers,
+        )
 
     @staticmethod
-    def direct_room_list(access_token: str, user_id: str) -> Tuple[str, str]:
+    def direct_room_list(access_token: str, user_id: str) -> HttpRequest:
         """Lists all rooms flagged as direct the client is participating in.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used within the request
             user_id (str): The user id of the user to get the direct rooms for
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
         path = ["user", user_id, "account_data", "m.direct"]
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path), headers)
 
     @staticmethod
-    def room_get_event(
-        access_token: str, room_id: str, event_id: str
-    ) -> Tuple[str, str]:
+    def room_get_event(access_token: str, room_id: str, event_id: str) -> HttpRequest:
         """Get a single event based on roomId/eventId.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
             room_id (str): The room id of the room where the event is in.
             event_id (str): The event id to get.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
         path = ["rooms", room_id, "event", event_id]
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path), headers)
 
     @staticmethod
     def room_get_event_relations(
@@ -701,10 +720,10 @@ class Api:
         paginate_from: str | None = None,
         paginate_to: str | None = None,
         limit: int | None = None,
-    ) -> Tuple[str, str]:
+    ) -> HttpRequest:
         """Get all child events of a given parent event.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -723,7 +742,8 @@ class Api:
             limit (int, optional): Limit for the maximum thread roots to include per paginated response.
                 Homeservers will apply a default value, and override this with a maximum value.
         """
-        query_parameters = {"access_token": access_token, "dir": direction.value}
+        headers = {"Authorization": "Bearer " + access_token}
+        query_parameters = {"dir": direction.value}
         if paginate_from:
             query_parameters["from"] = paginate_from
         if paginate_to:
@@ -737,7 +757,11 @@ class Api:
             if event_type:
                 path.append(event_type)
 
-        return "GET", Api._build_path(path, query_parameters, "/_matrix/client/v1")
+        return HttpRequest(
+            "GET",
+            Api._build_path(path, query_parameters, "/_matrix/client/v1"),
+            headers,
+        )
 
     @staticmethod
     def room_get_threads(
@@ -746,12 +770,12 @@ class Api:
         include: ThreadInclusion = ThreadInclusion.all,
         paginate_from: str | None = None,
         limit: int | None = None,
-    ) -> Tuple[str, str]:
+    ) -> HttpRequest:
         """Paginate through the list of the thread roots in a given room.
 
         Optionally, filter for threads in which the requesting user has participated.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -765,7 +789,8 @@ class Api:
             limit (int, optional): Limit for the maximum thread roots to include per paginated response.
                 Servers will apply a default value, and override this with a maximum value.
         """
-        query_parameters = {"access_token": access_token, "include": include.value}
+        headers = {"Authorization": "Bearer " + access_token}
+        query_parameters = {"include": include.value}
         if paginate_from:
             query_parameters["from"] = paginate_from
         if limit:
@@ -773,7 +798,11 @@ class Api:
 
         path = ["rooms", room_id, "threads"]
 
-        return "GET", Api._build_path(path, query_parameters, "/_matrix/client/v1")
+        return HttpRequest(
+            "GET",
+            Api._build_path(path, query_parameters, MATRIX_API_PATH_V1),
+            headers,
+        )
 
     @staticmethod
     def room_put_state(
@@ -782,10 +811,10 @@ class Api:
         event_type: str,
         body: Dict[Any, Any],
         state_key: str = "",
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Send a state event.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -797,19 +826,19 @@ class Api:
             state_key: The key of the state to look up. Defaults to an empty
                 string.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
         path = ["rooms", room_id, "state", event_type, state_key]
 
-        return "PUT", Api._build_path(path, query_parameters), Api.to_json(body)
+        return HttpRequest("PUT", Api._build_path(path), headers, Api.to_json(body))
 
     @staticmethod
     def room_get_state_event(
         access_token, room_id: str, event_type: str, state_key: str = ""
-    ) -> Tuple[str, str]:
+    ) -> HttpRequest:
         """Fetch a state event.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -819,28 +848,28 @@ class Api:
             state_key: The key of the state to look up. Defaults to an empty
                 string.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
         path = ["rooms", room_id, "state", event_type, state_key]
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path), headers)
 
     @staticmethod
-    def room_get_state(access_token: str, room_id: str) -> Tuple[str, str]:
+    def room_get_state(access_token: str, room_id: str) -> HttpRequest:
         """Fetch the current state for a room.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
             room_id (str): The room id of the room where the state is fetched
                 from.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
         path = ["rooms", room_id, "state"]
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path), headers)
 
     @staticmethod
     def room_redact(
@@ -849,10 +878,10 @@ class Api:
         event_id: str,
         tx_id: Union[str, UUID],
         reason: Optional[str] = None,
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Strip information out of an event.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -863,7 +892,7 @@ class Api:
             reason(str, optional): A description explaining why the
                 event was redacted.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
         body = {}
 
@@ -872,12 +901,12 @@ class Api:
 
         path = ["rooms", room_id, "redact", event_id, str(tx_id)]
 
-        return "PUT", Api._build_path(path, query_parameters), Api.to_json(body)
+        return HttpRequest("PUT", Api._build_path(path), headers, Api.to_json(body))
 
     @staticmethod
     def room_kick(
         access_token: str, room_id: str, user_id: str, reason: Optional[str] = None
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Kick a user from a room, or withdraw their invitation.
 
         Returns the HTTP method, HTTP path and data for the request.
@@ -889,7 +918,7 @@ class Api:
             user_id (str): The user_id of the user that should be kicked.
             reason (str, optional): A reason for which the user is kicked.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
         body = {"user_id": user_id}
 
@@ -898,7 +927,7 @@ class Api:
 
         path = ["rooms", room_id, "kick"]
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json(body)
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json(body))
 
     @staticmethod
     def room_ban(
@@ -906,10 +935,10 @@ class Api:
         room_id: str,
         user_id: str,
         reason: Optional[str] = None,
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Ban a user from a room.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -920,23 +949,23 @@ class Api:
         """
 
         path = ["rooms", room_id, "ban"]
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         body = {"user_id": user_id}
 
         if reason:
             body["reason"] = reason
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json(body)
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json(body))
 
     @staticmethod
     def room_unban(
         access_token: str,
         room_id: str,
         user_id: str,
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Unban a user from a room.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -946,20 +975,20 @@ class Api:
         """
 
         path = ["rooms", room_id, "unban"]
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         body = {"user_id": user_id}
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json(body)
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json(body))
 
     @staticmethod
     def room_knock(
         access_token: str,
         room_id: str,
         reason: Optional[str] = None,
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Knocks on a room for the user.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -969,21 +998,19 @@ class Api:
         """
 
         path = ["knock", room_id]
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         body = {}
 
         if reason:
             body["reason"] = reason
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json(body)
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json(body))
 
     @staticmethod
-    def room_invite(
-        access_token: str, room_id: str, user_id: str
-    ) -> Tuple[str, str, str]:
+    def room_invite(access_token: str, room_id: str, user_id: str) -> HttpRequest:
         """Invite a user to a room.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -992,10 +1019,10 @@ class Api:
             user_id (str): The user id of the user that should be invited.
         """
         path = ["rooms", room_id, "invite"]
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         body = {"user_id": user_id}
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json(body)
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json(body))
 
     @staticmethod
     def room_create(
@@ -1014,10 +1041,10 @@ class Api:
         power_level_override: Optional[Dict[str, Any]] = None,
         predecessor: Optional[Dict[str, Any]] = None,
         space: bool = False,
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Create a new room.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1079,7 +1106,7 @@ class Api:
             space (bool): Create as a Space (defaults to False).
         """
         path = ["createRoom"]
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
         body = {
             "visibility": visibility.value,
@@ -1120,52 +1147,62 @@ class Api:
         if space:
             body["creation_content"]["type"] = "m.space"
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json(body)
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json(body))
 
     @staticmethod
-    def join(access_token: str, room_id: str) -> Tuple[str, str]:
+    def join(access_token: str, room_id: str) -> HttpRequest:
         """Join a room.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
             room_id (str): The room identifier or alias to join.
         """
         path = ["join", room_id]
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
-        return "POST", Api._build_path(path, query_parameters)
+        # We return an empty json as the data for the request.
+        # The spec [1] expects a json as the data, but all fields are optional
+        # and are absent in our case.
+        #
+        # [1] https://spec.matrix.org/v1.11/client-server-api/#post_matrixclientv3joinroomidoralias
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json({}))
 
     @staticmethod
-    def room_leave(access_token: str, room_id: str) -> Tuple[str, str]:
+    def room_leave(access_token: str, room_id: str) -> HttpRequest:
         """Leave a room.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
             room_id (str): The room id of the room that will be left.
         """
         path = ["rooms", room_id, "leave"]
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
-        return "POST", Api._build_path(path, query_parameters)
+        # We return an empty json as the data for the request.
+        # The spec [1] expects a json as the data, but all fields are optional
+        # and are absent in our case.
+        #
+        # [1] https://spec.matrix.org/v1.11/client-server-api/#post_matrixclientv3roomsroomidleave
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json({}))
 
     @staticmethod
-    def room_forget(access_token: str, room_id: str) -> Tuple[str, str]:
+    def room_forget(access_token: str, room_id: str) -> HttpRequest:
         """Forget a room.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
             room_id (str): The room id of the room that will be forgotten.
         """
         path = ["rooms", room_id, "forget"]
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
-        return "POST", Api._build_path(path, query_parameters)
+        return HttpRequest("POST", Api._build_path(path), headers)
 
     @staticmethod
     def room_messages(
@@ -1176,10 +1213,10 @@ class Api:
         direction: MessageDirection = MessageDirection.back,
         limit: int = 10,
         message_filter: Optional[Dict[Any, Any]] = None,
-    ) -> Tuple[str, str]:
+    ) -> HttpRequest:
         """Get room messages.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1195,9 +1232,10 @@ class Api:
 
         """
         query_parameters = {
-            "access_token": access_token,
             "limit": limit,
         }
+
+        headers = {"Authorization": "Bearer " + access_token}
 
         if start:
             query_parameters["from"] = start
@@ -1220,34 +1258,32 @@ class Api:
 
         path = ["rooms", room_id, "messages"]
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path, query_parameters), headers)
 
     @staticmethod
-    def keys_upload(
-        access_token: str, key_dict: Dict[str, Any]
-    ) -> Tuple[str, str, str]:
+    def keys_upload(access_token: str, key_dict: Dict[str, Any]) -> HttpRequest:
         """Publish end-to-end encryption keys.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
             key_dict (Dict): The dictionary containing device and one-time
                 keys that will be published to the server.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         body = key_dict
         path = ["keys", "upload"]
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json(body)
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json(body))
 
     @staticmethod
     def keys_query(
         access_token: str, user_set: Iterable[str], token: Optional[str] = None
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Query the current devices and identity keys for the given users.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1258,7 +1294,7 @@ class Api:
                 the 'since' token of that sync request, or any later sync
                 token.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["keys", "query"]
 
         content: Dict[str, Dict[str, List]] = {
@@ -1268,15 +1304,15 @@ class Api:
         if token:
             content["token"] = token  # type: ignore
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
     def keys_claim(
         access_token: str, user_set: Dict[str, Iterable[str]]
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Claim one-time keys for use in Olm pre-key messages.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1284,7 +1320,7 @@ class Api:
                 claim one-time keys to be claimed. A map from user ID, to a
                 list of device IDs.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["keys", "claim"]
 
         payload: DefaultDict[str, Dict[str, str]] = defaultdict(dict)
@@ -1295,7 +1331,7 @@ class Api:
 
         content = {"one_time_keys": payload}
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
     def to_device(
@@ -1303,10 +1339,10 @@ class Api:
         event_type: str,
         content: Dict[Any, Any],
         tx_id: Union[str, UUID],
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         r"""Send to-device events to a set of client devices.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1316,31 +1352,31 @@ class Api:
                 meaning all known devices for the user.
             tx_id (str): The transaction ID for this event.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["sendToDevice", event_type, str(tx_id)]
 
-        return "PUT", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("PUT", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
-    def devices(access_token: str) -> Tuple[str, str]:
+    def devices(access_token: str) -> HttpRequest:
         """Get the list of devices for the current user.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["devices"]
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path), headers)
 
     @staticmethod
     def update_device(
         access_token: str, device_id: str, content: Dict[str, str]
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Update the metadata of the given device.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1348,17 +1384,17 @@ class Api:
             content (Dict): A dictionary of metadata values that will be
                 updated for the device.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["devices", device_id]
 
-        return "PUT", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("PUT", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
     def delete_devices(
         access_token: str,
         devices: List[str],
         auth_dict: Optional[Dict[str, str]] = None,
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Delete a device.
 
         This API endpoint uses the User-Interactive Authentication API.
@@ -1368,7 +1404,7 @@ class Api:
 
         Should first be called with no additional authentication information.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1376,7 +1412,7 @@ class Api:
             auth_dict (Dict): Additional authentication information for
                 the user-interactive authentication API.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["delete_devices"]
 
         content: Dict[str, Any] = {"devices": devices}
@@ -1384,98 +1420,96 @@ class Api:
         if auth_dict:
             content["auth"] = auth_dict
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
-    def joined_members(access_token: str, room_id: str) -> Tuple[str, str]:
+    def joined_members(access_token: str, room_id: str) -> HttpRequest:
         """Get the list of joined members for a room.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
             room_id (str): Room id of the room where the user is typing.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["rooms", room_id, "joined_members"]
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path), headers)
 
     @staticmethod
-    def joined_rooms(access_token: str) -> Tuple[str, str]:
+    def joined_rooms(access_token: str) -> HttpRequest:
         """Get the list of joined rooms for the logged in account.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["joined_rooms"]
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path), headers)
 
     @staticmethod
-    def room_resolve_alias(room_alias: str) -> Tuple[str, str]:
+    def room_resolve_alias(room_alias: str) -> HttpRequest:
         """Resolve a room alias to a room ID.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             room_alias (str): The alias to resolve
         """
         path = ["directory", "room", room_alias]
 
-        return "GET", Api._build_path(path)
+        return HttpRequest("GET", Api._build_path(path))
 
     @staticmethod
-    def room_delete_alias(access_token: str, room_alias: str) -> Tuple[str, str]:
+    def room_delete_alias(access_token: str, room_alias: str) -> HttpRequest:
         """Delete a room alias.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
             room_alias (str): The alias to delete
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["directory", "room", room_alias]
 
-        return "DELETE", Api._build_path(path, query_parameters)
+        return HttpRequest("DELETE", Api._build_path(path), headers)
 
     @staticmethod
-    def room_put_alias(
-        access_token: str, room_alias: str, room_id: str
-    ) -> Tuple[str, str, str]:
+    def room_put_alias(access_token: str, room_alias: str, room_id: str) -> HttpRequest:
         """Add a room alias.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
             room_alias (str): The alias to add
             room_id (str): The room ID to map to
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["directory", "room", room_alias]
         body = {
             "room_id": room_id,
         }
 
-        return "PUT", Api._build_path(path, query_parameters), Api.to_json(body)
+        return HttpRequest("PUT", Api._build_path(path), headers, Api.to_json(body))
 
     @staticmethod
-    def room_get_visibility(room_id: str) -> Tuple[str, str]:
+    def room_get_visibility(room_id: str) -> HttpRequest:
         """Get visibility of a room in the directory.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             room_id (str): The room ID to query.
         """
         path = ["directory", "list", "room", room_id]
 
-        return "GET", Api._build_path(path)
+        return HttpRequest("GET", Api._build_path(path))
 
     @staticmethod
     def room_typing(
@@ -1484,13 +1518,13 @@ class Api:
         user_id: str,
         typing_state: bool = True,
         timeout: int = 30000,
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Send a typing notice to the server.
 
         This tells the server that the user is typing for the next N
         milliseconds or that the user has stopped typing.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1501,7 +1535,7 @@ class Api:
             timeout (int): For how long should the new typing notice be
                 valid for in milliseconds.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["rooms", room_id, "typing", user_id]
 
         content = {"typing": typing_state}
@@ -1509,7 +1543,7 @@ class Api:
         if typing_state:
             content["timeout"] = timeout  # type: ignore
 
-        return "PUT", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("PUT", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
     def update_receipt_marker(
@@ -1518,10 +1552,10 @@ class Api:
         event_id: str,
         receipt_type: ReceiptType = ReceiptType.read,
         thread_id: str = "main",
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Update the marker of given `receipt_type` to specified `event_id`.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1533,11 +1567,11 @@ class Api:
             thread_id (str): The thread root's event ID. Defaults to "main"
                 to indicate the main timeline, and thus not in a thread.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["rooms", room_id, "receipt", receipt_type.value, event_id]
         content = {"thread_id": thread_id}
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
     def room_read_markers(
@@ -1546,13 +1580,13 @@ class Api:
         fully_read_event: str,
         read_event: Optional[str] = None,
         private_read_event: Optional[str] = None,
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Update fully read marker and optionally read marker for a room.
 
         This sets the position of the read marker for a given room,
         and optionally the location of the read receipt and private read receipt.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1565,7 +1599,7 @@ class Api:
             private_read_event (Optional[str]): The event ID to set the private
                 read receipt location at.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["rooms", room_id, "read_markers"]
 
         content = {ReceiptType.fully_read.value: fully_read_event}
@@ -1575,47 +1609,67 @@ class Api:
         if private_read_event:
             content[ReceiptType.read_private.value] = private_read_event
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
-    def content_repository_config(access_token: str) -> Tuple[str, str]:
+    def content_repository_config(access_token: str) -> HttpRequest:
         """Get the content repository configuration, such as upload limits.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["config"]
 
-        return "GET", Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH)
+        return HttpRequest(
+            "GET", Api._build_path(path, base_path=MATRIX_MEDIA_API_PATH), headers
+        )
 
     @staticmethod
     def upload(
         access_token: str,
+        content_type: str,
         filename: Optional[str] = None,
-    ) -> Tuple[str, str]:
+    ) -> HttpRequest:
         """Upload a file's content to the content repository.
 
-        Returns the HTTP method, HTTP path and empty data for the request.
-        The real data should be read from the file that should be uploaded.
-
-        Note: This requests also requires the Content-Type http header to be
-        set.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple,
+        with the `data` field set to `None`. The real data should be read
+        from the file that should be uploaded.
 
         Args:
             access_token (str): The access token to be used with the request.
+            content_type (str): The Content-Type of the data to be uploaded.
             filename (str): The name of the file being uploaded
         """
-        query_parameters = {"access_token": access_token}
+        # Warn if content_type looks like a file name.
+        if not re.fullmatch(
+            r"[a-zA-Z0-9][a-zA-Z0-9!#$&^_.+-]*/[a-zA-Z0-9][a-zA-Z0-9!#$&^_.+-]* *(;.*=.*)?",
+            content_type,
+        ):
+            warnings.warn(
+                f'"{content_type}" was passed as content_type argument, '
+                "but does not look like a valid content-type. "
+                "Did you pass a file name as content_type by any chance?",
+                UserWarning,
+            )
+
+        query_parameters = {}
+        headers = {
+            "Authorization": "Bearer " + access_token,
+            "Content-Type": content_type,
+        }
         path = ["upload"]
 
         if filename:
             query_parameters["filename"] = filename
 
-        return "POST", Api._build_path(
-            path, query_parameters, MATRIX_LEGACY_MEDIA_API_PATH
+        return HttpRequest(
+            "POST",
+            Api._build_path(path, query_parameters, MATRIX_LEGACY_MEDIA_API_PATH),
+            headers,
         )
 
     @staticmethod
@@ -1625,10 +1679,10 @@ class Api:
         filename: Optional[str] = None,
         allow_remote: bool = True,
         access_token: Optional[str] = None,
-    ) -> Tuple[str, str]:
+    ) -> HttpRequest:
         """Get the content of a file from the content repository.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             server_name (str): The server name from the mxc:// URI.
@@ -1644,14 +1698,20 @@ class Api:
         """
         query_parameters = {
             "allow_remote": "true" if allow_remote else "false",
-            "access_token": access_token,
         }
+        headers = {}
+        if access_token is not None:
+            headers["Authorization"] = "Bearer " + access_token
         end = ""
         if filename:
             end = filename
         path = ["download", server_name, media_id, end]
 
-        return "GET", Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH)
+        return HttpRequest(
+            "GET",
+            Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH),
+            headers,
+        )
 
     @staticmethod
     def thumbnail(
@@ -1662,10 +1722,10 @@ class Api:
         method: ResizingMethod = ResizingMethod.scale,
         allow_remote: bool = True,
         access_token: Optional[str] = None,
-    ) -> Tuple[str, str]:
+    ) -> HttpRequest:
         """Get the thumbnail of a file from the content repository.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Note: The actual thumbnail may be larger than the size specified.
 
@@ -1686,19 +1746,23 @@ class Api:
             "height": height,
             "method": method.value,
             "allow_remote": "true" if allow_remote else "false",
-            "access_token": access_token,
         }
+        headers = {}
+        if access_token is not None:
+            headers["Authorization"] = "Bearer " + access_token
         path = ["thumbnail", server_name, media_id]
 
-        return "GET", Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH)
+        return HttpRequest(
+            "GET",
+            Api._build_path(path, query_parameters, MATRIX_MEDIA_API_PATH),
+            headers,
+        )
 
     @staticmethod
-    def profile_get(
-        user_id: str, access_token: Optional[str] = None
-    ) -> Tuple[str, str]:
+    def profile_get(user_id: str, access_token: Optional[str] = None) -> HttpRequest:
         """Get the combined profile information for a user.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             user_id (str): User id to get the profile for.
@@ -1706,115 +1770,115 @@ class Api:
                                 omitted, an unauthenticated request is performed.
         """
 
-        query_parameters = {}
+        headers = {}
         if access_token is not None:
-            query_parameters["access_token"] = access_token
+            headers["Authorization"] = "Bearer " + access_token
 
         path = ["profile", user_id]
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path), headers)
 
     @staticmethod
     def profile_get_displayname(
         user_id: str, access_token: Optional[str] = None
-    ) -> Tuple[str, str]:
+    ) -> HttpRequest:
         """Get display name.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             user_id (str): User id to get display name for.
             access_token (str): The access token to be used with the request. If
                                 omitted, an unauthenticated request is performed.
         """
-        query_parameters = {}
+        headers = {}
         if access_token is not None:
-            query_parameters["access_token"] = access_token
+            headers["Authorization"] = "Bearer " + access_token
 
         path = ["profile", user_id, "displayname"]
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path), headers)
 
     @staticmethod
     def profile_set_displayname(
         access_token: str, user_id: str, display_name: str
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Set display name.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
             user_id (str): User id to set display name for.
             display_name (str): Display name for user to set.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         content = {"displayname": display_name}
         path = ["profile", user_id, "displayname"]
 
-        return "PUT", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("PUT", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
     def profile_get_avatar(
         user_id: str, access_token: Optional[str] = None
-    ) -> Tuple[str, str]:
+    ) -> HttpRequest:
         """Get avatar URL.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             user_id (str): User id to get avatar for.
             access_token (str): The access token to be used with the request. If
                                 omitted, an unauthenticated request is performed.
         """
-        query_parameters = {}
+        headers = {}
         if access_token is not None:
-            query_parameters["access_token"] = access_token
+            headers["Authorization"] = "Bearer " + access_token
         path = ["profile", user_id, "avatar_url"]
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path), headers)
 
     @staticmethod
     def profile_set_avatar(
         access_token: str, user_id: str, avatar_url: str
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Set avatar url.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
             user_id (str): User id to set display name for.
             avatar_url (str): matrix content URI of the avatar to set.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         content = {"avatar_url": avatar_url}
         path = ["profile", user_id, "avatar_url"]
 
-        return "PUT", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("PUT", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
-    def get_presence(access_token: str, user_id: str) -> Tuple[str, str]:
+    def get_presence(access_token: str, user_id: str) -> HttpRequest:
         """Get the given user's presence state.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
             user_id (str): User id whose presence state to get.
         """
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["presence", user_id, "status"]
-        query_parameters = {"access_token": access_token}
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path), headers)
 
     @staticmethod
     def set_presence(
         access_token: str, user_id: str, presence: str, status_msg: Optional[str] = None
-    ):
+    ) -> HttpRequest:
         """This API sets the given user's presence state.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1822,27 +1886,27 @@ class Api:
             presence (str): The new presence state.
             status_msg (str, optional): The status message to attach to this state.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         content = {"presence": presence}
         if status_msg:
             content["status_msg"] = status_msg
         path = ["presence", user_id, "status"]
 
-        return "PUT", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("PUT", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
-    def whoami(access_token: str) -> Tuple[str, str]:
+    def whoami(access_token: str) -> HttpRequest:
         """Get information about the owner of a given access token.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
         """
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         path = ["account", "whoami"]
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path), headers)
 
     @staticmethod
     def public_rooms(
@@ -1854,9 +1918,9 @@ class Api:
         filter_room_types: List[Union[str, None]] = None,
         include_all_networks: Optional[bool] = None,
         third_party_instance_id: Optional[str] = None,
-    ) -> Tuple[str, str, Optional[Dict[str:Any]]]:
+    ) -> HttpRequest:
         """Lists the public rooms on the server, with optional filters.
-        Returns the appropriate HTTP method/query params/body based off of the combination of arguments.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1881,8 +1945,9 @@ class Api:
         else:
             method = "GET"
         query_parameters = {}
+        headers = {}
         if access_token:
-            query_parameters["access_token"] = access_token
+            headers["Authorization"] = "Bearer " + access_token
         if server:
             query_parameters["server"] = server
         if method == "GET":
@@ -1890,7 +1955,9 @@ class Api:
                 query_parameters["limit"] = limit
             if since is not None:
                 query_parameters["since"] = since
-            return method, Api._build_path(path, query_parameters), None
+            return HttpRequest(
+                method, Api._build_path(path, query_parameters), headers, None
+            )
         if method == "POST":
             content: Dict[str, Any] = {}
             if limit:
@@ -1907,16 +1974,21 @@ class Api:
                 content["include_all_networks"] = include_all_networks
             if third_party_instance_id:
                 content["third_party_instance_id"] = third_party_instance_id
-            return method, Api._build_path(path, query_parameters), Api.to_json(content)
+            return HttpRequest(
+                method,
+                Api._build_path(path, query_parameters),
+                headers,
+                Api.to_json(content),
+            )
 
     @staticmethod
     def room_context(
         access_token: str, room_id: str, event_id: str, limit: Optional[int] = None
-    ) -> Tuple[str, str]:
+    ) -> HttpRequest:
         """Fetch a number of events that happened before and after an event.
         This allows clients to get the context surrounding an event.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1926,14 +1998,15 @@ class Api:
                 context for.
             limit(int, optional): The maximum number of events to request.
         """
-        query_parameters = {"access_token": access_token}
+        query_parameters = {}
+        headers = {"Authorization": "Bearer " + access_token}
 
         if limit:
             query_parameters["limit"] = limit
 
         path = ["rooms", room_id, "context", event_id]
 
-        return "GET", Api._build_path(path, query_parameters)
+        return HttpRequest("GET", Api._build_path(path, query_parameters), headers)
 
     @staticmethod
     def upload_filter(
@@ -1944,10 +2017,10 @@ class Api:
         presence: Optional[Dict[str, Any]] = None,
         account_data: Optional[Dict[str, Any]] = None,
         room: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Upload a new filter definition to the homeserver.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -1976,7 +2049,7 @@ class Api:
                 in https://matrix.org/docs/spec/client_server/latest#id240
         """
         path = ["user", user_id, "filter"]
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         content = {
             "event_fields": event_fields,
             "event_format": event_format.value,
@@ -1986,14 +2059,14 @@ class Api:
         }
         content = {k: v for k, v in content.items() if v is not None}
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
-    def get_openid_token(access_token: str, user_id: str) -> Tuple[str, str, str]:
+    def get_openid_token(access_token: str, user_id: str) -> HttpRequest:
         """Gets an OpenID token object that the requester may supply to another service
         to verify their identity in matrix.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -2001,9 +2074,9 @@ class Api:
         """
 
         path = ["user", user_id, "openid", "request_token"]
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
-        return "POST", Api._build_path(path, query_parameters), Api.to_json({})
+        return HttpRequest("POST", Api._build_path(path), headers, Api.to_json({}))
 
     @staticmethod
     def set_pushrule(
@@ -2016,10 +2089,10 @@ class Api:
         actions: Sequence[PushAction] = (),
         conditions: Optional[Sequence[PushCondition]] = None,
         pattern: Optional[str] = None,
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Create or modify an existing user-created push rule.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -2061,7 +2134,8 @@ class Api:
         """
 
         path = ["pushrules", scope, kind.value, rule_id]
-        query_parameters = {"access_token": access_token}
+        query_parameters = {}
+        headers = {"Authorization": "Bearer " + access_token}
         content: Dict[str, Any] = {"actions": [a.as_value for a in actions]}
 
         if before is not None and after is not None:
@@ -2085,7 +2159,12 @@ class Api:
 
             content["conditions"] = [c.as_value for c in conditions]
 
-        return "PUT", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest(
+            "PUT",
+            Api._build_path(path, query_parameters),
+            headers,
+            Api.to_json(content),
+        )
 
     @staticmethod
     def delete_pushrule(
@@ -2093,10 +2172,10 @@ class Api:
         scope: str,
         kind: PushRuleKind,
         rule_id: str,
-    ) -> Tuple[str, str]:
+    ) -> HttpRequest:
         """Delete an existing user-created push rule.
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -2107,9 +2186,9 @@ class Api:
         """
 
         path = ["pushrules", scope, kind.value, rule_id]
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
 
-        return "DELETE", Api._build_path(path, query_parameters)
+        return HttpRequest("DELETE", Api._build_path(path), headers)
 
     @staticmethod
     def enable_pushrule(
@@ -2118,10 +2197,10 @@ class Api:
         kind: PushRuleKind,
         rule_id: str,
         enable: bool,
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Enable or disable an existing built-in or user-created push rule.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -2133,10 +2212,10 @@ class Api:
         """
 
         path = ["pushrules", scope, kind.value, rule_id, "enabled"]
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         content = {"enabled": enable}
 
-        return "PUT", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("PUT", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
     def set_pushrule_actions(
@@ -2145,12 +2224,12 @@ class Api:
         kind: PushRuleKind,
         rule_id: str,
         actions: Sequence[PushAction],
-    ) -> Tuple[str, str, str]:
+    ) -> HttpRequest:
         """Set the actions for an existing built-in or user-created push rule.
 
         Unlike ``set_pushrule``, this method can edit built-in server rules.
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -2168,34 +2247,32 @@ class Api:
         """
 
         path = ["pushrules", scope, kind.value, rule_id, "actions"]
-        query_parameters = {"access_token": access_token}
+        headers = {"Authorization": "Bearer " + access_token}
         content = {"actions": [a.as_value for a in actions]}
 
-        return "PUT", Api._build_path(path, query_parameters), Api.to_json(content)
+        return HttpRequest("PUT", Api._build_path(path), headers, Api.to_json(content))
 
     @staticmethod
-    def delete_room_alias(access_token: str, alias: str) -> Tuple[str, str]:
+    def delete_room_alias(access_token: str, alias: str) -> HttpRequest:
         """Delete a room alias
 
-        Returns the HTTP method and HTTP path for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
             alias (str): The room alias
         """
 
-        query_parameters = {"access_token": access_token}
         path = ["directory", "room", alias]
+        headers = {"Authorization": "Bearer " + access_token}
 
-        return "DELETE", Api._build_path(path, query_parameters)
+        return HttpRequest("DELETE", Api._build_path(path), headers)
 
     @staticmethod
-    def put_room_alias(
-        access_token: str, alias: str, room_id: str
-    ) -> Tuple[str, str, str]:
-        """Add an room alias
+    def put_room_alias(access_token: str, alias: str, room_id: str) -> HttpRequest:
+        """Add a room alias
 
-        Returns the HTTP method, HTTP path and data for the request.
+        Returns the HTTP request parameters, as an HttpRequest namedtuple.
 
         Args:
             access_token (str): The access token to be used with the request.
@@ -2203,13 +2280,8 @@ class Api:
             room_id (str): The room to point to
         """
 
-        query_parameters = {"access_token": access_token}
         path = ["directory", "room", alias]
-        content = {}
-        content["room_id"] = room_id
+        headers = {"Authorization": "Bearer " + access_token}
+        content = {"room_id": room_id}
 
-        return (
-            "PUT",
-            Api._build_path(path, query_parameters),
-            Api.to_json(content),
-        )
+        return HttpRequest("PUT", Api._build_path(path), headers, Api.to_json(content))
