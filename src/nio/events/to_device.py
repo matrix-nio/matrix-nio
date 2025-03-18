@@ -1,4 +1,5 @@
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -29,6 +30,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Union
 
 from ..schemas import Schemas
+from .base_event import BaseEvent
 from .common import (
     KeyVerificationAcceptMixin,
     KeyVerificationCancelMixin,
@@ -41,7 +43,7 @@ from .misc import BadEventType, logger, verify
 
 
 @dataclass
-class ToDeviceEvent:
+class ToDeviceEvent(BaseEvent):
     """Base Event class for events that are sent using the to-device endpoint.
 
     Attributes:

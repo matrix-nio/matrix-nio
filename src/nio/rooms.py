@@ -22,8 +22,8 @@ from typing import DefaultDict, Dict, List, Optional, Set, Tuple, Union
 
 from .events import (
     AccountDataEvent,
+    BaseEvent,
     EphemeralEvent,
-    Event,
     FullyReadEvent,
     InviteAliasEvent,
     InviteMemberEvent,
@@ -37,6 +37,7 @@ from .events import (
     RoomAvatarEvent,
     RoomCreateEvent,
     RoomEncryptionEvent,
+    RoomEvent,
     RoomGuestAccessEvent,
     RoomHistoryVisibilityEvent,
     RoomJoinRulesEvent,
@@ -370,7 +371,7 @@ class MatrixRoom:
                 else:
                     self.read_receipts[receipt.user_id] = receipt
 
-    def handle_event(self, event: Event) -> None:
+    def handle_event(self, event: RoomEvent) -> None:
         logger.info(
             f"Room {self.room_id} handling event of type {type(event).__name__}"
         )
@@ -521,7 +522,7 @@ class MatrixInvitedRoom(MatrixRoom):
 
         return super().handle_membership(event)
 
-    def handle_event(self, event: Event) -> None:
+    def handle_event(self, event: BaseEvent) -> None:
         logger.info(
             f"Room {self.room_id} handling event of type {type(event).__name__}"
         )

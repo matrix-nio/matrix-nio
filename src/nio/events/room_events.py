@@ -1,5 +1,6 @@
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2021 Famedly GmbH
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -21,11 +22,25 @@ from typing import Any, Dict, List, Optional, Union
 
 from ..event_builders import RoomKeyRequestMessage
 from ..schemas import Schemas
+from .base_event import BaseEvent
 from .misc import BadEvent, BadEventType, UnknownBadEvent, validate_or_badevent, verify
 
 
 @dataclass
-class Event:
+class RoomEvent(BaseEvent):
+    """
+    Matrix room event base class.
+    For invites, knocks and room updates in general.
+    """
+    source: Dict = field()
+    sender: str = field(init=False)
+
+    def __post_init__(self):
+        self.sender = self.source["sender"]
+
+
+@dataclass
+class Event(RoomEvent):
     """Matrix Event class.
 
     This is the base event class, most events inherit from this class.
@@ -53,10 +68,7 @@ class Event:
 
     """
 
-    source: Dict[str, Any] = field()
-
     event_id: str = field(init=False)
-    sender: str = field(init=False)
     server_timestamp: int = field(init=False)
 
     decrypted: bool = field(default=False, init=False)
@@ -66,8 +78,8 @@ class Event:
     transaction_id: Optional[str] = field(default=None, init=False)
 
     def __post_init__(self):
+        super().__post_init__()
         self.event_id = self.source["event_id"]
-        self.sender = self.source["sender"]
         self.server_timestamp = self.source["origin_server_ts"]
 
     def flattened(

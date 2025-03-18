@@ -1,4 +1,5 @@
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -33,10 +34,11 @@ from typing import Any, Dict, Optional, Union
 
 from ..schemas import Schemas
 from .misc import BadEventType, verify, verify_or_none
+from .room_events import RoomEvent
 
 
 @dataclass
-class InviteEvent:
+class InviteEvent(RoomEvent):
     """Matrix Event class for events in invited rooms.
 
     Events for invited rooms will have a stripped down version of their
@@ -53,9 +55,6 @@ class InviteEvent:
             event.
 
     """
-
-    source: Dict = field()
-    sender: str = field()
 
     @classmethod
     @verify_or_none(Schemas.stripped_state_event)
@@ -120,7 +119,7 @@ class InviteMemberEvent(InviteEvent):
 
     state_key: str = field()
     membership: str = field()
-    prev_membership: str = field()
+    prev_membership: Optional[str] = field()
     content: dict = field()
     prev_content: dict = field(default_factory=dict)
 
@@ -138,7 +137,6 @@ class InviteMemberEvent(InviteEvent):
 
         return cls(
             parsed_dict,
-            parsed_dict["sender"],
             parsed_dict["state_key"],
             membership,
             prev_membership,
@@ -165,10 +163,9 @@ class InviteAliasEvent(InviteEvent):
     def from_dict(
         cls, parsed_dict: Dict[Any, Any]
     ) -> Union[InviteAliasEvent, BadEventType]:
-        sender = parsed_dict["sender"]
         canonical_alias = parsed_dict["content"].get("alias")
 
-        return cls(parsed_dict, sender, canonical_alias)
+        return cls(parsed_dict, canonical_alias=canonical_alias)
 
 
 @dataclass
@@ -193,7 +190,6 @@ class InviteNameEvent(InviteEvent):
     def from_dict(
         cls, parsed_dict: Dict[Any, Any]
     ) -> Union[InviteNameEvent, BadEventType]:
-        sender = parsed_dict["sender"]
-        canonical_alias = parsed_dict["content"]["name"]
+        name = parsed_dict["content"]["name"]
 
-        return cls(parsed_dict, sender, canonical_alias)
+        return cls(parsed_dict, name)

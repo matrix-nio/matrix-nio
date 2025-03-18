@@ -40,11 +40,13 @@ from ..events import (
     AccountDataEvent,
     BadEvent,
     BadEventType,
+    BaseEvent,
     EphemeralEvent,
     Event,
     MegolmEvent,
     PresenceEvent,
     RoomEncryptionEvent,
+    RoomEvent,
     RoomKeyRequest,
     RoomKeyRequestCancellation,
     RoomMemberEvent,
@@ -135,7 +137,7 @@ class ClientCallback:
     func: Union[Callable[..., None], Callable[..., Awaitable[None]]] = field()
     filter: Union[Tuple[Type, ...], Type, None] = None
 
-    def _execute(self, event, room: Optional[MatrixRoom] = None) -> Optional[Awaitable]:
+    def _execute(self, event: BaseEvent, room: Optional[MatrixRoom] = None) -> Optional[Awaitable]:
         """
         Checks the filter and executes the function once.
         sync_execute and async_execute will each determine
@@ -1259,8 +1261,8 @@ class Client:
 
     def add_event_callback(
         self,
-        callback: Callable[[MatrixRoom, Event], Optional[Awaitable[None]]],
-        filter: Union[Type[Event], Tuple[Type[Event], None]],
+        callback: Callable[[MatrixRoom, RoomEvent], Optional[Awaitable[None]]],
+        filter: Union[Type[RoomEvent], Tuple[Type[RoomEvent], None]],
     ) -> None:
         """Add a callback that will be executed on room events.
 
