@@ -153,7 +153,7 @@ class MatrixRoom:
         except ValueError:
             users = [
                 u
-                for u in sorted(self.users, key=lambda u: self.user_name(u))
+                for u in sorted(self.users, key=lambda u: self._user_name(u))
                 if u != self.own_user_id
             ]
             empty = not users
@@ -180,6 +180,10 @@ class MatrixRoom:
         if user_id not in self.users:
             return None
 
+        return self._user_name(user_id)
+
+    def _user_name(self, user_id: str) -> str:
+        """ get displayname for a user. user must be known in self.users """
         user = self.users[user_id]
         if len(self.names[user.name]) > 1:
             return user.disambiguated_name
@@ -218,7 +222,7 @@ class MatrixRoom:
                 return self.avatar_url(
                     next(
                         u
-                        for u in sorted(self.users, key=lambda u: self.user_name(u))
+                        for u in sorted(self.users, key=lambda u: self._user_name(u))
                         if u != self.own_user_id
                     )
                 )

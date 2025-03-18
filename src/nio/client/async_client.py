@@ -1,5 +1,6 @@
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2020-2021 Famedly GmbH
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -27,8 +28,8 @@ from pathlib import Path
 from typing import (
     Any,
     AsyncIterator,
+    Awaitable,
     Callable,
-    Coroutine,
     Dict,
     Iterable,
     List,
@@ -462,7 +463,7 @@ class AsyncClient(Client):
 
     def add_response_callback(
         self,
-        func: Coroutine[Any, Any, Response],
+        func: Callable[[Response], Awaitable[Any]],
         cb_filter: Union[Tuple[Type], Type, None] = None,
     ):
         """Add a coroutine that will be called if a response is received.
@@ -945,14 +946,19 @@ class AsyncClient(Client):
         """
         assert self.client_session
 
+        kwargs: dict[str, Any] = {}
+        if timeout is not None:
+            kwargs["timeout"] = ClientTimeout(timeout)
+        if self.ssl is not None:
+            kwargs["ssl"] = self.ssl
+
         return await self.client_session.request(
             method,
             self.homeserver + path,
             data=data,
-            ssl=self.ssl,
             headers=headers,
             trace_request_ctx=trace_context,
-            timeout=self.config.request_timeout if timeout is None else timeout,
+            **kwargs,
         )
 
     async def mxc_to_http(
@@ -1053,7 +1059,7 @@ class AsyncClient(Client):
             password,
             auth_dict={"initial_device_display_name": self.device_id or "matrix-nio"},
         )
-        if isinstance(resp, RegisterInteractiveError):
+        if isinstance(resp, ErrorResponse):
             return RegisterErrorResponse(
                 resp.message, resp.status_code, resp.retry_after_ms, resp.soft_logout
             )
@@ -1069,7 +1075,7 @@ class AsyncClient(Client):
                 "session": session_token,
             },
         )
-        if isinstance(resp, RegisterInteractiveError):
+        if isinstance(resp, ErrorResponse):
             return RegisterErrorResponse(
                 resp.message, resp.status_code, resp.retry_after_ms, resp.soft_logout
             )
@@ -2952,7 +2958,7 @@ class AsyncClient(Client):
             room_id,
             event_id,
             receipt_type,
-            thread_id,
+            thread_id or "main",
         )
 
         return await self._send(
@@ -3306,7 +3312,7 @@ class AsyncClient(Client):
             access_token=self.access_token,
         )
 
-        response_class = MemoryDownloadResponse
+        response_class: Type[Response] = MemoryDownloadResponse
         if save_to is not None:
             response_class = DiskDownloadResponse
 
@@ -3935,8 +3941,8 @@ class AsyncClient(Client):
         if isinstance(current_alias_event, RoomGetStateEventResponse):
             current_aliases.append(current_alias_event.content["alias"])
             if "alt_aliases" in current_alias_event.content:
-                alt_aliases = current_alias_event.content["alt_aliases"]
-                current_aliases.extend(alt_aliases)
+                alt_aliases_evt = current_alias_event.content["alt_aliases"]
+                current_aliases.extend(alt_aliases_evt)
 
         # Unregister old aliases
         for alias in current_aliases:
@@ -4118,6 +4124,8 @@ class AsyncClient(Client):
         self, room_id: str, event_name: str, event_type: str = "event"
     ) -> Union[bool, ErrorResponse]:
         who_am_i = await self.whoami()
+        if isinstance(who_am_i, WhoamiError):
+            return who_am_i
         power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
 
         try:
@@ -4145,6 +4153,8 @@ class AsyncClient(Client):
         self, room_id: str, permission_type: str
     ) -> Union[bool, ErrorResponse]:
         who_am_i = await self.whoami()
+        if isinstance(who_am_i, WhoamiError):
+            return who_am_i
         power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
 
         try:

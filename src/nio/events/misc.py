@@ -1,15 +1,5 @@
-from __future__ import annotations
-
-import logging
-from dataclasses import dataclass, field
-from functools import wraps
-from typing import Any, Dict, Optional, Union
-
-from jsonschema.exceptions import SchemaError, ValidationError
-
-from ..schemas import validate_json
-
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -23,6 +13,16 @@ from ..schemas import validate_json
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass, field
+from functools import wraps
+from typing import Any, Dict, Optional, Union
+
+from jsonschema.exceptions import SchemaError, ValidationError
+
+from ..schemas import validate_json
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 def validate_or_badevent(
     parsed_dict: Dict[Any, Any],
     schema: Dict[Any, Any],
-) -> Optional[Union[BadEvent, UnknownBadEvent]]:
+) -> Optional[BadEventType]:
     try:
         validate_json(parsed_dict, schema)
     except (ValidationError, SchemaError) as e:

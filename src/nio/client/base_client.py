@@ -151,6 +151,7 @@ class ClientCallback:
                 return self.func(room, event)
             else:
                 return self.func(event)
+        return None
 
     def sync_execute(self, event, room: Optional[MatrixRoom] = None) -> None:
         """Execute callback from synchronous context."""
@@ -1351,7 +1352,7 @@ class Client:
 
     def add_global_account_data_callback(
         self,
-        callback: Callable[[AccountDataEvent], None],
+        callback: Callable[[AccountDataEvent], Union[None, Awaitable[None]]],
         filter: Union[
             Type[AccountDataEvent],
             Tuple[Type[AccountDataEvent], ...],
@@ -1377,7 +1378,7 @@ class Client:
 
     def add_room_account_data_callback(
         self,
-        callback: Callable[[MatrixRoom, AccountDataEvent], None],
+        callback: Callable[[MatrixRoom, AccountDataEvent], Union[None, Awaitable[None]]],
         filter: Union[
             Type[AccountDataEvent],
             Tuple[Type[AccountDataEvent], ...],

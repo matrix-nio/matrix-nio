@@ -1,5 +1,6 @@
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2020-2021 Famedly GmbH
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -20,7 +21,19 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Protocol,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 
 from jsonschema.exceptions import SchemaError, ValidationError
 
@@ -224,14 +237,14 @@ class DeviceList:
 
 @dataclass
 class Timeline:
-    events: List = field()
+    events: List[Union[Event, BadEventType]] = field()
     limited: bool = field()
     prev_batch: Optional[str] = field()
 
 
 @dataclass
 class InviteInfo:
-    invite_state: List = field()
+    invite_state: List[Union[InviteEvent, BadEventType]] = field()
 
 
 @dataclass
@@ -255,14 +268,14 @@ class UnreadNotifications:
 @dataclass
 class RoomInfo:
     timeline: Timeline = field()
-    state: List = field()
-    ephemeral: List = field()
-    account_data: List = field()
+    state: List[Union[Event, BadEventType]] = field()
+    ephemeral: List[EphemeralEvent] = field()
+    account_data: List[Union[AccountDataEvent, BadEventType]] = field()
     summary: Optional[RoomSummary] = None
     unread_notifications: Optional[UnreadNotifications] = None
 
     @staticmethod
-    def parse_account_data(event_dict):
+    def parse_account_data(event_dict) -> List:
         """Parse the account data dictionary and produce a list of events."""
         return [AccountDataEvent.parse_event(event) for event in event_dict]
 
@@ -1978,7 +1991,7 @@ class SyncResponse(Response):
         return events
 
     @staticmethod
-    def _get_invite_state(parsed_dict):
+    def _get_invite_state(parsed_dict) -> List[Union[InviteEvent, BadEventType]]:
         validate_json(parsed_dict, Schemas.sync_room_state)
         events = []
 
