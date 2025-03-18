@@ -323,7 +323,7 @@ class TestClass:
                 joined_member_count=2,
             ),
         )
-        rooms = Rooms(invite={}, join={TEST_ROOM_ID: test_room_info}, leave={})
+        rooms = Rooms(invite={}, join={TEST_ROOM_ID: test_room_info}, leave={}, knock={})
         return SyncResponse(
             next_batch="token123",
             rooms=rooms,
@@ -350,8 +350,7 @@ class TestClass:
     def sync_invite_response(self):
         state = [
             InviteMemberEvent(
-                {},
-                "@BOB:example.org",
+                {"sender": "@BOB:example.org"},
                 ALICE_ID,
                 "invite",
                 None,
@@ -363,7 +362,7 @@ class TestClass:
         ]
 
         test_room_info = InviteInfo(state)
-        rooms = Rooms({TEST_ROOM_ID: test_room_info}, {}, {})
+        rooms = Rooms({TEST_ROOM_ID: test_room_info}, {}, {}, {})
         return SyncResponse(
             "token123",
             rooms,
@@ -393,7 +392,7 @@ class TestClass:
             "prev_batch_token",
         )
         test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(1, 2, []))
-        rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {})
+        rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {}, {})
         return SyncResponse(
             "token123",
             rooms,
@@ -430,7 +429,7 @@ class TestClass:
             "prev_batch_token",
         )
         test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(1, 2, []))
-        rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {})
+        rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {}, {})
         return SyncResponse(
             "token123", rooms, DeviceOneTimeKeyCount(49, 50), DeviceList([], []), [], []
         )

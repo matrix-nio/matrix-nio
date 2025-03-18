@@ -1,4 +1,5 @@
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -43,6 +44,8 @@ from ..events import (
     BaseEvent,
     EphemeralEvent,
     Event,
+    InviteEvent,
+    KnockEvent,
     MegolmEvent,
     PresenceEvent,
     RoomEncryptionEvent,
@@ -76,7 +79,7 @@ from ..responses import (
     ToDeviceResponse,
     WhoamiResponse,
 )
-from ..rooms import MatrixInvitedRoom, MatrixRoom
+from ..rooms import MatrixInvitedRoom, MatrixKnockedRoom, MatrixRoom
 
 if ENCRYPTION_ENABLED:
     from ..crypto import Olm
@@ -251,6 +254,7 @@ class Client:
 
         self.rooms: Dict[str, MatrixRoom] = {}
         self.invited_rooms: Dict[str, MatrixInvitedRoom] = {}
+        self.knocked_rooms: Dict[str, MatrixKnockedRoom] = {}
         self.encrypted_rooms: Set[str] = set()
 
         self.event_callbacks: List[ClientCallback] = []
@@ -712,19 +716,39 @@ class Client:
 
         return self.invited_rooms[room_id]
 
+    def _get_knocked_room(self, room_id: str) -> MatrixKnockedRoom:
+        if room_id not in self.knocked_rooms:
+            logger.info(f"New knocked room {room_id}")
+            self.knocked_rooms[room_id] = MatrixKnockedRoom(room_id, self.user_id)
+
+        return self.knocked_rooms[room_id]
+
     def _handle_invited_rooms(self, response: SyncResponse):
         for room_id, info in response.rooms.invite.items():
             room = self._get_invited_room(room_id)
 
             for event in info.invite_state:
-                room.handle_event(event)
-                self._on_invited_rooms(event, room)
+                if isinstance(event, InviteEvent):
+                    room.handle_event(event)
+                    self._on_event(event, room)
 
-    def _handle_joined_state(
-        self, room_id: str, join_info: RoomInfo, encrypted_rooms: Set[str]
+    def _handle_knocked_rooms(self, response: SyncResponse):
+        for room_id, info in response.rooms.knock.items():
+            room = self._get_knocked_room(room_id)
+
+            for event in info.knock_state:
+                if isinstance(event, KnockEvent):
+                    room.handle_event(event)
+                    self._on_event(event, room)
+
+    def _handle_state_joined(
+        self, room_id: str, room_info: RoomInfo, encrypted_rooms: Set[str]
     ):
         if room_id in self.invited_rooms:
             del self.invited_rooms[room_id]
+
+        if room_id in self.knocked_rooms:
+            del self.knocked_rooms[room_id]
 
         if room_id not in self.rooms:
             logger.info(f"New joined room {room_id}")
@@ -734,21 +758,27 @@ class Client:
 
         room = self.rooms[room_id]
 
-        for event in join_info.state:
+        for event in room_info.state:
             if isinstance(event, RoomEncryptionEvent):
                 encrypted_rooms.add(room_id)
 
             if isinstance(event, RoomMemberEvent):
                 if room.handle_membership(event):
                     self._invalidate_session_for_member_event(room_id)
-            else:
+
+            elif isinstance(event, Event):
                 room.handle_event(event)
 
-        if join_info.summary:
-            room.update_summary(join_info.summary)
+        if room_info.summary:
+            room.update_summary(room_info.summary)
 
-        if join_info.unread_notifications:
-            room.update_unread_notifications(join_info.unread_notifications)
+        if room_info.unread_notifications:
+            room.update_unread_notifications(room_info.unread_notifications)
+
+    def _handle_leave(self, room_id: str):
+        # TODO: remember as historical room?
+        logger.info(f"Left room {room_id}")
+        del self.rooms[room_id]
 
     def _handle_timeline_event(
         self,
@@ -781,45 +811,60 @@ class Client:
 
         return decrypted_event
 
-    def _handle_joined_rooms(self, response: SyncResponse):
+    def _handle_rooms(self, response: SyncResponse):
         encrypted_rooms: Set[str] = set()
 
         for room_id, join_info in response.rooms.join.items():
-            self._handle_joined_state(room_id, join_info, encrypted_rooms)
+            self._handle_state_joined(room_id, join_info, encrypted_rooms)
+            self._handle_room_info(room_id, join_info, encrypted_rooms)
 
-            room = self.rooms[room_id]
-            decrypted_events: List[Tuple[int, Union[Event, BadEventType]]] = []
-
-            for index, event in enumerate(join_info.timeline.events):
-                decrypted_event = self._handle_timeline_event(
-                    event, room_id, room, encrypted_rooms
-                )
-
-                if decrypted_event:
-                    event = decrypted_event
-                    decrypted_events.append((index, decrypted_event))
-
-                self._on_event(event, room)
-
-            # Replace the Megolm events with decrypted ones
-            for index, event in decrypted_events:
-                join_info.timeline.events[index] = event
-
-            for event in join_info.ephemeral:
-                room.handle_ephemeral_event(event)
-                self._on_ephemeral(event, room)
-
-            for event in join_info.account_data:
-                room.handle_account_data(event)
-                self._on_room_account_data(event, room)
-
-            if room.encrypted and self.olm is not None:
-                self.olm.update_tracked_users(room)
+        for room_id, leave_info in response.rooms.leave.items():
+            # continue state tracking as long as possible,
+            # so even the last messages be processed correctly.
+            self._handle_state_joined(room_id, leave_info, encrypted_rooms)
+            self._handle_room_info(room_id, leave_info, encrypted_rooms)
+            self._handle_leave(room_id)
 
         self.encrypted_rooms.update(encrypted_rooms)
 
         if self.store:
             self.store.save_encrypted_rooms(encrypted_rooms)
+
+    def _handle_room_info(
+        self, room_id: str, room_info: RoomInfo, encrypted_rooms: Set[str]
+    ) -> None:
+
+        room = self.rooms[room_id]
+        decrypted_events: List[Tuple[int, Union[Event, BadEventType]]] = []
+
+        for index, event in enumerate(room_info.timeline.events):
+            decrypted_event = self._handle_timeline_event(
+                event, room_id, room, encrypted_rooms
+            )
+
+            if decrypted_event:
+                event = decrypted_event
+                decrypted_events.append((index, decrypted_event))
+
+            if isinstance(event, Event):
+                self._on_event(event, room)
+
+        # Replace the Megolm events with decrypted ones
+        for index, event in decrypted_events:
+            room_info.timeline.events[index] = event
+
+        for eph_event in room_info.ephemeral:
+            if isinstance(eph_event, EphemeralEvent):
+                room.handle_ephemeral_event(eph_event)
+                self._on_ephemeral(eph_event, room)
+
+        for acc_event in room_info.account_data:
+            if isinstance(acc_event, AccountDataEvent):
+                room.handle_account_data(acc_event)
+                self._on_room_account_data(acc_event, room)
+
+        if room.encrypted and self.olm is not None:
+            self.olm.update_tracked_users(room)
 
     def _handle_presence_events(self, response: SyncResponse):
         for event in response.presence_events:
@@ -880,11 +925,7 @@ class Client:
         for cb in self.to_device_callbacks:
             cb.sync_execute(event)
 
-    def _on_invited_rooms(self, event: Event, room: MatrixRoom):
-        for cb in self.event_callbacks:
-            cb.sync_execute(event, room)
-
-    def _on_event(self, event: Event, room: MatrixRoom):
+    def _on_event(self, event: RoomEvent, room: MatrixRoom):
         for cb in self.event_callbacks:
             cb.sync_execute(event, room)
 
@@ -924,7 +965,9 @@ class Client:
 
         self._handle_invited_rooms(response)
 
-        self._handle_joined_rooms(response)
+        self._handle_knocked_rooms(response)
+
+        self._handle_rooms(response)
 
         self._handle_presence_events(response)
 

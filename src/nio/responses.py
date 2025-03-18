@@ -31,6 +31,7 @@ from .events import (
     EphemeralEvent,
     Event,
     InviteEvent,
+    KnockEvent,
     ToDeviceEvent,
 )
 from .events.presence import PresenceEvent
@@ -206,6 +207,7 @@ class Rooms:
     invite: Dict[str, InviteInfo] = field()
     join: Dict[str, RoomInfo] = field()
     leave: Dict[str, RoomInfo] = field()
+    knock: Dict[str, KnockInfo] = field()
 
 
 @dataclass
@@ -230,6 +232,11 @@ class Timeline:
 @dataclass
 class InviteInfo:
     invite_state: List = field()
+
+
+@dataclass
+class KnockInfo:
+    knock_state: List[Union[KnockEvent, BadEventType]] = field()
 
 
 @dataclass
@@ -1984,8 +1991,20 @@ class SyncResponse(Response):
         return events
 
     @staticmethod
-    def _get_ephemeral_events(parsed_dict):
+    def _get_knock_state(parsed_dict) -> List[Union[KnockEvent, BadEventType]]:
         events = []
+
+        for event_dict in parsed_dict.get("events", []):
+            event = KnockEvent.parse_event(event_dict)
+
+            if event:
+                events.append(event)
+
+        return events
+
+    @staticmethod
+    def _get_ephemeral_events(parsed_dict) -> List[EphemeralEvent]:
+        events: List[EphemeralEvent] = []
         for event_dict in parsed_dict:
             event = EphemeralEvent.parse_event(event_dict)
 
@@ -2038,6 +2057,7 @@ class SyncResponse(Response):
         joined_rooms: Dict[str, RoomInfo] = {}
         invited_rooms: Dict[str, InviteInfo] = {}
         left_rooms: Dict[str, RoomInfo] = {}
+        knocked_rooms: Dict[str, KnockInfo] = {}
 
         for room_id, room_dict in parsed_dict.get("invite", {}).items():
             state = SyncResponse._get_invite_state(room_dict.get("invite_state", {}))
@@ -2064,7 +2084,12 @@ class SyncResponse(Response):
 
             joined_rooms[room_id] = join_info
 
-        return Rooms(invited_rooms, joined_rooms, left_rooms)
+        for room_id, room_dict in parsed_dict.get("knock", {}).items():
+            state = SyncResponse._get_knock_state(room_dict.get("knock_state", {}))
+            knock_info = KnockInfo(state)
+            knocked_rooms[room_id] = knock_info
+
+        return Rooms(invited_rooms, joined_rooms, left_rooms, knocked_rooms)
 
     @staticmethod
     def _get_presence(parsed_dict) -> List[PresenceEvent]:

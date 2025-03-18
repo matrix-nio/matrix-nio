@@ -31,6 +31,13 @@ class RoomEvent(BaseEvent):
     """
     Matrix room event base class.
     For invites, knocks and room updates in general.
+
+    Attributes:
+        source (dict): The source dictionary of the event. This allows access
+            to all the event fields in a non-secure way.
+
+        sender (str): The fully-qualified ID of the user who sent this
+            event.
     """
     source: Dict = field()
     sender: str = field(init=False)

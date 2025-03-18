@@ -1,5 +1,6 @@
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2021 Famedly GmbH
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -28,6 +29,9 @@ from .events import (
     InviteAliasEvent,
     InviteMemberEvent,
     InviteNameEvent,
+    KnockAliasEvent,
+    KnockMemberEvent,
+    KnockNameEvent,
     PowerLevels,
     PowerLevelsEvent,
     Receipt,
@@ -82,6 +86,7 @@ class MatrixRoom:
         self.children: Set[str] = set()
         self.users: Dict[str, MatrixUser] = {}
         self.invited_users: Dict[str, MatrixUser] = {}
+        self.knocking_users: Dict[str, MatrixUser] = {}
         self.names: DefaultDict[str, List[str]] = defaultdict(list)
         self.encrypted: bool = encrypted
         self.power_levels: PowerLevels = PowerLevels()
@@ -255,6 +260,7 @@ class MatrixRoom:
         display_name: Optional[str],
         avatar_url: Optional[str],
         invited: bool = False,
+        knocked: bool = False,
     ) -> bool:
         if user_id in self.users:
             return False
@@ -269,6 +275,8 @@ class MatrixRoom:
 
         if invited:
             self.invited_users[user_id] = user
+        if knocked:
+            self.knocking_users[user_id] = user
 
         name = display_name or user_id
         self.names[name].append(user_id)
@@ -289,11 +297,19 @@ class MatrixRoom:
             except ValueError:
                 pass
 
-        return bool(user or invited_user)
+        knocking_user = self.knocking_users.pop(user_id, None)
+
+        if knocking_user:
+            try:
+                self.names[knocking_user.name].remove(knocking_user.user_id)
+            except ValueError:
+                pass
+
+        return bool(user or invited_user or knocking_user)
 
     def handle_membership(
         self,
-        event: Union[RoomMemberEvent, InviteMemberEvent],
+        event: Union[RoomMemberEvent, InviteMemberEvent, KnockMemberEvent],
     ) -> bool:
         """Handle a membership event for the room.
 
@@ -306,13 +322,16 @@ class MatrixRoom:
         """
         target_user = event.state_key
         invited = event.membership == "invite"
+        knocked = event.membership == "knock"
 
-        if event.membership in ("invite", "join"):
+        if event.membership in ("invite", "join", "knock"):
             # Add member if not already present in self.users,
             # or the member is invited but not present in self.invited_users
 
             if target_user not in self.users or (
                 invited and target_user not in self.invited_users
+            ) or (
+                knocked and target_user not in self.knocking_users
             ):
                 display_name = event.content.get("displayname", None)
                 avatar_url = event.content.get("avatar_url", None)
@@ -322,19 +341,22 @@ class MatrixRoom:
                     display_name,
                     avatar_url,
                     invited,
+                    knocked,
                 )
 
             user = self.users[target_user]
 
             # Handle membership change
-
             user.invited = invited
+            user.knocked = knocked
 
             if not invited and target_user in self.invited_users:
                 del self.invited_users[target_user]
 
-            # Handle profile changes
+            if not knocked and target_user in self.knocking_users:
+                del self.knocking_users[target_user]
 
+            # Handle profile changes
             if "displayname" in event.content:
                 self.names[user.name].remove(user.user_id)
                 user.display_name = event.content["displayname"]
@@ -506,7 +528,7 @@ class MatrixInvitedRoom(MatrixRoom):
 
     def handle_membership(
         self,
-        event: Union[RoomMemberEvent, InviteMemberEvent],
+        event: Union[RoomMemberEvent, InviteMemberEvent, KnockMemberEvent],
     ) -> bool:
         """Handle a membership event for the invited room.
 
@@ -537,6 +559,44 @@ class MatrixInvitedRoom(MatrixRoom):
             self.canonical_alias = event.canonical_alias
 
 
+class MatrixKnockedRoom(MatrixRoom):
+    def __init__(self, room_id: str, own_user_id: str) -> None:
+        self.knocker: Optional[str] = None
+        super().__init__(room_id, own_user_id)
+
+    def handle_membership(
+        self,
+        event: Union[RoomMemberEvent, InviteMemberEvent, KnockMemberEvent],
+    ) -> bool:
+        """Handle a membership event for the invited room.
+
+        Args:
+            event (RoomMemberEvent): The event that should be handled that
+                updates the room state.
+
+        Returns True if the member list of the room has changed False
+        otherwise.
+        """
+        if event.membership == "knock" and event.state_key == self.own_user_id:
+            self.knocker = event.sender
+
+        return super().handle_membership(event)
+
+    def handle_event(self, event: BaseEvent) -> None:
+        logger.info(
+            f"Room {self.room_id} handling event of type {type(event).__name__}"
+        )
+
+        if isinstance(event, KnockMemberEvent):
+            self.handle_membership(event)
+
+        elif isinstance(event, KnockNameEvent):
+            self.name = event.name
+
+        elif isinstance(event, KnockAliasEvent):
+            self.canonical_alias = event.canonical_alias
+
+
 class MatrixUser:
     def __init__(
         self,
@@ -545,6 +605,7 @@ class MatrixUser:
         avatar_url: Optional[str] = None,
         power_level: int = 0,
         invited: bool = False,
+        knocked: bool = False,
         presence: str = "offline",
         last_active_ago: Optional[int] = None,
         currently_active: Optional[bool] = None,
@@ -556,6 +617,7 @@ class MatrixUser:
         self.avatar_url = avatar_url
         self.power_level = power_level
         self.invited = invited
+        self.knocked = knocked
         self.presence = presence
         self.last_active_ago = last_active_ago
         self.currently_active = currently_active

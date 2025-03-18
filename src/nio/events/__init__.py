@@ -11,6 +11,7 @@ from .account_data import *
 from .base_event import *
 from .ephemeral import *
 from .invite_events import *
+from .knock_events import *
 from .misc import *
 from .presence import *
 from .room_events import *

@@ -278,7 +278,7 @@ class TestClass:
             "prev_batch_token",
         )
         test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(1, 2, []))
-        rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {})
+        rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {}, {})
         return SyncResponse(
             "token123",
             rooms,
@@ -325,7 +325,7 @@ class TestClass:
             "prev_batch_token",
         )
         test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(0, 2, []))
-        rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {})
+        rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {}, {})
         return SyncResponse(
             "token123",
             rooms,

@@ -81,6 +81,8 @@ from ..events import (
     BadEventType,
     EphemeralEvent,
     Event,
+    InviteEvent,
+    KnockEvent,
     MegolmEvent,
     PresenceEvent,
     PushAction,
@@ -172,6 +174,7 @@ from ..responses import (
     RoomGetStateResponse,
     RoomGetVisibilityError,
     RoomGetVisibilityResponse,
+    RoomInfo,
     RoomInviteError,
     RoomInviteResponse,
     RoomKeyRequestError,
@@ -613,49 +616,73 @@ class AsyncClient(Client):
             room = self._get_invited_room(room_id)
 
             for event in info.invite_state:
-                room.handle_event(event)
+                if isinstance(event, InviteEvent):
+                    room.handle_event(event)
+                    await self._on_event(event, room)
 
-                await self._on_invited_rooms(event, room)
+    async def _handle_knocked_rooms(self, response: SyncResponse):
+        for room_id, info in response.rooms.knock.items():
+            room = self._get_knocked_room(room_id)
 
-    async def _handle_joined_rooms(self, response: SyncResponse) -> None:
+            for event in info.knock_state:
+                if isinstance(event, KnockEvent):
+                    room.handle_event(event)
+                    await self._on_event(event, room)
+
+    async def _handle_rooms(self, response: SyncResponse) -> None:
         encrypted_rooms: Set[str] = set()
 
         for room_id, join_info in response.rooms.join.items():
-            self._handle_joined_state(room_id, join_info, encrypted_rooms)
+            self._handle_state_joined(room_id, join_info, encrypted_rooms)
+            await self._handle_room_info_async(room_id, join_info, encrypted_rooms)
 
-            room = self.rooms[room_id]
-            decrypted_events: List[Tuple[int, Union[Event, BadEventType]]] = []
-
-            for index, event in enumerate(join_info.timeline.events):
-                decrypted_event = self._handle_timeline_event(
-                    event, room_id, room, encrypted_rooms
-                )
-
-                if decrypted_event:
-                    event = decrypted_event
-                    decrypted_events.append((index, decrypted_event))
-
-                await self._on_event(event, room)
-
-            # Replace the Megolm events with decrypted ones
-            for index, event in decrypted_events:
-                join_info.timeline.events[index] = event
-
-            for event in join_info.ephemeral:
-                room.handle_ephemeral_event(event)
-                await self._on_ephemeral(event, room)
-
-            for event in join_info.account_data:
-                room.handle_account_data(event)
-                await self._on_room_account_data(event, room)
-
-            if room.encrypted and self.olm is not None:
-                self.olm.update_tracked_users(room)
+        for room_id, leave_info in response.rooms.leave.items():
+            # continue state tracking as long as possible,
+            # so even the last messages are processed correctly.
+            self._handle_state_joined(room_id, leave_info, encrypted_rooms)
+            await self._handle_room_info_async(room_id, leave_info, encrypted_rooms)
+            self._handle_leave(room_id)
 
         self.encrypted_rooms.update(encrypted_rooms)
 
         if self.store:
             self.store.save_encrypted_rooms(encrypted_rooms)
+
+    async def _handle_room_info_async(
+        self, room_id: str, room_info: RoomInfo, encrypted_rooms: Set[str]
+    ) -> None:
+
+        room = self.rooms[room_id]
+        decrypted_events: List[Tuple[int, Union[Event, BadEventType]]] = []
+
+        for index, event in enumerate(room_info.timeline.events):
+            decrypted_event = self._handle_timeline_event(
+                event, room_id, room, encrypted_rooms
+            )
+
+            if decrypted_event:
+                event = decrypted_event
+                decrypted_events.append((index, decrypted_event))
+
+            if isinstance(event, Event):
+                await self._on_event(event, room)
+
+        # Replace the Megolm events with decrypted ones
+        for index, event in decrypted_events:
+            room_info.timeline.events[index] = event
+
+        for eph_event in room_info.ephemeral:
+            if isinstance(eph_event, EphemeralEvent):
+                room.handle_ephemeral_event(eph_event)
+                await self._on_ephemeral(eph_event, room)
+
+        for acc_event in room_info.account_data:
+            if isinstance(acc_event, AccountDataEvent):
+                room.handle_account_data(acc_event)
+                await self._on_room_account_data(acc_event, room)
+
+        if room.encrypted and self.olm is not None:
+            self.olm.update_tracked_users(room)
 
     async def _handle_presence_events(self, response: SyncResponse):
         for event in response.presence_events:
@@ -691,7 +718,11 @@ class AsyncClient(Client):
         for cb in self.to_device_callbacks:
             await cb.async_execute(event)
 
-    async def _on_invited_rooms(self, event: Event, room: MatrixRoom):
+    async def _on_invited_rooms(self, event: InviteEvent, room: MatrixRoom):
+        for cb in self.event_callbacks:
+            await cb.async_execute(event, room)
+
+    async def _on_knocked_rooms(self, event: KnockEvent, room: MatrixRoom):
         for cb in self.event_callbacks:
             await cb.async_execute(event, room)
 
@@ -737,7 +768,9 @@ class AsyncClient(Client):
 
         await self._handle_invited_rooms(response)
 
-        await self._handle_joined_rooms(response)
+        await self._handle_knocked_rooms(response)
+
+        await self._handle_rooms(response)
 
         await self._handle_presence_events(response)
 
