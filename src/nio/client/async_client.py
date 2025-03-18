@@ -540,7 +540,7 @@ class AsyncClient(Client):
             name = transport_response.content_disposition.filename
 
         if issubclass(response_class, FileResponse) and is_json:
-            if transport_response.status in range(200, 300):
+            if transport_response.status >= 200 and transport_response.status < 300:
                 data = await transport_response.read()
                 # the data was returned fine, so the raw bytes are passed to prevent parsing as an error.
             else:
@@ -576,9 +576,12 @@ class AsyncClient(Client):
             parsed_dict = await self.parse_body(transport_response)
             resp = DeleteDevicesAuthResponse.from_dict(parsed_dict)
 
-        else:
+        elif transport_response.status >= 200 and transport_response.status < 500:
             parsed_dict = await self.parse_body(transport_response)
             resp = response_class.from_dict(parsed_dict, *data)
+        else:
+            resp = ErrorResponse(status_code=f"{transport_response.status}",
+                                 message=await transport_response.text())
 
         resp.transport_response = transport_response
         return resp
