@@ -58,7 +58,7 @@ class InviteEvent:
     sender: str = field()
 
     @classmethod
-    @verify_or_none(Schemas.invite_event)
+    @verify_or_none(Schemas.stripped_state_event)
     def parse_event(
         cls, event_dict: Dict[Any, Any]
     ) -> Optional[Union[InviteEvent, BadEventType]]:

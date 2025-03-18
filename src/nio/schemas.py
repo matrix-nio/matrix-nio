@@ -1239,9 +1239,14 @@ class Schemas:
         "required": ["event"],
     }
 
-    invite_event = {
+    stripped_state_event = {
         "type": "object",
-        "properties": {"content": {"type": "object"}, "type": {"type": "string"}},
+        "properties": {
+            "content": {"type": "object"},
+            "sender": {"type": "string"},
+            "state_key": {"type": "string"},
+            "type": {"type": "string"},
+        },
         "required": ["content", "type"],
     }
 
