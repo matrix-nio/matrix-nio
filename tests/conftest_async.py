@@ -40,7 +40,7 @@ async def async_client_pair(tempdir) -> Tuple[AsyncClient, AsyncClient]:
     ALICE_DEVICE = "JLAFKJWSCS"
 
     BOB_ID = "@bob:example.org"
-    BOB_DEVICE = "ASDFOEAK"
+    BOB_DEVICE = "ROLFOEAK"
 
     config = AsyncClientConfig(max_timeouts=3)
     alice = AsyncClient(
@@ -72,7 +72,7 @@ async def async_client_pair_same_user(tempdir) -> Tuple[AsyncClient, AsyncClient
     ALICE_ID = "@alice:example.org"
     FIRST_DEVICE = "JLAFKJWSCS"
 
-    SECOND_DEVICE = "ASDFOEAK"
+    SECOND_DEVICE = "ROLFOEAK"
 
     config = AsyncClientConfig(max_timeouts=3)
     alice = AsyncClient(
