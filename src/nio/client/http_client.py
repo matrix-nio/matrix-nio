@@ -278,7 +278,7 @@ class HttpClient(Client):
 
     @connected
     @logged_in
-    def room_send(self, room_id, message_type, content, tx_id=None):
+    def room_send(self, room_id: str, message_type: str, content, tx_id=None):
         if self.olm:
             try:
                 room = self.rooms[room_id]
