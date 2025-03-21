@@ -245,6 +245,9 @@ class HttpClient(Client):
         device_name: Optional[str] = "",
         token: Optional[str] = None,
     ) -> Tuple[UUID, bytes]:
+        """
+        In order to login, either password or token needs to be provided.
+        """
         if password is None and token is None:
             raise ValueError("Either a password or a token needs to be " "provided")
 
