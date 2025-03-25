@@ -325,7 +325,8 @@ class TestClass:
         )
         rooms = Rooms(invite={}, join={TEST_ROOM_ID: test_room_info}, leave={}, knock={})
         return SyncResponse(
-            next_batch="token123",
+            since="since_token",
+            next_batch="next_token123",
             rooms=rooms,
             device_key_count=DeviceOneTimeKeyCount(49, 50),
             device_list=DeviceList([ALICE_ID], []),
@@ -364,7 +365,8 @@ class TestClass:
         test_room_info = InviteInfo(state)
         rooms = Rooms({TEST_ROOM_ID: test_room_info}, {}, {}, {})
         return SyncResponse(
-            "token123",
+            "since_token",
+            "next_token123",
             rooms,
             DeviceOneTimeKeyCount(49, 50),
             DeviceList([ALICE_ID], []),
@@ -394,7 +396,8 @@ class TestClass:
         test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(1, 2, []))
         rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {}, {})
         return SyncResponse(
-            "token123",
+            "since_token",
+            "next_token123",
             rooms,
             DeviceOneTimeKeyCount(49, 50),
             DeviceList([ALICE_ID], []),
@@ -431,7 +434,7 @@ class TestClass:
         test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(1, 2, []))
         rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {}, {})
         return SyncResponse(
-            "token123", rooms, DeviceOneTimeKeyCount(49, 50), DeviceList([], []), [], []
+            "since_token", "next_token123", rooms, DeviceOneTimeKeyCount(49, 50), DeviceList([], []), [], []
         )
 
     @property
@@ -1268,7 +1271,8 @@ class TestClass:
                 "errcode": "M_UNKNOWN_TOKEN",
                 "error": "Access token has expired",
                 "soft_logout": True,
-            }
+            },
+            "since_token",
         )
         client.receive_response(error_response)
 

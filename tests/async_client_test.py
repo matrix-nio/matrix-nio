@@ -280,6 +280,7 @@ class TestClass:
         test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(1, 2, []))
         rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {}, {})
         return SyncResponse(
+            "since_token",
             "token123",
             rooms,
             DeviceOneTimeKeyCount(49, 50),
@@ -327,6 +328,7 @@ class TestClass:
         test_room_info = RoomInfo(timeline, [], [], [], RoomSummary(0, 2, []))
         rooms = Rooms({}, {TEST_ROOM_ID: test_room_info}, {}, {})
         return SyncResponse(
+            "since_token",
             "token123",
             rooms,
             DeviceOneTimeKeyCount(50, 50),
@@ -2403,14 +2405,14 @@ class TestClass:
 
         with pytest.raises(CallbackException):
             await async_client.receive_response(
-                SyncResponse.from_dict(self.sync_response)
+                SyncResponse.from_dict(self.sync_response, "since_token")
             )
 
     async def test_handle_account_data(self, async_client):
         await async_client.receive_response(
             LoginResponse.from_dict(self.login_response)
         )
-        await async_client.receive_response(SyncResponse.from_dict(self.sync_response))
+        await async_client.receive_response(SyncResponse.from_dict(self.sync_response, "since_token"))
 
         room = async_client.rooms["!SVkFJHzfwvuaIEawgC:localhost"]
         assert room.fully_read_marker == "event_id_2"

@@ -38,12 +38,16 @@ class RoomEvent(BaseEvent):
 
         sender (str): The fully-qualified ID of the user who sent this
             event.
+
+        is_state (bool): If this event is a state event (identified by type and state_key)
     """
     source: Dict = field()
     sender: str = field(init=False)
+    is_state: bool = field(default=False, init=False)
 
     def __post_init__(self):
         self.sender = self.source["sender"]
+        self.is_state = "state_key" in self.source
 
 
 @dataclass
@@ -53,11 +57,7 @@ class Event(RoomEvent):
     This is the base event class, most events inherit from this class.
 
     Attributes:
-        source (dict): The source dictionary of the event. This allows access
-            to all the event fields in a non-secure way.
         event_id (str): A globally unique event identifier.
-        sender (str): The fully-qualified ID of the user who sent this
-            event.
         server_timestamp (int): Timestamp in milliseconds on originating
             homeserver when this event was sent.
         decrypted (bool): A flag signaling if the event was decrypted.
@@ -72,7 +72,6 @@ class Event(RoomEvent):
         transaction_id (str, optional): The unique identifier that was used
             when the message was sent. Is only set if the message was sent from
             our own device, otherwise None.
-
     """
 
     event_id: str = field(init=False)

@@ -183,9 +183,15 @@ class ClientConfig:
             sync tokens.
         custom_headers (Dict[str, str]): A dictionary of custom http headers.
 
+        online_messages_only (bool, optional):
+            only fire _on_event for message events (those with no "state_key")
+            received when this client is online or after the effective room join.
+            this ignores the message history, which bots usually don't handle:
+            use this for IRC-style bots that only process messages when connected.
+            in contrast - to process all messages across restarts, set `store_sync_tokens` to True.
+
     Raises an ImportWarning if encryption_enabled is true but the dependencies
     for encryption aren't installed.
-
     """
 
     store: Optional[Type[MatrixStore]] = DefaultStore if ENCRYPTION_ENABLED else None
@@ -196,6 +202,7 @@ class ClientConfig:
     pickle_key: str = "DEFAULT_KEY"
     store_sync_tokens: bool = False
     custom_headers: Optional[Dict[str, str]] = None
+    online_messages_only: bool = False
 
     def __post_init__(self):
         if not ENCRYPTION_ENABLED and self.encryption_enabled:
@@ -744,7 +751,11 @@ class Client:
 
     def _handle_state_joined(
         self, room_id: str, room_info: RoomInfo, encrypted_rooms: Set[str]
-    ):
+    ) -> bool:
+        """
+        returns if we see the room for the first time.
+        """
+        is_new = False
         if room_id in self.invited_rooms:
             del self.invited_rooms[room_id]
 
@@ -756,6 +767,7 @@ class Client:
             self.rooms[room_id] = MatrixRoom(
                 room_id, self.user_id, room_id in self.encrypted_rooms
             )
+            is_new = True
 
         room = self.rooms[room_id]
 
@@ -776,18 +788,22 @@ class Client:
         if room_info.unread_notifications:
             room.update_unread_notifications(room_info.unread_notifications)
 
+        return is_new
+
     def _handle_leave(self, room_id: str):
         # TODO: remember as historical room?
         logger.info(f"Left room {room_id}")
         del self.rooms[room_id]
 
-    def _handle_timeline_event(
+    def _handle_encryption(
         self,
         event: Union[Event, BadEventType],
         room_id: str,
-        room: MatrixRoom,
         encrypted_rooms: Set[str],
     ) -> Optional[Union[Event, BadEventType]]:
+        """
+        decrypt given event and record if room is encrypted.
+        """
         decrypted_event = None
 
         if isinstance(event, MegolmEvent) and self.olm:
@@ -800,6 +816,15 @@ class Client:
         elif isinstance(event, RoomEncryptionEvent):
             encrypted_rooms.add(room_id)
 
+        return decrypted_event
+
+    def _handle_timeline_event(
+        self,
+        event: Union[Event, BadEventType],
+        room_id: str,
+        room: MatrixRoom,
+    ) -> None:
+
         if isinstance(event, RoomMemberEvent):
             if room.handle_membership(event):
                 self._invalidate_session_for_member_event(room_id)
@@ -810,20 +835,18 @@ class Client:
         else:
             room.handle_event(event)
 
-        return decrypted_event
-
     def _handle_rooms(self, response: SyncResponse):
         encrypted_rooms: Set[str] = set()
 
         for room_id, join_info in response.rooms.join.items():
-            self._handle_state_joined(room_id, join_info, encrypted_rooms)
-            self._handle_room_info(room_id, join_info, encrypted_rooms)
+            is_new = self._handle_state_joined(room_id, join_info, encrypted_rooms)
+            self._handle_room_info(room_id, join_info, response.since, encrypted_rooms, is_new)
 
         for room_id, leave_info in response.rooms.leave.items():
             # continue state tracking as long as possible,
             # so even the last messages be processed correctly.
-            self._handle_state_joined(room_id, leave_info, encrypted_rooms)
-            self._handle_room_info(room_id, leave_info, encrypted_rooms)
+            is_new = self._handle_state_joined(room_id, leave_info, encrypted_rooms)
+            self._handle_room_info(room_id, leave_info, response.since, encrypted_rooms, is_new)
             self._handle_leave(room_id)
 
         self.encrypted_rooms.update(encrypted_rooms)
@@ -832,27 +855,26 @@ class Client:
             self.store.save_encrypted_rooms(encrypted_rooms)
 
     def _handle_room_info(
-        self, room_id: str, room_info: RoomInfo, encrypted_rooms: Set[str]
-    ) -> None:
-
+        self, room_id: str, room_info: RoomInfo, sync_since: Optional[str], encrypted_rooms: Set[str], is_new: bool,
+    ):
         room = self.rooms[room_id]
-        decrypted_events: List[Tuple[int, Union[Event, BadEventType]]] = []
+
+        # when we only want messages we saw being online,
+        # skip all events that came before.
+        emit_events = not (is_new and self.config.online_messages_only)
 
         for index, event in enumerate(room_info.timeline.events):
-            decrypted_event = self._handle_timeline_event(
-                event, room_id, room, encrypted_rooms
-            )
+            decrypted_event = self._handle_encryption(event, room_id, encrypted_rooms)
 
             if decrypted_event:
+                # Replace the Megolm events with decrypted ones
                 event = decrypted_event
-                decrypted_events.append((index, decrypted_event))
+                room_info.timeline.events[index] = event
 
-            if isinstance(event, Event):
+            self._handle_timeline_event(event, room_id, room)
+
+            if emit_events and isinstance(event, Event):
                 self._on_event(event, room)
-
-        # Replace the Megolm events with decrypted ones
-        for index, event in decrypted_events:
-            room_info.timeline.events[index] = event
 
         for eph_event in room_info.ephemeral:
             if isinstance(eph_event, EphemeralEvent):

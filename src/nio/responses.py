@@ -240,6 +240,8 @@ class Timeline:
     events: List[Union[Event, BadEventType]] = field()
     limited: bool = field()
     prev_batch: Optional[str] = field()
+    prev_events: List[Union[Event, BadEventType]] = field(default_factory=list)
+    prev_events_prev_batch: Optional[str] = field(default=None)
 
 
 @dataclass
@@ -1435,7 +1437,7 @@ class RoomMessagesResponse(Response):
 
     chunk: List[Union[Event, BadEventType]] = field()
     start: str = field()
-    end: str = field(default=None)
+    end: Optional[str] = field(default=None)
 
     @classmethod
     @verify(Schemas.room_messages, RoomMessagesError)
@@ -1924,6 +1926,7 @@ class RoomContextResponse(Response):
 
 @dataclass
 class SyncResponse(Response):
+    since: Optional[str] = field()
     next_batch: str = field()
     rooms: Rooms = field()
     device_key_count: DeviceOneTimeKeyCount = field()
@@ -2123,6 +2126,7 @@ class SyncResponse(Response):
     def from_dict(
         cls,
         parsed_dict: Dict[Any, Any],
+        sync_token: Optional[str],
     ) -> Union[SyncResponse, ErrorResponse]:
         to_device = cls._get_to_device(parsed_dict.get("to_device", {}))
 
@@ -2141,6 +2145,7 @@ class SyncResponse(Response):
         rooms = SyncResponse._get_room_info(parsed_dict.get("rooms", {}))
 
         return SyncResponse(
+            sync_token,
             parsed_dict["next_batch"],
             rooms,
             key_count,
