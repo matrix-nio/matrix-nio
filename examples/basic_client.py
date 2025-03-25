@@ -1,32 +1,62 @@
+#!/usr/bin/env python3
+
 import asyncio
+import os
 
-from nio import AsyncClient, MatrixRoom, RoomMessageText
+from nio import (
+    AsyncClient,
+    AsyncClientConfig,
+    LoginResponse,
+)
 
-
-async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
-    print(
-        f"Message received in room {room.display_name}\n"
-        f"{room.user_name(event.sender)} | {event.body}"
-    )
+DIR = os.path.dirname(__file__)
 
 
 async def main() -> None:
-    client = AsyncClient("https://matrix.example.org", "@alice:example.org")
-    client.add_event_callback(message_callback, RoomMessageText)
+    homeserver = "https://matrix.example.org"
+    user_id = "@alice:example.org"
+    password = "my-secret-password"
+    device_name = "AwesomeBot"
 
-    print(await client.login("my-secret-password"))
-    # "Logged in as @alice:example.org device id: RANDOMDID"
+    config = AsyncClientConfig(
+        store_sync_tokens=False,    # don't persist sync calls across restarts
+        fill_timeline_gaps=True,    # when sync are truncated, fetch missing messages
+        online_messages_only=True,  # behave like an irc bot - only handle messages seen while online
+    )
+    client = AsyncClient(
+        homeserver=homeserver,
+        user=user_id,
+        store_path=os.path.join(DIR, "cryptostore"),  # directory to save encryption state
+        config=config,
+    )
+
+    response = await client.login(password, device_name=device_name)
+
+    if isinstance(response, LoginResponse):
+        # "Logged in as @alice:example.org device id: RANDOMDID"
+        print(response)
+    else:
+        raise Exception(f"login failed: {response}")
 
     # If you made a new room and haven't joined as that user, you can use
     # await client.join("your-room-id")
 
-    await client.room_send(
+    msg_resp = await client.room_send(
         # Watch out! If you join an old room you'll see lots of old messages
         room_id="!my-fave-room:example.org",
         message_type="m.room.message",
         content={"msgtype": "m.text", "body": "Hello world!"},
     )
-    await client.sync_forever(timeout=30000)  # milliseconds
+    print(msg_resp)
+
+    try:
+        await client.sync_forever()
+    finally:
+        await client.close()
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
