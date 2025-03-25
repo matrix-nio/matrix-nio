@@ -1,11 +1,5 @@
-import logging
-from dataclasses import dataclass, field
-from typing import Optional
-
-from ..schemas import Schemas
-from .misc import verify
-
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -19,12 +13,19 @@ from .misc import verify
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+import logging
+from dataclasses import dataclass, field
+from typing import Optional
+
+from ..schemas import Schemas
+from .base_event import BaseEvent
+from .misc import verify
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class PresenceEvent:
+class PresenceEvent(BaseEvent):
     """Informs the client of a user's presence state change."""
 
     user_id: str = field()

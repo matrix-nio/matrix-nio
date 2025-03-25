@@ -511,7 +511,7 @@ class HttpClient(Client):
     @logged_in
     def room_messages(
         self, room_id, start, end=None, direction=MessageDirection.back, limit=10
-    ):
+    ) -> Tuple[UUID, bytes]:
         request = self._build_request(
             Api.room_messages(
                 self.access_token,
@@ -1070,11 +1070,15 @@ class HttpClient(Client):
         timeout: Optional[int] = None,
         filter: Optional[Dict[Any, Any]] = None,
         full_state: bool = False,
+        since: Optional[str] = None,
     ) -> Tuple[UUID, bytes]:
+
+        sync_token: Optional[str] = since or self.next_batch or self.loaded_sync_token
+
         request = self._build_request(
             Api.sync(
                 self.access_token,
-                since=self.next_batch or self.loaded_sync_token,
+                since=sync_token,
                 timeout=timeout,
                 filter=filter,
                 full_state=full_state,
@@ -1082,7 +1086,10 @@ class HttpClient(Client):
             timeout,
         )
 
-        return self._send(request, RequestInfo(SyncResponse))
+        return self._send(
+            request,
+            RequestInfo(SyncResponse, extra_data=(sync_token,)),
+        )
 
     def parse_body(self, transport_response: TransportResponse) -> Dict[Any, Any]:
         """Parse the body of the response.

@@ -110,6 +110,14 @@ Invite Room Events
     :undoc-members:
     :show-inheritance:
 
+Room Knocking Events
+^^^^^^^^^^^^^^^^^^
+
+.. automodule:: nio.events.knock_events
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 To-device Events
 ^^^^^^^^^^^^^^^^
 
