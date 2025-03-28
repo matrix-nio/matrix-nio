@@ -253,7 +253,9 @@ class RoomInfo:
     account_data: List = field()
     summary: Optional[RoomSummary] = None
     unread_notifications: Optional[UnreadNotifications] = None
-    unread_thread_notifications: Optional[Dict[str, UnreadNotifications]] = None  # {event_id: UnreadNotifications}
+    unread_thread_notifications: Optional[Dict[str, UnreadNotifications]] = (
+        None  # {event_id: UnreadNotifications}
+    )
 
     @staticmethod
     def parse_account_data(event_dict):
@@ -2025,7 +2027,9 @@ class SyncResponse(Response):
         )
 
         unread_thread_notifications_dict: Dict[str, UnreadNotifications] = {
-            event_id: UnreadNotifications(d.get("notification_count"), d.get("highlight_count"))
+            event_id: UnreadNotifications(
+                d.get("notification_count"), d.get("highlight_count")
+            )
             for event_id, d in unread_thread_notifications.items()
         }
 
@@ -2068,7 +2072,9 @@ class SyncResponse(Response):
                 summary_events=room_dict.get("summary", {}),
                 unread_notification_events=room_dict.get("unread_notifications", {}),
                 account_data_events=room_dict.get("account_data", {}).get("events", []),
-                unread_thread_notifications=room_dict.get("unread_thread_notifications", {}),
+                unread_thread_notifications=room_dict.get(
+                    "unread_thread_notifications", {}
+                ),
             )
 
             joined_rooms[room_id] = join_info
