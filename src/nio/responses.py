@@ -253,6 +253,7 @@ class RoomInfo:
     account_data: List = field()
     summary: Optional[RoomSummary] = None
     unread_notifications: Optional[UnreadNotifications] = None
+    unread_thread_notifications: Optional[Dict[str, UnreadNotifications]] = None  # {event_id: UnreadNotifications}
 
     @staticmethod
     def parse_account_data(event_dict):
@@ -2003,6 +2004,7 @@ class SyncResponse(Response):
         summary_events: Dict[str, Any],
         unread_notification_events: Dict[str, Any],
         account_data_events: List[Any],
+        unread_thread_notifications: Dict[str, Any],
     ) -> RoomInfo:
         state = SyncResponse._get_room_events(state_events)
 
@@ -2022,15 +2024,21 @@ class SyncResponse(Response):
             unread_notification_events.get("highlight_count"),
         )
 
+        unread_thread_notifications_dict: Dict[str, UnreadNotifications] = {
+            event_id: UnreadNotifications(d.get("notification_count"), d.get("highlight_count"))
+            for event_id, d in unread_thread_notifications.items()
+        }
+
         account_data = RoomInfo.parse_account_data(account_data_events)
 
         return RoomInfo(
-            timeline,
-            state,
-            ephemeral_event_list,
-            account_data,
-            summary,
-            unread_notifications,
+            timeline=timeline,
+            state=state,
+            ephemeral=ephemeral_event_list,
+            account_data=account_data,
+            summary=summary,
+            unread_notifications=unread_notifications,
+            unread_thread_notifications=unread_thread_notifications_dict,
         )
 
     @staticmethod
@@ -2052,14 +2060,15 @@ class SyncResponse(Response):
 
         for room_id, room_dict in parsed_dict.get("join", {}).items():
             join_info = SyncResponse._get_join_info(
-                room_dict.get("state", {}).get("events", []),
-                room_dict.get("timeline", {}).get("events", []),
-                room_dict.get("timeline", {}).get("prev_batch"),
-                room_dict.get("timeline", {}).get("limited", False),
-                room_dict.get("ephemeral", {}).get("events", []),
-                room_dict.get("summary", {}),
-                room_dict.get("unread_notifications", {}),
-                room_dict.get("account_data", {}).get("events", []),
+                state_events=room_dict.get("state", {}).get("events", []),
+                timeline_events=room_dict.get("timeline", {}).get("events", []),
+                prev_batch=room_dict.get("timeline", {}).get("prev_batch"),
+                limited=room_dict.get("timeline", {}).get("limited", False),
+                ephemeral_events=room_dict.get("ephemeral", {}).get("events", []),
+                summary_events=room_dict.get("summary", {}),
+                unread_notification_events=room_dict.get("unread_notifications", {}),
+                account_data_events=room_dict.get("account_data", {}).get("events", []),
+                unread_thread_notifications=room_dict.get("unread_thread_notifications", {}),
             )
 
             joined_rooms[room_id] = join_info
