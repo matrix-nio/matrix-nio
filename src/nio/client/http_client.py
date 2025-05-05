@@ -245,6 +245,9 @@ class HttpClient(Client):
         device_name: Optional[str] = "",
         token: Optional[str] = None,
     ) -> Tuple[UUID, bytes]:
+        """
+        In order to login, either password or token needs to be provided.
+        """
         if password is None and token is None:
             raise ValueError("Either a password or a token needs to be " "provided")
 
@@ -278,7 +281,7 @@ class HttpClient(Client):
 
     @connected
     @logged_in
-    def room_send(self, room_id, message_type, content, tx_id=None):
+    def room_send(self, room_id: str, message_type: str, content, tx_id=None):
         if self.olm:
             try:
                 room = self.rooms[room_id]
@@ -311,7 +314,13 @@ class HttpClient(Client):
 
     @connected
     @logged_in
-    def room_redact(self, room_id, event_id, reason=None, tx_id=None):
+    def room_redact(
+        self,
+        room_id: str,
+        event_id: str,
+        reason: str | None,
+        tx_id: None | str | UUID = None,
+    ):
         """Strip information out of an event.
 
         Returns a unique uuid that identifies the request and the bytes that
@@ -332,7 +341,7 @@ class HttpClient(Client):
                 self.access_token,
                 room_id,
                 event_id,
-                tx_id,
+                uuid,
                 reason=reason,
             )
         )
