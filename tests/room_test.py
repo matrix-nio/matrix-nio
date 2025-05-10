@@ -586,8 +586,7 @@ class TestClass:
         room = MatrixInvitedRoom(TEST_ROOM, BOB_ID)
         room.handle_event(
             InviteMemberEvent(
-                {},
-                "@alice:example.org",
+                {"sender": "@alice:example.org"},
                 BOB_ID,
                 "invite",
                 None,
@@ -597,11 +596,11 @@ class TestClass:
         assert room.inviter == "@alice:example.org"
         assert not room.name
 
-        room.handle_event(InviteNameEvent({}, BOB_ID, "test name"))
+        room.handle_event(InviteNameEvent({"sender": BOB_ID}, "test name"))
         assert room.name == "test name"
 
         assert not room.canonical_alias
-        room.handle_event(InviteAliasEvent({}, BOB_ID, "test alias"))
+        room.handle_event(InviteAliasEvent({"sender": BOB_ID}, "test alias"))
         assert room.canonical_alias == "test alias"
 
     def test_handle_member_return_value(self):

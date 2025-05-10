@@ -1,104 +1,119 @@
 #!/usr/bin/env python3
 
 import asyncio
-import getpass
 import json
 import os
-import sys
 
-import aiofiles
+from nio import (
+    AsyncClient,
+    AsyncClientConfig,
+    InviteMemberEvent,
+    LoginResponse,
+    MatrixInvitedRoom,
+    MatrixRoom,
+    RoomMessageText,
+    WhoamiResponse,
+)
 
-from nio import AsyncClient, LoginResponse
+DIR = os.path.dirname(__file__)
 
-CONFIG_FILE = "credentials.json"
-
-# Check out main() below to see how it's done.
+TOKEN_FILE = os.path.join(DIR, "credentials.json")
 
 
-def write_details_to_disk(resp: LoginResponse, homeserver) -> None:
-    """Writes the required login details to disk so we can log in later without
-    using a password.
-
-    Arguments:
-        resp {LoginResponse} -- the successful client login response.
-        homeserver -- URL of homeserver, e.g. "https://matrix.example.org"
+async def login(client: AsyncClient, password, device_name):
     """
-    # open the config file in write-mode
-    with open(CONFIG_FILE, "w") as f:
-        # write the login details to disk
-        json.dump(
-            {
-                "homeserver": homeserver,  # e.g. "https://matrix.example.org"
-                "user_id": resp.user_id,  # e.g. "@user:example.org"
-                "device_id": resp.device_id,  # device ID, 10 uppercase letters
-                "access_token": resp.access_token,  # cryptogr. access token
-            },
-            f,
+    if possible, restore login token.
+    else login as new device.
+    """
+    if not os.path.isfile(TOKEN_FILE):
+        # do a fresh login
+        response = await client.login(password, device_name=device_name)
+
+        if isinstance(response, LoginResponse):
+            # "Logged in as @alice:example.org device id: RANDOMDID"
+            print(f"success: {response}")
+            login_data = {
+                "user_id": response.user_id,
+                "device_id": response.device_id,
+                "token": response.access_token,
+            }
+            with open(TOKEN_FILE, "w") as fd:
+                json.dump(login_data, fd)
+        else:
+            raise Exception(f"login failed: {response}")
+
+    else:
+        # restore previous login token
+        with open(TOKEN_FILE) as fd:
+            login_data = json.load(fd)
+
+        client.restore_login(
+            user_id=login_data["user_id"],
+            device_id=login_data["device_id"],
+            access_token=login_data["token"],
         )
+
+        response = await client.whoami()
+        if isinstance(response, WhoamiResponse):
+            print(f"login restored: {response}")
+        else:
+            raise Exception(f"login restore failed: {response}")
 
 
 async def main() -> None:
-    # If there are no previously-saved credentials, we'll use the password
-    if not os.path.exists(CONFIG_FILE):
+    homeserver = "https://matrix.example.org"
+    user_id = "@alice:example.org"
+    password = "my-secret-password"
+    device_name = "AwesomeBot"
+
+    config = AsyncClientConfig(
+        store_sync_tokens=False,    # don't persist sync calls across restarts
+        fill_timeline_gaps=True,    # when sync are truncated, fetch missing messages
+        online_messages_only=True,  # behave like an irc bot - only handle messages seen while online
+    )
+    client = AsyncClient(
+        homeserver=homeserver,
+        user=user_id,
+        store_path=os.path.join(DIR, "cryptostore"),  # directory to save encryption state
+        config=config,
+    )
+
+    await login(client, password, device_name)
+
+    # To let the bot answer to a room message
+    async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
         print(
-            "First time use. Did not find credential file. Asking for "
-            "homeserver, user, and password to create credential file."
-        )
-        homeserver = "https://matrix.example.org"
-        homeserver = input(f"Enter your homeserver URL: [{homeserver}] ")
-
-        if not (homeserver.startswith("https://") or homeserver.startswith("http://")):
-            homeserver = "https://" + homeserver
-
-        user_id = "@user:example.org"
-        user_id = input(f"Enter your full user ID: [{user_id}] ")
-
-        device_name = "matrix-nio"
-        device_name = input(f"Choose a name for this device: [{device_name}] ")
-
-        client = AsyncClient(homeserver, user_id)
-        pw = getpass.getpass()
-
-        resp = await client.login(pw, device_name=device_name)
-
-        # check that we logged in successfully
-        if isinstance(resp, LoginResponse):
-            write_details_to_disk(resp, homeserver)
-        else:
-            print(f'homeserver = "{homeserver}"; user = "{user_id}"')
-            print(f"Failed to log in: {resp}")
-            sys.exit(1)
-
-        print(
-            "Logged in using a password. Credentials were stored.",
-            "Try running the script again to login with credentials.",
+            f"Message received in room {room.display_name}\n"
+            f"{room.user_name(event.sender)} | {event.body}"
         )
 
-    # Otherwise the config file exists, so we'll use the stored credentials
-    else:
-        # open the file in read-only mode
-        async with aiofiles.open(CONFIG_FILE) as f:
-            contents = await f.read()
-        config = json.loads(contents)
-        client = AsyncClient(config["homeserver"])
+        # send a message as response
+        if event.sender != user_id:
+            await client.room_send(
+                room_id=room.room_id,
+                message_type="m.room.message",
+                content={"msgtype": "m.text", "body": "I received the message!"},
+            )
 
-        client.access_token = config["access_token"]
-        client.user_id = config["user_id"]
-        client.device_id = config["device_id"]
+    client.add_event_callback(message_callback, RoomMessageText)
 
-        # Now we can send messages as the user
-        room_id = "!myfavouriteroomid:example.org"
-        room_id = input(f"Enter room id for test message: [{room_id}] ")
+    # To let your bot join when it is invited to a room:
+    async def invite_callback(room: MatrixInvitedRoom, event: InviteMemberEvent) -> None:
+        if event.state_key != user_id or event.membership != "invite":
+            return
+        print(f"I was invited to room {room.display_name}, and I'll join it.")
+        await client.join(room.room_id)
 
-        await client.room_send(
-            room_id,
-            message_type="m.room.message",
-            content={"msgtype": "m.text", "body": "Hello world!"},
-        )
-        print("Logged in using stored credentials. Sent a test message.")
+    client.add_event_callback(invite_callback, InviteMemberEvent)
 
-    # Either way we're logged in here, too
-    await client.close()
+    try:
+        await client.sync_forever()
+    finally:
+        await client.close()
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass

@@ -164,12 +164,12 @@ class TestClass:
 
     def test_sync_fail(self):
         parsed_dict = {}
-        response = SyncResponse.from_dict(parsed_dict, 0)
+        response = SyncResponse.from_dict(parsed_dict, "since_token")
         assert isinstance(response, SyncError)
 
     def test_sync_parse(self):
         parsed_dict = _load_response("tests/data/sync.json")
-        response = SyncResponse.from_dict(parsed_dict)
+        response = SyncResponse.from_dict(parsed_dict, "since_token")
         assert isinstance(response, SyncResponse)
 
     def test_keyshare_request(self):
