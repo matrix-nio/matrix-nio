@@ -327,7 +327,10 @@ class FileResponse(Response):
     filename: Optional[str] = field()
 
     def __str__(self):
-        return f"{len(self.body)} bytes, content type: {self.content_type}, filename: {self.filename}"
+        if isinstance(self.body, bytes):
+            return f"{len(self.body)} bytes, content type: {self.content_type}, filename: {self.filename}"
+        else:
+            return f"content type: {self.content_type}, location: {self.body}"
 
     @classmethod
     def from_data(
