@@ -1,4 +1,5 @@
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -40,11 +41,15 @@ from ..events import (
     AccountDataEvent,
     BadEvent,
     BadEventType,
+    BaseEvent,
     EphemeralEvent,
     Event,
+    InviteEvent,
+    KnockEvent,
     MegolmEvent,
     PresenceEvent,
     RoomEncryptionEvent,
+    RoomEvent,
     RoomKeyRequest,
     RoomKeyRequestCancellation,
     RoomMemberEvent,
@@ -74,7 +79,7 @@ from ..responses import (
     ToDeviceResponse,
     WhoamiResponse,
 )
-from ..rooms import MatrixInvitedRoom, MatrixRoom
+from ..rooms import MatrixInvitedRoom, MatrixKnockedRoom, MatrixRoom
 
 if ENCRYPTION_ENABLED:
     from ..crypto import Olm
@@ -135,7 +140,7 @@ class ClientCallback:
     func: Union[Callable[..., None], Callable[..., Awaitable[None]]] = field()
     filter: Union[Tuple[Type, ...], Type, None] = None
 
-    def _execute(self, event, room: Optional[MatrixRoom] = None) -> Optional[Awaitable]:
+    def _execute(self, event: BaseEvent, room: Optional[MatrixRoom] = None) -> Optional[Awaitable]:
         """
         Checks the filter and executes the function once.
         sync_execute and async_execute will each determine
@@ -146,6 +151,7 @@ class ClientCallback:
                 return self.func(room, event)
             else:
                 return self.func(event)
+        return None
 
     def sync_execute(self, event, room: Optional[MatrixRoom] = None) -> None:
         """Execute callback from synchronous context."""
@@ -177,9 +183,15 @@ class ClientConfig:
             sync tokens.
         custom_headers (Dict[str, str]): A dictionary of custom http headers.
 
+        online_messages_only (bool, optional):
+            only fire _on_event for message events (those with no "state_key")
+            received when this client is online or after the effective room join.
+            this ignores the message history, which bots usually don't handle:
+            use this for IRC-style bots that only process messages when connected.
+            in contrast - to process all messages across restarts, set `store_sync_tokens` to True.
+
     Raises an ImportWarning if encryption_enabled is true but the dependencies
     for encryption aren't installed.
-
     """
 
     store: Optional[Type[MatrixStore]] = DefaultStore if ENCRYPTION_ENABLED else None
@@ -190,6 +202,7 @@ class ClientConfig:
     pickle_key: str = "DEFAULT_KEY"
     store_sync_tokens: bool = False
     custom_headers: Optional[Dict[str, str]] = None
+    online_messages_only: bool = False
 
     def __post_init__(self):
         if not ENCRYPTION_ENABLED and self.encryption_enabled:
@@ -249,6 +262,7 @@ class Client:
 
         self.rooms: Dict[str, MatrixRoom] = {}
         self.invited_rooms: Dict[str, MatrixInvitedRoom] = {}
+        self.knocked_rooms: Dict[str, MatrixKnockedRoom] = {}
         self.encrypted_rooms: Set[str] = set()
 
         self.event_callbacks: List[ClientCallback] = []
@@ -710,51 +724,86 @@ class Client:
 
         return self.invited_rooms[room_id]
 
+    def _get_knocked_room(self, room_id: str) -> MatrixKnockedRoom:
+        if room_id not in self.knocked_rooms:
+            logger.info(f"New knocked room {room_id}")
+            self.knocked_rooms[room_id] = MatrixKnockedRoom(room_id, self.user_id)
+
+        return self.knocked_rooms[room_id]
+
     def _handle_invited_rooms(self, response: SyncResponse):
         for room_id, info in response.rooms.invite.items():
             room = self._get_invited_room(room_id)
 
             for event in info.invite_state:
-                room.handle_event(event)
-                self._on_invited_rooms(event, room)
+                if isinstance(event, InviteEvent):
+                    room.handle_event(event)
+                    self._on_event(event, room)
 
-    def _handle_joined_state(
-        self, room_id: str, join_info: RoomInfo, encrypted_rooms: Set[str]
-    ):
+    def _handle_knocked_rooms(self, response: SyncResponse):
+        for room_id, info in response.rooms.knock.items():
+            room = self._get_knocked_room(room_id)
+
+            for event in info.knock_state:
+                if isinstance(event, KnockEvent):
+                    room.handle_event(event)
+                    self._on_event(event, room)
+
+    def _handle_state_joined(
+        self, room_id: str, room_info: RoomInfo, encrypted_rooms: Set[str]
+    ) -> bool:
+        """
+        returns if we see the room for the first time.
+        """
+        is_new = False
         if room_id in self.invited_rooms:
             del self.invited_rooms[room_id]
+
+        if room_id in self.knocked_rooms:
+            del self.knocked_rooms[room_id]
 
         if room_id not in self.rooms:
             logger.info(f"New joined room {room_id}")
             self.rooms[room_id] = MatrixRoom(
                 room_id, self.user_id, room_id in self.encrypted_rooms
             )
+            is_new = True
 
         room = self.rooms[room_id]
 
-        for event in join_info.state:
+        for event in room_info.state:
             if isinstance(event, RoomEncryptionEvent):
                 encrypted_rooms.add(room_id)
 
             if isinstance(event, RoomMemberEvent):
                 if room.handle_membership(event):
                     self._invalidate_session_for_member_event(room_id)
-            else:
+
+            elif isinstance(event, Event):
                 room.handle_event(event)
 
-        if join_info.summary:
-            room.update_summary(join_info.summary)
+        if room_info.summary:
+            room.update_summary(room_info.summary)
 
-        if join_info.unread_notifications:
-            room.update_unread_notifications(join_info.unread_notifications)
+        if room_info.unread_notifications:
+            room.update_unread_notifications(room_info.unread_notifications)
 
-    def _handle_timeline_event(
+        return is_new
+
+    def _handle_leave(self, room_id: str):
+        # TODO: remember as historical room?
+        logger.info(f"Left room {room_id}")
+        del self.rooms[room_id]
+
+    def _handle_encryption(
         self,
         event: Union[Event, BadEventType],
         room_id: str,
-        room: MatrixRoom,
         encrypted_rooms: Set[str],
     ) -> Optional[Union[Event, BadEventType]]:
+        """
+        decrypt given event and record if room is encrypted.
+        """
         decrypted_event = None
 
         if isinstance(event, MegolmEvent) and self.olm:
@@ -767,6 +816,15 @@ class Client:
         elif isinstance(event, RoomEncryptionEvent):
             encrypted_rooms.add(room_id)
 
+        return decrypted_event
+
+    def _handle_timeline_event(
+        self,
+        event: Union[Event, BadEventType],
+        room_id: str,
+        room: MatrixRoom,
+    ) -> None:
+
         if isinstance(event, RoomMemberEvent):
             if room.handle_membership(event):
                 self._invalidate_session_for_member_event(room_id)
@@ -777,47 +835,59 @@ class Client:
         else:
             room.handle_event(event)
 
-        return decrypted_event
-
-    def _handle_joined_rooms(self, response: SyncResponse):
+    def _handle_rooms(self, response: SyncResponse):
         encrypted_rooms: Set[str] = set()
 
         for room_id, join_info in response.rooms.join.items():
-            self._handle_joined_state(room_id, join_info, encrypted_rooms)
+            is_new = self._handle_state_joined(room_id, join_info, encrypted_rooms)
+            self._handle_room_info(room_id, join_info, response.since, encrypted_rooms, is_new)
 
-            room = self.rooms[room_id]
-            decrypted_events: List[Tuple[int, Union[Event, BadEventType]]] = []
-
-            for index, event in enumerate(join_info.timeline.events):
-                decrypted_event = self._handle_timeline_event(
-                    event, room_id, room, encrypted_rooms
-                )
-
-                if decrypted_event:
-                    event = decrypted_event
-                    decrypted_events.append((index, decrypted_event))
-
-                self._on_event(event, room)
-
-            # Replace the Megolm events with decrypted ones
-            for index, event in decrypted_events:
-                join_info.timeline.events[index] = event
-
-            for event in join_info.ephemeral:
-                room.handle_ephemeral_event(event)
-                self._on_ephemeral(event, room)
-
-            for event in join_info.account_data:
-                room.handle_account_data(event)
-                self._on_room_account_data(event, room)
-
-            if room.encrypted and self.olm is not None:
-                self.olm.update_tracked_users(room)
+        for room_id, leave_info in response.rooms.leave.items():
+            # continue state tracking as long as possible,
+            # so even the last messages be processed correctly.
+            is_new = self._handle_state_joined(room_id, leave_info, encrypted_rooms)
+            self._handle_room_info(room_id, leave_info, response.since, encrypted_rooms, is_new)
+            self._handle_leave(room_id)
 
         self.encrypted_rooms.update(encrypted_rooms)
 
         if self.store:
             self.store.save_encrypted_rooms(encrypted_rooms)
+
+    def _handle_room_info(
+        self, room_id: str, room_info: RoomInfo, sync_since: Optional[str], encrypted_rooms: Set[str], is_new: bool,
+    ):
+        room = self.rooms[room_id]
+
+        # when we only want messages we saw being online,
+        # skip all events that came before.
+        emit_events = not (is_new and self.config.online_messages_only)
+
+        for index, event in enumerate(room_info.timeline.events):
+            decrypted_event = self._handle_encryption(event, room_id, encrypted_rooms)
+
+            if decrypted_event:
+                # Replace the Megolm events with decrypted ones
+                event = decrypted_event
+                room_info.timeline.events[index] = event
+
+            self._handle_timeline_event(event, room_id, room)
+
+            if emit_events and isinstance(event, Event):
+                self._on_event(event, room)
+
+        for eph_event in room_info.ephemeral:
+            if isinstance(eph_event, EphemeralEvent):
+                room.handle_ephemeral_event(eph_event)
+                self._on_ephemeral(eph_event, room)
+
+        for acc_event in room_info.account_data:
+            if isinstance(acc_event, AccountDataEvent):
+                room.handle_account_data(acc_event)
+                self._on_room_account_data(acc_event, room)
+
+        if room.encrypted and self.olm is not None:
+            self.olm.update_tracked_users(room)
 
     def _handle_presence_events(self, response: SyncResponse):
         for event in response.presence_events:
@@ -878,11 +948,7 @@ class Client:
         for cb in self.to_device_callbacks:
             cb.sync_execute(event)
 
-    def _on_invited_rooms(self, event: Event, room: MatrixRoom):
-        for cb in self.event_callbacks:
-            cb.sync_execute(event, room)
-
-    def _on_event(self, event: Event, room: MatrixRoom):
+    def _on_event(self, event: RoomEvent, room: MatrixRoom):
         for cb in self.event_callbacks:
             cb.sync_execute(event, room)
 
@@ -922,7 +988,9 @@ class Client:
 
         self._handle_invited_rooms(response)
 
-        self._handle_joined_rooms(response)
+        self._handle_knocked_rooms(response)
+
+        self._handle_rooms(response)
 
         self._handle_presence_events(response)
 
@@ -1259,8 +1327,8 @@ class Client:
 
     def add_event_callback(
         self,
-        callback: Callable[[MatrixRoom, Event], Optional[Awaitable[None]]],
-        filter: Union[Type[Event], Tuple[Type[Event], None]],
+        callback: Callable[[MatrixRoom, RoomEvent], Optional[Awaitable[None]]],
+        filter: Union[Type[RoomEvent], Tuple[Type[RoomEvent], None]],
     ) -> None:
         """Add a callback that will be executed on room events.
 
@@ -1306,7 +1374,7 @@ class Client:
 
     def add_global_account_data_callback(
         self,
-        callback: Callable[[AccountDataEvent], None],
+        callback: Callable[[AccountDataEvent], Union[None, Awaitable[None]]],
         filter: Union[
             Type[AccountDataEvent],
             Tuple[Type[AccountDataEvent], ...],
@@ -1332,7 +1400,7 @@ class Client:
 
     def add_room_account_data_callback(
         self,
-        callback: Callable[[MatrixRoom, AccountDataEvent], None],
+        callback: Callable[[MatrixRoom, AccountDataEvent], Union[None, Awaitable[None]]],
         filter: Union[
             Type[AccountDataEvent],
             Tuple[Type[AccountDataEvent], ...],

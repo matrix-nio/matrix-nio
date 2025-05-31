@@ -1,4 +1,5 @@
 # Copyright © 2019 Damir Jelić <poljar@termina.org.uk>
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -24,20 +25,21 @@ Ephemeral events are used for typing notifications and read receipts.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from ..api import ReceiptType
 from ..schemas import Schemas
+from .base_event import BaseEvent
 from .misc import verify_or_none
 
 
 @dataclass
-class EphemeralEvent:
+class EphemeralEvent(BaseEvent):
     """Base class for ephemeral events."""
 
     @classmethod
     @verify_or_none(Schemas.ephemeral_event)
-    def parse_event(cls, event_dict):
+    def parse_event(cls, event_dict) -> Optional[Union[TypingNoticeEvent, ReceiptEvent]]:
         """Parse an ephemeral event and create a higher level event object.
 
         This function parses the type of the ephemeral event and produces a

@@ -1,5 +1,6 @@
 # Copyright © 2018, 2019 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2020-2021 Famedly GmbH
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -27,8 +28,8 @@ from pathlib import Path
 from typing import (
     Any,
     AsyncIterator,
+    Awaitable,
     Callable,
-    Coroutine,
     Dict,
     Iterable,
     List,
@@ -81,10 +82,13 @@ from ..events import (
     BadEventType,
     EphemeralEvent,
     Event,
+    InviteEvent,
+    KnockEvent,
     MegolmEvent,
     PresenceEvent,
     PushAction,
     PushCondition,
+    RoomEvent,
     RoomKeyRequest,
     RoomKeyRequestCancellation,
     ToDeviceEvent,
@@ -172,6 +176,7 @@ from ..responses import (
     RoomGetStateResponse,
     RoomGetVisibilityError,
     RoomGetVisibilityResponse,
+    RoomInfo,
     RoomInviteError,
     RoomInviteResponse,
     RoomKeyRequestError,
@@ -216,6 +221,7 @@ from ..responses import (
     SyncResponse,
     ThumbnailError,
     ThumbnailResponse,
+    Timeline,
     ToDeviceError,
     ToDeviceResponse,
     UpdateDeviceError,
@@ -346,6 +352,12 @@ class AsyncClientConfig(ClientConfig):
         io_chunk_size (int): The size (in bytes) of the chunks to read from the IO
             streams when saving files to disk.
             Defaults to 64 KiB.
+
+        fill_timeline_gaps (bool, optional): automatically fetch skipped
+            timeline events to process the whole room timeline in order.
+            in other words, when this is true, resolve truncated sync responses
+            to full sync responses by filling gaps with `/rooms/<id>/messages`.
+            they are stored in `Timeline.prev_events`.
     """
 
     max_limit_exceeded: Optional[int] = None
@@ -354,6 +366,7 @@ class AsyncClientConfig(ClientConfig):
     max_timeout_retry_wait_time: float = 60
     request_timeout: float = 60
     io_chunk_size: int = 64 * 1024
+    fill_timeline_gaps: bool = False
 
 
 class AsyncClient(Client):
@@ -459,7 +472,7 @@ class AsyncClient(Client):
 
     def add_response_callback(
         self,
-        func: Coroutine[Any, Any, Response],
+        func: Callable[[Response], Awaitable[Any]],
         cb_filter: Union[Tuple[Type], Type, None] = None,
     ):
         """Add a coroutine that will be called if a response is received.
@@ -540,7 +553,7 @@ class AsyncClient(Client):
             name = transport_response.content_disposition.filename
 
         if issubclass(response_class, FileResponse) and is_json:
-            if transport_response.status in range(200, 300):
+            if transport_response.status >= 200 and transport_response.status < 300:
                 data = await transport_response.read()
                 # the data was returned fine, so the raw bytes are passed to prevent parsing as an error.
             else:
@@ -576,9 +589,12 @@ class AsyncClient(Client):
             parsed_dict = await self.parse_body(transport_response)
             resp = DeleteDevicesAuthResponse.from_dict(parsed_dict)
 
-        else:
+        elif transport_response.status >= 200 and transport_response.status < 500:
             parsed_dict = await self.parse_body(transport_response)
             resp = response_class.from_dict(parsed_dict, *data)
+        else:
+            resp = ErrorResponse(status_code=f"{transport_response.status}",
+                                 message=await transport_response.text())
 
         resp.transport_response = transport_response
         return resp
@@ -610,49 +626,153 @@ class AsyncClient(Client):
             room = self._get_invited_room(room_id)
 
             for event in info.invite_state:
-                room.handle_event(event)
+                if isinstance(event, InviteEvent):
+                    room.handle_event(event)
+                    await self._on_event(event, room)
 
-                await self._on_invited_rooms(event, room)
+    async def _handle_knocked_rooms(self, response: SyncResponse):
+        for room_id, info in response.rooms.knock.items():
+            room = self._get_knocked_room(room_id)
 
-    async def _handle_joined_rooms(self, response: SyncResponse) -> None:
+            for event in info.knock_state:
+                if isinstance(event, KnockEvent):
+                    room.handle_event(event)
+                    await self._on_event(event, room)
+
+    async def _handle_rooms(self, response: SyncResponse) -> None:
         encrypted_rooms: Set[str] = set()
 
         for room_id, join_info in response.rooms.join.items():
-            self._handle_joined_state(room_id, join_info, encrypted_rooms)
+            is_new = self._handle_state_joined(room_id, join_info, encrypted_rooms)
+            await self._handle_room_info(room_id, join_info, response.since, encrypted_rooms, is_new)
 
-            room = self.rooms[room_id]
-            decrypted_events: List[Tuple[int, Union[Event, BadEventType]]] = []
-
-            for index, event in enumerate(join_info.timeline.events):
-                decrypted_event = self._handle_timeline_event(
-                    event, room_id, room, encrypted_rooms
-                )
-
-                if decrypted_event:
-                    event = decrypted_event
-                    decrypted_events.append((index, decrypted_event))
-
-                await self._on_event(event, room)
-
-            # Replace the Megolm events with decrypted ones
-            for index, event in decrypted_events:
-                join_info.timeline.events[index] = event
-
-            for event in join_info.ephemeral:
-                room.handle_ephemeral_event(event)
-                await self._on_ephemeral(event, room)
-
-            for event in join_info.account_data:
-                room.handle_account_data(event)
-                await self._on_room_account_data(event, room)
-
-            if room.encrypted and self.olm is not None:
-                self.olm.update_tracked_users(room)
+        for room_id, leave_info in response.rooms.leave.items():
+            # continue state tracking as long as possible,
+            # so even the last messages are processed correctly.
+            is_new = self._handle_state_joined(room_id, leave_info, encrypted_rooms)
+            await self._handle_room_info(room_id, leave_info, response.since, encrypted_rooms, is_new)
+            self._handle_leave(room_id)
 
         self.encrypted_rooms.update(encrypted_rooms)
 
         if self.store:
             self.store.save_encrypted_rooms(encrypted_rooms)
+
+    async def _handle_room_info(
+        self, room_id: str, room_info: RoomInfo, sync_since: Optional[str], encrypted_rooms: Set[str], is_new: bool,
+    ):
+        """
+        encrypted_rooms: ids of known rooms with enabled encryption
+        is_new: true when this room is handled for the first time (self.rooms didn't have it).
+        """
+
+        room = self.rooms[room_id]
+
+        if self.config.fill_timeline_gaps and sync_since:
+            await self._fill_timeline_gap(room_id, room_info, sync_since)
+
+        # when we only want messages we saw being online,
+        # skip all events that came before.
+        emit_events = not (is_new and self.config.online_messages_only)
+
+        def timeline_iterator():
+            """
+            yields index_in_event_list, event, event_list, handle_state_events
+            """
+            for index, event in enumerate(room_info.timeline.prev_events):
+                # process previous timeline events without handling their state
+                yield index, event, room_info.timeline.prev_events, False
+            for index, event in enumerate(room_info.timeline.events):
+                # the sync-timeline events need state handling
+                yield index, event, room_info.timeline.events, True
+
+        for index, event, event_list, handle_state_events in timeline_iterator():
+            decrypted_event = self._handle_encryption(event, room_id, encrypted_rooms)
+
+            if decrypted_event:
+                # Replace the Megolm events with decrypted ones
+                event = decrypted_event
+                event_list[index] = event
+
+            # do nio state tracking only for timeline state events (when we process timeline.events)
+            if handle_state_events or not (isinstance(event, Event) and event.is_state):
+                self._handle_timeline_event(event, room_id, room)
+
+            if emit_events and isinstance(event, Event):
+                await self._on_event(event, room)
+
+        for eph_event in room_info.ephemeral:
+            if isinstance(eph_event, EphemeralEvent):
+                room.handle_ephemeral_event(eph_event)
+                await self._on_ephemeral(eph_event, room)
+
+        for acc_event in room_info.account_data:
+            if isinstance(acc_event, AccountDataEvent):
+                room.handle_account_data(acc_event)
+                await self._on_room_account_data(acc_event, room)
+
+        if room.encrypted and self.olm is not None:
+            self.olm.update_tracked_users(room)
+
+    async def _fill_timeline_gap(self, room_id: str, room_info: RoomInfo, sync_since: Optional[str]):
+        # if the sync response has "gaps", we can fill them (if configured).
+        # beware: state events of the gap were already delivered in timeline.state!
+        if ((prev_sync_token := room_info.timeline.prev_batch) and
+            prev_sync_token != sync_since):
+
+            await self._fetch_gap(room_id, sync_since, prev_sync_token, room_info.timeline)
+
+    async def _fetch_gap(
+        self, room_id: str, start: Optional[str], end: str, timeline: Timeline,
+    ):
+        """
+        return all timeline events from start to end.
+        used to fill gaps that can occur when just synching.
+        """
+        events: List[Union[Event, BadEventType]] = []
+        head = start
+
+        # track which events were already sent by /sync.
+        # they should be distinct due to the start/end markers, but in practice it seems they aren't.tunatel
+        timeline_event_ids: set[str] = {event.event_id for event in timeline.events if isinstance(event, Event)}
+
+        while True:
+            room_msg_reply = await self.room_messages(
+                room_id,
+                start=start,
+                end=end,
+                limit=4096,
+                direction=MessageDirection.front
+            )
+            if isinstance(room_msg_reply, RoomMessagesResponse):
+                events.extend(
+                    event
+                    for event in room_msg_reply.chunk
+                    # don't repeat events already in the sync-returned event stream
+                    if not isinstance(event, Event) or
+                    event.event_id not in timeline_event_ids
+                )
+
+                if room_msg_reply.end is None:
+                    break
+                if room_msg_reply.end == end:
+                    break
+
+                start = room_msg_reply.end
+
+            elif isinstance(room_msg_reply, RoomMessagesError):
+                # doing something other than just crashing here
+                # seems hard to implement, so we just return what we have so far.
+                logger.error("failed to fill room %s history gap: %s",
+                             room_msg_reply.room_id,
+                             room_msg_reply)
+                break
+
+            else:
+                raise RuntimeError("unexpected room_messages return type")
+
+        timeline.prev_events = events
+        timeline.prev_events_prev_batch = head
 
     async def _handle_presence_events(self, response: SyncResponse):
         for event in response.presence_events:
@@ -688,11 +808,7 @@ class AsyncClient(Client):
         for cb in self.to_device_callbacks:
             await cb.async_execute(event)
 
-    async def _on_invited_rooms(self, event: Event, room: MatrixRoom):
-        for cb in self.event_callbacks:
-            await cb.async_execute(event, room)
-
-    async def _on_event(self, event: Event, room: MatrixRoom):
+    async def _on_event(self, event: RoomEvent, room: MatrixRoom):
         for cb in self.event_callbacks:
             await cb.async_execute(event, room)
 
@@ -725,6 +841,7 @@ class AsyncClient(Client):
         if self.next_batch == response.next_batch:
             return
 
+        # remember where we would expect the batch to start
         self.next_batch = response.next_batch
 
         if self.config.store_sync_tokens and self.store:
@@ -734,7 +851,9 @@ class AsyncClient(Client):
 
         await self._handle_invited_rooms(response)
 
-        await self._handle_joined_rooms(response)
+        await self._handle_knocked_rooms(response)
+
+        await self._handle_rooms(response)
 
         await self._handle_presence_events(response)
 
@@ -909,14 +1028,19 @@ class AsyncClient(Client):
         """
         assert self.client_session
 
+        kwargs: dict[str, Any] = {}
+        if timeout is not None:
+            kwargs["timeout"] = ClientTimeout(timeout)
+        if self.ssl is not None:
+            kwargs["ssl"] = self.ssl
+
         return await self.client_session.request(
             method,
             self.homeserver + path,
             data=data,
-            ssl=self.ssl,
             headers=headers,
             trace_request_ctx=trace_context,
-            timeout=self.config.request_timeout if timeout is None else timeout,
+            **kwargs,
         )
 
     async def mxc_to_http(
@@ -1017,7 +1141,7 @@ class AsyncClient(Client):
             password,
             auth_dict={"initial_device_display_name": self.device_id or "matrix-nio"},
         )
-        if isinstance(resp, RegisterInteractiveError):
+        if isinstance(resp, ErrorResponse):
             return RegisterErrorResponse(
                 resp.message, resp.status_code, resp.retry_after_ms, resp.soft_logout
             )
@@ -1033,7 +1157,7 @@ class AsyncClient(Client):
                 "session": session_token,
             },
         )
-        if isinstance(resp, RegisterInteractiveError):
+        if isinstance(resp, ErrorResponse):
             return RegisterErrorResponse(
                 resp.message, resp.status_code, resp.retry_after_ms, resp.soft_logout
             )
@@ -1214,11 +1338,11 @@ class AsyncClient(Client):
         a `SyncError` if there was an error with the request.
         """
 
-        sync_token = since or self.next_batch
+        sync_token: Optional[str] = since or self.next_batch or self.loaded_sync_token
         presence = set_presence or self._presence
         method, path = Api.sync(
             self.access_token,
-            since=sync_token or self.loaded_sync_token,
+            since=sync_token,
             timeout=(
                 int(self.config.request_timeout) * 1000
                 if timeout is None
@@ -1236,6 +1360,7 @@ class AsyncClient(Client):
             # 0 if full_state: server doesn't respect timeout if full_state
             # + 15: give server a chance to naturally return before we timeout
             timeout=0 if full_state else timeout / 1000 + 15 if timeout else timeout,
+            response_data=(sync_token,)
         )
 
         return response
@@ -2916,7 +3041,7 @@ class AsyncClient(Client):
             room_id,
             event_id,
             receipt_type,
-            thread_id,
+            thread_id or "main",
         )
 
         return await self._send(
@@ -3270,7 +3395,7 @@ class AsyncClient(Client):
             access_token=self.access_token,
         )
 
-        response_class = MemoryDownloadResponse
+        response_class: Type[Response] = MemoryDownloadResponse
         if save_to is not None:
             response_class = DiskDownloadResponse
 
@@ -3899,8 +4024,8 @@ class AsyncClient(Client):
         if isinstance(current_alias_event, RoomGetStateEventResponse):
             current_aliases.append(current_alias_event.content["alias"])
             if "alt_aliases" in current_alias_event.content:
-                alt_aliases = current_alias_event.content["alt_aliases"]
-                current_aliases.extend(alt_aliases)
+                alt_aliases_evt = current_alias_event.content["alt_aliases"]
+                current_aliases.extend(alt_aliases_evt)
 
         # Unregister old aliases
         for alias in current_aliases:
@@ -4082,6 +4207,8 @@ class AsyncClient(Client):
         self, room_id: str, event_name: str, event_type: str = "event"
     ) -> Union[bool, ErrorResponse]:
         who_am_i = await self.whoami()
+        if isinstance(who_am_i, WhoamiError):
+            return who_am_i
         power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
 
         try:
@@ -4109,6 +4236,8 @@ class AsyncClient(Client):
         self, room_id: str, permission_type: str
     ) -> Union[bool, ErrorResponse]:
         who_am_i = await self.whoami()
+        if isinstance(who_am_i, WhoamiError):
+            return who_am_i
         power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
 
         try:

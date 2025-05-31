@@ -64,6 +64,12 @@ docs = [
 Source = "https://github.com/matrix-nio/matrix-nio"
 Documentation = "https://matrix-nio.readthedocs.io/en/latest/"
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"nio" = ["py.typed"]
+
 [tool.ruff]
 # Assume Python 3.8.
 target-version = "py38"

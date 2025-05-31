@@ -1,5 +1,6 @@
 # Copyright © 2018 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2020-2021 Famedly GmbH
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -20,7 +21,19 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Protocol,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 
 from jsonschema.exceptions import SchemaError, ValidationError
 
@@ -31,6 +44,7 @@ from .events import (
     EphemeralEvent,
     Event,
     InviteEvent,
+    KnockEvent,
     ToDeviceEvent,
 )
 from .events.presence import PresenceEvent
@@ -206,6 +220,7 @@ class Rooms:
     invite: Dict[str, InviteInfo] = field()
     join: Dict[str, RoomInfo] = field()
     leave: Dict[str, RoomInfo] = field()
+    knock: Dict[str, KnockInfo] = field()
 
 
 @dataclass
@@ -222,14 +237,21 @@ class DeviceList:
 
 @dataclass
 class Timeline:
-    events: List = field()
+    events: List[Union[Event, BadEventType]] = field()
     limited: bool = field()
     prev_batch: Optional[str] = field()
+    prev_events: List[Union[Event, BadEventType]] = field(default_factory=list)
+    prev_events_prev_batch: Optional[str] = field(default=None)
 
 
 @dataclass
 class InviteInfo:
-    invite_state: List = field()
+    invite_state: List[Union[InviteEvent, BadEventType]] = field()
+
+
+@dataclass
+class KnockInfo:
+    knock_state: List[Union[KnockEvent, BadEventType]] = field()
 
 
 @dataclass
@@ -248,9 +270,9 @@ class UnreadNotifications:
 @dataclass
 class RoomInfo:
     timeline: Timeline = field()
-    state: List = field()
-    ephemeral: List = field()
-    account_data: List = field()
+    state: List[Union[Event, BadEventType]] = field()
+    ephemeral: List[EphemeralEvent] = field()
+    account_data: List[Union[AccountDataEvent, BadEventType]] = field()
     summary: Optional[RoomSummary] = None
     unread_notifications: Optional[UnreadNotifications] = None
     unread_thread_notifications: Optional[Dict[str, UnreadNotifications]] = (
@@ -258,7 +280,7 @@ class RoomInfo:
     )
 
     @staticmethod
-    def parse_account_data(event_dict):
+    def parse_account_data(event_dict) -> List:
         """Parse the account data dictionary and produce a list of events."""
         return [AccountDataEvent.parse_event(event) for event in event_dict]
 
@@ -1421,7 +1443,7 @@ class RoomMessagesResponse(Response):
 
     chunk: List[Union[Event, BadEventType]] = field()
     start: str = field()
-    end: str = field(default=None)
+    end: Optional[str] = field(default=None)
 
     @classmethod
     @verify(Schemas.room_messages, RoomMessagesError)
@@ -1910,6 +1932,7 @@ class RoomContextResponse(Response):
 
 @dataclass
 class SyncResponse(Response):
+    since: Optional[str] = field()
     next_batch: str = field()
     rooms: Rooms = field()
     device_key_count: DeviceOneTimeKeyCount = field()
@@ -1977,7 +2000,7 @@ class SyncResponse(Response):
         return events
 
     @staticmethod
-    def _get_invite_state(parsed_dict):
+    def _get_invite_state(parsed_dict) -> List[Union[InviteEvent, BadEventType]]:
         validate_json(parsed_dict, Schemas.sync_room_state)
         events = []
 
@@ -1990,8 +2013,20 @@ class SyncResponse(Response):
         return events
 
     @staticmethod
-    def _get_ephemeral_events(parsed_dict):
+    def _get_knock_state(parsed_dict) -> List[Union[KnockEvent, BadEventType]]:
         events = []
+
+        for event_dict in parsed_dict.get("events", []):
+            event = KnockEvent.parse_event(event_dict)
+
+            if event:
+                events.append(event)
+
+        return events
+
+    @staticmethod
+    def _get_ephemeral_events(parsed_dict) -> List[EphemeralEvent]:
+        events: List[EphemeralEvent] = []
         for event_dict in parsed_dict:
             event = EphemeralEvent.parse_event(event_dict)
 
@@ -2053,6 +2088,7 @@ class SyncResponse(Response):
         joined_rooms: Dict[str, RoomInfo] = {}
         invited_rooms: Dict[str, InviteInfo] = {}
         left_rooms: Dict[str, RoomInfo] = {}
+        knocked_rooms: Dict[str, KnockInfo] = {}
 
         for room_id, room_dict in parsed_dict.get("invite", {}).items():
             state = SyncResponse._get_invite_state(room_dict.get("invite_state", {}))
@@ -2082,7 +2118,12 @@ class SyncResponse(Response):
 
             joined_rooms[room_id] = join_info
 
-        return Rooms(invited_rooms, joined_rooms, left_rooms)
+        for room_id, room_dict in parsed_dict.get("knock", {}).items():
+            state = SyncResponse._get_knock_state(room_dict.get("knock_state", {}))
+            knock_info = KnockInfo(state)
+            knocked_rooms[room_id] = knock_info
+
+        return Rooms(invited_rooms, joined_rooms, left_rooms, knocked_rooms)
 
     @staticmethod
     def _get_presence(parsed_dict) -> List[PresenceEvent]:
@@ -2103,6 +2144,7 @@ class SyncResponse(Response):
     def from_dict(
         cls,
         parsed_dict: Dict[Any, Any],
+        sync_token: Optional[str],
     ) -> Union[SyncResponse, ErrorResponse]:
         to_device = cls._get_to_device(parsed_dict.get("to_device", {}))
 
@@ -2121,6 +2163,7 @@ class SyncResponse(Response):
         rooms = SyncResponse._get_room_info(parsed_dict.get("rooms", {}))
 
         return SyncResponse(
+            sync_token,
             parsed_dict["next_batch"],
             rooms,
             key_count,

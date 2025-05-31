@@ -30,7 +30,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from ..api import PushRuleKind
 from ..schemas import Schemas
-from .misc import verify, verify_or_none
+from .base_event import BaseEvent
+from .misc import verify, verify_or_none, BadEventType
 from .room_events import Event
 
 if TYPE_CHECKING:
@@ -38,7 +39,7 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class AccountDataEvent:
+class AccountDataEvent(BaseEvent):
     """Abstract class for account data events."""
 
     @classmethod
@@ -46,7 +47,7 @@ class AccountDataEvent:
     def parse_event(
         cls,
         event_dict: Dict[Any, Any],
-    ):
+    ) -> Union[AccountDataEvent, BadEventType]:
         if event_dict["type"] == "m.fully_read":
             return FullyReadEvent.from_dict(event_dict)
         elif event_dict["type"] == "m.tag":

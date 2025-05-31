@@ -1,5 +1,6 @@
 # Copyright © 2018-2019 Damir Jelić <poljar@termina.org.uk>
 # Copyright © 2021 Famedly GmbH
+# Copyright © 2025-2025 Jonas Jelten <jj@sft.lol>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -21,21 +22,42 @@ from typing import Any, Dict, List, Optional, Union
 
 from ..event_builders import RoomKeyRequestMessage
 from ..schemas import Schemas
+from .base_event import BaseEvent
 from .misc import BadEvent, BadEventType, UnknownBadEvent, validate_or_badevent, verify
 
 
 @dataclass
-class Event:
+class RoomEvent(BaseEvent):
+    """
+    Matrix room event base class.
+    For invites, knocks and room updates in general.
+
+    Attributes:
+        source (dict): The source dictionary of the event. This allows access
+            to all the event fields in a non-secure way.
+
+        sender (str): The fully-qualified ID of the user who sent this
+            event.
+
+        is_state (bool): If this event is a state event (identified by type and state_key)
+    """
+    source: Dict = field()
+    sender: str = field(init=False)
+    is_state: bool = field(default=False, init=False)
+
+    def __post_init__(self):
+        self.sender = self.source["sender"]
+        self.is_state = "state_key" in self.source
+
+
+@dataclass
+class Event(RoomEvent):
     """Matrix Event class.
 
     This is the base event class, most events inherit from this class.
 
     Attributes:
-        source (dict): The source dictionary of the event. This allows access
-            to all the event fields in a non-secure way.
         event_id (str): A globally unique event identifier.
-        sender (str): The fully-qualified ID of the user who sent this
-            event.
         server_timestamp (int): Timestamp in milliseconds on originating
             homeserver when this event was sent.
         decrypted (bool): A flag signaling if the event was decrypted.
@@ -50,13 +72,9 @@ class Event:
         transaction_id (str, optional): The unique identifier that was used
             when the message was sent. Is only set if the message was sent from
             our own device, otherwise None.
-
     """
 
-    source: Dict[str, Any] = field()
-
     event_id: str = field(init=False)
-    sender: str = field(init=False)
     server_timestamp: int = field(init=False)
 
     decrypted: bool = field(default=False, init=False)
@@ -66,8 +84,8 @@ class Event:
     transaction_id: Optional[str] = field(default=None, init=False)
 
     def __post_init__(self):
+        super().__post_init__()
         self.event_id = self.source["event_id"]
-        self.sender = self.source["sender"]
         self.server_timestamp = self.source["origin_server_ts"]
 
     def flattened(
