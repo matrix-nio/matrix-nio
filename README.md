@@ -8,23 +8,16 @@ nio
 [![Documentation Status](https://readthedocs.org/projects/matrix-nio/badge/?version=latest&style=flat-square)](https://matrix-nio.readthedocs.io/en/latest/?badge=latest)
 [![#nio](https://img.shields.io/badge/matrix-%23nio:matrix.org-blue.svg?style=flat-square)](https://matrix.to/#/!JiiOHXrIUCtcOJsZCa:matrix.org?via=matrix.org&via=maunium.net&via=t2l.io)
 
-nio is a multilayered [Matrix](https://matrix.org/) client library. The
+## Project Overview
+
+**nio** is a multilayered [Matrix](https://matrix.org/) client library. The
 underlying base layer doesn't do any network IO on its own, but on top of that
 is a full-fledged batteries-included asyncio layer using
 [aiohttp](https://github.com/aio-libs/aiohttp/). File IO is only done if you
 enable end-to-end encryption (E2EE).
 
-Documentation
--------------
-
-The full API documentation for nio can be found at
-[https://matrix-nio.readthedocs.io](https://matrix-nio.readthedocs.io/en/latest/#api-documentation)
-
-Features
---------
-
-nio has most of the features you'd expect in a Matrix library, but it's still a work in progress.
-
+## Features
+nio provides many features for working with Matrix, including but not limited to:
 - ✅ transparent end-to-end encryption (EE2E)
 - ✅ encrypted file uploads & downloads
 - ✅ space parents/children
@@ -35,7 +28,7 @@ nio has most of the features you'd expect in a Matrix library, but it's still a 
 - ✅ knocking, kick, ban and unban
 - ✅ typing notifications
 - ✅ message redaction
-- ✅ token based login
+- ✅ token-based login
 - ✅ user registration
 - ✅ read receipts
 - ✅ live syncing
@@ -46,35 +39,47 @@ nio has most of the features you'd expect in a Matrix library, but it's still a 
 - ❌ user deactivation ([#112](https://github.com/matrix-nio/matrix-nio/issues/112))
 - ❌ in-room emoji verification
 
-Installation
-------------
+---
 
-To install nio, simply use pip:
+## Prerequisites
+This project is built using Python. Make sure you have the following installed before proceeding:
+- Python 3.x (refer to [PyPI](https://pypi.org/project/matrix-nio/) for compatible versions)
+- [libolm](https://gitlab.matrix.org/matrix-org/olm) C library (version 3.x and for End-to-Edn Encryption)
 
+### Supported Platforms:
+- Debian/Ubuntu: Install `libolm-dev` using `apt-get`
+- Fedora: Install `libolm-devel` using `dnf`
+- macOS: Install `libolm` using [brew](https://brew.sh/)
+
+---
+
+## Installation Steps
+### Option 1: Without End-to-End Encryption
+Run the following command to install the base version of nio:
 ```bash
-$ pip install matrix-nio
+pip install matrix-nio
 ```
 
-Note that this installs nio without end-to-end encryption support. For e2ee
-support, python-olm is needed which requires the
-[libolm](https://gitlab.matrix.org/matrix-org/olm) C library (version 3.x).
-On Debian and Ubuntu one can use `apt-get` to install package `libolm-dev`.
-On Fedora one can use `dnf` to install package `libolm-devel`.
-On MacOS one can use [brew](https://brew.sh/) to install package `libolm`.
-Make sure version 3 is installed.
-
-After libolm has been installed, the e2ee enabled version of nio can be
-installed using pip:
-
+### Option 2: With End-to-End Encryption
+To enable end-to-end encryption, install python-olm after ensuring `libolm` is installed:
 ```bash
-$ pip install matrix-nio[e2e]
+pip install matrix-nio[e2e]
 ```
 
-Additionally, a docker image with the e2ee enabled version of nio is provided in
-the `docker/` directory.
+### Advanced Installation Options
+Docker images with E2EE enabled versions of nio are provided in the `docker/` directory.
 
-Examples
---------
+---
 
-For examples of how to use nio, and how others are using it,
-[read the docs](https://matrix-nio.readthedocs.io/en/latest/examples.html)
+## Documentation
+Comprehensive documentation for nio can be found at [Read the Docs](https://matrix-nio.readthedocs.io/en/latest/#api-documentation).
+
+### Examples
+For examples of how to use nio, and how others are using it, visit the [Examples Section](https://matrix-nio.readthedocs.io/en/latest/examples.html).
+
+---
+
+## Help and Support
+For FAQs, common errors, and troubleshooting, visit [https://matrix-nio.readthedocs.io](https://matrix-nio.readthedocs.io/en/latest/#help-and-support).
+
+Join discussions or ask for support on GitHub Issues and Pull Requests.
