@@ -917,16 +917,18 @@ class RoomMessage(Event):
     ) -> Union[RoomMessage, BadEventType]:
         msgtype = parsed_dict["content"]["msgtype"]
 
-        if msgtype == "m.image":
-            event = RoomEncryptedImage.from_dict(parsed_dict)
-        elif msgtype == "m.audio":
-            event = RoomEncryptedAudio.from_dict(parsed_dict)
-        elif msgtype == "m.video":
-            event = RoomEncryptedVideo.from_dict(parsed_dict)
-        elif msgtype == "m.file":
-            event = RoomEncryptedFile.from_dict(parsed_dict)
-        else:
+        media_classes = {
+            "m.image": (RoomMessageImage, RoomEncryptedImage),
+            "m.audio": (RoomMessageAudio, RoomEncryptedAudio),
+            "m.video": (RoomMessageVideo, RoomEncryptedVideo),
+            "m.file": (RoomMessageFile, RoomEncryptedFile),
+        }
+
+        if (msg_classes := media_classes.get(msgtype)) is None:
             event = RoomMessage.parse_event(parsed_dict)
+        else:
+            encrypted = "file" in parsed_dict["content"]
+            event = msg_classes[encrypted].from_dict(parsed_dict)
 
         if "unsigned" in parsed_dict:
             txn_id = parsed_dict["unsigned"].get("transaction_id", None)
