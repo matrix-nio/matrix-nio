@@ -80,13 +80,8 @@ def verify_or_none(schema):
 
 
 @dataclass
-class UnknownBadEvent:
-    """An event that doesn't have the minimal necessary structure.
-
-    This type of event will be created if we can't find the event_id, sender,
-    origin server timestamp or event type.
-
-    The event can still be inspected with the source attribute.
+class BaseEvent:
+    """Base class that Event, BadEvent, and UnknownBadEvent inherit from.
 
     Attributes:
         source (dict): The source dictionary of the event. This allows access
@@ -114,9 +109,48 @@ class UnknownBadEvent:
     sender_key: Optional[str] = field(default=None, init=False)
     session_id: Optional[str] = field(default=None, init=False)
 
+    def flattened(
+        self,
+        _prefix: str = "",
+        _source: Optional[Dict[str, Any]] = None,
+        _flat: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Return a flattened version of the ``source`` dict with dotted keys.
+
+        Example:
+            >>> event.source
+            {"content": {"body": "foo"}, "m.test": {"key": "bar"}}
+            >>> event.source.flattened()
+            {"content.body": "foo", "m.test.key": "bar"}
+
+        """
+
+        source = self.source if _source is None else _source
+        flat = {} if _flat is None else _flat
+
+        for key, value in source.items():
+            if isinstance(value, dict):
+                self.flattened(f"{_prefix}{key}.", value, flat)
+            else:
+                flat[f"{_prefix}{key}"] = value
+
+        return flat
+
 
 @dataclass
-class BadEvent:
+class UnknownBadEvent(BaseEvent):
+    """An event that doesn't have the minimal necessary structure.
+
+    This type of event will be created if we can't find the event_id, sender,
+    origin server timestamp or event type.
+
+    The event can still be inspected with the source attribute.
+
+    """
+
+
+@dataclass
+class BadEvent(BaseEvent):
     """An event that failed event schema and type validation.
 
     This type of event will be created if the event has a valid core structure
