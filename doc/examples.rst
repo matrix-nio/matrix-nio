@@ -178,4 +178,4 @@ look at this external repo called
 `matrix-commander <https://github.com/8go/matrix-commander>`_.
 And of course, you should check out all the other projects built
 with `matrix-nio`. To do so, check out our
-`built-with-marix-nio list <https://github.com/poljar/matrix-nio/blob/master/doc/built-with-nio.rst>`_.
+`built-with-matrix-nio list <https://github.com/poljar/matrix-nio/blob/master/doc/built-with-nio.rst>`_.
