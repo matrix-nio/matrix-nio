@@ -57,6 +57,7 @@ from nio import (
     LogoutResponse,
     MegolmEvent,
     OlmTrustError,
+    PowerLevelsEvent,
     PresenceEvent,
     PresenceGetResponse,
     PresenceSetResponse,
@@ -84,6 +85,7 @@ from nio import (
     RegisterResponse,
     RoomBanResponse,
     RoomContextResponse,
+    RoomCreateEvent,
     RoomCreateResponse,
     RoomDeleteAliasResponse,
     RoomEncryptionEvent,
@@ -149,6 +151,8 @@ BASE_URL_V3 = f"https://example.org{MATRIX_API_PATH_V3}"
 BASE_MEDIA_URL = f"https://example.org{MATRIX_MEDIA_API_PATH}"
 BASE_LEGACY_MEDIA_URL = f"https://example.org{MATRIX_LEGACY_MEDIA_API_PATH}"
 TEST_ROOM_ID = "!testroom:example.org"
+TEST_ROOM_ID2 = "!testroom2:example.org"
+TEST_ROOM_ID_V12 = "!5hdALbO+xIhzcLTxCkspx5uqry9wO8322h/OI9ApnHE"
 
 ALICE_ID = "@alice:example.org"
 ALICE_DEVICE_ID = "JLAFKJWSCS"
@@ -1622,6 +1626,113 @@ class TestClass:
         )
         assert isinstance(resp, RoomCreateResponse)
         assert resp.room_id == TEST_ROOM_ID
+
+    async def test_room_create__predecessor_event_id(self, async_client, aioresponse):
+        def room_create_cb(url, data, **kwargs):
+            # TODO: Validate `data` completely?
+            if isinstance(data, bytes):
+                data = data.decode(encoding="utf-8")
+            if isinstance(data, str):
+                data = json.loads(data)
+            assert (
+                data.get("creation_content", {})
+                .get("predecessor", {})
+                .get("room_id", "")
+                == TEST_ROOM_ID
+            )
+            assert (
+                data.get("creation_content", {}).get("predecessor", {}).get("event_id")
+                == "event_id_1"
+            )
+            return CallbackResult(
+                status=200, payload=self.room_id_response(TEST_ROOM_ID2)
+            )
+
+        aioresponse.post(f"{BASE_URL_V3}/createRoom" "", callback=room_create_cb)
+
+        resp = await async_client.room_create(
+            visibility=RoomVisibility.public,
+            alias="foo",
+            name="bar",
+            topic="Foos and bars",
+            room_version="5",
+            preset=RoomPreset.trusted_private_chat,
+            invite={ALICE_ID},
+            initial_state=[],
+            power_level_override={},
+            predecessor={"room_id": TEST_ROOM_ID, "event_id": "event_id_1"},
+        )
+        assert isinstance(resp, RoomCreateResponse)
+        assert resp.room_id == TEST_ROOM_ID2
+
+    async def test_room_create__predecessor_noevent_id(self, async_client, aioresponse):
+        def room_create_cb(url, data, **kwargs):
+            # TODO: Validate `data` completely?
+            if isinstance(data, bytes):
+                data = data.decode(encoding="utf-8")
+            if isinstance(data, str):
+                data = json.loads(data)
+            assert (
+                data.get("creation_content", {})
+                .get("predecessor", {})
+                .get("room_id", "")
+                == TEST_ROOM_ID
+            )
+            assert (
+                data.get("creation_content", {}).get("predecessor", {}).get("event_id")
+                is None
+            )
+            return CallbackResult(
+                status=200, payload=self.room_id_response(TEST_ROOM_ID_V12)
+            )
+
+        aioresponse.post(f"{BASE_URL_V3}/createRoom" "", callback=room_create_cb)
+
+        resp = await async_client.room_create(
+            visibility=RoomVisibility.public,
+            alias="foo",
+            name="bar",
+            topic="Foos and bars",
+            room_version="12",
+            preset=RoomPreset.trusted_private_chat,
+            invite={ALICE_ID},
+            initial_state=[],
+            power_level_override={},
+            predecessor={"room_id": TEST_ROOM_ID},
+        )
+        assert isinstance(resp, RoomCreateResponse)
+        assert resp.room_id == TEST_ROOM_ID_V12
+
+    async def test_room_create__additional_creators(self, async_client, aioresponse):
+        def room_create_cb(url, data, **kwargs):
+            # TODO: Validate `data` completely?
+            if isinstance(data, bytes):
+                data = data.decode(encoding="utf-8")
+            if isinstance(data, str):
+                data = json.loads(data)
+            assert data.get("creation_content", {}).get("additional_creators", []) == [
+                ALICE_ID
+            ]
+            return CallbackResult(
+                status=200, payload=self.room_id_response(TEST_ROOM_ID_V12)
+            )
+
+        aioresponse.post(f"{BASE_URL_V3}/createRoom" "", callback=room_create_cb)
+
+        resp = await async_client.room_create(
+            visibility=RoomVisibility.public,
+            alias="foo",
+            name="bar",
+            topic="Foos and bars",
+            room_version="12",
+            preset=RoomPreset.trusted_private_chat,
+            invite={ALICE_ID},
+            initial_state=[],
+            power_level_override={},
+            additional_creators=[ALICE_ID],
+        )
+        assert isinstance(resp, RoomCreateResponse)
+        assert resp.room_id == TEST_ROOM_ID_V12
 
     async def test_join(self, async_client, aioresponse):
         aioresponse.post(
@@ -4462,3 +4573,511 @@ class TestClass:
         resp = await async_client.space_get_hierarchy(TEST_ROOM_ID)
 
         assert isinstance(resp, SpaceGetHierarchyError)
+
+    async def test_has_event_permission__creator_can_tombstone(
+        self, async_client, aioresponse
+    ):
+        room_create_event = RoomCreateEvent.from_dict(
+            {
+                "event_id": "create_event_id",
+                "origin_server_ts": 1,
+                "type": "m.room.create",
+                "sender": ALICE_ID,
+                "state_key": "",
+                "content": {"room_version": "11"},
+            }
+        )
+        power_levels_event_content = {
+            "users": {
+                ALICE_ID: 100,
+            }
+        }
+        power_levels_event = PowerLevelsEvent.from_dict(
+            {
+                "event_id": "power_levels_event_id",
+                "origin_server_ts": 1,
+                "type": "m.room.power_levels",
+                "sender": ALICE_ID,
+                "state_key": "",
+                "content": power_levels_event_content,
+            }
+        )
+        # I am Alice.
+        aioresponse.get(
+            f"{BASE_URL_V3}/account/whoami",
+            status=200,
+            payload={
+                "device_id": ALICE_DEVICE_ID,
+                "user_id": ALICE_ID,
+            },
+            repeat=True,
+        )
+        # Default power levels.
+        aioresponse.get(
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.power_levels",
+            status=200,
+            payload=power_levels_event_content,
+            repeat=True,
+        )
+        # I am joined in the TEST_ROOM
+        await async_client.receive_response(
+            SyncResponse(
+                next_batch="sync_next_batch",
+                rooms=Rooms(
+                    invite={},
+                    join={
+                        TEST_ROOM_ID: RoomInfo(
+                            timeline=Timeline(
+                                events=[], limited=False, prev_batch="room_prev_batch"
+                            ),
+                            state=[
+                                room_create_event,
+                                power_levels_event,
+                            ],
+                            ephemeral=[],
+                            account_data=[],
+                        )
+                    },
+                    leave={},
+                ),
+                device_key_count=DeviceOneTimeKeyCount(
+                    curve25519=None, signed_curve25519=None
+                ),
+                device_list=DeviceList(changed=[], left=[]),
+                to_device_events=[],
+                presence_events=[],
+            )
+        )
+
+        response = await async_client.has_event_permission(
+            TEST_ROOM_ID, "m.room.tombstone", "state"
+        )
+        assert response is True
+
+    async def test_has_event_permission__creator_can_tombstone__roomv12(
+        self, async_client, aioresponse
+    ):
+        room_create_event = RoomCreateEvent.from_dict(
+            {
+                "event_id": "create_event_id",
+                "origin_server_ts": 1,
+                "type": "m.room.create",
+                "sender": ALICE_ID,
+                "state_key": "",
+                "content": {"room_version": "12"},
+            }
+        )
+        power_levels_event_content = {"events": {"m.room.tombstone": 150}}
+        power_levels_event = PowerLevelsEvent.from_dict(
+            {
+                "event_id": "power_levels_event_id",
+                "origin_server_ts": 1,
+                "type": "m.room.power_levels",
+                "sender": ALICE_ID,
+                "state_key": "",
+                "content": power_levels_event_content,
+            }
+        )
+        # I am Alice.
+        aioresponse.get(
+            f"{BASE_URL_V3}/account/whoami",
+            status=200,
+            payload={
+                "device_id": ALICE_DEVICE_ID,
+                "user_id": ALICE_ID,
+            },
+            repeat=True,
+        )
+        # Default power levels.
+        aioresponse.get(
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.power_levels",
+            status=200,
+            payload=power_levels_event_content,
+            repeat=True,
+        )
+        # I am joined in the TEST_ROOM
+        await async_client.receive_response(
+            SyncResponse(
+                next_batch="sync_next_batch",
+                rooms=Rooms(
+                    invite={},
+                    join={
+                        TEST_ROOM_ID: RoomInfo(
+                            timeline=Timeline(
+                                events=[], limited=False, prev_batch="room_prev_batch"
+                            ),
+                            state=[
+                                room_create_event,
+                                power_levels_event,
+                            ],
+                            ephemeral=[],
+                            account_data=[],
+                        )
+                    },
+                    leave={},
+                ),
+                device_key_count=DeviceOneTimeKeyCount(
+                    curve25519=None, signed_curve25519=None
+                ),
+                device_list=DeviceList(changed=[], left=[]),
+                to_device_events=[],
+                presence_events=[],
+            )
+        )
+
+        response = await async_client.has_event_permission(
+            TEST_ROOM_ID, "m.room.tombstone", "state"
+        )
+        assert response is True
+
+    async def test_has_event_permission__admin_cannot_tombstone__roomv12(
+        self, async_client, aioresponse
+    ):
+        room_create_event = RoomCreateEvent.from_dict(
+            {
+                "event_id": "create_event_id",
+                "origin_server_ts": 1,
+                "type": "m.room.create",
+                "sender": CAROL_ID,
+                "state_key": "",
+                "content": {"room_version": "12"},
+            }
+        )
+        power_levels_event_content = {
+            "events": {
+                "m.room.tombstone": 150,
+            },
+            "users": {
+                ALICE_ID: 100,
+            },
+        }
+        power_levels_event = PowerLevelsEvent.from_dict(
+            {
+                "event_id": "power_levels_event_id",
+                "origin_server_ts": 1,
+                "type": "m.room.power_levels",
+                "sender": CAROL_ID,
+                "state_key": "",
+                "content": power_levels_event_content,
+            }
+        )
+        # I am Alice.
+        aioresponse.get(
+            f"{BASE_URL_V3}/account/whoami",
+            status=200,
+            payload={
+                "device_id": ALICE_DEVICE_ID,
+                "user_id": ALICE_ID,
+            },
+            repeat=True,
+        )
+        # Default power levels.
+        aioresponse.get(
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.power_levels",
+            status=200,
+            payload=power_levels_event_content,
+            repeat=True,
+        )
+        # I am joined in the TEST_ROOM
+        await async_client.receive_response(
+            SyncResponse(
+                next_batch="sync_next_batch",
+                rooms=Rooms(
+                    invite={},
+                    join={
+                        TEST_ROOM_ID: RoomInfo(
+                            timeline=Timeline(
+                                events=[], limited=False, prev_batch="room_prev_batch"
+                            ),
+                            state=[
+                                room_create_event,
+                                power_levels_event,
+                            ],
+                            ephemeral=[],
+                            account_data=[],
+                        )
+                    },
+                    leave={},
+                ),
+                device_key_count=DeviceOneTimeKeyCount(
+                    curve25519=None, signed_curve25519=None
+                ),
+                device_list=DeviceList(changed=[], left=[]),
+                to_device_events=[],
+                presence_events=[],
+            )
+        )
+
+        response = await async_client.has_event_permission(
+            TEST_ROOM_ID, "m.room.tombstone", "state"
+        )
+        assert response is False
+
+    async def test_has_permission(self, async_client, aioresponse):
+        room_create_event = RoomCreateEvent.from_dict(
+            {
+                "event_id": "create_event_id",
+                "origin_server_ts": 1,
+                "type": "m.room.create",
+                "sender": CAROL_ID,
+                "state_key": "",
+                "content": {"room_version": "11"},
+            }
+        )
+        power_levels_event_content = {
+            "users": {
+                CAROL_ID: 100,
+            },
+            "kick": 50,
+        }
+        power_levels_event = PowerLevelsEvent.from_dict(
+            {
+                "event_id": "power_levels_event_id",
+                "origin_server_ts": 1,
+                "type": "m.room.power_levels",
+                "sender": CAROL_ID,
+                "state_key": "",
+                "content": power_levels_event_content,
+            }
+        )
+        # I am Alice.
+        aioresponse.get(
+            f"{BASE_URL_V3}/account/whoami",
+            status=200,
+            payload={
+                "device_id": ALICE_DEVICE_ID,
+                "user_id": ALICE_ID,
+            },
+            repeat=True,
+        )
+        # Default power levels.
+        aioresponse.get(
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.power_levels",
+            status=200,
+            payload=power_levels_event_content,
+            repeat=True,
+        )
+        # I am joined in the TEST_ROOM
+        await async_client.receive_response(
+            SyncResponse(
+                next_batch="sync_next_batch",
+                rooms=Rooms(
+                    invite={},
+                    join={
+                        TEST_ROOM_ID: RoomInfo(
+                            timeline=Timeline(
+                                events=[], limited=False, prev_batch="room_prev_batch"
+                            ),
+                            state=[
+                                room_create_event,
+                                power_levels_event,
+                            ],
+                            ephemeral=[],
+                            account_data=[],
+                        )
+                    },
+                    leave={},
+                ),
+                device_key_count=DeviceOneTimeKeyCount(
+                    curve25519=None, signed_curve25519=None
+                ),
+                device_list=DeviceList(changed=[], left=[]),
+                to_device_events=[],
+                presence_events=[],
+            )
+        )
+
+        response = await async_client.has_permission(TEST_ROOM_ID, "kick")
+        assert response is False
+
+    async def test_has_permission__roomv12_creator_does(
+        self, async_client, aioresponse
+    ):
+        room_create_event = RoomCreateEvent.from_dict(
+            {
+                "event_id": "create_event_id",
+                "origin_server_ts": 1,
+                "type": "m.room.create",
+                "sender": ALICE_ID,
+                "state_key": "",
+                "content": {"room_version": "12"},
+            }
+        )
+        power_levels_event_content = {
+            "kick": 50,
+        }
+        power_levels_event = PowerLevelsEvent.from_dict(
+            {
+                "event_id": "power_levels_event_id",
+                "origin_server_ts": 1,
+                "type": "m.room.power_levels",
+                "sender": ALICE_ID,
+                "state_key": "",
+                "content": power_levels_event_content,
+            }
+        )
+        # I am Alice.
+        aioresponse.get(
+            f"{BASE_URL_V3}/account/whoami",
+            status=200,
+            payload={
+                "device_id": ALICE_DEVICE_ID,
+                "user_id": ALICE_ID,
+            },
+            repeat=True,
+        )
+        # Default power levels.
+        aioresponse.get(
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.power_levels",
+            status=200,
+            payload=power_levels_event_content,
+            repeat=True,
+        )
+        # I am joined in the TEST_ROOM
+        await async_client.receive_response(
+            SyncResponse(
+                next_batch="sync_next_batch",
+                rooms=Rooms(
+                    invite={},
+                    join={
+                        TEST_ROOM_ID: RoomInfo(
+                            timeline=Timeline(
+                                events=[], limited=False, prev_batch="room_prev_batch"
+                            ),
+                            state=[
+                                room_create_event,
+                                power_levels_event,
+                            ],
+                            ephemeral=[],
+                            account_data=[],
+                        )
+                    },
+                    leave={},
+                ),
+                device_key_count=DeviceOneTimeKeyCount(
+                    curve25519=None, signed_curve25519=None
+                ),
+                device_list=DeviceList(changed=[], left=[]),
+                to_device_events=[],
+                presence_events=[],
+            )
+        )
+
+        response = await async_client.has_permission(TEST_ROOM_ID, "kick")
+        assert response is True
+
+    async def test_room_upgrade__upgrade_to_v12_excludes_creator_from_new_power_levels(self, async_client, aioresponse):
+        room_create_event_dict = {
+                "event_id": "$create_event_id",
+                "origin_server_ts": 1,
+                "type": "m.room.create",
+                "sender": ALICE_ID,
+                "state_key": "",
+                "content": {"room_version": "11"},
+            }
+        room_create_event = RoomCreateEvent.from_dict(room_create_event_dict)
+        power_levels_event_content = {
+            "users": {
+                ALICE_ID: 100,
+            },
+        }
+        power_levels_event_dict = {
+            "event_id": "$power_levels_event_id",
+            "origin_server_ts": 1,
+            "type": "m.room.power_levels",
+            "sender": ALICE_ID,
+            "state_key": "",
+            "content": power_levels_event_content,
+        }
+        power_levels_event = PowerLevelsEvent.from_dict(power_levels_event_dict)
+        # I am Alice.
+        aioresponse.get(
+            f"{BASE_URL_V3}/account/whoami",
+            status=200,
+            payload={
+                "device_id": ALICE_DEVICE_ID,
+                "user_id": ALICE_ID,
+            },
+            repeat=True,
+        )
+        # Default power levels.
+        aioresponse.get(
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.power_levels",
+            status=200,
+            payload=power_levels_event_content,
+            repeat=True,
+        )
+        # Room state
+        aioresponse.get(
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state",
+            status=200,
+            payload=[room_create_event_dict, power_levels_event_dict],
+            repeat=True
+        )
+        # Room has no alias
+        aioresponse.get(
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.canonical_alias",
+            status=404,
+            payload={},
+            repeat=True
+        )
+        # I am joined in the TEST_ROOM
+        await async_client.receive_response(
+            SyncResponse(
+                next_batch="sync_next_batch",
+                rooms=Rooms(
+                    invite={},
+                    join={
+                        TEST_ROOM_ID: RoomInfo(
+                            timeline=Timeline(
+                                events=[], limited=False, prev_batch="room_prev_batch"
+                            ),
+                            state=[
+                                room_create_event,
+                                power_levels_event,
+                            ],
+                            ephemeral=[],
+                            account_data=[],
+                        )
+                    },
+                    leave={},
+                ),
+                device_key_count=DeviceOneTimeKeyCount(
+                    curve25519=None, signed_curve25519=None
+                ),
+                device_list=DeviceList(changed=[], left=[]),
+                to_device_events=[],
+                presence_events=[],
+            )
+        )
+        # Expect a `createRoom` API call with the power levels that do not include the creator.
+        room_create_called = asyncio.Event()
+
+        def room_create_cb(url, data, **kwargs):
+            # TODO: Validate `data` completely?
+            if isinstance(data, bytes):
+                data = data.decode(encoding="utf-8")
+            if isinstance(data, str):
+                data = json.loads(data)
+            assert data.get("room_version") == "12"
+            assert (
+                ALICE_ID not in data.get("power_level_content_override", {}).get("users", {})
+            )
+            for event in data.get("initial_state", []):
+                if event["type"] == "m.room.power_levels":
+                    assert ALICE_ID not in event.get("content", {}).get("users", {})
+            room_create_called.set()
+            return CallbackResult(
+                status=200, payload=self.room_id_response(TEST_ROOM_ID_V12)
+            )
+        aioresponse.post(f"{BASE_URL_V3}/createRoom", callback=room_create_cb)
+        # Expect to tombstone the old room
+        aioresponse.put(
+            f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.tombstone",
+            status=200,
+            payload={"event_id": "$tombstone_event_id"},
+            repeat=False
+        )
+
+        await async_client.room_upgrade(TEST_ROOM_ID, "12")
+        assert room_create_called.is_set()

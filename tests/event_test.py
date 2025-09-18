@@ -99,6 +99,12 @@ class TestClass:
         assert isinstance(event, RoomCreateEvent)
         assert event.room_type == "nio.matrix.test"
 
+    def test_create_event_v12(self):
+        parsed_dict = TestClass._load_response("tests/data/events/create_v12.json")
+        event = RoomCreateEvent.from_dict(parsed_dict)
+        assert isinstance(event, RoomCreateEvent)
+        assert event.additional_creators == ["@bob:example.org"]
+
     def test_guest_access_event(self):
         parsed_dict = TestClass._load_response("tests/data/events/guest_access.json")
         event = RoomGuestAccessEvent.from_dict(parsed_dict)
@@ -168,6 +174,8 @@ class TestClass:
         assert isinstance(event, PowerLevelsEvent)
 
         levels = event.power_levels
+        creator = "@creator:localhost"
+        levels.creators[creator] = True
         admin = "@example:localhost"
         mod = "@alice:localhost"
         higher_user = "@carol:localhost"
@@ -182,34 +190,46 @@ class TestClass:
 
         assert levels.get_user_level(admin) == 100
         assert levels.get_user_level(user) == 0
+        assert levels.get_user_level(creator) > 2**53
 
+        assert levels.can_user_send_state(creator, "m.room.name") is True
         assert levels.can_user_send_state(admin, "m.room.name") is True
         assert levels.can_user_send_state(user, "m.room.name") is False
+        assert levels.can_user_send_message(creator) is True
         assert levels.can_user_send_message(admin) is True
         assert levels.can_user_send_message(user, "m.room.message") is False
 
+        assert levels.can_user_invite(creator) is True
         assert levels.can_user_invite(admin) is True
         assert levels.can_user_invite(user) is True
 
+        assert levels.can_user_kick(creator) is True
         assert levels.can_user_kick(admin) is True
         assert levels.can_user_kick(user) is False
+        assert levels.can_user_kick(creator, creator) is False
+        assert levels.can_user_kick(creator, admin) is True
         assert levels.can_user_kick(admin, admin) is False
         assert levels.can_user_kick(admin, mod) is True
         assert levels.can_user_kick(mod, admin) is False
         assert levels.can_user_kick(mod, higher_user) is True
         assert levels.can_user_kick(higher_user, user) is False
 
+        assert levels.can_user_ban(creator) is True
         assert levels.can_user_ban(admin) is True
         assert levels.can_user_ban(user) is False
+        assert levels.can_user_ban(creator, creator) is False
+        assert levels.can_user_ban(creator, admin) is True
         assert levels.can_user_ban(admin, admin) is False
         assert levels.can_user_ban(admin, mod) is True
         assert levels.can_user_ban(mod, admin) is False
         assert levels.can_user_ban(mod, higher_user) is True
         assert levels.can_user_ban(higher_user, user) is False
 
+        assert levels.can_user_redact(creator) is True
         assert levels.can_user_redact(admin) is True
         assert levels.can_user_redact(user) is False
 
+        assert levels.can_user_notify(creator, "room") is True
         assert levels.can_user_notify(admin, "room") is True
         assert levels.can_user_notify(mod, "room") is False
 

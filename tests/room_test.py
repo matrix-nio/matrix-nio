@@ -60,6 +60,25 @@ class TestClass:
         room = self.test_room
         assert room
 
+    def test_supports_room_version_12(self):
+        room = MatrixRoom(TEST_ROOM, BOB_ID)
+        room.room_version = "11"
+        assert room.supports_room_version_12 is False
+
+        room = MatrixRoom(TEST_ROOM, BOB_ID)
+        room.room_version = "12"
+        assert room.supports_room_version_12 is True
+
+        room = MatrixRoom(TEST_ROOM, BOB_ID)
+        room.room_version = "org.matrix.hydra.11"
+        assert room.supports_room_version_12 is True
+
+        # Not sure if this is the correct behavior.
+        # See comments in MatrixRoom.supports_room_version_12().
+        room = MatrixRoom(TEST_ROOM, BOB_ID)
+        room.room_version = "unknown_room_version"
+        assert room.supports_room_version_12 is False
+
     def test_adding_members(self):
         room = self.test_room
         assert not room.users
@@ -430,6 +449,25 @@ class TestClass:
         )
         assert room.federate is False
         assert room.room_version == "1"
+        assert room.creators == set()
+
+    def test_create_event__room_v12(self):
+        room = self.test_room
+        room.handle_event(
+            RoomCreateEvent.from_dict(
+                {
+                    "event_id": "event_id",
+                    "origin_server_ts": 0,
+                    "sender": BOB_ID,
+                    "state_key": "",
+                    "type": "m.room.create",
+                    "content": {"room_version": "12", "m.federate": False},
+                }
+            )
+        )
+        assert room.federate is False
+        assert room.room_version == "12"
+        assert room.creators == {BOB_ID}
 
     def test_guest_access_event(self):
         room = self.test_room

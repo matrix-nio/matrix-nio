@@ -18,7 +18,7 @@ import re
 
 from jsonschema import Draft4Validator, FormatChecker, validators
 
-RoomRegex = "^!.+:.+$"
+RoomRegex = "^!.+$"
 UserIdRegex = "^@.*:.+$"
 EventTypeRegex = r"^.+\..+"
 Base64Regex = r"[^-A-Za-z0-9+/=]|=[^=]|={3,}$"
@@ -799,13 +799,17 @@ class Schemas:
                     "m.federate": {"type": "boolean", "default": True},
                     "room_version": {"type": "string", "default": "1"},
                     "type": {"type": "string", "default": ""},
+                    "additional_creators": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
                     "predecessor": {
                         "type": "object",
                         "properties": {
                             "event_id": {"type": "string"},
                             "room_id": {"type": "string", "format": "room_id"},
                         },
-                        "required": ["event_id", "room_id"],
+                        "required": ["room_id"],
                     },
                 },
                 "required": [],

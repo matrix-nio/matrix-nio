@@ -1014,6 +1014,7 @@ class Api:
         power_level_override: Optional[Dict[str, Any]] = None,
         predecessor: Optional[Dict[str, Any]] = None,
         space: bool = False,
+        additional_creators: Optional[List[str]] = None,
     ) -> Tuple[str, str, str]:
         """Create a new room.
 
@@ -1077,6 +1078,11 @@ class Api:
                 ``m.room.power_levels`` event before it is sent to the room.
 
             space (bool): Create as a Space (defaults to False).
+
+            additional_creators (list): a list of user id to give the same
+                (infinite) power level as the sender of the event.
+                Applicable to room versions >= 12.
+
         """
         path = ["createRoom"]
         query_parameters = {"access_token": access_token}
@@ -1119,6 +1125,9 @@ class Api:
 
         if space:
             body["creation_content"]["type"] = "m.space"
+
+        if additional_creators:
+            body["creation_content"]["additional_creators"] = additional_creators
 
         return "POST", Api._build_path(path, query_parameters), Api.to_json(body)
 

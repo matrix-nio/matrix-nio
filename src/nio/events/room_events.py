@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from ..event_builders import RoomKeyRequestMessage
 from ..schemas import Schemas
@@ -628,12 +628,15 @@ class RoomCreateEvent(Event):
             In spec v1.2 the following room types are specified:
                 - `m.space`
             Unspecified room types are permitted through the use of Namespaced Identifiers.
+        additional_creators (list):
+            List of additional creators of the room, for room versions 12 and higher.
 
     """
 
     federate: bool = True
     room_version: str = "1"
     room_type: str = ""
+    additional_creators: List[str] = field(default_factory=list)
 
     @classmethod
     @verify(Schemas.room_create)
@@ -642,10 +645,10 @@ class RoomCreateEvent(Event):
     ) -> Union[RoomCreateEvent, BadEventType]:
         federate = parsed_dict["content"]["m.federate"]
         version = parsed_dict["content"]["room_version"]
-        if "type" in parsed_dict["content"]:
-            room_type = parsed_dict["content"]["type"]
+        room_type = parsed_dict["content"].get("type", "")
+        additional_creators = parsed_dict["content"].get("additional_creators", [])
 
-        return cls(parsed_dict, federate, version, room_type)
+        return cls(parsed_dict, federate, version, room_type, additional_creators)
 
 
 @dataclass
@@ -1274,12 +1277,18 @@ class PowerLevels:
             from user_id to power level for that user.
         events (dict): The level required to send specific event types. This is
             a mapping from event type to power level required.
+        creators (dict): The user_ids that created the room and should have
+            infinite power. This should be empty for room versions < 12.
+            Values in the dict are always True.
 
     """
 
     defaults: DefaultLevels = field(default_factory=DefaultLevels)
     users: Dict[str, int] = field(default_factory=dict)
     events: Dict[str, int] = field(default_factory=dict)
+    # TODO: does it make sense to put a creators field here? It's not part of
+    # the event. But can_user_... will not be correct without it.
+    creators: Dict[str, Literal[True]] = field(default_factory=dict)
 
     def get_state_event_required_level(self, event_type: str) -> int:
         """Get required power level to send a certain type of state event.
@@ -1323,7 +1332,10 @@ class PowerLevels:
             user_id (str): The fully-qualified ID of the user for whom we would
                 like to get the power level.
         """
-        return self.users.get(user_id, self.defaults.users_default)
+        if user_id in self.creators:
+            return 2**53 + 1  # see MSC4289
+        else:
+            return self.users.get(user_id, self.defaults.users_default)
 
     def can_user_send_state(self, user_id: str, event_type: str) -> bool:
         """Return whether a user has enough power to send certain state events.

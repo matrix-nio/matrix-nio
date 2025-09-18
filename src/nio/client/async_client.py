@@ -2444,6 +2444,7 @@ class AsyncClient(Client):
         power_level_override: Optional[Dict[str, Any]] = None,
         predecessor: Optional[Dict[str, Any]] = None,
         space: bool = False,
+        additional_creators: Optional[List[str]] = None,
     ) -> Union[RoomCreateResponse, RoomCreateError]:
         """Create a new room.
 
@@ -2508,12 +2509,16 @@ class AsyncClient(Client):
                 ``m.room.power_levels`` event before it is sent to the room.
 
             predecessor (dict): A reference to the room this room replaces, if the previous room was upgraded.
-                Containing the event ID of the last known event in the old room.
+                Containing the event ID of the last known event in the old room (for room versions < 12).
                 And the ID of the old room.
                 ``event_id``: ``$something:example.org``,
                 ``room_id``: ``!oldroom:example.org``
 
             space (bool): Create as a Space (defaults to False).
+
+            additional_creators (list): a list of user id to give the same
+                (infinite) power level as the sender of the event.
+                Applicable to room versions >= 12.
         """
 
         method, path, data = Api.room_create(
@@ -2532,6 +2537,7 @@ class AsyncClient(Client):
             power_level_override=power_level_override,
             predecessor=predecessor,
             space=space,
+            additional_creators=additional_creators,
         )
 
         return await self._send(RoomCreateResponse, method, path, data)
@@ -3966,7 +3972,12 @@ class AsyncClient(Client):
                 ``m.room.power_levels`` event before it is sent to the room.
         """
         # Check if we are allowed to tombstone a room
-        if not await self.has_event_permission(old_room_id, "m.room.tombstone"):
+        tombstone_permission = await self.has_event_permission(
+            old_room_id, "m.room.tombstone", "state"
+        )
+        if isinstance(tombstone_permission, ErrorResponse):
+            return RoomUpgradeError("Could not determine if allowed to upgrade room")
+        if not tombstone_permission:
             return RoomUpgradeError("Not allowed to upgrade room")
 
         # Get state events for the old room
@@ -3986,14 +3997,23 @@ class AsyncClient(Client):
             if event["type"] == "m.room.power_levels":
                 old_room_power_levels = event["content"]
 
-        # Get last known event from the old room
-        old_room_event = await self.room_messages(
-            start="", room_id=old_room_id, limit=1
-        )
-        if isinstance(old_room_event, RoomMessagesError):
-            return RoomUpgradeError("Failed to get last known event")
+        predecessor = {
+            "room_id": old_room_id,
+        }
 
-        old_room_last_event = old_room_event.chunk[0]
+        if MatrixRoom._supports_room_version_12(new_room_version):
+            who_am_i = await self.whoami()
+            if who_am_i.user_id in old_room_power_levels["users"]:
+                del old_room_power_levels["users"][who_am_i.user_id]
+        else:
+            # Get last known event from the old room
+            old_room_event = await self.room_messages(
+                start="", room_id=old_room_id, limit=1
+            )
+            if isinstance(old_room_event, RoomMessagesError):
+                return RoomUpgradeError("Failed to get last known event")
+
+            predecessor["event_id"] = old_room_event.chunk[0].event_id
 
         # Overwrite power level if a new power level was passed
         if room_power_level_overwrite is not None:
@@ -4004,10 +4024,7 @@ class AsyncClient(Client):
             room_version=new_room_version,
             power_level_override=old_room_power_levels,
             initial_state=new_room_initial_state,
-            predecessor={
-                "event_id": old_room_last_event.event_id,
-                "room_id": old_room_id,
-            },
+            predecessor=predecessor,
         )
 
         if isinstance(new_room, RoomCreateError):
@@ -4082,40 +4099,53 @@ class AsyncClient(Client):
         self, room_id: str, event_name: str, event_type: str = "event"
     ) -> Union[bool, ErrorResponse]:
         who_am_i = await self.whoami()
+
+        # TODO: why does this function use whoami instead of self.user_id?
+        # Does that also mean that it shouldn't use MatrixRoom.creators?
+        if who_am_i.user_id in self.rooms[room_id].creators:
+            return True
+
         power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
 
         try:
             user_power_level = power_levels.content["users"][who_am_i.user_id]
         except KeyError:
-            user_power_level = power_levels.content["users_default"]
-        else:
+            user_power_level = power_levels.content.get("users_default", 0)
+        except Exception:
             return ErrorResponse("Couldn't get user power levels")
 
         try:
             event_power_level = power_levels.content["events"][event_name]
         except KeyError:
             if event_type == "event":
-                event_power_level = power_levels.content["events_default"]
+                event_power_level = power_levels.content.get("events_default", 0)
             elif event_type == "state":
-                event_power_level = power_levels.content["state_default"]
+                event_power_level = power_levels.content.get("state_default", 50)
             else:
                 return ErrorResponse(f"event_type {event_type} unknown")
-        else:
+        except Exception:
             return ErrorResponse("Couldn't get event power levels")
 
         return user_power_level >= event_power_level
 
+    @logged_in_async
     async def has_permission(
         self, room_id: str, permission_type: str
     ) -> Union[bool, ErrorResponse]:
         who_am_i = await self.whoami()
+
+        # TODO: why does this function use whoami instead of self.user_id?
+        # Does that also mean that it shouldn't use MatrixRoom.creators?
+        if who_am_i.user_id in self.rooms[room_id].creators:
+            return True
+
         power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
 
         try:
             user_power_level = power_levels.content["users"][who_am_i.user_id]
         except KeyError:
-            user_power_level = power_levels.content["users_default"]
-        else:
+            user_power_level = power_levels.content.get("users_default", 0)
+        except Exception:
             return ErrorResponse("Couldn't get user power levels")
 
         try:
