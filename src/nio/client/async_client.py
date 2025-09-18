@@ -4001,7 +4001,11 @@ class AsyncClient(Client):
             "room_id": old_room_id,
         }
 
-        if not MatrixRoom._supports_room_version_12(new_room_version):
+        if MatrixRoom._supports_room_version_12(new_room_version):
+            who_am_i = await self.whoami()
+            if who_am_i.user_id in old_room_power_levels["users"]:
+                del old_room_power_levels["users"][who_am_i.user_id]
+        else:
             # Get last known event from the old room
             old_room_event = await self.room_messages(
                 start="", room_id=old_room_id, limit=1
