@@ -2801,7 +2801,7 @@ class TestClass:
 
         assert await get_time(999_999_999) == 30
 
-    async def test_sync_forever(self, async_client, aioresponse, event_loop):
+    async def test_sync_forever(self, async_client, aioresponse):
         sync_url = re.compile(
             rf"^https://example\.org{MATRIX_API_PATH_V3}/sync",
         )
@@ -2833,7 +2833,7 @@ class TestClass:
 
         assert async_client.should_upload_keys
 
-        task: asyncio.Task = event_loop.create_task(
+        task: asyncio.Task = asyncio.get_running_loop().create_task(
             async_client.sync_forever(loop_sleep_time=100)
         )
         await async_client.synced.wait()
@@ -2844,7 +2844,7 @@ class TestClass:
         with pytest.raises(asyncio.CancelledError):
             await task
 
-    async def test_stop_sync_forever(self, async_client, aioresponse, event_loop):
+    async def test_stop_sync_forever(self, async_client, aioresponse):
         sync_url = re.compile(rf"^https://example\.org{MATRIX_API_PATH_V3}/sync")
 
         aioresponse.get(
@@ -2880,7 +2880,7 @@ class TestClass:
 
         async_client.add_presence_callback(event_callback, PresenceEvent)
 
-        task: asyncio.Task = event_loop.create_task(
+        task: asyncio.Task = asyncio.get_running_loop().create_task(
             async_client.sync_forever(loop_sleep_time=100)
         )
 
