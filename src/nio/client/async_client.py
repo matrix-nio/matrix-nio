@@ -452,6 +452,9 @@ class AsyncClient(Client):
 
         self.config: AsyncClientConfig = config or AsyncClientConfig()
 
+        # For reliable “fire-and-forget” background tasks, we gather them in a collection
+        # See: https://docs.python.org/3/library/asyncio-task.html#asyncio.create_task
+        self._background_tasks = set()
         # The flag used to gracefully stop `sync_forever`.
         self._stop_sync_forever = False
 
@@ -684,41 +687,51 @@ class AsyncClient(Client):
         for event in expired_verifications:
             await self._on_expired_verifications(event)
 
+    async def _run_background(self, future: Coroutine):
+        task = asyncio.create_task(future)
+        # Add task to the set. This creates a strong reference.
+        self._background_tasks.add(task)
+
+        # To prevent keeping references to finished tasks forever,
+        # make each task remove its own reference from the set after
+        # completion:
+        task.add_done_callback(self._background_tasks.discard)
+
     async def _on_to_device(self, event: ToDeviceEvent):
         for cb in self.to_device_callbacks:
-            await cb.async_execute(event)
+            await self._run_background(cb.async_execute(event))
 
     async def _on_invited_rooms(self, event: Event, room: MatrixRoom):
         for cb in self.event_callbacks:
-            await cb.async_execute(event, room)
+            await self._run_background(cb.async_execute(event, room))
 
     async def _on_event(self, event: Event, room: MatrixRoom):
         for cb in self.event_callbacks:
-            await cb.async_execute(event, room)
+            await self._run_background(cb.async_execute(event, room))
 
     async def _on_ephemeral(self, event: EphemeralEvent, room: MatrixRoom):
         for cb in self.ephemeral_callbacks:
-            await cb.async_execute(event, room)
+            await self._run_background(cb.async_execute(event, room))
 
     async def _on_room_account_data(self, event: AccountDataEvent, room: MatrixRoom):
         for cb in self.room_account_data_callbacks:
-            await cb.async_execute(event, room)
+            await self._run_background(cb.async_execute(event, room))
 
     async def _on_presence(self, event: PresenceEvent):
         for cb in self.presence_callbacks:
-            await cb.async_execute(event)
+            await self._run_background(cb.async_execute(event))
 
     async def _on_global_account_data(self, event: AccountDataEvent):
         for cb in self.global_account_data_callbacks:
-            await cb.async_execute(event)
+            await self._run_background(cb.async_execute(event))
 
     async def _on_expired_verifications(self, event: ToDeviceEvent):
         for cb in self.to_device_callbacks:
-            await cb.async_execute(event)
+            await self._run_background(cb.async_execute(event))
 
     async def _on_response(self, response: Union[Response, ErrorResponse]):
         for cb in self.response_callbacks:
-            await cb.async_execute(response)
+            await self._run_background(cb.async_execute(response))
 
     async def _handle_sync(self, response: SyncResponse) -> None:
         # We already received such a sync response, do nothing in that case.
