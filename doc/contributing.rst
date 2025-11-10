@@ -25,8 +25,8 @@ You'll also need to install some pip packages:
 
 .. code-block:: sh
 
-    pip install -r test-requirements.txt
-    pip install -r rtd-requirements.txt
+    pip install -e ".[dev]"
+    pip install -e ".[docs]"
 
 
 .. _Testing:

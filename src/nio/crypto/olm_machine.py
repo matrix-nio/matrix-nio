@@ -20,10 +20,10 @@ from datetime import datetime, timedelta
 from json.decoder import JSONDecodeError
 from typing import Any, DefaultDict, Dict, Iterator, List, Optional, Set, Tuple, Union
 
-import olm
+import vodozemac
 from cachetools import LRUCache
 from jsonschema import SchemaError, ValidationError
-from olm import OlmGroupSessionError, OlmMessage, OlmPreKeyMessage, OlmSessionError
+from unpaddedbase64 import decode_base64, encode_base64
 
 from ..api import Api
 from ..crypto.sessions import Session
@@ -272,8 +272,7 @@ class Olm:
         if self.uploaded_key_count is None:
             return False
 
-        max_keys = self.account.max_one_time_keys
-        key_count = (max_keys // 2) - self.uploaded_key_count
+        key_count = self.account.max_one_time_keys - self.uploaded_key_count
         return key_count > 0
 
     def user_fully_verified(self, user_id: str) -> bool:
@@ -288,9 +287,7 @@ class Olm:
 
     def share_keys(self) -> Dict[str, Any]:
         def generate_one_time_keys(current_key_count: int) -> None:
-            max_keys = self.account.max_one_time_keys
-
-            key_count = (max_keys // 2) - current_key_count
+            key_count = self.account.max_one_time_keys - current_key_count
 
             if key_count <= 0:
                 raise ValueError(
@@ -371,13 +368,16 @@ class Olm:
         olm_message = session.encrypt(Api.to_json(payload))
         self.store.save_session(recipient_device.curve25519, session)
 
+        message_type, ciphertext = olm_message.to_parts()
+        ciphertext = encode_base64(ciphertext)
+
         return {
             "algorithm": self._olm_algorithm,
             "sender_key": self.account.identity_keys["curve25519"],
             "ciphertext": {
                 recipient_device.curve25519: {
-                    "type": olm_message.message_type,
-                    "body": olm_message.ciphertext,
+                    "type": message_type,
+                    "body": ciphertext,
                 }
             },
         }
@@ -876,7 +876,7 @@ class Olm:
         self,
         sender: str,
         sender_key: str,
-        message: Union[OlmPreKeyMessage, OlmMessage],
+        message: Union[vodozemac.PreKeyMessage, vodozemac.AnyOlmMessage],
     ) -> InboundSession:
         logger.info(f"Creating Inbound session for {sender}")
         # Let's create a new inbound session.
@@ -943,11 +943,11 @@ class Olm:
                 session_key, sender_fp_key, sender_key, room_id
             )
             if session.id != session_id:
-                raise OlmSessionError(
+                raise vodozemac.SessionCreationException(
                     "Mismatched session id while creating " "inbound group session"
                 )
 
-        except OlmSessionError as e:
+        except vodozemac.SessionCreationException as e:
             logger.warning(e)
             return
 
@@ -1043,7 +1043,7 @@ class Olm:
         self,
         sender: str,
         sender_key: str,
-        message: Union[OlmPreKeyMessage, OlmMessage],
+        message: Union[vodozemac.PreKeyMessage, vodozemac.AnyOlmMessage],
     ) -> Optional[str]:
         plaintext = None
 
@@ -1052,7 +1052,7 @@ class Olm:
         for session in self.session_store[sender_key]:
             matches = False
             try:
-                if isinstance(message, OlmPreKeyMessage):
+                if isinstance(message, vodozemac.PreKeyMessage):
                     # It's a prekey message, check if the session matches
                     # if it doesn't no need to try to decrypt.
                     matches = session.matches(message)
@@ -1072,7 +1072,8 @@ class Olm:
                 )
                 return plaintext
 
-            except OlmSessionError as e:
+            # TODO [vodozemac]: was OlmSessionError, is this right?
+            except (vodozemac.OlmDecryptionException, vodozemac.DecodeException) as e:
                 # Decryption failed using a matching session, we don't want
                 # to create a new session using this prekey message so
                 # raise an exception and log the error.
@@ -1343,7 +1344,7 @@ class Olm:
 
     def _decrypt_megolm_no_error(
         self, event: MegolmEvent, room_id: Optional[str] = None
-    ) -> Optional[Union[Event, BadEvent]]:
+    ) -> Optional[Union[Event, BadEvent, UnknownBadEvent]]:
         try:
             return self.decrypt_megolm_event(event, room_id)
         except EncryptionError:
@@ -1351,7 +1352,7 @@ class Olm:
 
     def decrypt_megolm_event(
         self, event: MegolmEvent, room_id: Optional[str] = None
-    ) -> Union[Event, BadEvent]:
+    ) -> Union[Event, BadEvent, UnknownBadEvent]:
         room_id = room_id or event.room_id
 
         if not room_id:
@@ -1359,6 +1360,8 @@ class Olm:
 
         verified = False
 
+        assert event.sender_key
+        assert event.session_id
         session = self.inbound_group_store.get(
             room_id, event.sender_key, event.session_id
         )
@@ -1374,7 +1377,8 @@ class Olm:
 
         try:
             plaintext, message_index = session.decrypt(event.ciphertext)
-        except OlmGroupSessionError as e:
+        # TODO [vodozemac]: was OlmGroupSessionError, is this right?
+        except (vodozemac.MegolmDecryptionException, vodozemac.DecodeException) as e:
             message = f"Error decrypting megolm event: {str(e)}"
             logger.warning(message)
             raise EncryptionError(message)
@@ -1472,15 +1476,19 @@ class Olm:
                 logger.warning("Olm event doesn't contain ciphertext for our key")
                 return None
 
+            message: Union[vodozemac.PreKeyMessage, vodozemac.AnyOlmMessage]
             if own_ciphertext["type"] == 0:
-                message = OlmPreKeyMessage(own_ciphertext["body"])
+                message = vodozemac.PreKeyMessage.from_base64(own_ciphertext["body"])
             elif own_ciphertext["type"] == 1:
-                message = OlmMessage(own_ciphertext["body"])
+                # TODO [vodozemac]: better bindings?
+                message = vodozemac.AnyOlmMessage.normal(
+                    decode_base64(own_ciphertext["body"]))
             else:
                 logger.warning(
                     f"Unsupported olm message type: {own_ciphertext['type']}"
                 )
                 return None
+            assert message
 
             return self.decrypt(event.sender, event.sender_key, message)
 
@@ -1496,7 +1504,7 @@ class Olm:
         self,
         sender: str,
         sender_key: str,
-        message: Union[OlmPreKeyMessage, OlmMessage],
+        message: Union[vodozemac.PreKeyMessage, vodozemac.AnyOlmMessage],
     ) -> DecryptedOlmT:
         try:
             # First try to decrypt using an existing session.
@@ -1514,7 +1522,7 @@ class Olm:
             # New sessions can only be created if it's a prekey message, we
             # can't decrypt the message if it isn't one at this point in time
             # anymore, so return early
-            if not isinstance(message, OlmPreKeyMessage):
+            if not isinstance(message, vodozemac.PreKeyMessage):
                 self._mark_device_for_unwedging(sender, sender_key)
                 return None
 
@@ -1526,7 +1534,8 @@ class Olm:
                 # Store the new session
                 self.session_store.add(sender_key, s)
                 self.save_session(sender_key, s)
-            except OlmSessionError as e:
+            # TODO [vodozemac]: was OlmSessionError, is this right?
+            except (vodozemac.OlmDecryptionException, vodozemac.DecodeException) as e:
                 logger.error(
                     f"Failed to create new session from prekeymessage: {str(e)}"
                 )
@@ -1592,7 +1601,7 @@ class Olm:
         except KeyError:
             return True
 
-        return session.expired or not session.shared
+        return bool(session.expired) or not session.shared
 
     def group_encrypt(
         self,
@@ -1855,9 +1864,12 @@ class Olm:
         unsigned = json.pop("unsigned", None)
 
         try:
-            olm.ed25519_verify(user_key, Api.to_canonical_json(json), signature_base64)
+            user_key = vodozemac.Ed25519PublicKey.from_base64(user_key)
+            signature = vodozemac.Ed25519Signature.from_base64(signature_base64)
+            message = Api.to_canonical_json(json).encode()
+            user_key.verify_signature(message, signature)
             success = True
-        except olm.utility.OlmVerifyError:
+        except vodozemac.SignatureException:
             success = False
 
         json["signatures"] = signatures
@@ -1921,7 +1933,8 @@ class Olm:
                 room_id,
                 forwarding_chain,
             )
-        except OlmSessionError as e:
+        # TODO [vodozemac]: was OlmSessionError, is this right?
+        except vodozemac.SessionKeyDecodeException as e:
             logger.warning(f"Error importing inbound group session: {e}")
             return None
 

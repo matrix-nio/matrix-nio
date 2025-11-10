@@ -17,7 +17,7 @@ TEST_ROOM = "!test:example.org"
 
 
 class TestClass:
-    def test_account(self):
+    def test_account_pickle(self):
         account = OlmAccount()
 
         assert (
@@ -25,7 +25,7 @@ class TestClass:
             == OlmAccount.from_pickle(account.pickle()).identity_keys
         )
 
-    def test_session(self):
+    def test_outbound_session_pickle(self):
         account = OlmAccount()
         session = OutboundSession(account, BOB_CURVE, BOB_ONETIME)
 
@@ -51,7 +51,7 @@ class TestClass:
         message = session.encrypt(plaintext)
         assert session.use_time >= creation_time
 
-        inbound = InboundSession(bob, message)
+        inbound = InboundSession(bob, message, alice.identity_keys['curve25519'])
         creation_time = inbound.use_time
 
         # Decrypt a message and check that the use time increased.
@@ -59,6 +59,14 @@ class TestClass:
         assert inbound.use_time >= creation_time
 
         assert decrypted_plaintext == plaintext
+
+        # Encrypt/Decrypt another message.
+        plaintext2 = "It's still a secret to everybody"
+        message2 = session.encrypt(plaintext2)
+        assert session.use_time >= creation_time
+        decrypted_plaintext2 = inbound.decrypt(message2)
+        assert inbound.use_time >= creation_time
+        assert decrypted_plaintext2 == plaintext2
 
         pickle = inbound.pickle("")
 
@@ -79,6 +87,15 @@ class TestClass:
         decrypted_plaintext = unpickled.decrypt(message)
         assert unpickled.use_time >= use_time
         assert decrypted_plaintext == plaintext
+
+    def test_outbound_group_session_pickle(self):
+        session = OutboundGroupSession()
+
+        assert (
+            session.id
+            == OutboundGroupSession.from_pickle(session.pickle()).id
+        )
+        assert not session.expired
 
     def test_outbound_group_session(self):
         session = OutboundGroupSession()

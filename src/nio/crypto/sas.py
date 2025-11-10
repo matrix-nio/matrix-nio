@@ -19,8 +19,9 @@ from enum import Enum
 from itertools import zip_longest
 from typing import List, Optional, Tuple
 from uuid import uuid4
+from hashlib import sha256
 
-import olm
+import vodozemac
 
 from ..api import Api
 from ..event_builders import ToDeviceMessage
@@ -43,7 +44,7 @@ class SasState(Enum):
     canceled = 5
 
 
-class Sas(olm.Sas):
+class Sas:
     """Matrix Short Authentication String class.
 
     This class implements a state machine to handle device verification using
@@ -80,6 +81,7 @@ class Sas(olm.Sas):
     _key_agreeemnt_protocols = [_key_agreement_v1, _key_agreement_v2]
     _hash_v1 = "sha256"
     _mac_normal = "hkdf-hmac-sha256"
+    # TODO [vodozemac]: remove _mac_old? not supported anymore
     _mac_old = "hmac-sha256"
     _mac_v1 = [_mac_normal, _mac_old]
     _strings_v1 = ["emoji", "decimal"]
@@ -181,6 +183,8 @@ class Sas(olm.Sas):
         short_auth_string: Optional[List[str]] = None,
         mac_methods: Optional[List[str]] = None,
     ):
+        self._sas = vodozemac.Sas()
+
         self.own_user = own_user
         self.own_device = own_device
         self.own_fp_key = own_fp_key
@@ -197,11 +201,11 @@ class Sas(olm.Sas):
         self.state = SasState.created
         self.we_started_it = True
         self.sas_accepted = False
-        self.commitment = None
+        self.commitment: Optional[str] = None
         self.cancel_reason = ""
         self.cancel_code = ""
 
-        self.their_sas_key: Optional[str] = None
+        self.established_sas: Optional[vodozemac.EstablishedSas] = None
 
         self.verified_devices: List[str] = []
 
@@ -244,7 +248,10 @@ class Sas(olm.Sas):
         obj.state = SasState.started
 
         string_content = Api.to_canonical_json(event.source["content"])
-        obj.commitment = olm.sha256(obj.pubkey + string_content)
+        # TODO [vodozemac]: expose sha256 in vodozemac? was in libolm before
+        obj.commitment = sha256(
+            obj.pubkey.encode() + string_content.encode()
+        ).hexdigest()
         obj.key_agreement_protocols = event.key_agreement_protocols
 
         if (
@@ -267,6 +274,11 @@ class Sas(olm.Sas):
             obj.cancel_code, obj.cancel_reason = obj._unknown_method_error
 
         return obj
+
+    @property
+    def pubkey(self) -> str:
+        """Get the public key that can be used to establish a shared secret."""
+        return self._sas.public_key.to_base64()
 
     @property
     def canceled(self) -> bool:
@@ -294,9 +306,20 @@ class Sas(olm.Sas):
         """Is the device verified and the request done."""
         return self.state == SasState.mac_received and self.sas_accepted
 
-    def set_their_pubkey(self, pubkey: str):
-        self.their_sas_key = pubkey
-        super().set_their_pubkey(pubkey)
+    # TODO [vodozemac]: not needed anymore. keep for backwards compatibility?
+    def set_their_pubkey(self, pubkey: str) -> None:
+        self.establish_sas(pubkey)
+
+    def establish_sas(self, their_public_key: str) -> None:
+        """Prepare an EstablishedSas for byte generation."""
+        self.established_sas = self.diffie_hellman(their_public_key)
+        # TODO: better: bindings for EstablishedSas.(our|their)_public_key
+        self.their_sas_key = their_public_key
+
+    def diffie_hellman(self, their_public_key: str) -> vodozemac.EstablishedSas:
+        """Establishes a SAS secret by performing a DH handshake with another public key."""
+        return self._sas.diffie_hellman(
+            vodozemac.Curve25519PublicKey.from_base64(their_public_key))
 
     def accept_sas(self):
         """Accept the short authentication string."""
@@ -307,7 +330,7 @@ class Sas(olm.Sas):
                 "string"
             )
 
-        if not self.other_key_set:
+        if not self.established_sas:
             raise LocalProtocolError(
                 "Other public key isn't set yet, can't "
                 "generate nor accept a short "
@@ -317,7 +340,7 @@ class Sas(olm.Sas):
 
     def reject_sas(self):
         """Reject the authentication string."""
-        if not self.other_key_set:
+        if not self.established_sas:
             raise LocalProtocolError(
                 "Other public key isn't set yet, can't "
                 "generate nor reject a short "
@@ -334,9 +357,11 @@ class Sas(olm.Sas):
 
     def _check_commitment(self, key: str):
         assert self.commitment
-        calculated_commitment = olm.sha256(
-            key + Api.to_canonical_json(self.start_verification().content)
-        )
+        # TODO [vodozemac]: expose sha256 in vodozemac? was in libolm before
+        calculated_commitment = sha256(
+            key.encode()
+            + Api.to_canonical_json(self.start_verification().content).encode()
+        ).hexdigest()
         return self.commitment == calculated_commitment
 
     def _grouper(self, iterable, n, fillvalue=None):
@@ -363,7 +388,7 @@ class Sas(olm.Sas):
         device = self.other_olm_device
         tx_id = self.transaction_id
 
-        assert self.their_sas_key
+        assert self.established_sas
 
         our_info = f"{self.own_user}|{self.own_device}|{self.pubkey}"
         their_info = f"{device.user_id}|{device.device_id}|{self.their_sas_key}"
@@ -400,8 +425,9 @@ class Sas(olm.Sas):
 
     def _generate_emoji(self, extra_info: str) -> List[Tuple[str, str]]:
         """Create a list of emojies from our shared secret."""
-        generated_bytes = self.generate_bytes(extra_info, 6)
-        number = "".join([format(x, "08b") for x in bytes(generated_bytes)])
+        assert self.established_sas
+        generated_bytes = self.established_sas.bytes(extra_info).emoji_indices
+        number = "".join([format(x, "08b") for x in generated_bytes])
         return [
             self.emoji[int(x, 2)]
             for x in map("".join, list(self._grouper(number[:42], 6)))
@@ -409,11 +435,8 @@ class Sas(olm.Sas):
 
     def _generate_decimals(self, extra_info: str) -> Tuple[int, ...]:
         """Create a decimal number from our shared secret."""
-        generated_bytes = self.generate_bytes(extra_info, 5)
-        number = "".join([format(x, "08b") for x in bytes(generated_bytes)])
-        return tuple(
-            int(x, 2) + 1000 for x in map("".join, list(self._grouper(number[:-1], 13)))
-        )
+        assert self.established_sas
+        return self.established_sas.bytes(extra_info).decimals
 
     def start_verification(self) -> ToDeviceMessage:
         """Create a content dictionary to start the verification."""
@@ -503,7 +526,10 @@ class Sas(olm.Sas):
                 "SAS verification was canceled, can't " "share our public key."
             )
 
-        content = {"transaction_id": self.transaction_id, "key": self.pubkey}
+        content = {
+            "transaction_id": self.transaction_id,
+            "key": self.pubkey,
+        }
 
         message = ToDeviceMessage(
             "m.key.verification.key",
@@ -526,11 +552,15 @@ class Sas(olm.Sas):
 
         key_id = f"ed25519:{self.own_device}"
 
+        assert self.established_sas
         assert self.chosen_mac_method
-        if self.chosen_mac_method == self._mac_normal:
-            calculate_mac = self.calculate_mac
-        elif self.chosen_mac_method == self._mac_old:
-            calculate_mac = self.calculate_mac_long_kdf
+
+        # TODO [vodozemac]: remove _mac_old? not supported anymore
+        # if self.chosen_mac_method == self._mac_normal:
+        #     calculate_mac = self.calculate_mac
+        # elif self.chosen_mac_method == self._mac_old:
+        #     calculate_mac = self.calculate_mac_long_kdf
+        calculate_mac = self.established_sas.calculate_mac
 
         info = (
             "MATRIX_KEY_VERIFICATION_MAC"
@@ -628,7 +658,7 @@ class Sas(olm.Sas):
 
     def receive_key_event(self, event):
         """Receive a KeyVerificationKey event."""
-        if self.other_key_set or (
+        if self.established_sas or (
             (self.state != SasState.started) and (self.state != SasState.accepted)
         ):
             self.state = SasState.canceled
@@ -650,7 +680,7 @@ class Sas(olm.Sas):
                 ) = self._commitment_mismatch_error
                 return
 
-        self.set_their_pubkey(event.key)
+        self.establish_sas(event.key)
         self.state = SasState.key_received
 
     def receive_mac_event(self, event):
@@ -682,12 +712,15 @@ class Sas(olm.Sas):
 
         key_ids = ",".join(sorted(event.mac.keys()))
 
+        assert self.established_sas
         assert self.chosen_mac_method
 
-        if self.chosen_mac_method == self._mac_normal:
-            calculate_mac = self.calculate_mac
-        elif self.chosen_mac_method == self._mac_old:
-            calculate_mac = self.calculate_mac_long_kdf
+        # TODO [vodozemac]: remove _mac_old? not supported anymore
+        # if self.chosen_mac_method == self._mac_normal:
+        #     calculate_mac = self.calculate_mac
+        # elif self.chosen_mac_method == self._mac_old:
+        #     calculate_mac = self.calculate_mac_long_kdf
+        calculate_mac = self.established_sas.calculate_mac
 
         if event.keys != calculate_mac(key_ids, info + "KEY_IDS"):
             self.state = SasState.canceled
