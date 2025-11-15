@@ -208,7 +208,8 @@ class TestClass:
         assert bob.verified
 
     # TODO [vodozemac]: remove _mac_old? not supported anymore
-    def _test_sas_old_mac_method(self):
+    @pytest.mark.skip(reason="hmac_sha256 without hkdf not available")
+    def test_sas_old_mac_method(self):
         alice = Sas(
             alice_id,
             alice_device_id,
