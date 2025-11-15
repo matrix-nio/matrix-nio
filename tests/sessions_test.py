@@ -1,13 +1,20 @@
 import pytest
 
+from unpaddedbase64 import encode_base64
+
 from nio import EncryptionError
 from nio.crypto import (
+    InboundGroupSession,
     InboundSession,
     OlmAccount,
     OutboundGroupSession,
     OutboundSession,
     Session,
 )
+from nio._compat import package_installed
+if package_installed('olm'):
+    import olm
+    from vodozemac import PreKeyMessage
 
 BOB_ID = "@bob:example.org"
 BOB_DEVICE = "AGMTSWVYML"
@@ -88,6 +95,43 @@ class TestClass:
         assert unpickled.use_time >= use_time
         assert decrypted_plaintext == plaintext
 
+    @pytest.mark.skipif(not package_installed('olm'), reason="requires olm")
+    def test_libolm_compatible_session_encryption(self):
+        vodozemac = OlmAccount()
+        vodozemac_curve = vodozemac.identity_keys["curve25519"]
+        vodozemac.generate_one_time_keys(1)
+
+        libolm = olm.Account()
+        libolm_curve = libolm.identity_keys["curve25519"]
+        libolm.generate_one_time_keys(1)
+
+        vodozemac_onetime = list(vodozemac.one_time_keys["curve25519"].values())[0]
+        libolm_onetime = list(libolm.one_time_keys["curve25519"].values())[0]
+
+        plaintext = "It's a secret to everybody"
+
+        # Encrypt a message with vodozemac, decrypt it with libolm
+        session = OutboundSession(vodozemac, libolm_curve, libolm_onetime)
+        message = session.encrypt(plaintext)
+
+        ciphertext = encode_base64(message.to_parts()[1])
+
+        message = olm.OlmPreKeyMessage(ciphertext)
+        inbound = olm.InboundSession(libolm, message, vodozemac_curve)
+        decrypted_message = inbound.decrypt(message)
+        assert decrypted_message == plaintext
+
+        # Encrypt a message with libolm, decrypt it with vodozemac
+        session = olm.OutboundSession(libolm, vodozemac_curve, vodozemac_onetime)
+        message = session.encrypt(plaintext)
+
+        ciphertext = message.ciphertext
+
+        message = PreKeyMessage.from_base64(ciphertext)
+        inbound = InboundSession(vodozemac, message, libolm_curve)
+        decrypted_message = inbound.decrypt(message)
+        assert decrypted_message == plaintext
+
     def test_outbound_group_session_pickle(self):
         session = OutboundGroupSession()
 
@@ -118,3 +162,26 @@ class TestClass:
 
         with pytest.raises(EncryptionError):
             session.encrypt("Hello")
+
+    @pytest.mark.skipif(not package_installed('olm'), reason="requires olm")
+    def test_libolm_compatible_group_session_encryption(self):
+        plaintext = "It's a secret to everybody"
+
+        # Encrypt a message with vodozemac, decrypt it with libolm
+        vodozemac = OutboundGroupSession()
+        vodozemac.shared = True
+        libolm = olm.InboundGroupSession(vodozemac.session_key)
+
+        ciphertext = vodozemac.encrypt(plaintext)
+
+        decrypted_message = libolm.decrypt(ciphertext)[0]
+        assert decrypted_message == plaintext
+
+        # Encrypt a message with libolm, decrypt it with vodozemac
+        libolm = olm.OutboundGroupSession()
+        vodozemac = InboundGroupSession(libolm.session_key, '', '', '')
+
+        ciphertext = libolm.encrypt(plaintext)
+
+        decrypted_message = vodozemac.decrypt(ciphertext)[0]
+        assert decrypted_message == plaintext
