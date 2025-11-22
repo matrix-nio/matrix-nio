@@ -1072,7 +1072,6 @@ class Olm:
                 )
                 return plaintext
 
-            # TODO [vodozemac]: was OlmSessionError, is this right?
             except (vodozemac.OlmDecryptionException, vodozemac.DecodeException) as e:
                 # Decryption failed using a matching session, we don't want
                 # to create a new session using this prekey message so
@@ -1377,7 +1376,6 @@ class Olm:
 
         try:
             plaintext, message_index = session.decrypt(event.ciphertext)
-        # TODO [vodozemac]: was OlmGroupSessionError, is this right?
         except (vodozemac.MegolmDecryptionException, vodozemac.DecodeException) as e:
             message = f"Error decrypting megolm event: {str(e)}"
             logger.warning(message)
@@ -1480,7 +1478,6 @@ class Olm:
             if own_ciphertext["type"] == 0:
                 message = vodozemac.PreKeyMessage.from_base64(own_ciphertext["body"])
             elif own_ciphertext["type"] == 1:
-                # TODO [vodozemac]: better bindings?
                 message = vodozemac.AnyOlmMessage.normal(
                     decode_base64(own_ciphertext["body"]))
             else:
@@ -1534,7 +1531,6 @@ class Olm:
                 # Store the new session
                 self.session_store.add(sender_key, s)
                 self.save_session(sender_key, s)
-            # TODO [vodozemac]: was OlmSessionError, is this right?
             except (vodozemac.OlmDecryptionException, vodozemac.DecodeException) as e:
                 logger.error(
                     f"Failed to create new session from prekeymessage: {str(e)}"
@@ -1933,7 +1929,6 @@ class Olm:
                 room_id,
                 forwarding_chain,
             )
-        # TODO [vodozemac]: was OlmSessionError, is this right?
         except vodozemac.SessionKeyDecodeException as e:
             logger.warning(f"Error importing inbound group session: {e}")
             return None

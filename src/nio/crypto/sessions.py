@@ -41,7 +41,6 @@ class OlmAccount:
         self._account = account or vodozemac.Account()
         self.shared = False
 
-    # TODO [vodozemac]: add binding?
     @property
     def identity_keys(self) -> IdentityKeys:
         return {
@@ -52,7 +51,8 @@ class OlmAccount:
     @property
     def one_time_keys(self) -> Dict[str, Dict[str, str]]:
         return {
-            # TODO [vodozemac]: keep old structure?
+            # vodozemac one_time_keys() returns just the {key_id: key} dict.
+            # the 'curve25519' key is just kept to keep the api stable.
             'curve25519': {
                 key_id: key.to_base64()
                 for key_id, key in self._account.one_time_keys.items()
@@ -113,7 +113,8 @@ class OlmAccount:
         self._account.generate_one_time_keys(count)
 
     def remove_one_time_keys(self, session: Session) -> None:
-        # TODO [vodozemac]: obsolete?
+        # not neccessary anymore in vodozemac, see
+        # https://docs.rs/vodozemac/latest/vodozemac/olm/struct.Account.html#method.remove_one_time_key
         pass
 
     def sign(self, message: str) -> str:
@@ -194,9 +195,11 @@ class InboundSession(Session):
         identity_key: str
     ) -> None:
         super().__init__()
-        # TODO [vodozemac]: specify handling for first decryption
-        # defer first decrytion to keep current api stable as vodozemac
-        # returns the decrypted plaintext on creation of the inbound session
+        # Defer first decrytion to keep current api stable as vodozemac
+        # returns the decrypted plaintext on creation of the inbound session.
+        # In the tests the message is passed to both InboundSession.__init__()
+        # and the first inbound_session.decrypt(), which otherwise would break
+        # This could be changed if the api change is acceptable.
         def first_decrypt(
             msg: Union[vodozemac.PreKeyMessage, vodozemac.AnyOlmMessage]
         ) -> Tuple[vodozemac.Session, bytes]:

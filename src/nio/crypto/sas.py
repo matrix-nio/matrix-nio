@@ -246,7 +246,6 @@ class Sas:
         obj.state = SasState.started
 
         string_content = Api.to_canonical_json(event.source["content"])
-        # TODO [vodozemac]: expose sha256 in vodozemac? was in libolm before
         obj.commitment = sha256(
             obj.pubkey.encode() + string_content.encode()
         ).hexdigest()
@@ -303,14 +302,13 @@ class Sas:
         """Is the device verified and the request done."""
         return self.state == SasState.mac_received and self.sas_accepted
 
-    # TODO [vodozemac]: not needed anymore. keep for backwards compatibility?
     def set_their_pubkey(self, pubkey: str) -> None:
+        # this was used for libolm sas and ist just kept to keep the api stable
         self.establish_sas(pubkey)
 
     def establish_sas(self, their_public_key: str) -> None:
         """Prepare an EstablishedSas for byte generation."""
         self.established_sas = self.diffie_hellman(their_public_key)
-        # TODO: better: bindings for EstablishedSas.(our|their)_public_key
         self.their_sas_key = their_public_key
 
     def diffie_hellman(self, their_public_key: str) -> vodozemac.EstablishedSas:
@@ -354,7 +352,6 @@ class Sas:
 
     def _check_commitment(self, key: str):
         assert self.commitment
-        # TODO [vodozemac]: expose sha256 in vodozemac? was in libolm before
         calculated_commitment = sha256(
             key.encode()
             + Api.to_canonical_json(self.start_verification().content).encode()
