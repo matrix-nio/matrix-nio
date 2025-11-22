@@ -140,9 +140,6 @@ class TestClass:
     def _load(self, user_id, device_id, pickle_key=""):
         return Olm(user_id, device_id, self._get_store(user_id, device_id, pickle_key))
 
-    # TODO [vodozemac]: generate new testdata with pickle version 4
-    # see vodozemac/src/utilities/libolm_compat.rs:unpickle_libolm()
-    @pytest.mark.skip(reason="pickle version too old, testdata needs to be renewed")
     def test_account_loading(self):
         olm = self._load("example", "DEVICEID", PICKLE_KEY)
         assert isinstance(olm.account, OlmAccount)
@@ -260,9 +257,6 @@ class TestClass:
             olm.session_store.get(bob.identity_keys["curve25519"]), OutboundSession
         )
 
-    # TODO [vodozemac]: generate new testdata with pickle version 4
-    # see vodozemac/src/utilities/libolm_compat.rs:unpickle_libolm()
-    @pytest.mark.skip(reason="pickle version too old, testdata needs to be renewed")
     def test_olm_session_load(self):
         olm = self._load("example", "DEVICEID", PICKLE_KEY)
 
