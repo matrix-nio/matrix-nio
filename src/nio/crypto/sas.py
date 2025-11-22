@@ -81,9 +81,7 @@ class Sas:
     _key_agreeemnt_protocols = [_key_agreement_v1, _key_agreement_v2]
     _hash_v1 = "sha256"
     _mac_normal = "hkdf-hmac-sha256"
-    # TODO [vodozemac]: remove _mac_old? not supported anymore
-    _mac_old = "hmac-sha256"
-    _mac_v1 = [_mac_normal, _mac_old]
+    _mac_v1 = [_mac_normal]
     _strings_v1 = ["emoji", "decimal"]
 
     _user_cancel_error = ("m.user", "Canceled by user")
@@ -263,7 +261,6 @@ class Sas:
             or Sas._hash_v1 not in event.hashes
             or (
                 Sas._mac_normal not in event.message_authentication_codes
-                and Sas._mac_old not in event.message_authentication_codes
             )
             or (
                 "emoji" not in event.short_authentication_string
@@ -491,10 +488,7 @@ class Sas:
         if "decimal" in self.short_auth_string:
             sas_methods.append("decimal")
 
-        if self._mac_normal in self.mac_methods:
-            self.chosen_mac_method = self._mac_normal
-        else:
-            self.chosen_mac_method = self._mac_old
+        self.chosen_mac_method = self._mac_normal
 
         if Sas._key_agreement_v2 in self.key_agreement_protocols:
             self.chosen_key_agreement = Sas._key_agreement_v2
@@ -555,11 +549,6 @@ class Sas:
         assert self.established_sas
         assert self.chosen_mac_method
 
-        # TODO [vodozemac]: remove _mac_old? not supported anymore
-        # if self.chosen_mac_method == self._mac_normal:
-        #     calculate_mac = self.calculate_mac
-        # elif self.chosen_mac_method == self._mac_old:
-        #     calculate_mac = self.calculate_mac_long_kdf
         calculate_mac = self.established_sas.calculate_mac
 
         info = (
@@ -715,11 +704,6 @@ class Sas:
         assert self.established_sas
         assert self.chosen_mac_method
 
-        # TODO [vodozemac]: remove _mac_old? not supported anymore
-        # if self.chosen_mac_method == self._mac_normal:
-        #     calculate_mac = self.calculate_mac
-        # elif self.chosen_mac_method == self._mac_old:
-        #     calculate_mac = self.calculate_mac_long_kdf
         calculate_mac = self.established_sas.calculate_mac
 
         if event.keys != calculate_mac(key_ids, info + "KEY_IDS"):

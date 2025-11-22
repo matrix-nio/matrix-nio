@@ -207,51 +207,6 @@ class TestClass:
         bob.accept_sas()
         assert bob.verified
 
-    # TODO [vodozemac]: remove _mac_old? not supported anymore
-    @pytest.mark.skip(reason="hmac_sha256 without hkdf not available")
-    def test_sas_old_mac_method(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys["ed25519"],
-            bob_device,
-        )
-        start = {"sender": alice_id, "content": alice.start_verification().content}
-        start_event = KeyVerificationStart.from_dict(start)
-        start_event.message_authentication_codes.remove(Sas._mac_normal)
-
-        bob = Sas.from_key_verification_start(
-            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
-        )
-
-        with pytest.raises(LocalProtocolError):
-            alice.accept_sas()
-
-        alice.set_their_pubkey(bob.pubkey)
-        bob.set_their_pubkey(alice.pubkey)
-
-        alice.state = SasState.key_received
-        bob.state = SasState.key_received
-        alice.chosen_mac_method = Sas._mac_normal
-        bob.chosen_mac_method = Sas._mac_normal
-
-        with pytest.raises(LocalProtocolError):
-            alice.get_mac()
-
-        alice.accept_sas()
-        alice_mac = {"sender": alice_id, "content": alice.get_mac().content}
-
-        mac_event = KeyVerificationMac.from_dict(alice_mac)
-        assert isinstance(mac_event, KeyVerificationMac)
-        assert not bob.verified
-
-        bob.receive_mac_event(mac_event)
-        assert bob.state == SasState.mac_received
-        assert not bob.verified
-
-        bob.accept_sas()
-        assert bob.verified
-
     def test_sas_cancellation(self):
         alice = Sas(
             alice_id,
