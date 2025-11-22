@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple, TypedDict, Union
+import hashlib
 
 import vodozemac
 from unpaddedbase64 import decode_base64
@@ -24,11 +25,10 @@ from unpaddedbase64 import decode_base64
 from ..exceptions import EncryptionError
 
 
-def get_pickle_key(passphrase: str = "") -> bytes:
-    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    # TODO [vodozemac]: use proper pickle_keys, handle legacy ones?
-    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    return (passphrase + " "*32)[:32].encode()
+def derive_pickle_key(passphrase: str = "") -> bytes:
+    # vodozemac expects a 32 byte pickle key. hkdf and mac authentication
+    # is applied by the (un-)pickle methods of vodozemac
+    return hashlib.sha256(passphrase.encode()).digest()
 
 
 class IdentityKeys(TypedDict):
@@ -71,7 +71,7 @@ class OlmAccount:
         shared: bool = False,
     ) -> OlmAccount:
         try:
-            pickle_key = get_pickle_key(passphrase)
+            pickle_key = derive_pickle_key(passphrase)
             _account = vodozemac.Account.from_pickle(
                 pickle.decode(), pickle_key)
         except vodozemac.PickleException:
@@ -83,7 +83,7 @@ class OlmAccount:
         return account
 
     def pickle(self, passphrase: str = "") -> bytes:
-        return self._account.pickle(get_pickle_key(passphrase)).encode()
+        return self._account.pickle(derive_pickle_key(passphrase)).encode()
 
     def create_inbound_session(
         self,
@@ -149,7 +149,7 @@ class Session(_SessionExpirationMixin):
         use_time: Optional[datetime] = None,
     ) -> Session:
         try:
-            pickle_key = get_pickle_key(passphrase)
+            pickle_key = derive_pickle_key(passphrase)
             _session = vodozemac.Session.from_pickle(
                 pickle.decode(), pickle_key)
         except vodozemac.PickleException:
@@ -163,7 +163,7 @@ class Session(_SessionExpirationMixin):
 
     def pickle(self, passphrase: str = "") -> bytes:
         assert self._session
-        return self._session.pickle(get_pickle_key(passphrase)).encode()
+        return self._session.pickle(derive_pickle_key(passphrase)).encode()
 
     def decrypt(
         self,
@@ -288,7 +288,7 @@ class InboundGroupSession:
         forwarding_chain: Optional[List[str]] = None,
     ) -> InboundGroupSession:
         try:
-            pickle_key = get_pickle_key(passphrase)
+            pickle_key = derive_pickle_key(passphrase)
             _session = vodozemac.InboundGroupSession.from_pickle(
                 pickle.decode(), pickle_key)
         except vodozemac.PickleException:
@@ -306,7 +306,7 @@ class InboundGroupSession:
         return session
 
     def pickle(self, passphrase: str = "") -> bytes:
-        return self._session.pickle(get_pickle_key(passphrase)).encode()
+        return self._session.pickle(derive_pickle_key(passphrase)).encode()
 
     def decrypt(self, message: str, unicode_errors='replace') -> Tuple[str, int]:
         decrypted = self._session.decrypt(
@@ -363,13 +363,13 @@ class OutboundGroupSession:
         passphrase: str = ""
     ) -> OutboundGroupSession:
         # TODO: bindings: no from_libolm_pickle()?
-        pickle_key = get_pickle_key(passphrase)
+        pickle_key = derive_pickle_key(passphrase)
         _session = vodozemac.GroupSession.from_pickle(
             pickle.decode(), pickle_key)
         return OutboundGroupSession(session=_session)
 
     def pickle(self, passphrase: str = "") -> bytes:
-        return self._session.pickle(get_pickle_key(passphrase)).encode()
+        return self._session.pickle(derive_pickle_key(passphrase)).encode()
 
     def mark_as_shared(self):
         self.shared = True
