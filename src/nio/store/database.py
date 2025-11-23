@@ -180,7 +180,15 @@ class MatrixStore:
         if not account:
             return None
 
-        return OlmAccount.from_pickle(account.account, self.pickle_key, account.shared)
+        olm_account = OlmAccount.from_pickle(
+            account.account, self.pickle_key, account.shared)
+
+        # upgrade account pickle in database to vodozemac format
+        if getattr(olm_account, 'upgrade_pickle', False):
+            olm_account.upgrade_pickle = False
+            self.save_account(olm_account)
+
+        return olm_account
 
     @use_database
     def save_account(self, account):
@@ -224,6 +232,11 @@ class MatrixStore:
         for s in account.olm_sessions:
             session = Session.from_pickle(s.session, s.creation_time, self.pickle_key)
             session_store.add(s.sender_key, session)
+
+            # upgrade session pickles in database to vodozemac format
+            if getattr(session, 'upgrade_pickle', False):
+                session.upgrade_pickle = False
+                self.save_session(s.sender_key, session)
 
         return session_store
 
@@ -273,6 +286,11 @@ class MatrixStore:
                 [chain.sender_key for chain in s.forwarded_chains],
             )
             store.add(session)
+
+            # upgrade session pickles in database to vodozemac format
+            if getattr(session, 'upgrade_pickle', False):
+                session.upgrade_pickle = False
+                self.save_inbound_group_session(session)
 
         return store
 

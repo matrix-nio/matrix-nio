@@ -23,6 +23,7 @@ import vodozemac
 from unpaddedbase64 import decode_base64
 
 from ..exceptions import EncryptionError
+from .._compat import package_installed
 
 
 def derive_pickle_key(passphrase: str = "") -> bytes:
@@ -70,16 +71,34 @@ class OlmAccount:
         passphrase: str = "",
         shared: bool = False,
     ) -> OlmAccount:
+        upgrade_pickle = False
         try:
+            # vodozemac
             pickle_key = derive_pickle_key(passphrase)
             _account = vodozemac.Account.from_pickle(
                 pickle.decode(), pickle_key)
         except vodozemac.PickleException:
-            pickle_key = passphrase.encode()
-            _account = vodozemac.Account.from_libolm_pickle(
-                pickle.decode(), pickle_key)
+            try:
+                # vodozemac libolm
+                pickle_key = passphrase.encode()
+                _account = vodozemac.Account.from_libolm_pickle(
+                    pickle.decode(), pickle_key)
+                upgrade_pickle = True
+            except vodozemac.LibolmPickleException as err:
+                if 'unsupported version' not in err.args[0]:
+                    raise err
+                # libolm, if pickle version is < 4 (needs libolm >= 3.2.7)
+                if not package_installed('olm'):
+                    raise err
+                import olm
+                pickle = olm.Account.pickle(
+                    olm.Account.from_pickle(pickle, passphrase), passphrase)
+                _account = vodozemac.Account.from_libolm_pickle(
+                    pickle.decode(), pickle_key)
+                upgrade_pickle = True
         account = OlmAccount(account=_account)
         account.shared = shared
+        account.upgrade_pickle = upgrade_pickle
         return account
 
     def pickle(self, passphrase: str = "") -> bytes:
@@ -149,6 +168,7 @@ class Session(_SessionExpirationMixin):
         passphrase: str = "",
         use_time: Optional[datetime] = None,
     ) -> Session:
+        upgrade_pickle = False
         try:
             pickle_key = derive_pickle_key(passphrase)
             _session = vodozemac.Session.from_pickle(
@@ -157,9 +177,11 @@ class Session(_SessionExpirationMixin):
             pickle_key = passphrase.encode()
             _session = vodozemac.Session.from_libolm_pickle(
                 pickle.decode(), pickle_key)
+            upgrade_pickle = True
         session = Session(session=_session)
         session.creation_time = creation_time
         session.use_time = use_time or creation_time
+        session.upgrade_pickle = upgrade_pickle
         return session
 
     def pickle(self, passphrase: str = "") -> bytes:
@@ -290,6 +312,7 @@ class InboundGroupSession:
         passphrase: str = "",
         forwarding_chain: Optional[List[str]] = None,
     ) -> InboundGroupSession:
+        upgrade_pickle = False
         try:
             pickle_key = derive_pickle_key(passphrase)
             _session = vodozemac.InboundGroupSession.from_pickle(
@@ -297,7 +320,8 @@ class InboundGroupSession:
         except vodozemac.PickleException:
             pickle_key = passphrase.encode()
             _session = vodozemac.InboundGroupSession.from_libolm_pickle(
-                pickle.decode, pickle_key)
+                pickle.decode(), pickle_key)
+            upgrade_pickle = True
         session = InboundGroupSession(
             session_key='',
             signing_key=signing_key,
@@ -306,6 +330,7 @@ class InboundGroupSession:
             forwarding_chain=forwarding_chain,
             session=_session,
         )
+        session.upgrade_pickle = upgrade_pickle
         return session
 
     def pickle(self, passphrase: str = "") -> bytes:
