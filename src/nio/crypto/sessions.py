@@ -41,6 +41,7 @@ class OlmAccount:
     def __init__(self, account: Optional[vodozemac.Account] = None) -> None:
         self._account = account or vodozemac.Account()
         self.shared = False
+        self.upgrade_pickle = False
 
     @property
     def identity_keys(self) -> IdentityKeys:
@@ -153,6 +154,7 @@ class Session(_SessionExpirationMixin):
         self._session = session
         self.creation_time = datetime.now()
         self.use_time = datetime.now()
+        self.upgrade_pickle = False
 
     @property
     def id(self) -> str:
@@ -267,6 +269,7 @@ class InboundGroupSession:
         self.sender_key = sender_key
         self.room_id = room_id
         self.forwarding_chain: List[str] = forwarding_chain or []
+        self.upgrade_pickle = False
 
     @property
     def id(self) -> str:

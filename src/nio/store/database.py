@@ -184,7 +184,7 @@ class MatrixStore:
             account.account, self.pickle_key, account.shared)
 
         # upgrade account pickle in database to vodozemac format
-        if getattr(olm_account, 'upgrade_pickle', False):
+        if olm_account.upgrade_pickle:
             olm_account.upgrade_pickle = False
             self.save_account(olm_account)
 
@@ -234,7 +234,7 @@ class MatrixStore:
             session_store.add(s.sender_key, session)
 
             # upgrade session pickles in database to vodozemac format
-            if getattr(session, 'upgrade_pickle', False):
+            if session.upgrade_pickle:
                 session.upgrade_pickle = False
                 self.save_session(s.sender_key, session)
 
@@ -288,7 +288,7 @@ class MatrixStore:
             store.add(session)
 
             # upgrade session pickles in database to vodozemac format
-            if getattr(session, 'upgrade_pickle', False):
+            if session.upgrade_pickle:
                 session.upgrade_pickle = False
                 self.save_inbound_group_session(session)
 
