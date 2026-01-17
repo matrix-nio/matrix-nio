@@ -12,7 +12,7 @@ from conftest_async import (  # noqa: F401
 )
 
 from nio import Client, ClientConfig, HttpClient
-from nio.crypto import OlmAccount, Olm, OlmDevice
+from nio.crypto import Olm, OlmAccount, OlmDevice
 from nio.store import SqliteMemoryStore
 
 ALICE_ID = "@alice:example.org"

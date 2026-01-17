@@ -181,7 +181,8 @@ class MatrixStore:
             return None
 
         olm_account = OlmAccount.from_pickle(
-            account.account, self.pickle_key, account.shared)
+            account.account, self.pickle_key, account.shared
+        )
 
         # upgrade account pickle in database to vodozemac format
         if olm_account.upgrade_pickle:

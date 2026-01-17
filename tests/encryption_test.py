@@ -7,22 +7,24 @@ from pathlib import Path
 from shutil import copyfile
 
 import pytest
-from helpers import faker
 import vodozemac
+from helpers import faker
 
+from nio._compat import package_installed
 from nio.crypto import (
     DeviceStore,
     GroupSessionStore,
     InboundGroupSession,
-    OutboundGroupSession,
     Olm,
     OlmAccount,
     OlmDevice,
+    OutboundGroupSession,
     OutboundSession,
     OutgoingKeyRequest,
     Session,
     SessionStore,
 )
+from nio.crypto.sessions import derive_pickle_key
 from nio.events import (
     DummyEvent,
     ForwardedRoomKeyEvent,
@@ -38,8 +40,6 @@ from nio.events import (
 from nio.exceptions import EncryptionError, GroupEncryptionError, OlmTrustError
 from nio.responses import KeysClaimResponse, KeysQueryResponse, KeysUploadResponse
 from nio.store import DefaultStore, Ed25519Key, Key, KeyStore
-from nio.crypto.sessions import derive_pickle_key
-from nio._compat import package_installed
 
 AliceId = "@alice:example.org"
 Alice_device = "ALDEVICE"
@@ -156,7 +156,7 @@ class TestClass:
             == "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4"
         )
 
-    @pytest.mark.parametrize('version', ['v2', 'v4'])
+    @pytest.mark.parametrize("version", ["v2", "v4"])
     def test_account_pickle_upgrade_from_libolm(self, tempdir, version):
         user_id = "example"
         device_id = "DEVICEID"
@@ -172,16 +172,18 @@ class TestClass:
 
         if version == "v2":
             # unpickle via libolm
-            if not package_installed('olm'):
+            if not package_installed("olm"):
                 pytest.skip("requires olm")
             import olm as libolm
+
             account = libolm.Account.from_pickle(pickle_libolm, PICKLE_KEY)
             assert isinstance(account, libolm.Account)
 
         elif version == "v4":
             # unpickle via vodozemac
             account = vodozemac.Account.from_libolm_pickle(
-                pickle_libolm.decode(), PICKLE_KEY.encode())
+                pickle_libolm.decode(), PICKLE_KEY.encode()
+            )
             assert isinstance(account, vodozemac.Account)
 
         # load account with pickle upgrade
@@ -202,7 +204,8 @@ class TestClass:
         assert pickle_vodozemac != pickle_libolm
 
         account = vodozemac.Account.from_pickle(
-            pickle_vodozemac.decode(), derive_pickle_key(PICKLE_KEY))
+            pickle_vodozemac.decode(), derive_pickle_key(PICKLE_KEY)
+        )
         assert isinstance(account, vodozemac.Account)
 
         # load account with no pickle upgrade
@@ -338,7 +341,7 @@ class TestClass:
     def test_olm_session_pickle_upgrade_from_libolm(self, tempdir):
         user_id = "example"
         device_id = "DEVICEID"
-        version_name = f"libolm_session_pickle_v1"
+        version_name = "libolm_session_pickle_v1"
 
         source = os.path.join(ephemeral_dir, f"{user_id}_{device_id}.{version_name}.db")
         target = os.path.join(tempdir, f"{user_id}_{device_id}.db")
@@ -352,7 +355,8 @@ class TestClass:
             for s in store._get_account().olm_sessions:
                 pickles_libolm.add(s.session)
                 session = vodozemac.Session.from_libolm_pickle(
-                    s.session.decode(), PICKLE_KEY.encode())
+                    s.session.decode(), PICKLE_KEY.encode()
+                )
                 assert isinstance(session, vodozemac.Session)
 
         # load account with pickle upgrade
@@ -372,7 +376,8 @@ class TestClass:
             for s in store._get_account().olm_sessions:
                 pickles_vodozemac.add(s.session)
                 session = vodozemac.Session.from_pickle(
-                    s.session.decode(), derive_pickle_key(PICKLE_KEY))
+                    s.session.decode(), derive_pickle_key(PICKLE_KEY)
+                )
                 assert isinstance(session, vodozemac.Session)
         assert not pickles_vodozemac.intersection(pickles_libolm)
 
@@ -394,7 +399,7 @@ class TestClass:
     def test_inbound_group_session_pickle_upgrade_from_libolm(self, tempdir):
         user_id = "@example:localhost"
         device_id = "DEVICEID"
-        version_name = f"libolm_inbound_group_session_pickle_v1"
+        version_name = "libolm_inbound_group_session_pickle_v1"
 
         sender_key = "N6XtYK/YQ0VD3equiUvrCCvCT5gBENB0+igXcb3KkRk"
         session_id = "u1HJVAIqIhdVQ7RzJLRxfNBAsNlE2sIT34Xe3beabHk"
@@ -411,7 +416,8 @@ class TestClass:
             for s in store._get_account().inbound_group_sessions:
                 pickles_libolm.add(s.session)
                 session = vodozemac.InboundGroupSession.from_libolm_pickle(
-                    s.session.decode(), PICKLE_KEY.encode())
+                    s.session.decode(), PICKLE_KEY.encode()
+                )
                 assert isinstance(session, vodozemac.InboundGroupSession)
 
         # load account with pickle upgrade
@@ -429,7 +435,8 @@ class TestClass:
             for s in store._get_account().inbound_group_sessions:
                 pickles_vodozemac.add(s.session)
                 session = vodozemac.InboundGroupSession.from_pickle(
-                    s.session.decode(), derive_pickle_key(PICKLE_KEY))
+                    s.session.decode(), derive_pickle_key(PICKLE_KEY)
+                )
                 assert isinstance(session, vodozemac.InboundGroupSession)
         assert not pickles_vodozemac.intersection(pickles_libolm)
 

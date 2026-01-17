@@ -1,8 +1,8 @@
 import pytest
-
 from unpaddedbase64 import encode_base64
 
 from nio import EncryptionError
+from nio._compat import package_installed
 from nio.crypto import (
     InboundGroupSession,
     InboundSession,
@@ -11,7 +11,7 @@ from nio.crypto import (
     OutboundSession,
     Session,
 )
-from nio._compat import package_installed
+
 if package_installed('olm'):
     import olm
     from vodozemac import PreKeyMessage

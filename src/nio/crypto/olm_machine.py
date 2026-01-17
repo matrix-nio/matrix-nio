@@ -1479,7 +1479,8 @@ class Olm:
                 message = vodozemac.PreKeyMessage.from_base64(own_ciphertext["body"])
             elif own_ciphertext["type"] == 1:
                 message = vodozemac.AnyOlmMessage.normal(
-                    decode_base64(own_ciphertext["body"]))
+                    decode_base64(own_ciphertext["body"])
+                )
             else:
                 logger.warning(
                     f"Unsupported olm message type: {own_ciphertext['type']}"

@@ -15,15 +15,14 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple, TypedDict, Union
-import hashlib
 
 import vodozemac
-from unpaddedbase64 import decode_base64
 
-from ..exceptions import EncryptionError
 from .._compat import package_installed
+from ..exceptions import EncryptionError
 
 
 def derive_pickle_key(passphrase: str = "") -> bytes:
@@ -46,8 +45,8 @@ class OlmAccount:
     @property
     def identity_keys(self) -> IdentityKeys:
         return {
-            'ed25519': self._account.ed25519_key.to_base64(),
-            'curve25519': self._account.curve25519_key.to_base64(),
+            "ed25519": self._account.ed25519_key.to_base64(),
+            "curve25519": self._account.curve25519_key.to_base64(),
         }
 
     @property
@@ -55,7 +54,7 @@ class OlmAccount:
         return {
             # vodozemac one_time_keys() returns just the {key_id: key} dict.
             # the 'curve25519' key is just kept to keep the api stable.
-            'curve25519': {
+            "curve25519": {
                 key_id: key.to_base64()
                 for key_id, key in self._account.one_time_keys.items()
             }
@@ -76,26 +75,29 @@ class OlmAccount:
         try:
             # vodozemac
             pickle_key = derive_pickle_key(passphrase)
-            _account = vodozemac.Account.from_pickle(
-                pickle.decode(), pickle_key)
+            _account = vodozemac.Account.from_pickle(pickle.decode(), pickle_key)
         except vodozemac.PickleException:
             try:
                 # vodozemac libolm
                 pickle_key = passphrase.encode()
                 _account = vodozemac.Account.from_libolm_pickle(
-                    pickle.decode(), pickle_key)
+                    pickle.decode(), pickle_key
+                )
                 upgrade_pickle = True
             except vodozemac.LibolmPickleException as err:
-                if 'unsupported version' not in err.args[0]:
+                if "unsupported version" not in err.args[0]:
                     raise err
                 # libolm, if pickle version is < 4 (needs libolm >= 3.2.7)
-                if not package_installed('olm'):
+                if not package_installed("olm"):
                     raise err
                 import olm
+
                 pickle = olm.Account.pickle(
-                    olm.Account.from_pickle(pickle, passphrase), passphrase)
+                    olm.Account.from_pickle(pickle, passphrase), passphrase
+                )
                 _account = vodozemac.Account.from_libolm_pickle(
-                    pickle.decode(), pickle_key)
+                    pickle.decode(), pickle_key
+                )
                 upgrade_pickle = True
         account = OlmAccount(account=_account)
         account.shared = shared
@@ -149,6 +151,7 @@ class _SessionExpirationMixin:
     def expired(self):
         return False
 
+
 class Session(_SessionExpirationMixin):
     def __init__(self, session: Optional[vodozemac.Session] = None) -> None:
         self._session = session
@@ -173,12 +176,10 @@ class Session(_SessionExpirationMixin):
         upgrade_pickle = False
         try:
             pickle_key = derive_pickle_key(passphrase)
-            _session = vodozemac.Session.from_pickle(
-                pickle.decode(), pickle_key)
+            _session = vodozemac.Session.from_pickle(pickle.decode(), pickle_key)
         except vodozemac.PickleException:
             pickle_key = passphrase.encode()
-            _session = vodozemac.Session.from_libolm_pickle(
-                pickle.decode(), pickle_key)
+            _session = vodozemac.Session.from_libolm_pickle(pickle.decode(), pickle_key)
             upgrade_pickle = True
         session = Session(session=_session)
         session.creation_time = creation_time
@@ -216,18 +217,20 @@ class InboundSession(Session):
         self,
         account: OlmAccount,
         message: Union[vodozemac.PreKeyMessage, vodozemac.AnyOlmMessage],
-        identity_key: str
+        identity_key: str,
     ) -> None:
         super().__init__()
+
         # Defer first decrytion to keep current api stable as vodozemac
         # returns the decrypted plaintext on creation of the inbound session.
         # In the tests the message is passed to both InboundSession.__init__()
         # and the first inbound_session.decrypt(), which otherwise would break
         # This could be changed if the api change is acceptable.
         def first_decrypt(
-            msg: Union[vodozemac.PreKeyMessage, vodozemac.AnyOlmMessage]
+            msg: Union[vodozemac.PreKeyMessage, vodozemac.AnyOlmMessage],
         ) -> Tuple[vodozemac.Session, bytes]:
             return account.create_inbound_session(identity_key, msg)
+
         self.first_decrypt = first_decrypt
 
     def decrypt(
@@ -244,10 +247,7 @@ class InboundSession(Session):
 
 class OutboundSession(Session):
     def __init__(
-        self,
-        account: OlmAccount,
-        identity_key: str,
-        one_time_key: str
+        self, account: OlmAccount, identity_key: str, one_time_key: str
     ) -> None:
         _session = account.create_outbound_session(identity_key, one_time_key)
         super().__init__(session=_session)
@@ -261,10 +261,11 @@ class InboundGroupSession:
         sender_key: str,
         room_id: str,
         forwarding_chain: Optional[List[str]] = None,
-        session: Optional[vodozemac.InboundGroupSession] = None
+        session: Optional[vodozemac.InboundGroupSession] = None,
     ) -> None:
         self._session = session or vodozemac.InboundGroupSession(
-            vodozemac.SessionKey(session_key))
+            vodozemac.SessionKey(session_key)
+        )
         self.ed25519 = signing_key
         self.sender_key = sender_key
         self.room_id = room_id
@@ -289,9 +290,10 @@ class InboundGroupSession:
         forwarding_chain: Optional[List[str]] = None,
     ) -> InboundGroupSession:
         _session = vodozemac.InboundGroupSession.import_session(
-            vodozemac.ExportedSessionKey(session_key))
+            vodozemac.ExportedSessionKey(session_key)
+        )
         session = InboundGroupSession(
-            session_key='',
+            session_key="",
             signing_key=signing_key,
             sender_key=sender_key,
             room_id=room_id,
@@ -319,14 +321,16 @@ class InboundGroupSession:
         try:
             pickle_key = derive_pickle_key(passphrase)
             _session = vodozemac.InboundGroupSession.from_pickle(
-                pickle.decode(), pickle_key)
+                pickle.decode(), pickle_key
+            )
         except vodozemac.PickleException:
             pickle_key = passphrase.encode()
             _session = vodozemac.InboundGroupSession.from_libolm_pickle(
-                pickle.decode(), pickle_key)
+                pickle.decode(), pickle_key
+            )
             upgrade_pickle = True
         session = InboundGroupSession(
-            session_key='',
+            session_key="",
             signing_key=signing_key,
             sender_key=sender_key,
             room_id=room_id,
@@ -339,9 +343,8 @@ class InboundGroupSession:
     def pickle(self, passphrase: str = "") -> bytes:
         return self._session.pickle(derive_pickle_key(passphrase)).encode()
 
-    def decrypt(self, message: str, unicode_errors='replace') -> Tuple[str, int]:
-        decrypted = self._session.decrypt(
-            vodozemac.MegolmMessage.from_base64(message))
+    def decrypt(self, message: str, unicode_errors="replace") -> Tuple[str, int]:
+        decrypted = self._session.decrypt(vodozemac.MegolmMessage.from_base64(message))
         return (decrypted.plaintext.decode(), decrypted.message_index)
 
 
@@ -357,10 +360,7 @@ class OutboundGroupSession:
 
     """
 
-    def __init__(
-        self,
-        session: Optional[vodozemac.GroupSession] = None
-    ) -> None:
+    def __init__(self, session: Optional[vodozemac.GroupSession] = None) -> None:
         self._session = session or vodozemac.GroupSession()
         self.max_age = timedelta(days=7)
         self.max_messages = 100
@@ -388,15 +388,10 @@ class OutboundGroupSession:
         return self.should_rotate()
 
     @classmethod
-    def from_pickle(
-        cls,
-        pickle: bytes,
-        passphrase: str = ""
-    ) -> OutboundGroupSession:
+    def from_pickle(cls, pickle: bytes, passphrase: str = "") -> OutboundGroupSession:
         # TODO: bindings: no from_libolm_pickle()?
         pickle_key = derive_pickle_key(passphrase)
-        _session = vodozemac.GroupSession.from_pickle(
-            pickle.decode(), pickle_key)
+        _session = vodozemac.GroupSession.from_pickle(pickle.decode(), pickle_key)
         return OutboundGroupSession(session=_session)
 
     def pickle(self, passphrase: str = "") -> bytes:

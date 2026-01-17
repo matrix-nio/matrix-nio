@@ -16,10 +16,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from enum import Enum
+from hashlib import sha256
 from itertools import zip_longest
 from typing import List, Optional, Tuple
 from uuid import uuid4
-from hashlib import sha256
 
 import vodozemac
 
@@ -258,9 +258,7 @@ class Sas:
                 and Sas._key_agreement_v2 not in event.key_agreement_protocols
             )
             or Sas._hash_v1 not in event.hashes
-            or (
-                Sas._mac_normal not in event.message_authentication_codes
-            )
+            or (Sas._mac_normal not in event.message_authentication_codes)
             or (
                 "emoji" not in event.short_authentication_string
                 and "decimal" not in event.short_authentication_string
@@ -314,7 +312,8 @@ class Sas:
     def diffie_hellman(self, their_public_key: str) -> vodozemac.EstablishedSas:
         """Establishes a SAS secret by performing a DH handshake with another public key."""
         return self._sas.diffie_hellman(
-            vodozemac.Curve25519PublicKey.from_base64(their_public_key))
+            vodozemac.Curve25519PublicKey.from_base64(their_public_key)
+        )
 
     def accept_sas(self):
         """Accept the short authentication string."""
