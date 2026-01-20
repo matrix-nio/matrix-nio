@@ -12,7 +12,7 @@ from nio.crypto import (
     Session,
 )
 
-if package_installed('olm'):
+if package_installed("olm"):
     import olm
     from vodozemac import PreKeyMessage
 
@@ -58,7 +58,7 @@ class TestClass:
         message = session.encrypt(plaintext)
         assert session.use_time >= creation_time
 
-        inbound = InboundSession(bob, message, alice.identity_keys['curve25519'])
+        inbound = InboundSession(bob, message, alice.identity_keys["curve25519"])
         creation_time = inbound.use_time
 
         # Decrypt a message and check that the use time increased.
@@ -95,7 +95,7 @@ class TestClass:
         assert unpickled.use_time >= use_time
         assert decrypted_plaintext == plaintext
 
-    @pytest.mark.skipif(not package_installed('olm'), reason="requires olm")
+    @pytest.mark.skipif(not package_installed("olm"), reason="requires olm")
     def test_libolm_compatible_session_encryption(self):
         vodozemac = OlmAccount()
         vodozemac_curve = vodozemac.identity_keys["curve25519"]
@@ -135,10 +135,7 @@ class TestClass:
     def test_outbound_group_session_pickle(self):
         session = OutboundGroupSession()
 
-        assert (
-            session.id
-            == OutboundGroupSession.from_pickle(session.pickle()).id
-        )
+        assert session.id == OutboundGroupSession.from_pickle(session.pickle()).id
         assert not session.expired
 
     def test_outbound_group_session(self):
@@ -163,7 +160,7 @@ class TestClass:
         with pytest.raises(EncryptionError):
             session.encrypt("Hello")
 
-    @pytest.mark.skipif(not package_installed('olm'), reason="requires olm")
+    @pytest.mark.skipif(not package_installed("olm"), reason="requires olm")
     def test_libolm_compatible_group_session_encryption(self):
         plaintext = "It's a secret to everybody"
 
@@ -179,7 +176,7 @@ class TestClass:
 
         # Encrypt a message with libolm, decrypt it with vodozemac
         libolm = olm.OutboundGroupSession()
-        vodozemac = InboundGroupSession(libolm.session_key, '', '', '')
+        vodozemac = InboundGroupSession(libolm.session_key, "", "", "")
 
         ciphertext = libolm.encrypt(plaintext)
 
