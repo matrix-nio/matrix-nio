@@ -44,6 +44,8 @@ __all__ = [
     "ContentRepositoryConfigResponse",
     "ContentRepositoryConfigError",
     "FileResponse",
+    "ChangePasswordResponse",
+    "ChangePasswordError",
     "DeleteDevicesAuthResponse",
     "DeleteDevicesResponse",
     "DeleteDevicesError",
@@ -832,6 +834,23 @@ class LogoutResponse(Response):
         cls, parsed_dict: Dict[Any, Any]
     ) -> Union[LogoutResponse, ErrorResponse]:
         """Create a response for logout response from server."""
+        return cls()
+
+
+@dataclass
+class ChangePasswordError(ErrorResponse):
+    pass
+
+
+@dataclass
+class ChangePasswordResponse(Response):
+    """Response for a successful password change request."""
+
+    @classmethod
+    @verify(Schemas.empty, ChangePasswordError)
+    def from_dict(
+        cls, parsed_dict: Dict[Any, Any]
+    ) -> Union[ChangePasswordResponse, ErrorResponse]:
         return cls()
 
 

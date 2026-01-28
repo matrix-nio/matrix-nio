@@ -92,6 +92,8 @@ from ..events import (
 from ..exceptions import LocalProtocolError, TransferCancelledError
 from ..monitors import TransferMonitor
 from ..responses import (
+    ChangePasswordError,
+    ChangePasswordResponse,
     ContentRepositoryConfigError,
     ContentRepositoryConfigResponse,
     DeleteDevicesAuthResponse,
@@ -245,6 +247,10 @@ _ProfileGetDisplayNameT = Union[
 ]
 _ProfileSetDisplayNameT = Union[
     ProfileSetDisplayNameResponse, ProfileSetDisplayNameError
+]
+
+_ChangePasswordT = Union[
+    ChangePasswordResponse, ChangePasswordError
 ]
 
 DataProvider = Callable[[int, int], AsyncDataT]
@@ -1169,6 +1175,38 @@ class AsyncClient(Client):
         method, path = Api.logout(self.access_token, all_devices)
 
         return await self._send(LogoutResponse, method, path)
+
+    @logged_in_async
+    async def change_password(
+        self,
+        auth: Dict[str, Any],
+        new_password: str,
+    ) -> _ChangePasswordT:
+        """Change the account password.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Example ``auth`` dict::
+
+            auth= {
+                "type": "m.login.password",
+                "identifier": {"type": "m.id.user", "user": "cheeky_monkey"},
+                "password": "ilovebananas"
+            }
+
+        :param auth: The authentication dictionary containing the elements for user
+            identification and authentication. See the example or
+            https://matrix.org/docs/spec/client_server/r0.6.0#authentication-types.
+        :param new_password: The new password for the user.
+
+        Returns either a `ChangePasswordResponse` if the request was successful or
+        a `ChangePasswordError` if there was an error with the request.
+        """
+        method, path, data = Api.change_password(
+            self.access_token, auth, new_password
+        )
+
+        return await self._send(ChangePasswordResponse, method, path, data)
 
     @logged_in_async
     async def sync(
