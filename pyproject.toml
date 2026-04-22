@@ -12,7 +12,7 @@ authors = [
 ]
 license = { file = "LICENSE.md" }
 readme = "README.md"
-requires-python = ">=3.8.0"
+requires-python = ">=3.10.0"
 dependencies = [
     "aiohttp~=3.10",
     "aiofiles~=24.1",
@@ -65,7 +65,7 @@ Source = "https://github.com/matrix-nio/matrix-nio"
 Documentation = "https://matrix-nio.readthedocs.io/en/latest/"
 
 [tool.ruff]
-# Assume Python 3.8.
+# Assume Python 3.8 for now to avoid mass errors.
 target-version = "py38"
 
 fix = true

@@ -18,7 +18,7 @@ using the following build arguments.
 To customise the python version, set `PYTHON_VERSION`:
 
 ```sh
-docker build -t poljar/matrix-nio:latest -f docker/Dockerfile --build-arg PYTHON_VERSION=3.8 .
+docker build -t poljar/matrix-nio:latest -f docker/Dockerfile --build-arg PYTHON_VERSION=3.10 .
 ```
 
 To customise the libolm version, set `LIBOLM_VERSION`:

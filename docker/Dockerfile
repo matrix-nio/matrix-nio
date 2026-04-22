@@ -22,7 +22,7 @@
 # We use an initial docker container to build all of the runtime dependencies,
 # then transfer those dependencies to the container we're going to ship,
 # before throwing this one away
-ARG PYTHON_VERSION=3.8
+ARG PYTHON_VERSION=3.10
 FROM docker.io/python:${PYTHON_VERSION}-alpine3.16 as builder
 
 ##
