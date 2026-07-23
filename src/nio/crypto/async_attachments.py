@@ -130,11 +130,11 @@ async def async_generator_from_data(
 
     elif isinstance(data, Iterable):
         for chunk in data:  # type: ignore
-            yield chunk
+            yield chunk.encode() if isinstance(chunk, str) else chunk
 
     elif isinstance(data, AsyncIterable):
         async for chunk in data:
-            yield chunk
+            yield chunk.encode() if isinstance(chunk, str) else chunk
 
     else:
         raise TypeError(f"Unknown type for data: {data!r}")
