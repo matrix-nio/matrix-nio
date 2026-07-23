@@ -2,7 +2,6 @@ import asyncio
 import json
 import os
 import sys
-from typing import Optional
 
 import aiofiles
 
@@ -139,7 +138,7 @@ class CustomEncryptedClient(AsyncClient):
                 print(f"Failed to log in: {resp}")
                 sys.exit(1)
 
-    def trust_devices(self, user_id: str, device_list: Optional[str] = None) -> None:
+    def trust_devices(self, user_id: str, device_list: str | None = None) -> None:
         """Trusts the devices of a user.
 
         If no device_list is provided, all of the users devices are trusted. If

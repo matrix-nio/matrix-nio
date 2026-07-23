@@ -20,24 +20,13 @@ import logging
 import os
 import warnings
 from asyncio import Event as AsyncioEvent
+from collections.abc import AsyncIterator, Callable, Coroutine, Iterable, Sequence
 from dataclasses import dataclass
 from functools import partial, wraps
 from json.decoder import JSONDecodeError
 from pathlib import Path
 from typing import (
     Any,
-    AsyncIterator,
-    Callable,
-    Coroutine,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Type,
-    Union,
 )
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from uuid import UUID, uuid4
@@ -238,14 +227,10 @@ from .base_client import (
     store_loaded,
 )
 
-_ShareGroupSessionT = Union[ShareGroupSessionError, ShareGroupSessionResponse]
+_ShareGroupSessionT = ShareGroupSessionError | ShareGroupSessionResponse
 
-_ProfileGetDisplayNameT = Union[
-    ProfileGetDisplayNameResponse, ProfileGetDisplayNameError
-]
-_ProfileSetDisplayNameT = Union[
-    ProfileSetDisplayNameResponse, ProfileSetDisplayNameError
-]
+_ProfileGetDisplayNameT = ProfileGetDisplayNameResponse | ProfileGetDisplayNameError
+_ProfileSetDisplayNameT = ProfileSetDisplayNameResponse | ProfileSetDisplayNameError
 
 DataProvider = Callable[[int, int], AsyncDataT]
 SynchronousFile = (
@@ -255,15 +240,11 @@ SynchronousFile = (
     io.BytesIO,
     io.FileIO,
 )
-SynchronousFileType = Union[
-    io.TextIOBase,
-    io.BufferedReader,
-    io.BufferedRandom,
-    io.BytesIO,
-    io.FileIO,
-]
+SynchronousFileType = (
+    io.TextIOBase | io.BufferedReader | io.BufferedRandom | io.BytesIO | io.FileIO
+)
 AsyncFile = (AsyncBufferedReader, AsyncTextIOWrapper)
-AsyncFileType = Union[AsyncBufferedReader, AsyncTextIOWrapper]
+AsyncFileType = AsyncBufferedReader | AsyncTextIOWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -348,8 +329,8 @@ class AsyncClientConfig(ClientConfig):
             Defaults to 64 KiB.
     """
 
-    max_limit_exceeded: Optional[int] = None
-    max_timeouts: Optional[int] = None
+    max_limit_exceeded: int | None = None
+    max_timeouts: int | None = None
     backoff_factor: float = 0.1
     max_timeout_retry_wait_time: float = 60
     request_timeout: float = 60
@@ -421,24 +402,24 @@ class AsyncClient(Client):
         self,
         homeserver: str,
         user: str = "",
-        device_id: Optional[str] = "",
-        store_path: Optional[str] = "",
-        config: Optional[AsyncClientConfig] = None,
-        ssl: Optional[bool] = None,
-        proxy: Optional[str] = None,
+        device_id: str | None = "",
+        store_path: str | None = "",
+        config: AsyncClientConfig | None = None,
+        ssl: bool | None = None,
+        proxy: str | None = None,
     ):
         self.homeserver = homeserver
-        self.client_session: Optional[ClientSession] = None
+        self.client_session: ClientSession | None = None
 
         self.ssl = ssl
         self.proxy = proxy
 
-        self._presence: Optional[str] = None
+        self._presence: str | None = None
 
         self.synced = AsyncioEvent()
-        self.response_callbacks: List[ClientCallback] = []
+        self.response_callbacks: list[ClientCallback] = []
 
-        self.sharing_session: Dict[str, AsyncioEvent] = {}
+        self.sharing_session: dict[str, AsyncioEvent] = {}
 
         is_config = isinstance(config, ClientConfig)
         is_async_config = isinstance(config, AsyncClientConfig)
@@ -460,7 +441,7 @@ class AsyncClient(Client):
     def add_response_callback(
         self,
         func: Coroutine[Any, Any, Response],
-        cb_filter: Union[Tuple[Type], Type, None] = None,
+        cb_filter: tuple[type] | type | None = None,
     ):
         """Add a coroutine that will be called if a response is received.
 
@@ -484,7 +465,7 @@ class AsyncClient(Client):
         cb = ClientCallback(func, cb_filter)
         self.response_callbacks.append(cb)
 
-    async def parse_body(self, transport_response: ClientResponse) -> Dict[Any, Any]:
+    async def parse_body(self, transport_response: ClientResponse) -> dict[Any, Any]:
         """Parse the body of the response.
 
         Low-level function which is normally only used by other methods of
@@ -510,10 +491,10 @@ class AsyncClient(Client):
 
     async def create_matrix_response(
         self,
-        response_class: Type,
+        response_class: type,
         transport_response: ClientResponse,
-        data: Optional[Tuple[Any, ...]] = None,
-        save_to: Optional[os.PathLike] = None,
+        data: tuple[Any, ...] | None = None,
+        save_to: os.PathLike | None = None,
     ) -> Response:
         """Transform a transport response into a nio matrix response.
 
@@ -615,13 +596,13 @@ class AsyncClient(Client):
                 await self._on_invited_rooms(event, room)
 
     async def _handle_joined_rooms(self, response: SyncResponse) -> None:
-        encrypted_rooms: Set[str] = set()
+        encrypted_rooms: set[str] = set()
 
         for room_id, join_info in response.rooms.join.items():
             self._handle_joined_state(room_id, join_info, encrypted_rooms)
 
             room = self.rooms[room_id]
-            decrypted_events: List[Tuple[int, Union[Event, BadEventType]]] = []
+            decrypted_events: list[tuple[int, Event | BadEventType]] = []
 
             for index, event in enumerate(join_info.timeline.events):
                 decrypted_event = self._handle_timeline_event(
@@ -716,7 +697,7 @@ class AsyncClient(Client):
         for cb in self.to_device_callbacks:
             await cb.async_execute(event)
 
-    async def _on_response(self, response: Union[Response, ErrorResponse]):
+    async def _on_response(self, response: Response | ErrorResponse):
         for cb in self.response_callbacks:
             await cb.async_execute(response)
 
@@ -782,17 +763,17 @@ class AsyncClient(Client):
 
     async def _send(
         self,
-        response_class: Type,
+        response_class: type,
         method: str,
         path: str,
-        data: Union[None, str, AsyncDataT] = None,
-        response_data: Optional[Tuple[Any, ...]] = None,
-        content_type: Optional[str] = None,
-        trace_context: Optional[Any] = None,
-        data_provider: Optional[DataProvider] = None,
-        timeout: Optional[float] = None,  # noqa: ASYNC109
-        content_length: Optional[int] = None,
-        save_to: Optional[os.PathLike] = None,
+        data: None | str | AsyncDataT = None,
+        response_data: tuple[Any, ...] | None = None,
+        content_type: str | None = None,
+        trace_context: Any | None = None,
+        data_provider: DataProvider | None = None,
+        timeout: float | None = None,  # noqa: ASYNC109
+        content_length: int | None = None,
+        save_to: os.PathLike | None = None,
     ):
         headers = (
             {"Content-Type": content_type}
@@ -885,10 +866,10 @@ class AsyncClient(Client):
         self,
         method: str,
         path: str,
-        data: Union[None, str, AsyncDataT] = None,
-        headers: Optional[Dict[str, str]] = None,
-        trace_context: Optional[Any] = None,
-        timeout: Optional[float] = None,  # noqa: ASYNC109
+        data: None | str | AsyncDataT = None,
+        headers: dict[str, str] | None = None,
+        trace_context: Any | None = None,
+        timeout: float | None = None,  # noqa: ASYNC109
     ) -> ClientResponse:
         """Send a request to the homeserver.
 
@@ -922,16 +903,14 @@ class AsyncClient(Client):
     async def mxc_to_http(
         self,
         mxc: str,
-        homeserver: Optional[str] = None,
-    ) -> Optional[str]:
+        homeserver: str | None = None,
+    ) -> str | None:
         """Convert a matrix content URI to a HTTP URI."""
         return Api.mxc_to_http(
             mxc, homeserver or self.homeserver, access_token=self.access_token
         )
 
-    async def login_raw(
-        self, auth_dict: Dict[str, Any]
-    ) -> Union[LoginResponse, LoginError]:
+    async def login_raw(self, auth_dict: dict[str, Any]) -> LoginResponse | LoginError:
         """Login to the homeserver using a raw dictionary.
 
         Calls receive_response() to update the client state if necessary.
@@ -968,9 +947,9 @@ class AsyncClient(Client):
         self,
         username: str,
         password: str,
-        auth_dict: Dict[str, Any],
+        auth_dict: dict[str, Any],
         device_name: str = "",
-    ) -> Union[RegisterInteractiveResponse, RegisterInteractiveError]:
+    ) -> RegisterInteractiveResponse | RegisterInteractiveError:
         """Makes a request to the register endpoint using the provided
         auth dictionary. This is allows for interactive registration flows
         from the homeserver.
@@ -1003,7 +982,7 @@ class AsyncClient(Client):
         password: str,
         registration_token: str,
         device_name: str = "",
-    ) -> Union[RegisterResponse, RegisterErrorResponse]:
+    ) -> RegisterResponse | RegisterErrorResponse:
         """Registers a user using a registration token.
         See https://spec.matrix.org/latest/client-server-api/#token-authenticated-registration
 
@@ -1049,8 +1028,8 @@ class AsyncClient(Client):
         username: str,
         password: str,
         device_name: str = "",
-        session_token: Optional[str] = None,
-    ) -> Union[RegisterResponse, RegisterErrorResponse]:
+        session_token: str | None = None,
+    ) -> RegisterResponse | RegisterErrorResponse:
         """Register with homeserver.
 
         Calls receive_response() to update the client state if necessary.
@@ -1083,7 +1062,7 @@ class AsyncClient(Client):
 
     async def discovery_info(
         self,
-    ) -> Union[DiscoveryInfoResponse, DiscoveryInfoError]:
+    ) -> DiscoveryInfoResponse | DiscoveryInfoError:
         """Get discovery information about current `AsyncClient.homeserver`.
 
         Returns either a `DiscoveryInfoResponse` if the request was successful
@@ -1107,7 +1086,7 @@ class AsyncClient(Client):
         method, path = Api.discovery_info()
         return await self._send(DiscoveryInfoResponse, method, path)
 
-    async def login_info(self) -> Union[LoginInfoResponse, LoginInfoError]:
+    async def login_info(self) -> LoginInfoResponse | LoginInfoError:
         """Get the available login methods from the server
 
         Returns either a `LoginInfoResponse` if the request was successful or
@@ -1120,10 +1099,10 @@ class AsyncClient(Client):
 
     async def login(
         self,
-        password: Optional[str] = None,
-        device_name: Optional[str] = "",
-        token: Optional[str] = None,
-    ) -> Union[LoginResponse, LoginError]:
+        password: str | None = None,
+        device_name: str | None = "",
+        token: str | None = None,
+    ) -> LoginResponse | LoginError:
         """Login to the homeserver.
 
         Calls receive_response() to update the client state if necessary.
@@ -1156,9 +1135,7 @@ class AsyncClient(Client):
         return await self._send(LoginResponse, method, path, data)
 
     @logged_in_async
-    async def logout(
-        self, all_devices: bool = False
-    ) -> Union[LogoutResponse, LogoutError]:
+    async def logout(self, all_devices: bool = False) -> LogoutResponse | LogoutError:
         """Logout from the homeserver.
 
         Calls receive_response() to update the client state if necessary.
@@ -1173,12 +1150,12 @@ class AsyncClient(Client):
     @logged_in_async
     async def sync(
         self,
-        timeout: Optional[int] = 0,  # noqa: ASYNC109
-        sync_filter: Optional[_FilterT] = None,
-        since: Optional[str] = None,
-        full_state: Optional[bool] = None,
-        set_presence: Optional[str] = None,
-    ) -> Union[SyncResponse, SyncError]:
+        timeout: int | None = 0,  # noqa: ASYNC109
+        sync_filter: _FilterT | None = None,
+        since: str | None = None,
+        full_state: bool | None = None,
+        set_presence: str | None = None,
+    ) -> SyncResponse | SyncError:
         """Synchronise the client's state with the latest state on the server.
 
         In general you should use sync_forever() which handles additional
@@ -1243,7 +1220,7 @@ class AsyncClient(Client):
     @logged_in_async
     async def send_to_device_messages(
         self,
-    ) -> List[Union[ToDeviceResponse, ToDeviceError]]:
+    ) -> list[ToDeviceResponse | ToDeviceError]:
         """Send out outgoing to-device messages.
 
         Automatically called by sync_forever().
@@ -1259,9 +1236,7 @@ class AsyncClient(Client):
 
         return await asyncio.gather(*tasks)
 
-    async def run_response_callbacks(
-        self, responses: List[Union[Response, ErrorResponse]]
-    ):
+    async def run_response_callbacks(self, responses: list[Response | ErrorResponse]):
         """Run the configured response callbacks for the given responses.
 
         Low-level function which is normally only used by other methods of
@@ -1274,13 +1249,13 @@ class AsyncClient(Client):
     @logged_in_async
     async def sync_forever(
         self,
-        timeout: Optional[int] = None,  # noqa: ASYNC109
-        sync_filter: Optional[_FilterT] = None,
-        since: Optional[str] = None,
-        full_state: Optional[bool] = None,
-        loop_sleep_time: Optional[int] = None,
-        first_sync_filter: Optional[_FilterT] = None,
-        set_presence: Optional[str] = None,
+        timeout: int | None = None,  # noqa: ASYNC109
+        sync_filter: _FilterT | None = None,
+        since: str | None = None,
+        full_state: bool | None = None,
+        loop_sleep_time: int | None = None,
+        first_sync_filter: _FilterT | None = None,
+        set_presence: str | None = None,
     ):
         """Continuously sync with the configured homeserver.
 
@@ -1422,8 +1397,8 @@ class AsyncClient(Client):
     @logged_in_async
     @store_loaded
     async def start_key_verification(
-        self, device: OlmDevice, tx_id: Optional[str] = None
-    ) -> Union[ToDeviceResponse, ToDeviceError]:
+        self, device: OlmDevice, tx_id: str | None = None
+    ) -> ToDeviceResponse | ToDeviceError:
         """Start a interactive key verification with the given device.
 
         Returns either a `ToDeviceResponse` if the request was successful or
@@ -1442,8 +1417,8 @@ class AsyncClient(Client):
         self,
         transaction_id: str,
         reject: bool = False,
-        tx_id: Optional[str] = None,
-    ) -> Union[ToDeviceResponse, ToDeviceError]:
+        tx_id: str | None = None,
+    ) -> ToDeviceResponse | ToDeviceError:
         """Cancel a interactive key verification with the given device.
 
         Returns either a `ToDeviceResponse` if the request was successful or
@@ -1479,8 +1454,8 @@ class AsyncClient(Client):
     @logged_in_async
     @store_loaded
     async def accept_key_verification(
-        self, transaction_id: str, tx_id: Optional[str] = None
-    ) -> Union[ToDeviceResponse, ToDeviceError]:
+        self, transaction_id: str, tx_id: str | None = None
+    ) -> ToDeviceResponse | ToDeviceError:
         """Accept a key verification start event.
 
         Returns either a `ToDeviceResponse` if the request was successful or
@@ -1504,8 +1479,8 @@ class AsyncClient(Client):
     @logged_in_async
     @store_loaded
     async def confirm_short_auth_string(
-        self, transaction_id: str, tx_id: Optional[str] = None
-    ) -> Union[ToDeviceResponse, ToDeviceError]:
+        self, transaction_id: str, tx_id: str | None = None
+    ) -> ToDeviceResponse | ToDeviceError:
         """Confirm a short auth string and mark it as matching.
 
         Returns either a `ToDeviceResponse` if the request was successful or
@@ -1522,8 +1497,8 @@ class AsyncClient(Client):
     async def to_device(
         self,
         message: ToDeviceMessage,
-        tx_id: Optional[str] = None,
-    ) -> Union[ToDeviceResponse, ToDeviceError]:
+        tx_id: str | None = None,
+    ) -> ToDeviceResponse | ToDeviceError:
         """Send a to-device message.
 
         Calls receive_response() to update the client state if necessary.
@@ -1548,7 +1523,7 @@ class AsyncClient(Client):
 
     @logged_in_async
     @store_loaded
-    async def keys_upload(self) -> Union[KeysUploadResponse, KeysUploadError]:
+    async def keys_upload(self) -> KeysUploadResponse | KeysUploadError:
         """Upload the E2E encryption keys.
 
         This uploads the long lived session keys as well as the required amount
@@ -1573,7 +1548,7 @@ class AsyncClient(Client):
 
     @logged_in_async
     @store_loaded
-    async def keys_query(self) -> Union[KeysQueryResponse, KeysQueryError]:
+    async def keys_query(self) -> KeysQueryResponse | KeysQueryError:
         """Query the server for user keys.
 
         This queries the server for device keys of users with which we share an
@@ -1598,7 +1573,7 @@ class AsyncClient(Client):
         return await self._send(KeysQueryResponse, method, path, data)
 
     @logged_in_async
-    async def devices(self) -> Union[DevicesResponse, DevicesError]:
+    async def devices(self) -> DevicesResponse | DevicesError:
         """Get the list of devices for the current user.
 
         Calls receive_response() to update the client state if necessary.
@@ -1612,8 +1587,8 @@ class AsyncClient(Client):
 
     @logged_in_async
     async def update_device(
-        self, device_id: str, content: Dict[str, str]
-    ) -> Union[UpdateDeviceResponse, UpdateDeviceError]:
+        self, device_id: str, content: dict[str, str]
+    ) -> UpdateDeviceResponse | UpdateDeviceError:
         """Update the metadata of the given device.
 
         Returns either a `UpdateDeviceResponse` if the request was successful or
@@ -1636,8 +1611,8 @@ class AsyncClient(Client):
 
     @logged_in_async
     async def delete_devices(
-        self, devices: List[str], auth: Optional[Dict[str, str]] = None
-    ) -> Union[DeleteDevicesResponse, DeleteDevicesError]:
+        self, devices: list[str], auth: dict[str, str] | None = None
+    ) -> DeleteDevicesResponse | DeleteDevicesError:
         """Delete a list of devices.
 
         This tells the server to delete the given devices and invalidate their
@@ -1677,11 +1652,11 @@ class AsyncClient(Client):
     async def space_get_hierarchy(
         self,
         space_id: str,
-        from_page: Optional[str] = None,
-        limit: Optional[int] = None,
-        max_depth: Optional[int] = None,
+        from_page: str | None = None,
+        limit: int | None = None,
+        max_depth: int | None = None,
         suggested_only: bool = False,
-    ) -> Union[SpaceGetHierarchyResponse, SpaceGetHierarchyError]:
+    ) -> SpaceGetHierarchyResponse | SpaceGetHierarchyError:
         """Gets the space's room hierarchy.
 
         Calls receive_response() to update the client state if necessary.
@@ -1712,7 +1687,7 @@ class AsyncClient(Client):
     @logged_in_async
     async def joined_members(
         self, room_id: str
-    ) -> Union[JoinedMembersResponse, JoinedMembersError]:
+    ) -> JoinedMembersResponse | JoinedMembersError:
         """Get the list of joined members for a room.
 
         Calls receive_response() to update the client state if necessary.
@@ -1733,7 +1708,7 @@ class AsyncClient(Client):
     @logged_in_async
     async def joined_rooms(
         self,
-    ) -> Union[JoinedRoomsResponse, JoinedRoomsError]:
+    ) -> JoinedRoomsResponse | JoinedRoomsError:
         """Get the list of joined rooms.
 
         Calls receive_response() to update the client state if necessary.
@@ -1750,10 +1725,10 @@ class AsyncClient(Client):
         self,
         room_id: str,
         message_type: str,
-        content: Dict[Any, Any],
-        tx_id: Optional[str] = None,
+        content: dict[Any, Any],
+        tx_id: str | None = None,
         ignore_unverified_devices: bool = False,
-    ) -> Union[RoomSendResponse, RoomSendError]:
+    ) -> RoomSendResponse | RoomSendError:
         """Send a message to a room.
 
         Calls receive_response() to update the client state if necessary.
@@ -1782,7 +1757,7 @@ class AsyncClient(Client):
 
         Raises `LocalProtocolError` if the client isn't logged in.
         """
-        uuid: Union[str, UUID] = tx_id or uuid4()
+        uuid: str | UUID = tx_id or uuid4()
 
         if self.olm:
             try:
@@ -1828,7 +1803,7 @@ class AsyncClient(Client):
     @client_session
     async def list_direct_rooms(
         self,
-    ) -> Union[DirectRoomsResponse, DirectRoomsErrorResponse]:
+    ) -> DirectRoomsResponse | DirectRoomsErrorResponse:
         """
         Lists all rooms flagged with m.direct that the client is participating in.
 
@@ -1840,7 +1815,7 @@ class AsyncClient(Client):
     @logged_in_async
     async def room_get_event(
         self, room_id: str, event_id: str
-    ) -> Union[RoomGetEventResponse, RoomGetEventError]:
+    ) -> RoomGetEventResponse | RoomGetEventError:
         """Get a single event based on roomId/eventId.
 
         Calls receive_response() to update the client state if necessary.
@@ -1861,10 +1836,10 @@ class AsyncClient(Client):
         self,
         room_id: str,
         event_id: str,
-        rel_type: Optional[RelationshipType] = None,
-        event_type: Optional[str] = None,
+        rel_type: RelationshipType | None = None,
+        event_type: str | None = None,
         direction: MessageDirection = MessageDirection.back,
-        limit: Optional[int] = None,
+        limit: int | None = None,
     ) -> AsyncIterator[Event]:
         """Iterate through all related events of a given parent event.
 
@@ -1912,7 +1887,7 @@ class AsyncClient(Client):
         self,
         room_id: str,
         include: ThreadInclusion = ThreadInclusion.all,
-        limit: Optional[int] = None,
+        limit: int | None = None,
     ) -> AsyncIterator[Event]:
         """Iterate through the thread roots of a given room.
 
@@ -1952,9 +1927,9 @@ class AsyncClient(Client):
         self,
         room_id: str,
         event_type: str,
-        content: Dict[Any, Any],
+        content: dict[Any, Any],
         state_key: str = "",
-    ) -> Union[RoomPutStateResponse, RoomPutStateError]:
+    ) -> RoomPutStateResponse | RoomPutStateError:
         """Send a state event to a room.
 
         Calls receive_response() to update the client state if necessary.
@@ -1989,7 +1964,7 @@ class AsyncClient(Client):
     async def room_get_state(
         self,
         room_id: str,
-    ) -> Union[RoomGetStateResponse, RoomGetStateError]:
+    ) -> RoomGetStateResponse | RoomGetStateError:
         """Fetch state for a room.
 
         Calls receive_response() to update the client state if necessary.
@@ -2016,7 +1991,7 @@ class AsyncClient(Client):
     @logged_in_async
     async def room_get_state_event(
         self, room_id: str, event_type: str, state_key: str = ""
-    ) -> Union[RoomGetStateEventResponse, RoomGetStateEventError]:
+    ) -> RoomGetStateEventResponse | RoomGetStateEventError:
         """Fetch a state event from a room.
 
         Calls receive_response() to update the client state if necessary.
@@ -2051,9 +2026,9 @@ class AsyncClient(Client):
         self,
         room_id: str,
         event_id: str,
-        reason: Optional[str] = None,
-        tx_id: Union[None, str, UUID] = None,
-    ) -> Union[RoomRedactResponse, RoomRedactError]:
+        reason: str | None = None,
+        tx_id: None | str | UUID = None,
+    ) -> RoomRedactResponse | RoomRedactError:
         """Strip information out of an event.
 
         Calls receive_response() to update the client state if necessary.
@@ -2088,7 +2063,7 @@ class AsyncClient(Client):
     async def room_resolve_alias(
         self,
         room_alias: str,
-    ) -> Union[RoomResolveAliasResponse, RoomResolveAliasError]:
+    ) -> RoomResolveAliasResponse | RoomResolveAliasError:
         """Resolve a room alias to a room ID.
 
         Calls receive_response() to update the client state if necessary.
@@ -2113,7 +2088,7 @@ class AsyncClient(Client):
     async def room_delete_alias(
         self,
         room_alias: str,
-    ) -> Union[RoomDeleteAliasResponse, RoomDeleteAliasError]:
+    ) -> RoomDeleteAliasResponse | RoomDeleteAliasError:
         """Delete a room alias.
 
         Calls receive_response() to update the client state if necessary.
@@ -2142,7 +2117,7 @@ class AsyncClient(Client):
         self,
         room_alias: str,
         room_id: str,
-    ) -> Union[RoomPutAliasResponse, RoomPutAliasError]:
+    ) -> RoomPutAliasResponse | RoomPutAliasError:
         """Add a room alias.
 
         Calls receive_response() to update the client state if necessary.
@@ -2172,7 +2147,7 @@ class AsyncClient(Client):
     async def room_get_visibility(
         self,
         room_id: str,
-    ) -> Union[RoomGetVisibilityResponse, RoomGetVisibilityError]:
+    ) -> RoomGetVisibilityResponse | RoomGetVisibilityError:
         """Get visibility for a room.
 
         Calls receive_response() to update the client state if necessary.
@@ -2196,8 +2171,8 @@ class AsyncClient(Client):
     @logged_in_async
     @store_loaded
     async def keys_claim(
-        self, user_set: Dict[str, Iterable[str]]
-    ) -> Union[KeysClaimResponse, KeysClaimError]:
+        self, user_set: dict[str, Iterable[str]]
+    ) -> KeysClaimResponse | KeysClaimError:
         """Claim one-time keys for a set of user and device pairs.
 
         Automatically called by sync_forever() and room_send().
@@ -2224,7 +2199,7 @@ class AsyncClient(Client):
         self,
         room_id: str,
         ignore_unverified_devices: bool = False,
-    ) -> Union[ShareGroupSessionResponse, ShareGroupSessionError]:
+    ) -> ShareGroupSessionResponse | ShareGroupSessionError:
         """Share a group session with a room.
 
         This method sends a group session to members of a room.
@@ -2312,8 +2287,8 @@ class AsyncClient(Client):
     async def request_room_key(
         self,
         event: MegolmEvent,
-        tx_id: Optional[str] = None,
-    ) -> Union[RoomKeyRequestResponse, RoomKeyRequestError]:
+        tx_id: str | None = None,
+    ) -> RoomKeyRequestResponse | RoomKeyRequestError:
         """Request a missing room key.
 
         This sends out a message to other devices requesting a room key from
@@ -2431,20 +2406,20 @@ class AsyncClient(Client):
     async def room_create(
         self,
         visibility: RoomVisibility = RoomVisibility.private,
-        alias: Optional[str] = None,
-        name: Optional[str] = None,
-        topic: Optional[str] = None,
-        room_version: Optional[str] = None,
-        room_type: Optional[str] = None,
+        alias: str | None = None,
+        name: str | None = None,
+        topic: str | None = None,
+        room_version: str | None = None,
+        room_type: str | None = None,
         federate: bool = True,
         is_direct: bool = False,
-        preset: Optional[RoomPreset] = None,
+        preset: RoomPreset | None = None,
         invite: Sequence[str] = (),
-        initial_state: Sequence[Dict[str, Any]] = (),
-        power_level_override: Optional[Dict[str, Any]] = None,
-        predecessor: Optional[Dict[str, Any]] = None,
+        initial_state: Sequence[dict[str, Any]] = (),
+        power_level_override: dict[str, Any] | None = None,
+        predecessor: dict[str, Any] | None = None,
         space: bool = False,
-    ) -> Union[RoomCreateResponse, RoomCreateError]:
+    ) -> RoomCreateResponse | RoomCreateError:
         """Create a new room.
 
         Calls receive_response() to update the client state if necessary.
@@ -2537,7 +2512,7 @@ class AsyncClient(Client):
         return await self._send(RoomCreateResponse, method, path, data)
 
     @logged_in_async
-    async def join(self, room_id: str) -> Union[JoinResponse, JoinError]:
+    async def join(self, room_id: str) -> JoinResponse | JoinError:
         """Join a room.
 
         This tells the server to join the given room.
@@ -2558,8 +2533,8 @@ class AsyncClient(Client):
     async def room_knock(
         self,
         room_id: str,
-        reason: Optional[str] = None,
-    ) -> Union[RoomKnockResponse, RoomKnockError]:
+        reason: str | None = None,
+    ) -> RoomKnockResponse | RoomKnockError:
         """Knock on a room.
 
         Calls receive_response() to update the client state if necessary.
@@ -2583,7 +2558,7 @@ class AsyncClient(Client):
     async def room_enable_knocking(
         self,
         room_id: str,
-    ) -> Union[RoomPutStateResponse, RoomPutStateError]:
+    ) -> RoomPutStateResponse | RoomPutStateError:
         """Enables knocking for a room.
 
         Returns either a `RoomPutStateResponse` if the request was successful
@@ -2603,7 +2578,7 @@ class AsyncClient(Client):
         self,
         room_id: str,
         user_id: str,
-    ) -> Union[RoomInviteResponse, RoomInviteError]:
+    ) -> RoomInviteResponse | RoomInviteError:
         """Invite a user to a room.
 
         Calls receive_response() to update the client state if necessary.
@@ -2624,9 +2599,7 @@ class AsyncClient(Client):
         return await self._send(RoomInviteResponse, method, path, data)
 
     @logged_in_async
-    async def room_leave(
-        self, room_id: str
-    ) -> Union[RoomLeaveResponse, RoomLeaveError]:
+    async def room_leave(self, room_id: str) -> RoomLeaveResponse | RoomLeaveError:
         """Leave a room or reject an invite.
 
         This tells the server to leave the given room.
@@ -2644,9 +2617,7 @@ class AsyncClient(Client):
         return await self._send(RoomLeaveResponse, method, path)
 
     @logged_in_async
-    async def room_forget(
-        self, room_id: str
-    ) -> Union[RoomForgetResponse, RoomForgetError]:
+    async def room_forget(self, room_id: str) -> RoomForgetResponse | RoomForgetError:
         """Forget a room.
 
         This tells the server to forget the given room's history for our user.
@@ -2671,8 +2642,8 @@ class AsyncClient(Client):
         self,
         room_id: str,
         user_id: str,
-        reason: Optional[str] = None,
-    ) -> Union[RoomKickResponse, RoomKickError]:
+        reason: str | None = None,
+    ) -> RoomKickResponse | RoomKickError:
         """Kick a user from a room, or withdraw their invitation.
 
         Kicking a user adjusts their membership to "leave" with an optional
@@ -2703,8 +2674,8 @@ class AsyncClient(Client):
         self,
         room_id: str,
         user_id: str,
-        reason: Optional[str] = None,
-    ) -> Union[RoomBanResponse, RoomBanError]:
+        reason: str | None = None,
+    ) -> RoomBanResponse | RoomBanError:
         """Ban a user from a room.
 
         When a user is banned from a room, they may not join it or be
@@ -2737,7 +2708,7 @@ class AsyncClient(Client):
         self,
         room_id: str,
         user_id: str,
-    ) -> Union[RoomBanResponse, RoomBanError]:
+    ) -> RoomBanResponse | RoomBanError:
         """Unban a user from a room.
 
         This allows them to be invited and join the room again.
@@ -2765,8 +2736,8 @@ class AsyncClient(Client):
         self,
         room_id: str,
         event_id: str,
-        limit: Optional[int] = None,
-    ) -> Union[RoomContextResponse, RoomContextError]:
+        limit: int | None = None,
+    ) -> RoomContextResponse | RoomContextError:
         """Fetch a number of events that happened before and after an event.
 
         This allows clients to get the context surrounding an event.
@@ -2794,12 +2765,12 @@ class AsyncClient(Client):
     async def room_messages(
         self,
         room_id: str,
-        start: Optional[str] = None,
-        end: Optional[str] = None,
+        start: str | None = None,
+        end: str | None = None,
         direction: MessageDirection = MessageDirection.back,
         limit: int = 10,
-        message_filter: Optional[Dict[Any, Any]] = None,
-    ) -> Union[RoomMessagesResponse, RoomMessagesError]:
+        message_filter: dict[Any, Any] | None = None,
+    ) -> RoomMessagesResponse | RoomMessagesError:
         """Fetch a list of message and state events for a room.
 
         It uses pagination query parameters to paginate history in the room.
@@ -2855,7 +2826,7 @@ class AsyncClient(Client):
         room_id: str,
         typing_state: bool = True,
         timeout: int = 30_000,  # noqa: ASYNC109
-    ) -> Union[RoomTypingResponse, RoomTypingError]:
+    ) -> RoomTypingResponse | RoomTypingError:
         """Send a typing notice to the server.
 
         This tells the server that the user is typing for the next N
@@ -2887,8 +2858,8 @@ class AsyncClient(Client):
         room_id: str,
         event_id: str,
         receipt_type: ReceiptType = ReceiptType.read,
-        thread_id: Optional[str] = "main",
-    ) -> Union[UpdateReceiptMarkerResponse, UpdateReceiptMarkerError]:
+        thread_id: str | None = "main",
+    ) -> UpdateReceiptMarkerResponse | UpdateReceiptMarkerError:
         """Update the marker of given the `receipt_type` to specified `event_id`.
 
         Calls receive_response() to update the client state if necessary.
@@ -2931,9 +2902,9 @@ class AsyncClient(Client):
         self,
         room_id: str,
         fully_read_event: str,
-        read_event: Optional[str] = None,
-        private_read_event: Optional[str] = None,
-    ) -> Union[RoomReadMarkersResponse, RoomReadMarkersError]:
+        read_event: str | None = None,
+        private_read_event: str | None = None,
+    ) -> RoomReadMarkersResponse | RoomReadMarkersError:
         """Update the fully read marker (and optionally the read receipt
         and/or private read receipt) for a room.
 
@@ -2982,7 +2953,7 @@ class AsyncClient(Client):
     @logged_in_async
     async def content_repository_config(
         self,
-    ) -> Union[ContentRepositoryConfigResponse, ContentRepositoryConfigError]:
+    ) -> ContentRepositoryConfigResponse | ContentRepositoryConfigError:
         """Get the content repository configuration, such as upload limits.
 
         Calls receive_response() to update the client state if necessary.
@@ -2996,7 +2967,7 @@ class AsyncClient(Client):
         return await self._send(ContentRepositoryConfigResponse, method, path)
 
     @staticmethod
-    async def _process_data_chunk(chunk, monitor: Optional[TransferMonitor] = None):
+    async def _process_data_chunk(chunk, monitor: TransferMonitor | None = None):
         if monitor and monitor.cancel:
             raise TransferCancelledError
 
@@ -3042,13 +3013,13 @@ class AsyncClient(Client):
     @logged_in_async
     async def upload(
         self,
-        data_provider: Union[DataProvider, SynchronousFileType, AsyncFileType],
+        data_provider: DataProvider | SynchronousFileType | AsyncFileType,
         content_type: str = "application/octet-stream",
-        filename: Optional[str] = None,
+        filename: str | None = None,
         encrypt: bool = False,
-        monitor: Optional[TransferMonitor] = None,
-        filesize: Optional[int] = None,
-    ) -> Tuple[Union[UploadResponse, UploadError], Optional[Dict[str, Any]]]:
+        monitor: TransferMonitor | None = None,
+        filesize: int | None = None,
+    ) -> tuple[UploadResponse | UploadError, dict[str, Any] | None]:
         """Upload a file to the content repository.
 
         This method ignores `AsyncClient.config.request_timeout` and uses `0`.
@@ -3137,7 +3108,7 @@ class AsyncClient(Client):
 
         http_method, path = Api.upload(self.access_token, filename)
 
-        decryption_dict: Dict[str, Any] = {}
+        decryption_dict: dict[str, Any] = {}
 
         initial_file_pos = 0
 
@@ -3201,13 +3172,13 @@ class AsyncClient(Client):
     @client_session
     async def download(
         self,
-        mxc: Optional[str] = None,
-        filename: Optional[str] = None,
+        mxc: str | None = None,
+        filename: str | None = None,
         allow_remote: bool = True,
-        server_name: Optional[str] = None,
-        media_id: Optional[str] = None,
-        save_to: Optional[os.PathLike] = None,
-    ) -> Union[DiskDownloadResponse, MemoryDownloadResponse, DownloadError]:
+        server_name: str | None = None,
+        media_id: str | None = None,
+        save_to: os.PathLike | None = None,
+    ) -> DiskDownloadResponse | MemoryDownloadResponse | DownloadError:
         """Get the content of a file from the content repository.
 
         This method ignores `AsyncClient.config.request_timeout` and uses `0`.
@@ -3291,7 +3262,7 @@ class AsyncClient(Client):
         height: int,
         method: ResizingMethod = ResizingMethod.scale,
         allow_remote: bool = True,
-    ) -> Union[ThumbnailResponse, ThumbnailError]:
+    ) -> ThumbnailResponse | ThumbnailError:
         """Get the thumbnail of a file from the content repository.
 
         The actual thumbnail may be larger than the size specified.
@@ -3332,8 +3303,8 @@ class AsyncClient(Client):
 
     @client_session
     async def get_profile(
-        self, user_id: Optional[str] = None
-    ) -> Union[ProfileGetResponse, ProfileGetError]:
+        self, user_id: str | None = None
+    ) -> ProfileGetResponse | ProfileGetError:
         """Get a user's combined profile information.
 
         This queries the display name and avatar matrix content URI of a user
@@ -3362,7 +3333,7 @@ class AsyncClient(Client):
     @client_session
     async def get_presence(
         self, user_id: str
-    ) -> Union[PresenceGetResponse, PresenceGetError]:
+    ) -> PresenceGetResponse | PresenceGetError:
         """Get a user's presence state.
 
         This queries the presence state of a user from the server.
@@ -3385,8 +3356,8 @@ class AsyncClient(Client):
 
     @client_session
     async def set_presence(
-        self, presence: str, status_msg: Optional[str] = None
-    ) -> Union[PresenceSetResponse, PresenceSetError]:
+        self, presence: str, status_msg: str | None = None
+    ) -> PresenceSetResponse | PresenceSetError:
         """Set our user's presence state.
 
         This tells the server to set presence state of the currently logged
@@ -3415,7 +3386,7 @@ class AsyncClient(Client):
 
     @client_session
     async def get_displayname(
-        self, user_id: Optional[str] = None
+        self, user_id: str | None = None
     ) -> _ProfileGetDisplayNameT:
         """Get a user's display name.
 
@@ -3470,8 +3441,8 @@ class AsyncClient(Client):
 
     @client_session
     async def get_avatar(
-        self, user_id: Optional[str] = None
-    ) -> Union[ProfileGetAvatarResponse, ProfileGetAvatarError]:
+        self, user_id: str | None = None
+    ) -> ProfileGetAvatarResponse | ProfileGetAvatarError:
         """Get a user's avatar URL.
 
         This queries the avatar matrix content URI of a user from the server.
@@ -3499,7 +3470,7 @@ class AsyncClient(Client):
     @logged_in_async
     async def set_avatar(
         self, avatar_url: str
-    ) -> Union[ProfileSetAvatarResponse, ProfileSetAvatarError]:
+    ) -> ProfileSetAvatarResponse | ProfileSetAvatarError:
         """Set the user's avatar URL.
 
         This tells the server to set the avatar of the currently logged
@@ -3528,7 +3499,7 @@ class AsyncClient(Client):
     @logged_in_async
     async def get_openid_token(
         self, user_id: str
-    ) -> Union[GetOpenIDTokenResponse, GetOpenIDTokenError]:
+    ) -> GetOpenIDTokenResponse | GetOpenIDTokenError:
         """Gets an OpenID token object that the requester may supply to another service
         to verify their identity in matrix.
 
@@ -3547,13 +3518,13 @@ class AsyncClient(Client):
     @logged_in_async
     async def upload_filter(
         self,
-        user_id: Optional[str] = None,
-        event_fields: Optional[List[str]] = None,
+        user_id: str | None = None,
+        event_fields: list[str] | None = None,
         event_format: EventFormat = EventFormat.client,
-        presence: Optional[Dict[str, Any]] = None,
-        account_data: Optional[Dict[str, Any]] = None,
-        room: Optional[Dict[str, Any]] = None,
-    ) -> Union[UploadFilterResponse, UploadFilterError]:
+        presence: dict[str, Any] | None = None,
+        account_data: dict[str, Any] | None = None,
+        room: dict[str, Any] | None = None,
+    ) -> UploadFilterResponse | UploadFilterError:
         """Upload a new filter definition to the homeserver.
 
         Returns either a `UploadFilterResponse` if the request was
@@ -3601,7 +3572,7 @@ class AsyncClient(Client):
 
         return await self._send(UploadFilterResponse, method, path, data)
 
-    async def whoami(self) -> Union[WhoamiResponse, WhoamiError]:
+    async def whoami(self) -> WhoamiResponse | WhoamiError:
         """Get information about the logged-in user from the homeserver.
 
         Returns either a `WhoamiResponse` if the request was successful
@@ -3618,14 +3589,14 @@ class AsyncClient(Client):
 
     async def list_public_rooms(
         self,
-        limit: Optional[int] = None,
-        server: Optional[str] = None,
-        since: Optional[str] = None,
-        filter_generic_search_term: Optional[str] = None,
-        filter_room_types: List[Union[str, None]] = None,
+        limit: int | None = None,
+        server: str | None = None,
+        since: str | None = None,
+        filter_generic_search_term: str | None = None,
+        filter_room_types: list[str | None] = None,
         include_all_networks: bool = False,
-        third_party_instance_id: Optional[str] = None,
-    ) -> Union[PublicRoomsResponse, PublicRoomsError]:
+        third_party_instance_id: str | None = None,
+    ) -> PublicRoomsResponse | PublicRoomsError:
         """Lists the public rooms on the server, with optional filters.
 
         This API returns paginated responses.
@@ -3660,12 +3631,12 @@ class AsyncClient(Client):
         scope: str,
         kind: PushRuleKind,
         rule_id: str,
-        before: Optional[str] = None,
-        after: Optional[str] = None,
+        before: str | None = None,
+        after: str | None = None,
         actions: Sequence[PushAction] = (),
-        conditions: Optional[Sequence[PushCondition]] = None,
-        pattern: Optional[str] = None,
-    ) -> Union[SetPushRuleResponse, SetPushRuleError]:
+        conditions: Sequence[PushCondition] | None = None,
+        pattern: str | None = None,
+    ) -> SetPushRuleResponse | SetPushRuleError:
         """Create or modify an existing push rule.
 
         Returns either a `SetPushRuleResponse` if the request was
@@ -3754,7 +3725,7 @@ class AsyncClient(Client):
         scope: str,
         kind: PushRuleKind,
         rule_id: str,
-    ) -> Union[DeletePushRuleResponse, DeletePushRuleError]:
+    ) -> DeletePushRuleResponse | DeletePushRuleError:
         """Delete an existing push rule.
 
         Returns either a `DeletePushRuleResponse` if the request was
@@ -3789,7 +3760,7 @@ class AsyncClient(Client):
         kind: PushRuleKind,
         rule_id: str,
         enable: bool,
-    ) -> Union[EnablePushRuleResponse, EnablePushRuleError]:
+    ) -> EnablePushRuleResponse | EnablePushRuleError:
         """Enable or disable an existing push rule.
 
         Returns either a `EnablePushRuleResponse` if the request was
@@ -3827,7 +3798,7 @@ class AsyncClient(Client):
         kind: PushRuleKind,
         rule_id: str,
         actions: Sequence[PushAction],
-    ) -> Union[SetPushRuleActionsResponse, SetPushRuleActionsError]:
+    ) -> SetPushRuleActionsResponse | SetPushRuleActionsError:
         """Set the actions for an existing built-in or user-created push rule.
 
         Unlike ``set_pushrule``, this method can edit built-in server rules.
@@ -3867,8 +3838,8 @@ class AsyncClient(Client):
     async def room_update_aliases(
         self,
         room_id: str,
-        canonical_alias: Union[str, None] = None,
-        alt_aliases: Optional[List[str]] = None,
+        canonical_alias: str | None = None,
+        alt_aliases: list[str] | None = None,
     ):
         """Update the aliases of an existing room.
            This method will not transfer aliases from one room to another!
@@ -3944,8 +3915,8 @@ class AsyncClient(Client):
             "m.room.power_levels",
         ],
         room_upgrade_message: str = "This room has been replaced",
-        room_power_level_overwrite: Optional[Dict[str, Any]] = None,
-    ) -> Union[RoomUpgradeResponse, RoomUpgradeError]:
+        room_power_level_overwrite: dict[str, Any] | None = None,
+    ) -> RoomUpgradeResponse | RoomUpgradeError:
         """Upgrade an existing room.
 
         Args:
@@ -4058,7 +4029,7 @@ class AsyncClient(Client):
         self,
         room_id: str,
         topic: str,
-    ) -> Union[RoomPutStateResponse, RoomPutStateError]:
+    ) -> RoomPutStateResponse | RoomPutStateError:
         """Update the room topic
 
         Returns either a `RoomPutStateResponse` if the request was successful
@@ -4080,7 +4051,7 @@ class AsyncClient(Client):
     @logged_in_async
     async def has_event_permission(
         self, room_id: str, event_name: str, event_type: str = "event"
-    ) -> Union[bool, ErrorResponse]:
+    ) -> bool | ErrorResponse:
         who_am_i = await self.whoami()
         power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
 
@@ -4107,7 +4078,7 @@ class AsyncClient(Client):
 
     async def has_permission(
         self, room_id: str, permission_type: str
-    ) -> Union[bool, ErrorResponse]:
+    ) -> bool | ErrorResponse:
         who_am_i = await self.whoami()
         power_levels = await self.room_get_state_event(room_id, "m.room.power_levels")
 

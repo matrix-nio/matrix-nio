@@ -13,14 +13,14 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from collections import defaultdict
-from typing import DefaultDict, Dict, Iterator, List, Optional
+from collections.abc import Iterator
 
 from .sessions import InboundGroupSession, Session
 
 
 class SessionStore:
     def __init__(self):
-        self._entries: DefaultDict[str, List[Session]] = defaultdict(list)
+        self._entries: defaultdict[str, list[Session]] = defaultdict(list)
 
     def add(self, sender_key: str, session: Session) -> bool:
         if session in self._entries[sender_key]:
@@ -40,13 +40,13 @@ class SessionStore:
     def items(self):
         return self._entries.items()
 
-    def get(self, sender_key: str) -> Optional[Session]:
+    def get(self, sender_key: str) -> Session | None:
         if self._entries[sender_key]:
             return self._entries[sender_key][0]
 
         return None
 
-    def __getitem__(self, sender_key: str) -> List[Session]:
+    def __getitem__(self, sender_key: str) -> list[Session]:
         return self._entries[sender_key]
 
 
@@ -70,7 +70,7 @@ class GroupSessionStore:
 
     def get(
         self, room_id: str, sender_key: str, session_id: str
-    ) -> Optional[InboundGroupSession]:
+    ) -> InboundGroupSession | None:
         if session_id in self._entries[room_id][sender_key]:
             return self._entries[room_id][sender_key][session_id]
 
@@ -78,5 +78,5 @@ class GroupSessionStore:
 
     def __getitem__(
         self, room_id: str
-    ) -> DefaultDict[str, Dict[str, InboundGroupSession]]:
+    ) -> defaultdict[str, dict[str, InboundGroupSession]]:
         return self._entries[room_id]

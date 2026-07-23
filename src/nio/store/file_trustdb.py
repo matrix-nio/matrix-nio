@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from functools import wraps
-from typing import Any, Iterator, List, Optional
+from typing import Any
 
 from atomicwrites import atomic_write
 
@@ -17,7 +18,7 @@ class Key:
         self.key = key
 
     @classmethod
-    def from_line(cls, line: str) -> Optional[Key]:
+    def from_line(cls, line: str) -> Key | None:
         fields = line.split(" ")
 
         if len(fields) < 4:
@@ -65,7 +66,7 @@ class Ed25519Key(Key):
 
 class KeyStore:
     def __init__(self, filename: str):
-        self._entries: List[Key] = []
+        self._entries: list[Key] = []
         self._filename: str = filename
 
         self._load(filename)
@@ -94,7 +95,7 @@ class KeyStore:
         except FileNotFoundError:
             pass
 
-    def get_key(self, user_id: str, device_id: str) -> Optional[Key]:
+    def get_key(self, user_id: str, device_id: str) -> Key | None:
         for entry in self._entries:
             if user_id == entry.user_id and device_id == entry.device_id:
                 return entry
@@ -117,7 +118,7 @@ class KeyStore:
                 f.write(line)
 
     @_save_store  # type: ignore
-    def add_many(self, keys: List[Key]):
+    def add_many(self, keys: list[Key]):
         for key in keys:
             self._add_without_save(key)
 
@@ -146,7 +147,7 @@ class KeyStore:
         return self._add_without_save(key)
 
     @_save_store  # type: ignore
-    def remove_many(self, keys: List[Key]):
+    def remove_many(self, keys: list[Key]):
         for key in keys:
             if key in self._entries:
                 self._entries.remove(key)

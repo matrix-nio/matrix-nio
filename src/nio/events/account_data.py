@@ -26,7 +26,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from ..api import PushRuleKind
 from ..schemas import Schemas
@@ -45,7 +45,7 @@ class AccountDataEvent:
     @verify(Schemas.account_data)
     def parse_event(
         cls,
-        event_dict: Dict[Any, Any],
+        event_dict: dict[Any, Any],
     ):
         if event_dict["type"] == "m.fully_read":
             return FullyReadEvent.from_dict(event_dict)
@@ -100,7 +100,7 @@ class TagEvent(AccountDataEvent):
         and their contents.
     """
 
-    tags: Dict[str, Optional[Dict[str, float]]] = field()
+    tags: dict[str, dict[str, float] | None] = field()
 
     @classmethod
     @verify(Schemas.tags)
@@ -115,7 +115,7 @@ class PushCondition:
     """A condition for a push rule to match an event."""
 
     @classmethod
-    def from_dict(cls, condition: Dict[str, Any]) -> PushCondition:
+    def from_dict(cls, condition: dict[str, Any]) -> PushCondition:
         cnd = condition
 
         if cnd["kind"] == "event_match" and "key" in cnd and "pattern" in cnd:
@@ -133,7 +133,7 @@ class PushCondition:
         return PushUnknownCondition(cnd)
 
     @property
-    def as_value(self) -> Dict[str, Any]:
+    def as_value(self) -> dict[str, Any]:
         raise NotImplementedError
 
     def matches(
@@ -169,7 +169,7 @@ class PushEventMatch(PushCondition):
     pattern: str = field()
 
     @property
-    def as_value(self) -> Dict[str, Any]:
+    def as_value(self) -> dict[str, Any]:
         return {
             "kind": "event_match",
             "key": self.key,
@@ -205,7 +205,7 @@ class PushContainsDisplayName(PushCondition):
     """
 
     @property
-    def as_value(self) -> Dict[str, Any]:
+    def as_value(self) -> dict[str, Any]:
         return {"kind": "contains_display_name"}
 
     def matches(
@@ -239,12 +239,12 @@ class PushRoomMemberCount(PushCondition):
     operator: str = "=="
 
     @classmethod
-    def from_dict(cls, condition: Dict[str, Any]) -> PushRoomMemberCount:
+    def from_dict(cls, condition: dict[str, Any]) -> PushRoomMemberCount:
         op, num = re.findall(r"(==|<|>|<=|>=)?([0-9.-]+)", condition["is"])[0]
         return cls(int(num), op or "==")
 
     @property
-    def as_value(self) -> Dict[str, Any]:
+    def as_value(self) -> dict[str, Any]:
         operator = "" if self.operator == "==" else self.operator
         return {"kind": "room_member_count", "is": f"{operator}{self.count}"}
 
@@ -281,7 +281,7 @@ class PushSenderNotificationPermission(PushCondition):
     key: str = field()
 
     @property
-    def as_value(self) -> Dict[str, Any]:
+    def as_value(self) -> dict[str, Any]:
         return {
             "kind": "sender_notification_permission",
             "key": self.key,
@@ -305,10 +305,10 @@ class PushUnknownCondition(PushCondition):
             source event.
     """
 
-    condition: Dict[str, Any] = field()
+    condition: dict[str, Any] = field()
 
     @property
-    def as_value(self) -> Dict[str, Any]:
+    def as_value(self) -> dict[str, Any]:
         return self.condition
 
 
@@ -317,7 +317,7 @@ class PushAction:
     """An action to apply for a push rule when matching."""
 
     @classmethod
-    def from_dict(cls, action: Union[str, Dict[str, Any]]) -> PushAction:
+    def from_dict(cls, action: str | dict[str, Any]) -> PushAction:
         # isinstance() to make mypy happy
 
         if isinstance(action, str) and action == "notify":
@@ -343,7 +343,7 @@ class PushAction:
         return PushUnknownAction(action)
 
     @property
-    def as_value(self) -> Union[str, Dict[str, Any]]:
+    def as_value(self) -> str | dict[str, Any]:
         raise NotImplementedError
 
 
@@ -404,7 +404,7 @@ class PushSetTweak(PushAction):
     value: Any = None
 
     @property
-    def as_value(self) -> Dict[str, Any]:
+    def as_value(self) -> dict[str, Any]:
         return {"set_tweak": self.tweak, "value": self.value}
 
 
@@ -417,10 +417,10 @@ class PushUnknownAction(PushAction):
             from the source event.
     """
 
-    action: Union[str, Dict[str, Any]] = field()
+    action: str | dict[str, Any] = field()
 
     @property
-    def as_value(self) -> Union[str, Dict[str, Any]]:
+    def as_value(self) -> str | dict[str, Any]:
         return self.action
 
 
@@ -460,8 +460,8 @@ class PushRule:
     default: bool = field()
     enabled: bool = True
     pattern: str = ""
-    conditions: List[PushCondition] = field(default_factory=list)
-    actions: List[PushAction] = field(default_factory=list)
+    conditions: list[PushCondition] = field(default_factory=list)
+    actions: list[PushAction] = field(default_factory=list)
 
     def matches(
         self,
@@ -493,7 +493,7 @@ class PushRule:
 
     @classmethod
     @verify_or_none(Schemas.push_rule)
-    def from_dict(cls, rule: Dict[str, Any], kind: PushRuleKind) -> PushRule:
+    def from_dict(cls, rule: dict[str, Any], kind: PushRuleKind) -> PushRule:
         return cls(
             kind,
             rule["rule_id"],
@@ -525,18 +525,18 @@ class PushRuleset:
             a lower priority than ``content``, ``room`` and ``sender`` rules.
     """
 
-    override: List[PushRule] = field(default_factory=list)
-    content: List[PushRule] = field(default_factory=list)
-    room: List[PushRule] = field(default_factory=list)
-    sender: List[PushRule] = field(default_factory=list)
-    underride: List[PushRule] = field(default_factory=list)
+    override: list[PushRule] = field(default_factory=list)
+    content: list[PushRule] = field(default_factory=list)
+    room: list[PushRule] = field(default_factory=list)
+    sender: list[PushRule] = field(default_factory=list)
+    underride: list[PushRule] = field(default_factory=list)
 
     def matching_rule(
         self,
         event: Event,
         room: MatrixRoom,
         display_name: str,
-    ) -> Optional[PushRule]:
+    ) -> PushRule | None:
         """Return the push rule in this set that matches a room event, if any.
 
         Args:
@@ -554,7 +554,7 @@ class PushRuleset:
 
     @classmethod
     @verify_or_none(Schemas.push_ruleset)
-    def from_dict(cls, ruleset: Dict[str, Any]) -> PushRuleset:
+    def from_dict(cls, ruleset: dict[str, Any]) -> PushRuleset:
         kwargs = {}
 
         for kind in PushRuleKind:
@@ -587,7 +587,7 @@ class PushRulesEvent(AccountDataEvent):
 
     @classmethod
     @verify(Schemas.push_rules)
-    def from_dict(cls, event: Dict[str, Any]) -> PushRulesEvent:
+    def from_dict(cls, event: dict[str, Any]) -> PushRulesEvent:
         content = event["content"]
 
         return cls(
@@ -610,7 +610,7 @@ class UnknownAccountDataEvent(AccountDataEvent):
     """
 
     type: str = field()
-    content: Dict[str, Any] = field()
+    content: dict[str, Any] = field()
 
     @classmethod
     def from_dict(cls, event_dict):

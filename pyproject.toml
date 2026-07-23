@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "matrix-nio"
-version = "0.25.2"
+version = "0.26.0"
 description = "A Python Matrix client library, designed according to sans I/O principles."
 authors = [
     { name = "Damir Jelić", email = "poljar@termina.org.uk" },
@@ -12,7 +12,15 @@ authors = [
 ]
 license = { file = "LICENSE.md" }
 readme = "README.md"
-requires-python = ">=3.8.0"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
 dependencies = [
     "aiohttp>=3.10",
     "aiofiles>=24.1",
@@ -21,43 +29,25 @@ dependencies = [
     "jsonschema>=4.14",
     "unpaddedbase64>=2.1",
     "pycryptodome>=3.10",
-    "aiohttp-socks>=0.8"
+    "aiohttp-socks>=0.8",
 ]
 
 [project.optional-dependencies]
 e2e = [
     "atomicwrites~=1.4",
-    "cachetools~=5.3",
+    "cachetools>=5.3",
     "peewee~=3.14",
-    "vodozemac~=0.9",
-]
-
-dev = [
-    "matrix-nio[e2e]",
-    "aioresponses~=0.7",
-    "hpack~=4.0",
-    "hyperframe~=6.0",
-    "hypothesis~=6.8",
-    "faker~=8.0",
-    "mypy~=1.11",
-    "mypy_extensions~=1.0",
-    "pre-commit",
-    "pytest~=8.2",
-    "pytest-asyncio~=0.24",
-    "pytest-aiohttp~=0.3",
-    "pytest-benchmark~=4.0",
-    "pytest-cov~=2.11",
-    "pytest-flake8~=1.2",
+    "vodozemac>=0.9.0.post2",
 ]
 
 # Read the docs specific requirements.
 docs = [
     "matrix-nio[dev]",
     "setuptools>=61.0",
-    "sphinx~=7.4",
+    "sphinx>=7.4",
     "sphinx-autodoc-typehints~=2.1",
     "sphinx_mdinclude>=0.5",
-    "sphinx_rtd_theme~=2.0",
+    "sphinx_rtd_theme>=2.0",
 ]
 
 [project.urls]
@@ -65,12 +55,15 @@ Source = "https://github.com/matrix-nio/matrix-nio"
 Documentation = "https://matrix-nio.readthedocs.io/en/latest/"
 
 [tool.ruff]
-# Assume Python 3.8.
-target-version = "py38"
+target-version = "py310"
 
 fix = true
 show-fixes = true
 preview = true
+
+# Honour `exclude` even for paths passed explicitly (e.g. by pre-commit).
+force-exclude = true
+extend-exclude = ["tests"]
 
 [tool.ruff.lint]
 select = [
@@ -122,19 +115,39 @@ exclude = [
     "tests"
 ]
 
-[tool.ruff.lint.pyupgrade]
-# Preserve types, even if a file imports `from __future__ import annotations`.
-# Needed for python < 3.10, should be removed afterward.
-keep-runtime-typing = true
-
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = [
     "F401",
     "F403",
     "I001",
 ]
+# Example scripts intentionally use blocking input()/filesystem calls.
+"examples/*" = [
+    "ASYNC240",
+    "ASYNC250",
+]
 [tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
+
+[dependency-groups]
+dev = [
+    "matrix-nio[e2e]",
+    # aioresponses-ng: maintained fork; upstream aioresponses can't build a mock
+    # ClientResponse against aiohttp 3.14+ (missing required `stream_writer`).
+    "aioresponses-ng>=0.8.2",
+    "faker>=8.16.0",
+    "hpack>=4.1.0",
+    "hyperframe>=6.1.0",
+    "hypothesis>=6.138.3",
+    "mypy>=1.17.1",
+    "mypy-extensions>=1.1.0",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.1",
+    "pytest-aiohttp>=0.3.0",
+    "pytest-asyncio>=0.26.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-cov>=2.12.1",
+]

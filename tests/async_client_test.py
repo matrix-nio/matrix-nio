@@ -684,12 +684,12 @@ class TestClass:
 
     async def test_list_public_rooms(self, async_client, aioresponse):
         aioresponse.get(
-            f"{BASE_URL_V3}/publicRooms?&limit=1&server=bleecker.street",
+            f"{BASE_URL_V3}/publicRooms?limit=1&server=bleecker.street",
             status=200,
             payload=self.list_public_rooms_response,
         )
         aioresponse.post(
-            f"{BASE_URL_V3}/publicRooms?&server=bleecker.street",
+            f"{BASE_URL_V3}/publicRooms?server=bleecker.street",
             status=200,
             body={
                 "filter": {
@@ -1193,12 +1193,12 @@ class TestClass:
         }
 
         aioresponse.get(
-            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/relations/{event_id}/{RelationshipType.annotation.value}/m.reaction?&dir=b&limit=1",
+            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/relations/{event_id}/{RelationshipType.annotation.value}/m.reaction?dir=b&limit=1",
             status=200,
             payload=response1,
         )
         aioresponse.get(
-            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/relations/{event_id}/{RelationshipType.annotation.value}/m.reaction?&dir=b&from={next_batch}&limit=1",
+            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/relations/{event_id}/{RelationshipType.annotation.value}/m.reaction?dir=b&from={next_batch}&limit=1",
             status=200,
             payload=response2,
         )
@@ -1252,12 +1252,12 @@ class TestClass:
             ],
         }
         aioresponse.get(
-            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/threads?&include=all&limit=1",
+            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/threads?include=all&limit=1",
             status=200,
             payload=response1,
         )
         aioresponse.get(
-            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/threads?&include=all&from={next_batch}&limit=1",
+            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/threads?include=all&from={next_batch}&limit=1",
             status=200,
             payload=response2,
         )
@@ -1876,7 +1876,7 @@ class TestClass:
         monitor = TransferMonitor(filesize)
 
         aioresponse.post(
-            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.png",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?filename=test.png",
             status=200,
             payload=self.upload_response,
             repeat=True,
@@ -1910,7 +1910,7 @@ class TestClass:
         monitor = TransferMonitor(filesize)
 
         aioresponse.post(
-            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.png",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?filename=test.png",
             status=200,
             payload=self.upload_response,
             repeat=True,
@@ -1957,7 +1957,7 @@ class TestClass:
         monitor = TransferMonitor(filesize)
 
         aioresponse.post(
-            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.py",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?filename=test.py",
             status=200,
             payload=self.upload_response,
             repeat=True,
@@ -1996,24 +1996,21 @@ class TestClass:
 
         async def check_content(url, **kwargs):
             """Verify the data that the server receives is the full file."""
-            data = kwargs["data"]
-            received = ""
-            async for piece in data:
-                received += piece
+            received = kwargs["data"]
 
-            async with aiofiles.open(path) as f:
+            async with aiofiles.open(path, "rb") as f:
                 assert received == await f.read()
 
         # We make sure to read the data in the first post response to verify
         # that we can read the full file in a subsequent post.
         aioresponse.post(
-            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.py",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?filename=test.py",
             status=429,
             payload=self.limit_exceeded_error_response,
             callback=check_content,
         )
         aioresponse.post(
-            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.py",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?filename=test.py",
             status=200,
             payload=self.upload_response,
             callback=check_content,
@@ -2044,13 +2041,13 @@ class TestClass:
         monitor = TransferMonitor(filesize)
 
         aioresponse.post(
-            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.png",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?filename=test.png",
             status=429,
             payload=self.limit_exceeded_error_response,
         )
 
         aioresponse.post(
-            f"{BASE_LEGACY_MEDIA_URL}/upload?&filename=test.png",
+            f"{BASE_LEGACY_MEDIA_URL}/upload?filename=test.png",
             status=200,
             payload=self.upload_response,
             repeat=True,
@@ -2283,7 +2280,7 @@ class TestClass:
         server_name, media_id = _extract_parts(mxc)
 
         aioresponse.get(
-            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}?&allow_remote=true",
+            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}?allow_remote=true",
             status=200,
             content_type="image/png",
             body=self.file_response,
@@ -2294,7 +2291,7 @@ class TestClass:
         assert resp.filename is None
 
         aioresponse.get(
-            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}/{filename}?&allow_remote=true",
+            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}/{filename}?allow_remote=true",
             status=200,
             content_type="image/png",
             headers={"content-disposition": f'inline; filename="{filename}"'},
@@ -2307,7 +2304,7 @@ class TestClass:
 
         async_client.config = AsyncClientConfig(max_limit_exceeded=0)
         aioresponse.get(
-            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}?&allow_remote=true",
+            f"{BASE_MEDIA_URL}/download/{server_name}/{media_id}?allow_remote=true",
             status=429,
             content_type="application/json",
             body=b'{"errcode": "M_LIMIT_EXCEEDED", "retry_after_ms": 1}',
@@ -2325,7 +2322,7 @@ class TestClass:
 
         aioresponse.get(
             f"{BASE_MEDIA_URL}/thumbnail/{server_name}/{media_id}"
-            f"?&width={width}&height={height}&method={method.value}&allow_remote=true",
+            f"?width={width}&height={height}&method={method.value}&allow_remote=true",
             status=200,
             content_type="image/png",
             body=self.file_response,
@@ -2340,7 +2337,7 @@ class TestClass:
 
         aioresponse.get(
             f"{BASE_MEDIA_URL}/thumbnail/{server_name}/{media_id}"
-            f"?&width={width}&height={height}&method={method.value}&allow_remote=true",
+            f"?width={width}&height={height}&method={method.value}&allow_remote=true",
             status=429,
             content_type="application/json",
             body=b'{"errcode": "M_LIMIT_EXCEEDED", "retry_after_ms": 1}',
@@ -2801,7 +2798,7 @@ class TestClass:
 
         assert await get_time(999_999_999) == 30
 
-    async def test_sync_forever(self, async_client, aioresponse, event_loop):
+    async def test_sync_forever(self, async_client, aioresponse):
         sync_url = re.compile(
             rf"^https://example\.org{MATRIX_API_PATH_V3}/sync",
         )
@@ -2833,7 +2830,7 @@ class TestClass:
 
         assert async_client.should_upload_keys
 
-        task: asyncio.Task = event_loop.create_task(
+        task: asyncio.Task = asyncio.get_running_loop().create_task(
             async_client.sync_forever(loop_sleep_time=100)
         )
         await async_client.synced.wait()
@@ -2844,7 +2841,7 @@ class TestClass:
         with pytest.raises(asyncio.CancelledError):
             await task
 
-    async def test_stop_sync_forever(self, async_client, aioresponse, event_loop):
+    async def test_stop_sync_forever(self, async_client, aioresponse):
         sync_url = re.compile(rf"^https://example\.org{MATRIX_API_PATH_V3}/sync")
 
         aioresponse.get(
@@ -2880,7 +2877,7 @@ class TestClass:
 
         async_client.add_presence_callback(event_callback, PresenceEvent)
 
-        task: asyncio.Task = event_loop.create_task(
+        task: asyncio.Task = asyncio.get_running_loop().create_task(
             async_client.sync_forever(loop_sleep_time=100)
         )
 
@@ -4279,7 +4276,7 @@ class TestClass:
 
         # Test before + override with condition
         aioresponse.put(
-            f"{BASE_URL_V3}/pushrules/" "global/override/foo?&before=ov1",
+            f"{BASE_URL_V3}/pushrules/" "global/override/foo?before=ov1",
             body={
                 "actions": [],
                 "conditions": [{"kind": "contains_display_name"}],
@@ -4297,7 +4294,7 @@ class TestClass:
 
         # Test after + override with action
         aioresponse.put(
-            f"{BASE_URL_V3}/pushrules/" "global/override/foo?&after=ov1",
+            f"{BASE_URL_V3}/pushrules/" "global/override/foo?after=ov1",
             body={"actions": ["notify"], "conditions": []},
             status=200,
             payload={},
@@ -4434,7 +4431,7 @@ class TestClass:
         assert isinstance(resp, SpaceGetHierarchyError)
 
         aioresponse.get(
-            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/hierarchy?&from=invalid",
+            f"{BASE_URL_V1}/rooms/{TEST_ROOM_ID}/hierarchy?from=invalid",
             status=400,
             payload={
                 "errcode": "M_INVALID_PARAM",

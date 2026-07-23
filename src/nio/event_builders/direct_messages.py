@@ -19,7 +19,6 @@ homeserver.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict
 
 from .event_builder import EventBuilder
 
@@ -40,7 +39,7 @@ class ToDeviceMessage(EventBuilder):
     type: str = field()
     recipient: str = field()
     recipient_device: str = field()
-    content: Dict = field()
+    content: dict = field()
 
     def as_dict(self):
         return {"messages": {self.recipient: {self.recipient_device: self.content}}}

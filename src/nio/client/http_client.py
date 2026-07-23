@@ -22,7 +22,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from email.message import EmailMessage
 from functools import wraps
-from typing import Any, Deque, Dict, List, Optional, Tuple, Type, Union
+from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
@@ -106,8 +106,8 @@ def connected(func):
 
 @dataclass
 class RequestInfo:
-    request_class: Type[Response] = field()
-    extra_data: Tuple = ()
+    request_class: type[Response] = field()
+    extra_data: tuple = ()
 
 
 class HttpClient(Client):
@@ -115,15 +115,15 @@ class HttpClient(Client):
         self,
         homeserver: str,
         user: str = "",
-        device_id: Optional[str] = "",
-        store_path: Optional[str] = "",
-        config: Optional[ClientConfig] = None,
+        device_id: str | None = "",
+        store_path: str | None = "",
+        config: ClientConfig | None = None,
     ) -> None:
         self.host, self.extra_path = HttpClient._parse_homeserver(homeserver)
-        self.requests_made: Dict[UUID, RequestInfo] = {}
-        self.parse_queue: Deque[Tuple[RequestInfo, TransportResponse]] = deque()
+        self.requests_made: dict[UUID, RequestInfo] = {}
+        self.parse_queue: deque[tuple[RequestInfo, TransportResponse]] = deque()
 
-        self.connection: Optional[Union[HttpConnection, Http2Connection]] = None
+        self.connection: HttpConnection | Http2Connection | None = None
 
         super().__init__(user, device_id, store_path, config)
 
@@ -154,8 +154,8 @@ class HttpClient(Client):
         self,
         request: TransportRequest,
         request_info: RequestInfo,
-        uuid: Optional[UUID] = None,
-    ) -> Tuple[UUID, bytes]:
+        uuid: UUID | None = None,
+    ) -> tuple[UUID, bytes]:
         assert self.connection
 
         ret_uuid, data = self.connection.send(request, uuid)
@@ -197,7 +197,7 @@ class HttpClient(Client):
         return self.connection.elapsed
 
     def connect(
-        self, transport_type: Optional[TransportType] = TransportType.HTTP
+        self, transport_type: TransportType | None = TransportType.HTTP
     ) -> bytes:
         if transport_type == TransportType.HTTP:
             self.connection = HttpConnection()
@@ -227,7 +227,7 @@ class HttpClient(Client):
         return self.connection.data_to_send()
 
     @connected
-    def login_info(self) -> Tuple[UUID, bytes]:
+    def login_info(self) -> tuple[UUID, bytes]:
         """Get the available login methods from the server
 
         Returns a unique uuid that identifies the request and the bytes that
@@ -241,10 +241,10 @@ class HttpClient(Client):
     @connected
     def login(
         self,
-        password: Optional[str] = None,
-        device_name: Optional[str] = "",
-        token: Optional[str] = None,
-    ) -> Tuple[UUID, bytes]:
+        password: str | None = None,
+        device_name: str | None = "",
+        token: str | None = None,
+    ) -> tuple[UUID, bytes]:
         if password is None and token is None:
             raise ValueError("Either a password or a token needs to be " "provided")
 
@@ -261,7 +261,7 @@ class HttpClient(Client):
         return self._send(request, RequestInfo(LoginResponse))
 
     @connected
-    def login_raw(self, auth_dict: Dict[str, Any]) -> Tuple[UUID, bytes]:
+    def login_raw(self, auth_dict: dict[str, Any]) -> tuple[UUID, bytes]:
         if auth_dict is None or auth_dict == {}:
             raise ValueError("Auth dictionary shall not be empty")
 
@@ -362,18 +362,18 @@ class HttpClient(Client):
     def room_create(
         self,
         visibility: RoomVisibility = RoomVisibility.private,
-        alias: Optional[str] = None,
-        name: Optional[str] = None,
-        topic: Optional[str] = None,
-        room_version: Optional[str] = None,
-        room_type: Optional[str] = None,
+        alias: str | None = None,
+        name: str | None = None,
+        topic: str | None = None,
+        room_version: str | None = None,
+        room_type: str | None = None,
         federate: bool = True,
         is_direct: bool = False,
-        preset: Optional[RoomPreset] = None,
+        preset: RoomPreset | None = None,
         invite: Sequence[str] = (),
-        initial_state: Sequence[Dict[str, Any]] = (),
-        power_level_override: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[UUID, bytes]:
+        initial_state: Sequence[dict[str, Any]] = (),
+        power_level_override: dict[str, Any] | None = None,
+    ) -> tuple[UUID, bytes]:
         """Create a new room.
 
         Returns a unique uuid that identifies the request and the bytes that
@@ -457,7 +457,7 @@ class HttpClient(Client):
 
     @connected
     @logged_in
-    def join(self, room_id: str) -> Tuple[UUID, bytes]:
+    def join(self, room_id: str) -> tuple[UUID, bytes]:
         """Join a room.
 
         This tells the server to join the given room.
@@ -474,7 +474,7 @@ class HttpClient(Client):
 
     @connected
     @logged_in
-    def room_leave(self, room_id: str) -> Tuple[UUID, bytes]:
+    def room_leave(self, room_id: str) -> tuple[UUID, bytes]:
         """Leave a room or reject an invite.
 
         This tells the server to leave the given room.
@@ -491,7 +491,7 @@ class HttpClient(Client):
 
     @connected
     @logged_in
-    def room_forget(self, room_id: str) -> Tuple[UUID, bytes]:
+    def room_forget(self, room_id: str) -> tuple[UUID, bytes]:
         """Forget a room.
 
         This tells the server to forget the given room's history for our user.
@@ -531,7 +531,7 @@ class HttpClient(Client):
         room_id: str,
         typing_state: bool = True,
         timeout: int = 30000,
-    ) -> Tuple[UUID, bytes]:
+    ) -> tuple[UUID, bytes]:
         """Send a typing notice to the server.
 
         This tells the server that the user is typing for the next N
@@ -560,8 +560,8 @@ class HttpClient(Client):
         self,
         room_id: str,
         fully_read_event: str,
-        read_event: Optional[str] = None,
-    ) -> Tuple[UUID, bytes]:
+        read_event: str | None = None,
+    ) -> tuple[UUID, bytes]:
         """Update the fully read marker (and optionally the read receipt) for
         a room.
 
@@ -607,9 +607,9 @@ class HttpClient(Client):
         self,
         server_name: str,
         media_id: str,
-        filename: Optional[str] = None,
+        filename: str | None = None,
         allow_remote: bool = True,
-    ) -> Tuple[UUID, bytes]:
+    ) -> tuple[UUID, bytes]:
         """Get the content of a file from the content repository.
 
         Returns a unique uuid that identifies the request and the bytes that
@@ -647,7 +647,7 @@ class HttpClient(Client):
         height: int,
         method=ResizingMethod.scale,  # ŧype: ResizingMethod
         allow_remote: bool = True,
-    ) -> Tuple[UUID, bytes]:
+    ) -> tuple[UUID, bytes]:
         """Get the thumbnail of a file from the content repository.
 
         Note: The actual thumbnail may be larger than the size specified.
@@ -727,9 +727,9 @@ class HttpClient(Client):
         self,
         room_id: str,
         ignore_missing_sessions: bool = False,
-        tx_id: Optional[str] = None,
+        tx_id: str | None = None,
         ignore_unverified_devices: bool = False,
-    ) -> Tuple[UUID, bytes]:
+    ) -> tuple[UUID, bytes]:
         """Share a group session with a room.
 
         This method sends a group session to members of a room.
@@ -776,15 +776,15 @@ class HttpClient(Client):
 
     @connected
     @logged_in
-    def devices(self) -> Tuple[UUID, bytes]:
+    def devices(self) -> tuple[UUID, bytes]:
         request = self._build_request(Api.devices(self.access_token))
         return self._send(request, RequestInfo(DevicesResponse))
 
     @connected
     @logged_in
     def update_device(
-        self, device_id: str, content: Dict[str, str]
-    ) -> Tuple[UUID, bytes]:
+        self, device_id: str, content: dict[str, str]
+    ) -> tuple[UUID, bytes]:
         request = self._build_request(
             Api.update_device(self.access_token, device_id, content)
         )
@@ -794,8 +794,8 @@ class HttpClient(Client):
     @connected
     @logged_in
     def delete_devices(
-        self, devices: List[str], auth: Optional[Dict[str, str]] = None
-    ) -> Tuple[UUID, bytes]:
+        self, devices: list[str], auth: dict[str, str] | None = None
+    ) -> tuple[UUID, bytes]:
         request = self._build_request(
             Api.delete_devices(self.access_token, devices, auth_dict=auth)
         )
@@ -804,13 +804,13 @@ class HttpClient(Client):
 
     @connected
     @logged_in
-    def joined_members(self, room_id: str) -> Tuple[UUID, bytes]:
+    def joined_members(self, room_id: str) -> tuple[UUID, bytes]:
         request = self._build_request(Api.joined_members(self.access_token, room_id))
 
         return self._send(request, RequestInfo(JoinedMembersResponse, (room_id,)))
 
     @connected
-    def get_profile(self, user_id: Optional[str] = None) -> Tuple[UUID, bytes]:
+    def get_profile(self, user_id: str | None = None) -> tuple[UUID, bytes]:
         """Get a user's combined profile information.
 
         This queries the display name and avatar matrix content URI of a user
@@ -832,7 +832,7 @@ class HttpClient(Client):
         return self._send(request, RequestInfo(ProfileGetResponse))
 
     @connected
-    def get_displayname(self, user_id: Optional[str] = None) -> Tuple[UUID, bytes]:
+    def get_displayname(self, user_id: str | None = None) -> tuple[UUID, bytes]:
         """Get a user's display name.
 
         This queries the display name of a user from the server.
@@ -854,7 +854,7 @@ class HttpClient(Client):
 
     @connected
     @logged_in
-    def set_displayname(self, displayname: str) -> Tuple[UUID, bytes]:
+    def set_displayname(self, displayname: str) -> tuple[UUID, bytes]:
         """Set the user's display name.
 
         This tells the server to set the display name of the currently logged
@@ -872,7 +872,7 @@ class HttpClient(Client):
         return self._send(request, RequestInfo(ProfileSetDisplayNameResponse))
 
     @connected
-    def get_avatar(self, user_id: Optional[str] = None) -> Tuple[UUID, bytes]:
+    def get_avatar(self, user_id: str | None = None) -> tuple[UUID, bytes]:
         """Get a user's avatar URL.
 
         This queries the avatar matrix content URI of a user from the server.
@@ -894,7 +894,7 @@ class HttpClient(Client):
 
     @connected
     @logged_in
-    def set_avatar(self, avatar_url: str) -> Tuple[UUID, bytes]:
+    def set_avatar(self, avatar_url: str) -> tuple[UUID, bytes]:
         """Set the user's avatar URL.
 
         This tells the server to set avatar of the currently logged
@@ -915,8 +915,8 @@ class HttpClient(Client):
     @logged_in
     @store_loaded
     def request_room_key(
-        self, event: MegolmEvent, tx_id: Optional[str] = None
-    ) -> Tuple[UUID, bytes]:
+        self, event: MegolmEvent, tx_id: str | None = None
+    ) -> tuple[UUID, bytes]:
         """Request a missing room key.
 
         This sends out a message to other devices requesting a room key from
@@ -956,8 +956,8 @@ class HttpClient(Client):
     @logged_in
     @store_loaded
     def confirm_short_auth_string(
-        self, transaction_id: str, tx_id: Optional[str] = None
-    ) -> Tuple[UUID, bytes]:
+        self, transaction_id: str, tx_id: str | None = None
+    ) -> tuple[UUID, bytes]:
         """Confirm a short auth string and mark it as matching.
 
         Returns a unique uuid that identifies the request and the bytes that
@@ -974,8 +974,8 @@ class HttpClient(Client):
     @logged_in
     @store_loaded
     def start_key_verification(
-        self, device: OlmDevice, tx_id: Optional[str] = None
-    ) -> Tuple[UUID, bytes]:
+        self, device: OlmDevice, tx_id: str | None = None
+    ) -> tuple[UUID, bytes]:
         """Start a interactive key verification with the given device.
 
         Returns a unique uuid that identifies the request and the bytes that
@@ -992,8 +992,8 @@ class HttpClient(Client):
     @logged_in
     @store_loaded
     def accept_key_verification(
-        self, transaction_id: str, tx_id: Optional[str] = None
-    ) -> Tuple[UUID, bytes]:
+        self, transaction_id: str, tx_id: str | None = None
+    ) -> tuple[UUID, bytes]:
         """Accept a key verification start event.
 
         Returns a unique uuid that identifies the request and the bytes that
@@ -1018,8 +1018,8 @@ class HttpClient(Client):
     @logged_in
     @store_loaded
     def cancel_key_verification(
-        self, transaction_id: str, tx_id: Optional[str] = None
-    ) -> Tuple[UUID, bytes]:
+        self, transaction_id: str, tx_id: str | None = None
+    ) -> tuple[UUID, bytes]:
         """Abort an interactive key verification.
 
         Returns a unique uuid that identifies the request and the bytes that
@@ -1044,8 +1044,8 @@ class HttpClient(Client):
     @logged_in
     @store_loaded
     def to_device(
-        self, message: ToDeviceMessage, tx_id: Optional[str] = None
-    ) -> Tuple[UUID, bytes]:
+        self, message: ToDeviceMessage, tx_id: str | None = None
+    ) -> tuple[UUID, bytes]:
         """Send a message to a specific device.
 
         Returns a unique uuid that identifies the request and the bytes that
@@ -1067,10 +1067,10 @@ class HttpClient(Client):
     @logged_in
     def sync(
         self,
-        timeout: Optional[int] = None,
-        filter: Optional[Dict[Any, Any]] = None,
+        timeout: int | None = None,
+        filter: dict[Any, Any] | None = None,
         full_state: bool = False,
-    ) -> Tuple[UUID, bytes]:
+    ) -> tuple[UUID, bytes]:
         request = self._build_request(
             Api.sync(
                 self.access_token,
@@ -1084,7 +1084,7 @@ class HttpClient(Client):
 
         return self._send(request, RequestInfo(SyncResponse))
 
-    def parse_body(self, transport_response: TransportResponse) -> Dict[Any, Any]:
+    def parse_body(self, transport_response: TransportResponse) -> dict[Any, Any]:
         """Parse the body of the response.
 
         Args:
@@ -1189,9 +1189,7 @@ class HttpClient(Client):
             self.parse_queue.append((request_info, response))
         return
 
-    def next_response(
-        self, max_events: int = 0
-    ) -> Optional[Union[TransportResponse, Response]]:
+    def next_response(self, max_events: int = 0) -> TransportResponse | Response | None:
         if not self.parse_queue:
             return None
 

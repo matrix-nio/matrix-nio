@@ -17,9 +17,10 @@
 
 import asyncio
 import io
+from collections.abc import AsyncGenerator, AsyncIterable, Iterable
 from functools import partial
 from pathlib import Path
-from typing import Any, AsyncGenerator, AsyncIterable, Dict, Iterable, Union
+from typing import Any
 
 import aiofiles
 from aiofiles.threadpool.binary import AsyncBufferedReader
@@ -30,17 +31,17 @@ from Crypto.Util import Counter  # nosec
 
 from .attachments import _get_decryption_info_dict
 
-AsyncDataT = Union[
-    str,
-    Path,
-    bytes,
-    Iterable[bytes],
-    AsyncIterable[bytes],
-    io.BufferedIOBase,
-    AsyncBufferedReader,
-]
+AsyncDataT = (
+    str
+    | Path
+    | bytes
+    | Iterable[bytes]
+    | AsyncIterable[bytes]
+    | io.BufferedIOBase
+    | AsyncBufferedReader
+)
 
-_EncryptedReturnT = AsyncGenerator[Union[bytes, Dict[str, Any]], None]
+_EncryptedReturnT = AsyncGenerator[bytes | dict[str, Any], None]
 
 
 async def async_encrypt_attachment(data: AsyncDataT) -> _EncryptedReturnT:
@@ -130,11 +131,11 @@ async def async_generator_from_data(
 
     elif isinstance(data, Iterable):
         for chunk in data:  # type: ignore
-            yield chunk
+            yield chunk.encode() if isinstance(chunk, str) else chunk
 
     elif isinstance(data, AsyncIterable):
         async for chunk in data:
-            yield chunk
+            yield chunk.encode() if isinstance(chunk, str) else chunk
 
     else:
         raise TypeError(f"Unknown type for data: {data!r}")

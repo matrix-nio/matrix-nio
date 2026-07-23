@@ -20,7 +20,6 @@ to-device part of a sync response or in a room timeline of a sync response.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 
 @dataclass
@@ -57,10 +56,10 @@ class KeyVerificationStartMixin:
 
     from_device: str = field()
     method: str = field()
-    key_agreement_protocols: List[str] = field()
-    hashes: List[str] = field()
-    message_authentication_codes: List[str] = field()
-    short_authentication_string: List[str] = field()
+    key_agreement_protocols: list[str] = field()
+    hashes: list[str] = field()
+    message_authentication_codes: list[str] = field()
+    short_authentication_string: list[str] = field()
 
 
 @dataclass
@@ -84,7 +83,7 @@ class KeyVerificationAcceptMixin:
     key_agreement_protocol: str = field()
     hash: str = field()
     message_authentication_code: str = field()
-    short_authentication_string: List[str] = field()
+    short_authentication_string: list[str] = field()
 
 
 @dataclass
@@ -120,7 +119,7 @@ class KeyVerificationMacMixin:
 
     """
 
-    mac: Dict[str, str] = field()
+    mac: dict[str, str] = field()
     keys: str = field()
 
 

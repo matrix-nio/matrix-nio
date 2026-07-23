@@ -14,9 +14,9 @@
 
 
 from collections import defaultdict
+from collections.abc import Iterator, KeysView
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import DefaultDict, Dict, Iterator, KeysView, Optional
 
 
 # TODO document the values better.
@@ -62,7 +62,7 @@ class OlmDevice:
 
     user_id: str = field()
     device_id: str = field()
-    keys: Dict[str, str] = field()
+    keys: dict[str, str] = field()
     display_name: str = ""
     deleted: bool = False
     trust_state: TrustState = TrustState.unset
@@ -134,13 +134,13 @@ class DeviceStore:
     """
 
     def __init__(self):
-        self._entries: DefaultDict[str, Dict[str, OlmDevice]] = defaultdict(dict)
+        self._entries: defaultdict[str, dict[str, OlmDevice]] = defaultdict(dict)
 
     def __iter__(self) -> Iterator[OlmDevice]:
         for user_devices in self._entries.values():
             yield from user_devices.values()
 
-    def __getitem__(self, user_id: str) -> Dict[str, OlmDevice]:
+    def __getitem__(self, user_id: str) -> dict[str, OlmDevice]:
         return self._entries[user_id]
 
     def items(self):
@@ -166,9 +166,7 @@ class DeviceStore:
             if not device.deleted:
                 yield device
 
-    def device_from_sender_key(
-        self, user_id: str, sender_key: str
-    ) -> Optional[OlmDevice]:
+    def device_from_sender_key(self, user_id: str, sender_key: str) -> OlmDevice | None:
         """Get a non-deleted device of a user with the matching sender key.
 
         Args:

@@ -16,7 +16,8 @@
 """Matrix encryption algorithms for file uploads."""
 
 from binascii import Error as BinAsciiError
-from typing import Any, Dict, Generator, Iterable, Tuple, Union
+from collections.abc import Generator, Iterable
+from typing import Any
 
 import unpaddedbase64
 from Crypto import Random
@@ -26,7 +27,7 @@ from Crypto.Util import Counter
 
 from ..exceptions import EncryptionError
 
-DataT = Union[bytes, Iterable[bytes]]
+DataT = bytes | Iterable[bytes]
 
 
 def decrypt_attachment(ciphertext: bytes, key: str, hash: str, iv: str):
@@ -74,7 +75,7 @@ def decrypt_attachment(ciphertext: bytes, key: str, hash: str, iv: str):
     return cipher.decrypt(ciphertext)
 
 
-def encrypt_attachment(plaintext: bytes) -> Tuple[bytes, Dict[str, Any]]:
+def encrypt_attachment(plaintext: bytes) -> tuple[bytes, dict[str, Any]]:
     """Encrypt data in order to send it as an encrypted attachment.
 
     Args:
@@ -87,13 +88,13 @@ def encrypt_attachment(plaintext: bytes) -> Tuple[bytes, Dict[str, Any]]:
 
     values = list(encrypted_attachment_generator(plaintext))
     encrypted_bytes: bytes = b"".join(values[:-1])  # type: ignore
-    keys: Dict[str, Any] = values[-1]  # type: ignore
+    keys: dict[str, Any] = values[-1]  # type: ignore
     return (encrypted_bytes, keys)
 
 
 def encrypted_attachment_generator(
     data: DataT,
-) -> Generator[Union[bytes, Dict[str, Any]], None, None]:
+) -> Generator[bytes | dict[str, Any], None, None]:
     """Generator to encrypt data in order to send it as an encrypted
     attachment.
 
@@ -135,7 +136,7 @@ def encrypted_attachment_generator(
 
 def _get_decryption_info_dict(
     key: bytes, iv: bytes, sha256: SHA256.SHA256Hash
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     json_web_key = {
         "kty": "oct",
         "alg": "A256CTR",

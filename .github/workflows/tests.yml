@@ -9,59 +9,51 @@ on:
 jobs:
   pre-commit-check:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python: [ "3.12" ]
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
         with:
-          python-version: ${{ matrix.python }}
-          cache: "pip"
-      - name: Install pre-commit
-        run: |
-          pip install pre-commit
-      - name: pre-commit run --all-files
-        run: |
-          pre-commit run --all-files
+          enable-cache: true
+          python-version: "3.14"
+      - name: Cache pre-commit environments
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+      - name: Run pre-commit
+        run: uvx pre-commit run --all-files
 
-  build:
+  test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
         with:
+          enable-cache: true
           python-version: ${{ matrix.python }}
-          cache: "pip"
-      - name: Install Tox
-        run: pip install tox
-      - name: Run Tox
-        # Run tox using the version of Python in `PATH`
-        run: tox -e py
+      - name: Run tests
+        run: uv run --locked pytest --benchmark-disable
 
   coverage:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python: [ "3.12" ]
-
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
         with:
-          python-version: ${{ matrix.python }}
-          cache: "pip"
-      - name: Install Tox
-        run: pip install tox
-      - name: Run Tox
-        run: tox -e coverage
+          enable-cache: true
+          python-version: "3.14"
+      - name: Run tests with coverage
+        run: >
+          uv run --locked pytest --benchmark-disable
+          --cov=nio --cov-report=xml --cov-report=term-missing
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.2.0
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

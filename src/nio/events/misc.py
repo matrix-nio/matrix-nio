@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from jsonschema.exceptions import SchemaError, ValidationError
 
@@ -28,9 +28,9 @@ logger = logging.getLogger(__name__)
 
 
 def validate_or_badevent(
-    parsed_dict: Dict[Any, Any],
-    schema: Dict[Any, Any],
-) -> Optional[Union[BadEvent, UnknownBadEvent]]:
+    parsed_dict: dict[Any, Any],
+    schema: dict[Any, Any],
+) -> BadEvent | UnknownBadEvent | None:
     try:
         validate_json(parsed_dict, schema)
     except (ValidationError, SchemaError) as e:
@@ -106,13 +106,13 @@ class UnknownBadEvent:
 
     """
 
-    source: Dict[str, Any] = field()
-    transaction_id: Optional[str] = None
+    source: dict[str, Any] = field()
+    transaction_id: str | None = None
 
     decrypted: bool = field(default=False, init=False)
     verified: bool = field(default=False, init=False)
-    sender_key: Optional[str] = field(default=None, init=False)
-    session_id: Optional[str] = field(default=None, init=False)
+    sender_key: str | None = field(default=None, init=False)
+    session_id: str | None = field(default=None, init=False)
 
 
 @dataclass
@@ -148,7 +148,7 @@ class BadEvent:
 
     """
 
-    source: Dict[str, Any] = field()
+    source: dict[str, Any] = field()
     event_id: str = field()
     sender: str = field()
     server_timestamp: int = field()
@@ -156,15 +156,15 @@ class BadEvent:
 
     decrypted: bool = field(default=False, init=False)
     verified: bool = field(default=False, init=False)
-    sender_key: Optional[str] = field(default=None, init=False)
-    session_id: Optional[str] = field(default=None, init=False)
-    transaction_id: Optional[str] = field(default=None, init=False)
+    sender_key: str | None = field(default=None, init=False)
+    session_id: str | None = field(default=None, init=False)
+    transaction_id: str | None = field(default=None, init=False)
 
     def __str__(self):
         return f"Bad event of type {self.type}, from {self.sender}."
 
     @classmethod
-    def from_dict(cls, parsed_dict: Dict[Any, Any]) -> BadEvent:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> BadEvent:
         timestamp = parsed_dict["origin_server_ts"]
 
         timestamp = max(0, timestamp)
@@ -177,4 +177,4 @@ class BadEvent:
         )
 
 
-BadEventType = Union[BadEvent, UnknownBadEvent]
+BadEventType = BadEvent | UnknownBadEvent

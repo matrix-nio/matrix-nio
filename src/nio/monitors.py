@@ -14,10 +14,10 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from threading import Thread
-from typing import Callable, List, Optional
 
 
 @dataclass
@@ -68,19 +68,19 @@ class TransferMonitor:
     # TODO: tell that this can be used for downloads too once implemented.
 
     total_size: int = field()
-    on_transferred: Optional[Callable[[int], None]] = None
-    on_speed_changed: Optional[Callable[[float], None]] = None
+    on_transferred: Callable[[int], None] | None = None
+    on_speed_changed: Callable[[float], None] | None = None
     speed_period: float = 10
 
     average_speed: float = field(init=False, default=0.0)
     start_time: datetime = field(default_factory=datetime.now)
-    end_time: Optional[datetime] = field(init=False, default=None)
+    end_time: datetime | None = field(init=False, default=None)
     pause: bool = field(init=False, default=False)
     cancel: bool = field(init=False, default=False)
 
     _transferred: int = field(init=False, default=0)
     _updater: Thread = field(init=False)
-    _last_transferred_sizes: List[int] = field(default_factory=list)
+    _last_transferred_sizes: list[int] = field(default_factory=list)
 
     _update_loop_sleep_time: float = field(default=1)
 
@@ -162,7 +162,7 @@ class TransferMonitor:
         return (self.end_time or datetime.now()) - self.start_time
 
     @property
-    def remaining_time(self) -> Optional[timedelta]:
+    def remaining_time(self) -> timedelta | None:
         """Estimated remaining time to complete the transfer.
 
         Returns None (for infinity) if the current transfer speed is 0 bytes/s,

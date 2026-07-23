@@ -18,7 +18,6 @@ from __future__ import annotations
 import logging
 import sys
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, Optional, Set, Tuple, Union
 
 from .events import (
     AccountDataEvent,
@@ -70,31 +69,31 @@ class MatrixRoom:
         self.own_user_id = own_user_id
         self.federate: bool = True
         self.room_version: str = "1"
-        self.room_type: Optional[str] = None
+        self.room_type: str | None = None
         self.guest_access: str = "forbidden"
         self.join_rule: str = "invite"
         self.history_visibility: str = "shared"
-        self.canonical_alias: Optional[str] = None
-        self.topic: Optional[str] = None
-        self.name: Optional[str] = None
-        self.parents: Set[str] = set()
-        self.children: Set[str] = set()
-        self.users: Dict[str, MatrixUser] = {}
-        self.invited_users: Dict[str, MatrixUser] = {}
-        self.names: DefaultDict[str, List[str]] = defaultdict(list)
+        self.canonical_alias: str | None = None
+        self.topic: str | None = None
+        self.name: str | None = None
+        self.parents: set[str] = set()
+        self.children: set[str] = set()
+        self.users: dict[str, MatrixUser] = {}
+        self.invited_users: dict[str, MatrixUser] = {}
+        self.names: defaultdict[str, list[str]] = defaultdict(list)
         self.encrypted: bool = encrypted
         self.power_levels: PowerLevels = PowerLevels()
-        self.typing_users: List[str] = []
-        self.read_receipts: Dict[str, Receipt] = {}
-        self.threaded_read_receipts: Dict[str, Dict[str, Receipt]] = {}
-        self.summary: Optional[RoomSummary] = None
-        self.room_avatar_url: Optional[str] = None
-        self.fully_read_marker: Optional[str] = None
-        self.tags: Dict[str, Optional[Dict[str, float]]] = {}
+        self.typing_users: list[str] = []
+        self.read_receipts: dict[str, Receipt] = {}
+        self.threaded_read_receipts: dict[str, dict[str, Receipt]] = {}
+        self.summary: RoomSummary | None = None
+        self.room_avatar_url: str | None = None
+        self.fully_read_marker: str | None = None
+        self.tags: dict[str, dict[str, float] | None] = {}
         self.unread_notifications: int = 0
         self.unread_highlights: int = 0
         self.members_synced: bool = False
-        self.replacement_room: Union[str, None] = None
+        self.replacement_room: str | None = None
         # yapf: enable
 
     @property
@@ -109,7 +108,7 @@ class MatrixRoom:
         """
         return self.named_room_name() or self.group_name()
 
-    def named_room_name(self) -> Optional[str]:
+    def named_room_name(self) -> str | None:
         """Return the name of the room if it's a named room, otherwise None."""
         return self.name or self.canonical_alias or None
 
@@ -140,7 +139,7 @@ class MatrixRoom:
 
         return text
 
-    def group_name_structure(self) -> Tuple[bool, List[str], int]:
+    def group_name_structure(self) -> tuple[bool, list[str], int]:
         """Get if room is empty, ID for listed users and the N others count."""
         try:
             heroes, _joined, _invited = self._summary_details()
@@ -164,7 +163,7 @@ class MatrixRoom:
 
         return (empty, heroes, self.member_count - 1 - len(heroes))
 
-    def user_name(self, user_id: str) -> Optional[str]:
+    def user_name(self, user_id: str) -> str | None:
         """Get disambiguated display name for a user.
 
         Returns display name of a user if display name is unique or returns
@@ -179,11 +178,11 @@ class MatrixRoom:
             return user.disambiguated_name
         return user.name
 
-    def user_name_clashes(self, name: str) -> List[str]:
+    def user_name_clashes(self, name: str) -> list[str]:
         """Get a list of users that have same display name."""
         return self.names[name]
 
-    def avatar_url(self, user_id: str) -> Optional[str]:
+    def avatar_url(self, user_id: str) -> str | None:
         """Get avatar url for a user.
 
         Returns a matrix content URI, or None if the user has no avatar.
@@ -194,7 +193,7 @@ class MatrixRoom:
         return self.users[user_id].avatar_url
 
     @property
-    def gen_avatar_url(self) -> Optional[str]:
+    def gen_avatar_url(self) -> str | None:
         """
         Get the calculated room's avatar url.
 
@@ -251,8 +250,8 @@ class MatrixRoom:
     def add_member(
         self,
         user_id: str,
-        display_name: Optional[str],
-        avatar_url: Optional[str],
+        display_name: str | None,
+        avatar_url: str | None,
         invited: bool = False,
     ) -> bool:
         if user_id in self.users:
@@ -292,7 +291,7 @@ class MatrixRoom:
 
     def handle_membership(
         self,
-        event: Union[RoomMemberEvent, InviteMemberEvent],
+        event: RoomMemberEvent | InviteMemberEvent,
     ) -> bool:
         """Handle a membership event for the room.
 
@@ -458,7 +457,7 @@ class MatrixRoom:
         if summary.heroes is not None:
             self.summary.heroes = summary.heroes
 
-    def _summary_details(self) -> Tuple[List[str], int, int]:
+    def _summary_details(self) -> tuple[list[str], int, int]:
         """Return the summary attributes if it can be used for calculations."""
         valid = bool(
             self.summary is not None
@@ -500,12 +499,12 @@ class MatrixRoom:
 
 class MatrixInvitedRoom(MatrixRoom):
     def __init__(self, room_id: str, own_user_id: str) -> None:
-        self.inviter: Optional[str] = None
+        self.inviter: str | None = None
         super().__init__(room_id, own_user_id)
 
     def handle_membership(
         self,
-        event: Union[RoomMemberEvent, InviteMemberEvent],
+        event: RoomMemberEvent | InviteMemberEvent,
     ) -> bool:
         """Handle a membership event for the invited room.
 
@@ -540,14 +539,14 @@ class MatrixUser:
     def __init__(
         self,
         user_id: str,
-        display_name: Optional[str] = None,
-        avatar_url: Optional[str] = None,
+        display_name: str | None = None,
+        avatar_url: str | None = None,
         power_level: int = 0,
         invited: bool = False,
         presence: str = "offline",
-        last_active_ago: Optional[int] = None,
-        currently_active: Optional[bool] = None,
-        status_msg: Optional[str] = None,
+        last_active_ago: int | None = None,
+        currently_active: bool | None = None,
+        status_msg: str | None = None,
     ):
         # yapf: disable
         self.user_id = user_id
