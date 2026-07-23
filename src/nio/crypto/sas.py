@@ -18,7 +18,6 @@ from datetime import datetime, timedelta
 from enum import Enum
 from hashlib import sha256
 from itertools import zip_longest
-from typing import List, Optional, Tuple
 from uuid import uuid4
 
 import vodozemac
@@ -177,9 +176,9 @@ class Sas:
         own_device: str,
         own_fp_key: str,
         other_olm_device: OlmDevice,
-        transaction_id: Optional[str] = None,
-        short_auth_string: Optional[List[str]] = None,
-        mac_methods: Optional[List[str]] = None,
+        transaction_id: str | None = None,
+        short_auth_string: list[str] | None = None,
+        mac_methods: list[str] | None = None,
     ):
         self._sas = vodozemac.Sas()
 
@@ -195,17 +194,17 @@ class Sas:
         self.mac_methods = mac_methods or Sas._mac_v1
         self.chosen_mac_method = ""
         self.key_agreement_protocols = Sas._key_agreeemnt_protocols
-        self.chosen_key_agreement: Optional[str] = None
+        self.chosen_key_agreement: str | None = None
         self.state = SasState.created
         self.we_started_it = True
         self.sas_accepted = False
-        self.commitment: Optional[str] = None
+        self.commitment: str | None = None
         self.cancel_reason = ""
         self.cancel_code = ""
 
-        self.established_sas: Optional[vodozemac.EstablishedSas] = None
+        self.established_sas: vodozemac.EstablishedSas | None = None
 
-        self.verified_devices: List[str] = []
+        self.verified_devices: list[str] = []
 
         self.creation_time = datetime.now()
         self._last_event_time = self.creation_time
@@ -400,7 +399,7 @@ class Sas:
 
         raise ValueError(f"Unknown key agreement protocol {self.chosen_key_agreement}")
 
-    def get_emoji(self) -> List[Tuple[str, str]]:
+    def get_emoji(self) -> list[tuple[str, str]]:
         """Get the emoji short authentication string.
 
         Returns a list of tuples that contain the emoji and the description of
@@ -408,7 +407,7 @@ class Sas:
         """
         return self._generate_emoji(self._extra_info)
 
-    def get_decimals(self) -> Tuple[int, ...]:
+    def get_decimals(self) -> tuple[int, ...]:
         """Get the decimal short authentication string.
 
         Returns a tuple that contains three 4 digit integer numbers that
@@ -416,7 +415,7 @@ class Sas:
         """
         return self._generate_decimals(self._extra_info)
 
-    def _generate_emoji(self, extra_info: str) -> List[Tuple[str, str]]:
+    def _generate_emoji(self, extra_info: str) -> list[tuple[str, str]]:
         """Create a list of emojies from our shared secret."""
         assert self.established_sas
         generated_bytes = self.established_sas.bytes(extra_info).emoji_indices
@@ -426,7 +425,7 @@ class Sas:
             for x in map("".join, list(self._grouper(number[:42], 6)))
         ]
 
-    def _generate_decimals(self, extra_info: str) -> Tuple[int, ...]:
+    def _generate_decimals(self, extra_info: str) -> tuple[int, ...]:
         """Create a decimal number from our shared secret."""
         assert self.established_sas
         return self.established_sas.bytes(extra_info).decimals

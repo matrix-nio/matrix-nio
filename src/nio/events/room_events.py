@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from ..event_builders import RoomKeyRequestMessage
 from ..schemas import Schemas
@@ -53,7 +53,7 @@ class Event:
 
     """
 
-    source: Dict[str, Any] = field()
+    source: dict[str, Any] = field()
 
     event_id: str = field(init=False)
     sender: str = field(init=False)
@@ -61,9 +61,9 @@ class Event:
 
     decrypted: bool = field(default=False, init=False)
     verified: bool = field(default=False, init=False)
-    sender_key: Optional[str] = field(default=None, init=False)
-    session_id: Optional[str] = field(default=None, init=False)
-    transaction_id: Optional[str] = field(default=None, init=False)
+    sender_key: str | None = field(default=None, init=False)
+    session_id: str | None = field(default=None, init=False)
+    transaction_id: str | None = field(default=None, init=False)
 
     def __post_init__(self):
         self.event_id = self.source["event_id"]
@@ -73,9 +73,9 @@ class Event:
     def flattened(
         self,
         _prefix: str = "",
-        _source: Optional[Dict[str, Any]] = None,
-        _flat: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        _source: dict[str, Any] | None = None,
+        _flat: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Return a flattened version of the ``source`` dict with dotted keys.
 
         Example:
@@ -98,7 +98,7 @@ class Event:
         return flat
 
     @classmethod
-    def from_dict(cls, parsed_dict: Dict[Any, Any]) -> Union[Event, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> Event | BadEventType:
         """Create an Event from a dictionary.
 
         Args:
@@ -109,7 +109,7 @@ class Event:
 
     @classmethod
     @verify(Schemas.room_event)
-    def parse_event(cls, event_dict: Dict[Any, Any]) -> Union[Event, BadEventType]:
+    def parse_event(cls, event_dict: dict[Any, Any]) -> Event | BadEventType:
         """Parse a Matrix event and create a higher level event object.
 
         This function parses the type of the Matrix event and produces a higher
@@ -197,9 +197,7 @@ class Event:
         return UnknownEncryptedEvent.from_dict(event_dict)
 
     @classmethod
-    def parse_decrypted_event(
-        cls, event_dict: Dict[Any, Any]
-    ) -> Union[Event, BadEventType]:
+    def parse_decrypted_event(cls, event_dict: dict[Any, Any]) -> Event | BadEventType:
         """Parse a decrypted event and create a higher level event object.
 
         Args:
@@ -355,8 +353,8 @@ class MegolmEvent(Event):
         self,
         user_id: str,
         requesting_device_id: str,
-        request_id: Optional[str] = None,
-        device_id: Optional[str] = None,
+        request_id: str | None = None,
+        device_id: str | None = None,
     ) -> RoomKeyRequestMessage:
         """Make a to-device message for a room key request.
 
@@ -462,7 +460,7 @@ class CallCandidatesEvent(CallEvent):
         candidates (list): A list of dictionaries describing the candidates.
     """
 
-    candidates: List[Dict[str, Any]] = field()
+    candidates: list[dict[str, Any]] = field()
 
     @classmethod
     @verify(Schemas.call_candidates)
@@ -492,7 +490,7 @@ class CallInviteEvent(CallEvent):
     """
 
     lifetime: int = field()
-    offer: Dict[str, Any] = field()
+    offer: dict[str, Any] = field()
 
     @property
     def expired(self):
@@ -526,7 +524,7 @@ class CallAnswerEvent(CallEvent):
 
     """
 
-    answer: Dict[str, Any] = field()
+    answer: dict[str, Any] = field()
 
     @classmethod
     @verify(Schemas.call_answer)
@@ -576,7 +574,7 @@ class RedactedEvent(Event):
 
     type: str = field()
     redacter: str = field()
-    reason: Optional[str] = field()
+    reason: str | None = field()
 
     def __str__(self):
         reason = f", reason: {self.reason}" if self.reason else ""
@@ -589,9 +587,7 @@ class RedactedEvent(Event):
 
     @classmethod
     @verify(Schemas.redacted_event)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[RedactedEvent, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> RedactedEvent | BadEventType:
         redacter = parsed_dict["unsigned"]["redacted_because"]["sender"]
         content_dict = parsed_dict["unsigned"]["redacted_because"]["content"]
         reason = content_dict.get("reason", None)
@@ -637,9 +633,7 @@ class RoomCreateEvent(Event):
 
     @classmethod
     @verify(Schemas.room_create)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[RoomCreateEvent, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> RoomCreateEvent | BadEventType:
         federate = parsed_dict["content"]["m.federate"]
         version = parsed_dict["content"]["room_version"]
         if "type" in parsed_dict["content"]:
@@ -663,8 +657,8 @@ class RoomGuestAccessEvent(Event):
     @classmethod
     @verify(Schemas.room_guest_access)
     def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[RoomGuestAccessEvent, BadEventType]:
+        cls, parsed_dict: dict[Any, Any]
+    ) -> RoomGuestAccessEvent | BadEventType:
         guest_access = parsed_dict["content"]["guest_access"]
 
         return cls(parsed_dict, guest_access)
@@ -687,8 +681,8 @@ class RoomJoinRulesEvent(Event):
     @classmethod
     @verify(Schemas.room_join_rules)
     def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[RoomJoinRulesEvent, BadEventType]:
+        cls, parsed_dict: dict[Any, Any]
+    ) -> RoomJoinRulesEvent | BadEventType:
         join_rule = parsed_dict["content"]["join_rule"]
 
         return cls(parsed_dict, join_rule)
@@ -729,8 +723,8 @@ class RoomHistoryVisibilityEvent(Event):
     @verify(Schemas.room_history_visibility)
     def from_dict(
         cls,
-        parsed_dict: Dict[Any, Any],
-    ) -> Union[RoomHistoryVisibilityEvent, BadEventType]:
+        parsed_dict: dict[Any, Any],
+    ) -> RoomHistoryVisibilityEvent | BadEventType:
         history_visibility = parsed_dict["content"]["history_visibility"]
 
         return cls(parsed_dict, history_visibility)
@@ -745,13 +739,11 @@ class RoomAliasEvent(Event):
 
     """
 
-    canonical_alias: Optional[str] = field()
+    canonical_alias: str | None = field()
 
     @classmethod
     @verify(Schemas.room_canonical_alias)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[RoomAliasEvent, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> RoomAliasEvent | BadEventType:
         canonical_alias = parsed_dict["content"].get("alias")
 
         return cls(parsed_dict, canonical_alias)
@@ -774,9 +766,7 @@ class RoomNameEvent(Event):
 
     @classmethod
     @verify(Schemas.room_name)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[RoomNameEvent, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> RoomNameEvent | BadEventType:
         room_name = parsed_dict["content"]["name"]
 
         return cls(parsed_dict, room_name)
@@ -799,9 +789,7 @@ class RoomTopicEvent(Event):
 
     @classmethod
     @verify(Schemas.room_topic)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[RoomTopicEvent, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> RoomTopicEvent | BadEventType:
         canonical_alias = parsed_dict["content"]["topic"]
 
         return cls(parsed_dict, canonical_alias)
@@ -816,13 +804,11 @@ class RoomAvatarEvent(Event):
 
     """
 
-    avatar_url: Optional[str] = field()
+    avatar_url: str | None = field()
 
     @classmethod
     @verify(Schemas.room_avatar)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[RoomAvatarEvent, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> RoomAvatarEvent | BadEventType:
         room_avatar_url = parsed_dict["content"].get("url")
 
         return cls(parsed_dict, room_avatar_url)
@@ -882,9 +868,7 @@ class RoomMessage(Event):
 
     @classmethod
     @verify(Schemas.room_message)
-    def parse_event(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[RoomMessage, BadEventType]:
+    def parse_event(cls, parsed_dict: dict[Any, Any]) -> RoomMessage | BadEventType:
         content_dict = parsed_dict["content"]
 
         if content_dict["msgtype"] == "m.text":
@@ -913,8 +897,8 @@ class RoomMessage(Event):
     @classmethod
     @verify(Schemas.room_message)
     def parse_decrypted_event(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[RoomMessage, BadEventType]:
+        cls, parsed_dict: dict[Any, Any]
+    ) -> RoomMessage | BadEventType:
         msgtype = parsed_dict["content"]["msgtype"]
 
         if msgtype == "m.image":
@@ -982,15 +966,15 @@ class RoomEncryptedMedia(RoomMessage):
 
     url: str = field()
     body: str = field()
-    key: Dict[str, Any] = field()
-    hashes: Dict[str, Any] = field()
+    key: dict[str, Any] = field()
+    hashes: dict[str, Any] = field()
     iv: str = field()
     mimetype: str = field()
 
-    thumbnail_url: Optional[str] = None
-    thumbnail_key: Optional[Dict] = None
-    thumbnail_hashes: Optional[Dict] = None
-    thumbnail_iv: Optional[str] = None
+    thumbnail_url: str | None = None
+    thumbnail_key: dict | None = None
+    thumbnail_hashes: dict | None = None
+    thumbnail_iv: str | None = None
 
     @classmethod
     @verify(Schemas.room_encrypted_media)
@@ -1081,10 +1065,10 @@ class RoomMessageUnknown(RoomMessage):
     """
 
     msgtype: str = field()
-    content: Dict[str, Any] = field()
+    content: dict[str, Any] = field()
 
     @classmethod
-    def from_dict(cls, parsed_dict: Dict[Any, Any]) -> RoomMessage:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> RoomMessage:
         return cls(
             parsed_dict,
             parsed_dict["content"]["msgtype"],
@@ -1112,8 +1096,8 @@ class RoomMessageFormatted(RoomMessage):
     """
 
     body: str = field()
-    formatted_body: Optional[str] = field()
-    format: Optional[str] = field()
+    formatted_body: str | None = field()
+    format: str | None = field()
 
     def __str__(self) -> str:
         return f"{self.sender}: {self.body}"
@@ -1123,7 +1107,7 @@ class RoomMessageFormatted(RoomMessage):
         raise NotImplementedError
 
     @classmethod
-    def from_dict(cls, parsed_dict: Dict[Any, Any]) -> Union[RoomMessage, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> RoomMessage | BadEventType:
         bad = cls._validate(parsed_dict)
 
         if bad:
@@ -1164,7 +1148,7 @@ class RoomMessageText(RoomMessageFormatted):
     """
 
     @staticmethod
-    def _validate(parsed_dict: Dict[Any, Any]) -> Optional[BadEventType]:
+    def _validate(parsed_dict: dict[Any, Any]) -> BadEventType | None:
         return validate_or_badevent(parsed_dict, Schemas.room_message_text)
 
 
@@ -1186,7 +1170,7 @@ class RoomMessageEmote(RoomMessageFormatted):
     """
 
     @staticmethod
-    def _validate(parsed_dict: Dict[Any, Any]) -> Optional[BadEventType]:
+    def _validate(parsed_dict: dict[Any, Any]) -> BadEventType | None:
         return validate_or_badevent(parsed_dict, Schemas.room_message_emote)
 
 
@@ -1207,7 +1191,7 @@ class RoomMessageNotice(RoomMessageFormatted):
     """
 
     @staticmethod
-    def _validate(parsed_dict: Dict[Any, Any]) -> Optional[BadEventType]:
+    def _validate(parsed_dict: dict[Any, Any]) -> BadEventType | None:
         return validate_or_badevent(parsed_dict, Schemas.room_message_notice)
 
 
@@ -1238,7 +1222,7 @@ class DefaultLevels:
     state_default: int = 0
     events_default: int = 0
     users_default: int = 0
-    notifications: Dict[str, int] = field(default_factory=lambda: {"room": 50})
+    notifications: dict[str, int] = field(default_factory=lambda: {"room": 50})
 
     @classmethod
     def from_dict(cls, parsed_dict):
@@ -1278,8 +1262,8 @@ class PowerLevels:
     """
 
     defaults: DefaultLevels = field(default_factory=DefaultLevels)
-    users: Dict[str, int] = field(default_factory=dict)
-    events: Dict[str, int] = field(default_factory=dict)
+    users: dict[str, int] = field(default_factory=dict)
+    events: dict[str, int] = field(default_factory=dict)
 
     def get_state_event_required_level(self, event_type: str) -> int:
         """Get required power level to send a certain type of state event.
@@ -1357,7 +1341,7 @@ class PowerLevels:
     def can_user_kick(
         self,
         user_id: str,
-        target_user_id: Optional[str] = None,
+        target_user_id: str | None = None,
     ) -> bool:
         """Return whether a user has enough power to kick another.
 
@@ -1375,7 +1359,7 @@ class PowerLevels:
     def can_user_ban(
         self,
         user_id: str,
-        target_user_id: Optional[str] = None,
+        target_user_id: str | None = None,
     ) -> bool:
         """Return whether a user has enough power to ban another.
 
@@ -1460,13 +1444,11 @@ class RedactionEvent(Event):
     """
 
     redacts: str = field()
-    reason: Optional[str] = None
+    reason: str | None = None
 
     @classmethod
     @verify(Schemas.room_redaction)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[RedactionEvent, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> RedactionEvent | BadEventType:
         content = parsed_dict.get("content", {})
         reason = content.get("reason", None)
 
@@ -1498,15 +1480,13 @@ class RoomMemberEvent(Event):
 
     state_key: str = field()
     membership: str = field()
-    prev_membership: Optional[str] = field()
-    content: Dict[str, Any] = field()
-    prev_content: Optional[Dict[str, Any]] = None
+    prev_membership: str | None = field()
+    content: dict[str, Any] = field()
+    prev_content: dict[str, Any] | None = None
 
     @classmethod
     @verify(Schemas.room_membership)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[RoomMemberEvent, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> RoomMemberEvent | BadEventType:
         content = parsed_dict.get("content", {})
         unsigned = parsed_dict.get("unsigned", {})
         prev_content = unsigned.get("prev_content", None)
@@ -1543,13 +1523,11 @@ class StickerEvent(Event):
 
     body: str = field()
     url: str = field()
-    content: Dict[str, Any] = field()
+    content: dict[str, Any] = field()
 
     @classmethod
     @verify(Schemas.sticker)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[StickerEvent, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> StickerEvent | BadEventType:
         content = parsed_dict.get("content", {})
 
         body = content["body"]

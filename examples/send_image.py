@@ -75,7 +75,7 @@ async def send_image(client, room_id, image):
         return
 
     im = Image.open(image)
-    (width, height) = im.size  # im.size returns (width,height) tuple
+    width, height = im.size  # im.size returns (width,height) tuple
 
     # first do an upload of image, then send URI of upload to room
     file_stat = await aiofiles.os.stat(image)

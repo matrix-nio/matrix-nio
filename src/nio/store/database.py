@@ -16,7 +16,6 @@ import os
 import sqlite3
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import List, Optional
 
 from peewee import DoesNotExist, SqliteDatabase
 from playhouse.sqliteq import SqliteQueueDatabase
@@ -167,7 +166,7 @@ class MatrixStore:
         except DoesNotExist:
             return None
 
-    def load_account(self) -> Optional[OlmAccount]:
+    def load_account(self) -> OlmAccount | None:
         """Load the Olm account from the database.
 
         Returns:
@@ -478,7 +477,7 @@ class MatrixStore:
         SyncTokens.replace(account=account, token=token).execute()
 
     @use_database
-    def load_sync_token(self) -> Optional[str]:
+    def load_sync_token(self) -> str | None:
         account = self._get_account()
 
         if not account:
@@ -584,7 +583,7 @@ class MatrixStore:
         """
         raise NotImplementedError
 
-    def ignore_devices(self, devices: List[OlmDevice]) -> None:
+    def ignore_devices(self, devices: list[OlmDevice]) -> None:
         """Mark a list of devices as ignored.
 
         This is a more efficient way to mark multiple devices as ignored.
@@ -700,7 +699,7 @@ class DefaultStore(MatrixStore):
 
         return False
 
-    def ignore_devices(self, devices: List[OlmDevice]) -> None:
+    def ignore_devices(self, devices: list[OlmDevice]) -> None:
         keys = [Key.from_olmdevice(device) for device in devices]
 
         self.blacklist_db.remove_many(keys)
@@ -936,7 +935,7 @@ class SqliteStore(MatrixStore):
         return device_ids
 
     @use_database_atomic
-    def ignore_devices(self, devices: List[OlmDevice]) -> None:
+    def ignore_devices(self, devices: list[OlmDevice]) -> None:
         acc = self._get_account()
 
         if not acc:

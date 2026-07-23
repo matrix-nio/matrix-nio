@@ -24,7 +24,6 @@ Ephemeral events are used for typing notifications and read receipts.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 from ..api import ReceiptType
 from ..schemas import Schemas
@@ -80,7 +79,7 @@ class TypingNoticeEvent(EphemeralEvent):
 
     """
 
-    users: List = field()
+    users: list = field()
 
     @classmethod
     @verify_or_none(Schemas.m_typing)
@@ -109,7 +108,7 @@ class Receipt:
     receipt_type: ReceiptType = field()
     user_id: str = field()
     timestamp: int = field()
-    thread_id: Optional[str] = field(default=None)
+    thread_id: str | None = field(default=None)
 
 
 @dataclass
@@ -122,12 +121,12 @@ class ReceiptEvent(EphemeralEvent):
         receipts (List[Receipt]): The list of `Receipt`s in this event.
     """
 
-    receipts: List[Receipt] = field()
+    receipts: list[Receipt] = field()
 
     @classmethod
     @verify_or_none(Schemas.m_receipt)
     def from_dict(cls, parsed_dict) -> ReceiptEvent:
-        event_receipts: List[Receipt] = []
+        event_receipts: list[Receipt] = []
 
         for event_id, event in parsed_dict["content"].items():
             for receipt_type, receipt in event.items():

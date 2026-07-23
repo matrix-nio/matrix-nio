@@ -18,21 +18,12 @@ import asyncio
 import inspect
 import logging
 from collections import defaultdict
+from collections.abc import Awaitable, Callable, Coroutine
 from dataclasses import dataclass, field
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
-    Callable,
-    Coroutine,
-    Dict,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    Union,
 )
 
 from ..crypto import ENCRYPTION_ENABLED, DeviceStore, OutgoingKeyRequest
@@ -132,10 +123,10 @@ def store_loaded(fn):
 class ClientCallback:
     """nio internal callback class."""
 
-    func: Union[Callable[..., None], Callable[..., Awaitable[None]]] = field()
-    filter: Union[Tuple[Type, ...], Type, None] = None
+    func: Callable[..., None] | Callable[..., Awaitable[None]] = field()
+    filter: tuple[type, ...] | type | None = None
 
-    def _execute(self, event, room: Optional[MatrixRoom] = None) -> Optional[Awaitable]:
+    def _execute(self, event, room: MatrixRoom | None = None) -> Awaitable | None:
         """
         Checks the filter and executes the function once.
         sync_execute and async_execute will each determine
@@ -147,13 +138,13 @@ class ClientCallback:
             else:
                 return self.func(event)
 
-    def sync_execute(self, event, room: Optional[MatrixRoom] = None) -> None:
+    def sync_execute(self, event, room: MatrixRoom | None = None) -> None:
         """Execute callback from synchronous context."""
         result = self._execute(event, room)
         if inspect.iscoroutine(result):
             asyncio.run(result)
 
-    async def async_execute(self, event, room: Optional[MatrixRoom] = None) -> None:
+    async def async_execute(self, event, room: MatrixRoom | None = None) -> None:
         """Execute callback from asynchronous context."""
         result = self._execute(event, room)
         if inspect.isawaitable(result):
@@ -182,14 +173,14 @@ class ClientConfig:
 
     """
 
-    store: Optional[Type[MatrixStore]] = DefaultStore if ENCRYPTION_ENABLED else None
+    store: type[MatrixStore] | None = DefaultStore if ENCRYPTION_ENABLED else None
 
     encryption_enabled: bool = ENCRYPTION_ENABLED
 
     store_name: str = ""
     pickle_key: str = "DEFAULT_KEY"
     store_sync_tokens: bool = False
-    custom_headers: Optional[Dict[str, str]] = None
+    custom_headers: dict[str, str] | None = None
 
     def __post_init__(self):
         if not ENCRYPTION_ENABLED and self.encryption_enabled:
@@ -230,15 +221,15 @@ class Client:
     def __init__(
         self,
         user: str,
-        device_id: Optional[str] = None,
-        store_path: Optional[str] = "",
-        config: Optional[ClientConfig] = None,
+        device_id: str | None = None,
+        store_path: str | None = "",
+        config: ClientConfig | None = None,
     ):
         self.user = user
         self.device_id = device_id
         self.store_path = store_path
-        self.olm: Optional[Olm] = None
-        self.store: Optional[MatrixStore] = None
+        self.olm: Olm | None = None
+        self.store: MatrixStore | None = None
         self.config = config or ClientConfig()
 
         self.user_id = ""
@@ -247,16 +238,16 @@ class Client:
         self.next_batch = ""
         self.loaded_sync_token = ""
 
-        self.rooms: Dict[str, MatrixRoom] = {}
-        self.invited_rooms: Dict[str, MatrixInvitedRoom] = {}
-        self.encrypted_rooms: Set[str] = set()
+        self.rooms: dict[str, MatrixRoom] = {}
+        self.invited_rooms: dict[str, MatrixInvitedRoom] = {}
+        self.encrypted_rooms: set[str] = set()
 
-        self.event_callbacks: List[ClientCallback] = []
-        self.ephemeral_callbacks: List[ClientCallback] = []
-        self.to_device_callbacks: List[ClientCallback] = []
-        self.presence_callbacks: List[ClientCallback] = []
-        self.global_account_data_callbacks: List[ClientCallback] = []
-        self.room_account_data_callbacks: List[ClientCallback] = []
+        self.event_callbacks: list[ClientCallback] = []
+        self.ephemeral_callbacks: list[ClientCallback] = []
+        self.to_device_callbacks: list[ClientCallback] = []
+        self.presence_callbacks: list[ClientCallback] = []
+        self.global_account_data_callbacks: list[ClientCallback] = []
+        self.room_account_data_callbacks: list[ClientCallback] = []
 
     @property
     def logged_in(self) -> bool:
@@ -287,7 +278,7 @@ class Client:
         return self.olm.account.shared
 
     @property
-    def users_for_key_query(self) -> Set[str]:
+    def users_for_key_query(self) -> set[str]:
         """Users for whom we should make a key query."""
         if not self.olm:
             return set()
@@ -337,17 +328,17 @@ class Client:
         return bool(self.olm.wedged_devices or self.olm.key_request_devices_no_session)
 
     @property
-    def outgoing_key_requests(self) -> Dict[str, OutgoingKeyRequest]:
+    def outgoing_key_requests(self) -> dict[str, OutgoingKeyRequest]:
         """Our active key requests that we made."""
         return self.olm.outgoing_key_requests if self.olm else {}
 
     @property
-    def key_verifications(self) -> Dict[str, Sas]:
+    def key_verifications(self) -> dict[str, Sas]:
         """Key verifications that the client is participating in."""
         return self.olm.key_verifications if self.olm else {}
 
     @property
-    def outgoing_to_device_messages(self) -> List[ToDeviceMessage]:
+    def outgoing_to_device_messages(self) -> list[ToDeviceMessage]:
         """To-device messages that we need to send out."""
         return self.olm.outgoing_to_device_messages if self.olm else []
 
@@ -356,7 +347,7 @@ class Client:
         if not self.logged_in:
             raise LocalProtocolError("Not logged in.")
 
-    def get_active_sas(self, user_id: str, device_id: str) -> Optional[Sas]:
+    def get_active_sas(self, user_id: str, device_id: str) -> Sas | None:
         """Find a non-canceled SAS verification object for the provided user.
 
         Args:
@@ -627,26 +618,24 @@ class Client:
 
         return changed
 
-    def _handle_register(
-        self, response: Union[RegisterResponse, ErrorResponse]
-    ) -> None:
+    def _handle_register(self, response: RegisterResponse | ErrorResponse) -> None:
         if isinstance(response, ErrorResponse):
             return
 
         self.restore_login(response.user_id, response.device_id, response.access_token)
 
-    def _handle_login(self, response: Union[LoginResponse, ErrorResponse]):
+    def _handle_login(self, response: LoginResponse | ErrorResponse):
         if isinstance(response, ErrorResponse):
             return
 
         self.restore_login(response.user_id, response.device_id, response.access_token)
 
-    def _handle_logout(self, response: Union[LogoutResponse, ErrorResponse]):
+    def _handle_logout(self, response: LogoutResponse | ErrorResponse):
         if not isinstance(response, ErrorResponse):
             self.access_token = ""
 
     @store_loaded
-    def decrypt_event(self, event: MegolmEvent) -> Union[Event, BadEventType]:
+    def decrypt_event(self, event: MegolmEvent) -> Event | BadEventType:
         """Try to decrypt an undecrypted megolm event.
 
         Args:
@@ -665,7 +654,7 @@ class Client:
 
     def _handle_decrypt_to_device(
         self, to_device_event: ToDeviceEvent
-    ) -> Optional[ToDeviceEvent]:
+    ) -> ToDeviceEvent | None:
         if self.olm:
             return self.olm.handle_to_device_event(to_device_event)
 
@@ -673,7 +662,7 @@ class Client:
 
     def _replace_decrypted_to_device(
         self,
-        decrypted_events: List[Tuple[int, ToDeviceEvent]],
+        decrypted_events: list[tuple[int, ToDeviceEvent]],
         response: SyncResponse,
     ):
         # Replace the encrypted to_device events with decrypted ones
@@ -719,7 +708,7 @@ class Client:
                 self._on_invited_rooms(event, room)
 
     def _handle_joined_state(
-        self, room_id: str, join_info: RoomInfo, encrypted_rooms: Set[str]
+        self, room_id: str, join_info: RoomInfo, encrypted_rooms: set[str]
     ):
         if room_id in self.invited_rooms:
             del self.invited_rooms[room_id]
@@ -750,11 +739,11 @@ class Client:
 
     def _handle_timeline_event(
         self,
-        event: Union[Event, BadEventType],
+        event: Event | BadEventType,
         room_id: str,
         room: MatrixRoom,
-        encrypted_rooms: Set[str],
-    ) -> Optional[Union[Event, BadEventType]]:
+        encrypted_rooms: set[str],
+    ) -> Event | BadEventType | None:
         decrypted_event = None
 
         if isinstance(event, MegolmEvent) and self.olm:
@@ -780,13 +769,13 @@ class Client:
         return decrypted_event
 
     def _handle_joined_rooms(self, response: SyncResponse):
-        encrypted_rooms: Set[str] = set()
+        encrypted_rooms: set[str] = set()
 
         for room_id, join_info in response.rooms.join.items():
             self._handle_joined_state(room_id, join_info, encrypted_rooms)
 
             room = self.rooms[room_id]
-            decrypted_events: List[Tuple[int, Union[Event, BadEventType]]] = []
+            decrypted_events: list[tuple[int, Event | BadEventType]] = []
 
             for index, event in enumerate(join_info.timeline.events):
                 decrypted_event = self._handle_timeline_event(
@@ -906,9 +895,7 @@ class Client:
         for cb in self.to_device_callbacks:
             cb.sync_execute(event)
 
-    def _handle_sync(
-        self, response: SyncResponse
-    ) -> Union[None, Coroutine[Any, Any, None]]:
+    def _handle_sync(self, response: SyncResponse) -> None | Coroutine[Any, Any, None]:
         # We already received such a sync response, do nothing in that case.
         if self.next_batch == response.next_batch:
             return None
@@ -940,7 +927,7 @@ class Client:
         for event in events:
             self._on_to_device(event)
 
-    def _decrypt_event_array(self, array: List[Union[Event, BadEventType]]):
+    def _decrypt_event_array(self, array: list[Event | BadEventType]):
         if not self.olm:
             return
 
@@ -979,14 +966,14 @@ class Client:
 
     def _handle_olm_response(
         self,
-        response: Union[
-            ShareGroupSessionResponse,
-            KeysClaimResponse,
-            KeysQueryResponse,
-            KeysUploadResponse,
-            RoomKeyRequestResponse,
-            ToDeviceResponse,
-        ],
+        response: (
+            ShareGroupSessionResponse
+            | KeysClaimResponse
+            | KeysQueryResponse
+            | KeysUploadResponse
+            | RoomKeyRequestResponse
+            | ToDeviceResponse
+        ),
     ):
         if not self.olm:
             return
@@ -1075,9 +1062,7 @@ class Client:
         self.device_id = response.device_id or self.device_id
         # self.is_guest = response.is_guest
 
-    def receive_response(
-        self, response: Response
-    ) -> Union[None, Coroutine[Any, Any, None]]:
+    def receive_response(self, response: Response) -> None | Coroutine[Any, Any, None]:
         """Receive a Matrix Response and change the client state accordingly.
 
         Some responses will get edited for the callers convenience e.g. sync
@@ -1173,7 +1158,7 @@ class Client:
         self.olm.import_keys(infile, passphrase)
 
     @store_loaded
-    def get_missing_sessions(self, room_id: str) -> Dict[str, List[str]]:
+    def get_missing_sessions(self, room_id: str) -> dict[str, list[str]]:
         """Get users and devices for which we don't have active Olm sessions.
 
         Args:
@@ -1195,7 +1180,7 @@ class Client:
         return self.olm.get_missing_sessions(list(room.users))
 
     @store_loaded
-    def get_users_for_key_claiming(self) -> Dict[str, List[str]]:
+    def get_users_for_key_claiming(self) -> dict[str, list[str]]:
         """Get the content for a key claim request that needs to be made.
 
         Returns a dictionary containing users as the keys and a list of devices
@@ -1208,8 +1193,8 @@ class Client:
 
     @store_loaded
     def encrypt(
-        self, room_id: str, message_type: str, content: Dict[Any, Any]
-    ) -> Tuple[str, Dict[str, str]]:
+        self, room_id: str, message_type: str, content: dict[Any, Any]
+    ) -> tuple[str, dict[str, str]]:
         """Encrypt a message to be sent to the provided room.
 
         Args:
@@ -1259,8 +1244,8 @@ class Client:
 
     def add_event_callback(
         self,
-        callback: Callable[[MatrixRoom, Event], Optional[Awaitable[None]]],
-        filter: Union[Type[Event], Tuple[Type[Event], None]],
+        callback: Callable[[MatrixRoom, Event], Awaitable[None] | None],
+        filter: type[Event] | tuple[type[Event], None],
     ) -> None:
         """Add a callback that will be executed on room events.
 
@@ -1285,7 +1270,7 @@ class Client:
     def add_ephemeral_callback(
         self,
         callback: Callable[[MatrixRoom, EphemeralEvent], None],
-        filter: Union[Type[EphemeralEvent], Tuple[Type[EphemeralEvent], ...]],
+        filter: type[EphemeralEvent] | tuple[type[EphemeralEvent], ...],
     ) -> None:
         """Add a callback that will be executed on ephemeral room events.
 
@@ -1307,10 +1292,7 @@ class Client:
     def add_global_account_data_callback(
         self,
         callback: Callable[[AccountDataEvent], None],
-        filter: Union[
-            Type[AccountDataEvent],
-            Tuple[Type[AccountDataEvent], ...],
-        ],
+        filter: type[AccountDataEvent] | tuple[type[AccountDataEvent], ...],
     ) -> None:
         """Add a callback that will be executed on global account data events.
 
@@ -1333,10 +1315,7 @@ class Client:
     def add_room_account_data_callback(
         self,
         callback: Callable[[MatrixRoom, AccountDataEvent], None],
-        filter: Union[
-            Type[AccountDataEvent],
-            Tuple[Type[AccountDataEvent], ...],
-        ],
+        filter: type[AccountDataEvent] | tuple[type[AccountDataEvent], ...],
     ) -> None:
         """Add a callback that will be executed on room account data events.
 
@@ -1359,7 +1338,7 @@ class Client:
     def add_to_device_callback(
         self,
         callback: Callable[[ToDeviceEvent], None],
-        filter: Union[Type[ToDeviceEvent], Tuple[Type[ToDeviceEvent], ...]],
+        filter: type[ToDeviceEvent] | tuple[type[ToDeviceEvent], ...],
     ) -> None:
         """Add a callback that will be executed on to-device events.
 
@@ -1381,7 +1360,7 @@ class Client:
     def add_presence_callback(
         self,
         callback: Callable[[PresenceEvent], None],
-        filter: Union[Type, Tuple[Type]],
+        filter: type | tuple[type],
     ):
         """Add a callback that will be executed on presence events.
 
@@ -1438,7 +1417,7 @@ class Client:
 
         return message
 
-    def room_devices(self, room_id: str) -> Dict[str, Dict[str, OlmDevice]]:
+    def room_devices(self, room_id: str) -> dict[str, dict[str, OlmDevice]]:
         """Get all Olm devices participating in a room.
 
         Args:
@@ -1450,7 +1429,7 @@ class Client:
 
         Raises LocalProtocolError if no room is found with the given room_id.
         """
-        devices: Dict[str, Dict[str, OlmDevice]] = defaultdict(dict)
+        devices: dict[str, dict[str, OlmDevice]] = defaultdict(dict)
 
         if not self.olm:
             return devices
@@ -1474,7 +1453,7 @@ class Client:
     @store_loaded
     def get_active_key_requests(
         self, user_id: str, device_id: str
-    ) -> List[RoomKeyRequest]:
+    ) -> list[RoomKeyRequest]:
         """Get key requests from a device that are waiting for verification.
 
         Args:

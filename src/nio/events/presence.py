@@ -1,6 +1,5 @@
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
 from ..schemas import Schemas
 from .misc import verify
@@ -29,9 +28,9 @@ class PresenceEvent:
 
     user_id: str = field()
     presence: str = field()
-    last_active_ago: Optional[int] = None
-    currently_active: Optional[bool] = None
-    status_msg: Optional[str] = None
+    last_active_ago: int | None = None
+    currently_active: bool | None = None
+    status_msg: str | None = None
 
     @classmethod
     @verify(Schemas.presence)

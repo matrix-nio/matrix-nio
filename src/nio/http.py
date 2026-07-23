@@ -18,9 +18,9 @@ import json
 import logging
 import pprint
 import time
-from collections import OrderedDict, deque
+from collections import OrderedDict, UserDict, deque
 from enum import Enum, unique
-from typing import Any, Deque, List, Optional, Tuple
+from typing import Any
 from uuid import UUID, uuid4
 
 import h2.connection
@@ -73,7 +73,7 @@ class HttpRequest(TransportRequest):
         return cls(request, timeout=timeout)
 
     @staticmethod
-    def _headers(host: str, data: Optional[bytes] = None) -> List[Tuple[str, str]]:
+    def _headers(host: str, data: bytes | None = None) -> list[tuple[str, str]]:
         headers = [
             ("User-Agent", f"{USER_AGENT}"),
             ("Host", f"{host}"),
@@ -128,7 +128,7 @@ class Http2Request(TransportRequest):
         return h
 
     @staticmethod
-    def _headers(host: str, data: Optional[bytes] = None) -> List[Tuple[str, str]]:
+    def _headers(host: str, data: bytes | None = None) -> list[tuple[str, str]]:
         headers = [
             (":authority", f"{host}"),
             (":scheme", "https"),
@@ -182,7 +182,7 @@ class Http2Request(TransportRequest):
         return cls(request, timeout=timeout)
 
 
-class HeaderDict(dict):
+class HeaderDict(UserDict):
     def __setitem__(self, key, value):
         super().__setitem__(key.lower(), value)
 
@@ -191,16 +191,16 @@ class HeaderDict(dict):
 
 
 class TransportResponse:
-    def __init__(self, uuid: Optional[UUID] = None, timeout: float = 0) -> None:
+    def __init__(self, uuid: UUID | None = None, timeout: float = 0) -> None:
         self.headers: HeaderDict = HeaderDict()
         self.content: bytes = b""
-        self.status_code: Optional[int] = None
+        self.status_code: int | None = None
         self.uuid = uuid or uuid4()
         self.creation_time = time.time()
         self.timeout: float = timeout
-        self.send_time: Optional[float] = None
-        self.receive_time: Optional[float] = None
-        self.request_info: Optional[Any] = None
+        self.send_time: float | None = None
+        self.receive_time: float | None = None
+        self.request_info: Any | None = None
 
     def add_response(self, response):
         raise NotImplementedError
@@ -255,7 +255,7 @@ class Http2Response(TransportResponse):
     def __init__(self, uuid=None, timeout=0):
         super().__init__(uuid, timeout)
         self.was_reset = False
-        self.error_code: Optional[h2.errors.ErrorCodes] = None
+        self.error_code: h2.errors.ErrorCodes | None = None
 
     def add_response(self, headers: h2.events.ResponseReceived) -> None:
         for header in headers:
@@ -289,8 +289,8 @@ class Connection:
 class HttpConnection(Connection):
     def __init__(self) -> None:
         self._connection = h11.Connection(our_role=h11.CLIENT)
-        self._message_queue: Deque[HttpRequest] = deque()
-        self._current_response: Optional[HttpResponse] = None
+        self._message_queue: deque[HttpRequest] = deque()
+        self._current_response: HttpResponse | None = None
 
     def data_to_send(self) -> bytes:
         if self._current_response:
@@ -316,8 +316,8 @@ class HttpConnection(Connection):
         return response.elapsed
 
     def send(
-        self, request: TransportRequest, uuid: Optional[UUID] = None
-    ) -> Tuple[UUID, bytes]:
+        self, request: TransportRequest, uuid: UUID | None = None
+    ) -> tuple[UUID, bytes]:
         data = b""
 
         if not isinstance(request, HttpRequest):
@@ -346,7 +346,7 @@ class HttpConnection(Connection):
             self._message_queue.append(request)
             return request.response.uuid, b""
 
-    def _get_response(self) -> Optional[HttpResponse]:
+    def _get_response(self) -> HttpResponse | None:
         ret = self._connection.next_event()
 
         if not self._current_response:
@@ -442,8 +442,8 @@ class Http2Connection(Connection):
             self._data_to_send[stream_id] = data
 
     def send(
-        self, request: TransportRequest, uuid: Optional[UUID] = None
-    ) -> Tuple[UUID, bytes]:
+        self, request: TransportRequest, uuid: UUID | None = None
+    ) -> tuple[UUID, bytes]:
         if not isinstance(request, Http2Request):
             raise TypeError("Invalid request type for HttpConnection")
 
@@ -496,7 +496,7 @@ class Http2Connection(Connection):
         response = self._responses[stream_id]
         response.add_data(data)
 
-    def _handle_reset(self, event: h2.events.StreamReset) -> Optional[Http2Response]:
+    def _handle_reset(self, event: h2.events.StreamReset) -> Http2Response | None:
         response = self._responses.pop(event.stream_id, None)
 
         if not response:
@@ -506,7 +506,7 @@ class Http2Connection(Connection):
         response.error_code = event.error_code
         return response
 
-    def _handle_events(self, events: h2.events.Event) -> Optional[Http2Response]:
+    def _handle_events(self, events: h2.events.Event) -> Http2Response | None:
         for event in events:
             logger.info(f"Handling Http2 event: {repr(event)}")
 
@@ -536,6 +536,6 @@ class Http2Connection(Connection):
 
         return None
 
-    def receive(self, data: bytes) -> Optional[Http2Response]:
+    def receive(self, data: bytes) -> Http2Response | None:
         events = self._connection.receive_data(data)
         return self._handle_events(events)

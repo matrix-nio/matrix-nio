@@ -13,6 +13,14 @@ authors = [
 license = { file = "LICENSE.md" }
 readme = "README.md"
 requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
 dependencies = [
     "aiohttp>=3.10",
     "aiofiles>=24.1",
@@ -47,12 +55,15 @@ Source = "https://github.com/matrix-nio/matrix-nio"
 Documentation = "https://matrix-nio.readthedocs.io/en/latest/"
 
 [tool.ruff]
-# Assume Python 3.8.
-target-version = "py38"
+target-version = "py310"
 
 fix = true
 show-fixes = true
 preview = true
+
+# Honour `exclude` even for paths passed explicitly (e.g. by pre-commit).
+force-exclude = true
+extend-exclude = ["tests"]
 
 [tool.ruff.lint]
 select = [
@@ -104,16 +115,16 @@ exclude = [
     "tests"
 ]
 
-[tool.ruff.lint.pyupgrade]
-# Preserve types, even if a file imports `from __future__ import annotations`.
-# Needed for python < 3.10, should be removed afterward.
-keep-runtime-typing = true
-
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = [
     "F401",
     "F403",
     "I001",
+]
+# Example scripts intentionally use blocking input()/filesystem calls.
+"examples/*" = [
+    "ASYNC240",
+    "ASYNC250",
 ]
 [tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false

@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from ..schemas import Schemas
 from .common import (
@@ -52,14 +52,12 @@ class ToDeviceEvent:
 
     """
 
-    source: Dict[str, Any] = field()
+    source: dict[str, Any] = field()
     sender: str = field()
 
     @classmethod
     @verify(Schemas.to_device)
-    def parse_event(
-        cls, event_dict: Dict
-    ) -> Optional[Union[ToDeviceEvent, BadEventType]]:
+    def parse_event(cls, event_dict: dict) -> ToDeviceEvent | BadEventType | None:
         """Parse a to-device event and create a higher level event object.
 
         This function parses the type of the to-device event and produces a
@@ -398,8 +396,8 @@ class OlmEvent(EncryptedToDeviceEvent):
     """
 
     sender_key: str = field()
-    ciphertext: Dict[str, Any] = field()
-    transaction_id: Optional[str] = None
+    ciphertext: dict[str, Any] = field()
+    transaction_id: str | None = None
 
     @classmethod
     @verify(Schemas.room_olm_encrypted)

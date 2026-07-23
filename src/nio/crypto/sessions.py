@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple, TypedDict, Union
+from typing import TypedDict
 
 import vodozemac
 
@@ -37,7 +37,7 @@ class IdentityKeys(TypedDict):
 
 
 class OlmAccount:
-    def __init__(self, account: Optional[vodozemac.Account] = None) -> None:
+    def __init__(self, account: vodozemac.Account | None = None) -> None:
         self._account = account or vodozemac.Account()
         self.shared = False
         self.upgrade_pickle = False
@@ -50,7 +50,7 @@ class OlmAccount:
         }
 
     @property
-    def one_time_keys(self) -> Dict[str, Dict[str, str]]:
+    def one_time_keys(self) -> dict[str, dict[str, str]]:
         return {
             # vodozemac one_time_keys() returns just the {key_id: key} dict.
             # the 'curve25519' key is just kept to keep the api stable.
@@ -110,7 +110,7 @@ class OlmAccount:
     def create_inbound_session(
         self,
         identity_key: str,
-        message: Union[vodozemac.PreKeyMessage, vodozemac.AnyOlmMessage],
+        message: vodozemac.PreKeyMessage | vodozemac.AnyOlmMessage,
     ) -> vodozemac.Session:
         if isinstance(message, vodozemac.AnyOlmMessage):
             pre_key_message = message.to_pre_key()
@@ -153,7 +153,7 @@ class _SessionExpirationMixin:
 
 
 class Session(_SessionExpirationMixin):
-    def __init__(self, session: Optional[vodozemac.Session] = None) -> None:
+    def __init__(self, session: vodozemac.Session | None = None) -> None:
         self._session = session
         self.creation_time = datetime.now()
         self.use_time = datetime.now()
@@ -171,7 +171,7 @@ class Session(_SessionExpirationMixin):
         pickle: bytes,
         creation_time: datetime,
         passphrase: str = "",
-        use_time: Optional[datetime] = None,
+        use_time: datetime | None = None,
     ) -> Session:
         upgrade_pickle = False
         try:
@@ -193,7 +193,7 @@ class Session(_SessionExpirationMixin):
 
     def decrypt(
         self,
-        message: Union[vodozemac.PreKeyMessage, vodozemac.AnyOlmMessage],
+        message: vodozemac.PreKeyMessage | vodozemac.AnyOlmMessage,
         unicode_errors="replace",
     ) -> str:
         assert self._session
@@ -216,7 +216,7 @@ class InboundSession(Session):
     def __init__(
         self,
         account: OlmAccount,
-        message: Union[vodozemac.PreKeyMessage, vodozemac.AnyOlmMessage],
+        message: vodozemac.PreKeyMessage | vodozemac.AnyOlmMessage,
         identity_key: str,
     ) -> None:
         super().__init__()
@@ -227,15 +227,15 @@ class InboundSession(Session):
         # and the first inbound_session.decrypt(), which otherwise would break
         # This could be changed if the api change is acceptable.
         def first_decrypt(
-            msg: Union[vodozemac.PreKeyMessage, vodozemac.AnyOlmMessage],
-        ) -> Tuple[vodozemac.Session, bytes]:
+            msg: vodozemac.PreKeyMessage | vodozemac.AnyOlmMessage,
+        ) -> tuple[vodozemac.Session, bytes]:
             return account.create_inbound_session(identity_key, msg)
 
         self.first_decrypt = first_decrypt
 
     def decrypt(
         self,
-        message: Union[vodozemac.PreKeyMessage, vodozemac.AnyOlmMessage],
+        message: vodozemac.PreKeyMessage | vodozemac.AnyOlmMessage,
         unicode_errors="replace",
     ) -> str:
         if not self._session:
@@ -260,8 +260,8 @@ class InboundGroupSession:
         signing_key: str,
         sender_key: str,
         room_id: str,
-        forwarding_chain: Optional[List[str]] = None,
-        session: Optional[vodozemac.InboundGroupSession] = None,
+        forwarding_chain: list[str] | None = None,
+        session: vodozemac.InboundGroupSession | None = None,
     ) -> None:
         self._session = session or vodozemac.InboundGroupSession(
             vodozemac.SessionKey(session_key)
@@ -269,7 +269,7 @@ class InboundGroupSession:
         self.ed25519 = signing_key
         self.sender_key = sender_key
         self.room_id = room_id
-        self.forwarding_chain: List[str] = forwarding_chain or []
+        self.forwarding_chain: list[str] = forwarding_chain or []
         self.upgrade_pickle = False
 
     @property
@@ -287,7 +287,7 @@ class InboundGroupSession:
         signing_key: str,
         sender_key: str,
         room_id: str,
-        forwarding_chain: Optional[List[str]] = None,
+        forwarding_chain: list[str] | None = None,
     ) -> InboundGroupSession:
         _session = vodozemac.InboundGroupSession.import_session(
             vodozemac.ExportedSessionKey(session_key)
@@ -315,7 +315,7 @@ class InboundGroupSession:
         sender_key: str,
         room_id: str,
         passphrase: str = "",
-        forwarding_chain: Optional[List[str]] = None,
+        forwarding_chain: list[str] | None = None,
     ) -> InboundGroupSession:
         upgrade_pickle = False
         try:
@@ -343,7 +343,7 @@ class InboundGroupSession:
     def pickle(self, passphrase: str = "") -> bytes:
         return self._session.pickle(derive_pickle_key(passphrase)).encode()
 
-    def decrypt(self, message: str, unicode_errors="replace") -> Tuple[str, int]:
+    def decrypt(self, message: str, unicode_errors="replace") -> tuple[str, int]:
         decrypted = self._session.decrypt(vodozemac.MegolmMessage.from_base64(message))
         return (decrypted.plaintext.decode(), decrypted.message_index)
 
@@ -360,14 +360,14 @@ class OutboundGroupSession:
 
     """
 
-    def __init__(self, session: Optional[vodozemac.GroupSession] = None) -> None:
+    def __init__(self, session: vodozemac.GroupSession | None = None) -> None:
         self._session = session or vodozemac.GroupSession()
         self.max_age = timedelta(days=7)
         self.max_messages = 100
         self.creation_time = datetime.now()
         self.message_count = 0
-        self.users_shared_with: Set[Tuple[str, str]] = set()
-        self.users_ignored: Set[Tuple[str, str]] = set()
+        self.users_shared_with: set[tuple[str, str]] = set()
+        self.users_ignored: set[tuple[str, str]] = set()
         self.shared = False
         super().__init__()
 

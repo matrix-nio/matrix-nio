@@ -29,7 +29,7 @@ be displayed to users if they are invited to a room.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from ..schemas import Schemas
 from .misc import BadEventType, verify, verify_or_none
@@ -54,14 +54,14 @@ class InviteEvent:
 
     """
 
-    source: Dict = field()
+    source: dict = field()
     sender: str = field()
 
     @classmethod
     @verify_or_none(Schemas.invite_event)
     def parse_event(
-        cls, event_dict: Dict[Any, Any]
-    ) -> Optional[Union[InviteEvent, BadEventType]]:
+        cls, event_dict: dict[Any, Any]
+    ) -> InviteEvent | BadEventType | None:
         """Parse a Matrix invite event and create a higher level event object.
 
         This function parses the type of the Matrix event and produces a higher
@@ -126,9 +126,7 @@ class InviteMemberEvent(InviteEvent):
 
     @classmethod
     @verify(Schemas.room_membership)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[InviteMemberEvent, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> InviteMemberEvent | BadEventType:
         content = parsed_dict.pop("content")
         unsigned = parsed_dict.get("unsigned", {})
         prev_content = unsigned.get("prev_content", None)
@@ -162,9 +160,7 @@ class InviteAliasEvent(InviteEvent):
 
     @classmethod
     @verify(Schemas.room_canonical_alias)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[InviteAliasEvent, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> InviteAliasEvent | BadEventType:
         sender = parsed_dict["sender"]
         canonical_alias = parsed_dict["content"].get("alias")
 
@@ -190,9 +186,7 @@ class InviteNameEvent(InviteEvent):
 
     @classmethod
     @verify(Schemas.room_name)
-    def from_dict(
-        cls, parsed_dict: Dict[Any, Any]
-    ) -> Union[InviteNameEvent, BadEventType]:
+    def from_dict(cls, parsed_dict: dict[Any, Any]) -> InviteNameEvent | BadEventType:
         sender = parsed_dict["sender"]
         canonical_alias = parsed_dict["content"]["name"]
 
