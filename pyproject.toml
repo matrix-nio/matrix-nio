@@ -29,7 +29,7 @@ e2e = [
     "atomicwrites~=1.4",
     "cachetools~=5.3",
     "peewee~=3.14",
-    "python-olm~=3.2",
+    "vodozemac~=0.9",
 ]
 
 dev = [

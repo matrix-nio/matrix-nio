@@ -4,22 +4,27 @@ import os
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
+from shutil import copyfile
 
 import pytest
+import vodozemac
 from helpers import faker
-from olm import Account, OutboundGroupSession
 
+from nio._compat import package_installed
 from nio.crypto import (
     DeviceStore,
     GroupSessionStore,
     InboundGroupSession,
     Olm,
+    OlmAccount,
     OlmDevice,
+    OutboundGroupSession,
     OutboundSession,
     OutgoingKeyRequest,
     Session,
     SessionStore,
 )
+from nio.crypto.sessions import derive_pickle_key
 from nio.events import (
     DummyEvent,
     ForwardedRoomKeyEvent,
@@ -132,14 +137,16 @@ class TestClass:
     @ephemeral
     def test_new_account_creation(self):
         olm = self.ephemeral_olm
-        assert isinstance(olm.account, Account)
+        assert isinstance(olm.account, OlmAccount)
+        assert isinstance(olm.account._account, vodozemac.Account)
 
     def _load(self, user_id, device_id, pickle_key=""):
         return Olm(user_id, device_id, self._get_store(user_id, device_id, pickle_key))
 
     def test_account_loading(self):
         olm = self._load("example", "DEVICEID", PICKLE_KEY)
-        assert isinstance(olm.account, Account)
+        assert isinstance(olm.account, OlmAccount)
+        assert isinstance(olm.account._account, vodozemac.Account)
         assert (
             olm.account.identity_keys["curve25519"]
             == "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM"
@@ -149,13 +156,82 @@ class TestClass:
             == "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4"
         )
 
+    @pytest.mark.parametrize("version", ["v2", "v4"])
+    def test_account_pickle_upgrade_from_libolm(self, tempdir, version):
+        user_id = "example"
+        device_id = "DEVICEID"
+        version_name = f"libolm_account_pickle_{version}"
+
+        source = os.path.join(ephemeral_dir, f"{user_id}_{device_id}.{version_name}.db")
+        target = os.path.join(tempdir, f"{user_id}_{device_id}.db")
+        copyfile(source, target)
+
+        # libolm pickle format
+        store = DefaultStore(user_id, device_id, tempdir, PICKLE_KEY)
+        pickle_libolm = store._get_account().account
+
+        if version == "v2":
+            # unpickle via libolm
+            if not package_installed("olm"):
+                pytest.skip("requires olm")
+            import olm as libolm
+
+            account = libolm.Account.from_pickle(pickle_libolm, PICKLE_KEY)
+            assert isinstance(account, libolm.Account)
+
+        elif version == "v4":
+            # unpickle via vodozemac
+            account = vodozemac.Account.from_libolm_pickle(
+                pickle_libolm.decode(), PICKLE_KEY.encode()
+            )
+            assert isinstance(account, vodozemac.Account)
+
+        # load account with pickle upgrade
+        olm = Olm(user_id, device_id, store)
+        assert not olm.account.upgrade_pickle
+        assert (
+            olm.account.identity_keys["curve25519"]
+            == "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM"
+        )
+        assert (
+            olm.account.identity_keys["ed25519"]
+            == "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4"
+        )
+
+        # upgraded vodozemac pickle format
+        store = DefaultStore(user_id, device_id, tempdir, PICKLE_KEY)
+        pickle_vodozemac = store._get_account().account
+        assert pickle_vodozemac != pickle_libolm
+
+        account = vodozemac.Account.from_pickle(
+            pickle_vodozemac.decode(), derive_pickle_key(PICKLE_KEY)
+        )
+        assert isinstance(account, vodozemac.Account)
+
+        # load account with no pickle upgrade
+        olm = Olm(user_id, device_id, store)
+        assert not olm.account.upgrade_pickle
+        assert (
+            olm.account.identity_keys["curve25519"]
+            == "Xjuu9d2KjHLGIHpCOCHS7hONQahapiwI1MhVmlPlCFM"
+        )
+        assert (
+            olm.account.identity_keys["ed25519"]
+            == "FEfrmWlasr4tcMtbNX/BU5lbdjmpt3ptg8ApTD8YAh4"
+        )
+
+        # unchanged vodozemac pickle format
+        store = DefaultStore(user_id, device_id, tempdir, PICKLE_KEY)
+        pickle = store._get_account().account
+        assert pickle == pickle_vodozemac
+
     def test_fingerprint_store(self, monkeypatch):
         def mocksave(self):
             return
 
         monkeypatch.setattr(KeyStore, "_save", mocksave)
         store = KeyStore(os.path.join(ephemeral_dir, "ephemeral_devices"))
-        account = Account()
+        account = OlmAccount()
         device = OlmDevice("example", "DEVICEID", account.identity_keys)
         key = Key.from_olmdevice(device)
 
@@ -192,8 +268,8 @@ class TestClass:
         assert alice != bob
 
     def _create_session(self):
-        alice = Account()
-        bob = Account()
+        alice = OlmAccount()
+        bob = OlmAccount()
         bob.generate_one_time_keys(1)
         one_time = list(bob.one_time_keys["curve25519"].values())[0]
         id_key = bob.identity_keys["curve25519"]
@@ -240,7 +316,7 @@ class TestClass:
 
     @ephemeral
     def test_olm_outbound_session_create(self):
-        bob = Account()
+        bob = OlmAccount()
         bob.generate_one_time_keys(1)
         one_time = list(bob.one_time_keys["curve25519"].values())[0]
 
@@ -262,10 +338,125 @@ class TestClass:
         assert bob_session
         assert bob_session.id == "EeEiqT9LjCtECaN7WTqcBQ7D5Dwm4+/L9Uxr1IyPAts"
 
+    def test_olm_session_pickle_upgrade_from_libolm(self, tempdir):
+        user_id = "example"
+        device_id = "DEVICEID"
+        version_name = "libolm_session_pickle_v1"
+
+        source = os.path.join(ephemeral_dir, f"{user_id}_{device_id}.{version_name}.db")
+        target = os.path.join(tempdir, f"{user_id}_{device_id}.db")
+        copyfile(source, target)
+
+        # libolm pickle format
+        store = DefaultStore(user_id, device_id, tempdir, PICKLE_KEY)
+        pickles_libolm = set()
+        with store.database.bind_ctx(store.models):
+            # unpickle via vodozemac
+            for s in store._get_account().olm_sessions:
+                pickles_libolm.add(s.session)
+                session = vodozemac.Session.from_libolm_pickle(
+                    s.session.decode(), PICKLE_KEY.encode()
+                )
+                assert isinstance(session, vodozemac.Session)
+
+        # load account with pickle upgrade
+        olm = Olm(user_id, device_id, store)
+        bob_session = olm.session_store.get(
+            "+Qs131S/odNdWG6VJ8hiy9YZW0us24wnsDjYQbaxLk4"
+        )
+        assert bob_session
+        assert bob_session.id == "EeEiqT9LjCtECaN7WTqcBQ7D5Dwm4+/L9Uxr1IyPAts"
+        assert not bob_session.upgrade_pickle
+
+        # upgraded vodozemac pickle format
+        store = DefaultStore(user_id, device_id, tempdir, PICKLE_KEY)
+        pickles_vodozemac = set()
+        with store.database.bind_ctx(store.models):
+            # unpickle via vodozemac
+            for s in store._get_account().olm_sessions:
+                pickles_vodozemac.add(s.session)
+                session = vodozemac.Session.from_pickle(
+                    s.session.decode(), derive_pickle_key(PICKLE_KEY)
+                )
+                assert isinstance(session, vodozemac.Session)
+        assert not pickles_vodozemac.intersection(pickles_libolm)
+
+        # load account with no pickle upgrade
+        olm = Olm(user_id, device_id, store)
+        bob_session = olm.session_store.get(
+            "+Qs131S/odNdWG6VJ8hiy9YZW0us24wnsDjYQbaxLk4"
+        )
+        assert bob_session
+        assert bob_session.id == "EeEiqT9LjCtECaN7WTqcBQ7D5Dwm4+/L9Uxr1IyPAts"
+        assert not bob_session.upgrade_pickle
+
+        # unchanged upgraded vodozemac pickle format
+        store = DefaultStore(user_id, device_id, tempdir, PICKLE_KEY)
+        with store.database.bind_ctx(store.models):
+            pickles = {s.session for s in store._get_account().olm_sessions}
+        assert pickles == pickles_vodozemac
+
+    def test_inbound_group_session_pickle_upgrade_from_libolm(self, tempdir):
+        user_id = "@example:localhost"
+        device_id = "DEVICEID"
+        version_name = "libolm_inbound_group_session_pickle_v1"
+
+        sender_key = "N6XtYK/YQ0VD3equiUvrCCvCT5gBENB0+igXcb3KkRk"
+        session_id = "u1HJVAIqIhdVQ7RzJLRxfNBAsNlE2sIT34Xe3beabHk"
+
+        source = os.path.join(ephemeral_dir, f"{user_id}_{device_id}.{version_name}.db")
+        target = os.path.join(tempdir, f"{user_id}_{device_id}.db")
+        copyfile(source, target)
+
+        # libolm pickle format
+        store = DefaultStore(user_id, device_id, tempdir, PICKLE_KEY)
+        pickles_libolm = set()
+        with store.database.bind_ctx(store.models):
+            # unpickle via vodozemac
+            for s in store._get_account().inbound_group_sessions:
+                pickles_libolm.add(s.session)
+                session = vodozemac.InboundGroupSession.from_libolm_pickle(
+                    s.session.decode(), PICKLE_KEY.encode()
+                )
+                assert isinstance(session, vodozemac.InboundGroupSession)
+
+        # load account with pickle upgrade
+        olm = Olm(user_id, device_id, store)
+        session = olm.inbound_group_store.get("!test_room", sender_key, session_id)
+        assert session
+        assert session.id == session_id
+        assert not session.upgrade_pickle
+
+        # upgraded vodozemac pickle format
+        store = DefaultStore(user_id, device_id, tempdir, PICKLE_KEY)
+        pickles_vodozemac = set()
+        with store.database.bind_ctx(store.models):
+            # unpickle via vodozemac
+            for s in store._get_account().inbound_group_sessions:
+                pickles_vodozemac.add(s.session)
+                session = vodozemac.InboundGroupSession.from_pickle(
+                    s.session.decode(), derive_pickle_key(PICKLE_KEY)
+                )
+                assert isinstance(session, vodozemac.InboundGroupSession)
+        assert not pickles_vodozemac.intersection(pickles_libolm)
+
+        # load account with no pickle upgrade
+        olm = Olm(user_id, device_id, store)
+        session = olm.inbound_group_store.get("!test_room", sender_key, session_id)
+        assert session
+        assert session.id == session_id
+        assert not session.upgrade_pickle
+
+        # unchanged upgraded vodozemac pickle format
+        store = DefaultStore(user_id, device_id, tempdir, PICKLE_KEY)
+        with store.database.bind_ctx(store.models):
+            pickles = {s.session for s in store._get_account().inbound_group_sessions}
+        assert pickles == pickles_vodozemac
+
     @ephemeral
     def test_olm_group_session_store(self):
         olm = self.ephemeral_olm
-        bob_account = Account()
+        bob_account = OlmAccount()
         outbound_session = OutboundGroupSession()
         olm.create_group_session(
             bob_account.identity_keys["curve25519"],
@@ -679,13 +870,13 @@ class TestClass:
 
         assert "device_keys" in to_share
         assert "one_time_keys" in to_share
-        assert len(to_share["one_time_keys"]) == olm.account.max_one_time_keys // 2
+        assert len(to_share["one_time_keys"]) == olm.account.max_one_time_keys
 
         response = KeysUploadResponse.from_dict(
             {
                 "one_time_key_counts": {
                     "curve25519": 0,
-                    "signed_curve25519": olm.account.max_one_time_keys // 2,
+                    "signed_curve25519": olm.account.max_one_time_keys,
                 }
             }
         )

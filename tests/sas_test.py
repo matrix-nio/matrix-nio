@@ -127,8 +127,8 @@ class TestClass:
         accept_event = KeyVerificationAccept.from_dict(accept)
         alice.receive_accept_event(accept_event)
 
-        alice.set_their_pubkey(bob.pubkey)
-        bob.set_their_pubkey(alice.pubkey)
+        alice.establish_sas(bob.pubkey)
+        bob.establish_sas(alice.pubkey)
 
         assert alice.get_decimals() == bob.get_decimals()
 
@@ -182,51 +182,8 @@ class TestClass:
         with pytest.raises(LocalProtocolError):
             alice.accept_sas()
 
-        alice.set_their_pubkey(bob.pubkey)
-        bob.set_their_pubkey(alice.pubkey)
-
-        alice.state = SasState.key_received
-        bob.state = SasState.key_received
-        alice.chosen_mac_method = Sas._mac_normal
-        bob.chosen_mac_method = Sas._mac_normal
-
-        with pytest.raises(LocalProtocolError):
-            alice.get_mac()
-
-        alice.accept_sas()
-        alice_mac = {"sender": alice_id, "content": alice.get_mac().content}
-
-        mac_event = KeyVerificationMac.from_dict(alice_mac)
-        assert isinstance(mac_event, KeyVerificationMac)
-        assert not bob.verified
-
-        bob.receive_mac_event(mac_event)
-        assert bob.state == SasState.mac_received
-        assert not bob.verified
-
-        bob.accept_sas()
-        assert bob.verified
-
-    def test_sas_old_mac_method(self):
-        alice = Sas(
-            alice_id,
-            alice_device_id,
-            alice_keys["ed25519"],
-            bob_device,
-        )
-        start = {"sender": alice_id, "content": alice.start_verification().content}
-        start_event = KeyVerificationStart.from_dict(start)
-        start_event.message_authentication_codes.remove(Sas._mac_normal)
-
-        bob = Sas.from_key_verification_start(
-            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
-        )
-
-        with pytest.raises(LocalProtocolError):
-            alice.accept_sas()
-
-        alice.set_their_pubkey(bob.pubkey)
-        bob.set_their_pubkey(alice.pubkey)
+        alice.establish_sas(bob.pubkey)
+        bob.establish_sas(alice.pubkey)
 
         alice.state = SasState.key_received
         bob.state = SasState.key_received
@@ -311,8 +268,8 @@ class TestClass:
         with pytest.raises(LocalProtocolError):
             alice.reject_sas()
 
-        alice.set_their_pubkey(bob.pubkey)
-        bob.set_their_pubkey(alice.pubkey)
+        alice.establish_sas(bob.pubkey)
+        bob.establish_sas(alice.pubkey)
         alice.state = SasState.key_received
         bob.state = SasState.key_received
 
@@ -366,7 +323,7 @@ class TestClass:
             bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
 
-        alice.set_their_pubkey(bob.pubkey)
+        alice.establish_sas(bob.pubkey)
         alice.state = SasState.canceled
         bob.state = SasState.canceled
 
@@ -425,12 +382,12 @@ class TestClass:
         bob.receive_key_event(alice_key_event)
         assert bob.canceled
 
-        bob.set_their_pubkey(alice.pubkey)
+        bob.establish_sas(alice.pubkey)
         bob.state = SasState.key_received
         bob.chosen_mac_method = Sas._mac_normal
 
         alice.chosen_mac_method = Sas._mac_normal
-        alice.set_their_pubkey(bob.pubkey)
+        alice.establish_sas(bob.pubkey)
         alice.state = SasState.key_received
 
         bob.accept_sas()
@@ -455,7 +412,7 @@ class TestClass:
         bob = Sas.from_key_verification_start(
             bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
         )
-        bob.set_their_pubkey(alice.pubkey)
+        bob.establish_sas(alice.pubkey)
         bob.state = SasState.key_received
 
         bob.chosen_mac_method = Sas._mac_normal
@@ -485,8 +442,8 @@ class TestClass:
         with pytest.raises(LocalProtocolError):
             alice.accept_sas()
 
-        alice.set_their_pubkey(bob.pubkey)
-        bob.set_their_pubkey(alice.pubkey)
+        alice.establish_sas(bob.pubkey)
+        bob.establish_sas(alice.pubkey)
 
         alice.state = SasState.key_received
         bob.state = SasState.key_received
@@ -594,8 +551,8 @@ class TestClass:
         alice_key_event = KeyVerificationKey.from_dict(alice_key)
         bob_sas.receive_key_event(alice_key_event)
 
-        assert alice_sas.other_key_set
-        assert bob_sas.other_key_set
+        assert alice_sas.established_sas
+        assert bob_sas.established_sas
 
         bob_sas.accept_sas()
 
@@ -651,8 +608,8 @@ class TestClass:
         alice_key_event = KeyVerificationKey.from_dict(alice_key)
         bob_sas.receive_key_event(alice_key_event)
 
-        assert alice_sas.other_key_set
-        assert bob_sas.other_key_set
+        assert alice_sas.established_sas
+        assert bob_sas.established_sas
 
         bob_sas.accept_sas()
 
@@ -705,8 +662,8 @@ class TestClass:
 
         olm_machine.handle_key_verification(bob_key_event)
 
-        assert alice_sas.other_key_set
-        assert bob_sas.other_key_set
+        assert alice_sas.established_sas
+        assert bob_sas.established_sas
 
         bob_sas.accept_sas()
 
@@ -796,7 +753,7 @@ class TestClass:
         olm_machine.handle_key_verification(bob_key_event)
         alice_sas = olm_machine.key_verifications[start_event.transaction_id]
         assert alice_sas
-        assert not alice_sas.other_key_set
+        assert not alice_sas.established_sas
 
         assert bob_key_event.transaction_id not in olm_machine.key_verifications
 
@@ -892,7 +849,7 @@ class TestClass:
 
         assert alice_sas
         assert not alice_sas.canceled
-        assert alice_sas.other_key_set
+        assert alice_sas.established_sas
 
         olm_machine.handle_key_verification(bob_key_event)
         assert alice_sas.canceled
@@ -989,8 +946,8 @@ class TestClass:
         alice_key_event = KeyVerificationKey.from_dict(alice_key)
         bob_sas.receive_key_event(alice_key_event)
 
-        assert alice_sas.other_key_set
-        assert bob_sas.other_key_set
+        assert alice_sas.established_sas
+        assert bob_sas.established_sas
 
         assert alice_sas.get_emoji() == alice_sas.get_emoji()
 

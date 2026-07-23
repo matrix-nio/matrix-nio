@@ -15,7 +15,7 @@ isort:skip_file
 
 from .._compat import package_installed
 
-if package_installed("olm"):
+if package_installed("vodozemac"):
     from .log import logger
     from .file_trustdb import Ed25519Key, Key, KeyStore
     from .models import (

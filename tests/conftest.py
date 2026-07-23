@@ -10,10 +10,9 @@ from conftest_async import (  # noqa: F401
     async_client_pair_same_user,
     unauthed_async_client,
 )
-from olm import Account
 
 from nio import Client, ClientConfig, HttpClient
-from nio.crypto import Olm, OlmDevice
+from nio.crypto import Olm, OlmAccount, OlmDevice
 from nio.store import SqliteMemoryStore
 
 ALICE_ID = "@alice:example.org"
@@ -43,7 +42,7 @@ def client_no_e2e(tempdir):
 
 @pytest.fixture
 def olm_machine():
-    key_pair = Account().identity_keys
+    key_pair = OlmAccount().identity_keys
 
     bob_device = OlmDevice(BOB_DEVICE, BOB_DEVICE_ID, key_pair)
 

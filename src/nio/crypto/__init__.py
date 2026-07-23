@@ -20,7 +20,7 @@ from .async_attachments import (
 )
 from .attachments import decrypt_attachment, encrypt_attachment
 
-if package_installed("olm"):
+if package_installed("vodozemac"):
     from .sessions import (  # isort:skip
         InboundGroupSession,
         InboundSession,
