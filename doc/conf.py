@@ -28,7 +28,7 @@ author = "Damir Jelić, Paarth Shah"
 # The short X.Y version
 version = ""
 # The full version, including alpha/beta/rc tags
-release = "0.25.2"
+release = "0.26.0"
 
 
 # -- General configuration ---------------------------------------------------

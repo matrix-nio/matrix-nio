@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.26.0] - 2026-07-23
+
+### Breaking Changes
+- [[#555]] Replace `libolm`/`python-olm` with `vodozemac` for end-to-end encryption
+  - The `e2e` extra now depends on `vodozemac` instead of `python-olm`, and `libolm` is no longer required as a system dependency.
+  - Existing encryption stores are migrated automatically on load. Stores created with a `libolm` pickle version older than `4` (roughly, pre-December 2021) can only be migrated if the optional `python-olm >= 3.2.7` package is installed at upgrade time; without it, those pickles cannot be read.
+  - `hmac-sha256` is no longer offered as a SAS message authentication code; only `hkdf-hmac-sha256` is supported.
+  - `Account.remove_one_time_keys()` has been removed, as it is no longer supported by the underlying library.
+- [[#558]] Drop support for end-of-life `python3.8` and `python3.9`; the minimum supported version is now `python3.10`
+
+### Features
+- [[#540]] Add `unread_thread_notifications` to `SyncResponse`
+
+### Bug Fixes
+- [[#531]] Fix `get_openid_token`, the endpoint needs an empty JSON body
+- [[#542]] Fix print for `FileResponse` when download is saved to file
+
+### Miscellaneous Tasks
+- [[#558]] Adopt `uv` for project management, apply `pyupgrade` and linting, and bump dependencies
+- [[#556]] Unpin dependencies
+
+[#555]: https://github.com/matrix-nio/matrix-nio/pull/555
+[#558]: https://github.com/matrix-nio/matrix-nio/pull/558
+[#540]: https://github.com/matrix-nio/matrix-nio/pull/540
+[#531]: https://github.com/matrix-nio/matrix-nio/pull/531
+[#542]: https://github.com/matrix-nio/matrix-nio/pull/542
+[#556]: https://github.com/matrix-nio/matrix-nio/pull/556
+
 ## [0.25.2] - 2024-10-04
 
 ### Bug Fixes
