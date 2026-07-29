@@ -47,7 +47,7 @@ class ToDeviceMessage(EventBuilder):
 
 @dataclass
 class DummyMessage(ToDeviceMessage):
-    """A dummy to-device mssage that is sent to restart a Olm session."""
+    """A dummy to-device message that is sent to restart a Olm session."""
 
     pass
 
