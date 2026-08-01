@@ -27,5 +27,6 @@ Projects built with nio
 - `niobot <https://pypi.org/project/nio-bot>`_ - An extensive framework for building powerful Matrix bots with ease
 - `matrix-reminder-bot <https://github.com/anoadragon453/matrix-reminder-bot>`_ - A bot to remind you about stuff
 - `bartleby <https://github.com/gperdrizet/bartleby>`_ - A LLM chatbot and writing assistant using HuggingFace
+- `SpaceComet <https://codeberg.org/faithcd/SpaceComet>`_ - Discord-style moderation bot for migrating communities
 
 Are we missing a project? Submit a pull request and we'll get you added! Just edit ``doc/built-with-nio.rst``
