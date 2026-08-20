@@ -10,13 +10,14 @@
 # limitations under the License.
 from pathlib import Path
 
-from atomicwrites import atomic_write
 from Crypto import Random
 from Crypto.Cipher import AES
 from Crypto.Hash import HMAC, SHA256, SHA512
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Util import Counter
 from unpaddedbase64 import decode_base64, encode_base64
+
+from ..util import atomic_write
 
 HEADER = "-----BEGIN MEGOLM SESSION DATA-----"
 FOOTER = "-----END MEGOLM SESSION DATA-----"

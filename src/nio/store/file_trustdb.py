@@ -4,10 +4,9 @@ from collections.abc import Iterator
 from functools import wraps
 from typing import Any
 
-from atomicwrites import atomic_write
-
 from ..crypto import OlmDevice
 from ..exceptions import OlmTrustError
+from ..util import atomic_write
 from . import logger
 
 

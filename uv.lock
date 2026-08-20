@@ -262,12 +262,6 @@ wheels = [
 ]
 
 [[package]]
-name = "atomicwrites"
-version = "1.4.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/87/c6/53da25344e3e3a9c01095a89f16dbcda021c609ddb42dd6d7c0528236fb2/atomicwrites-1.4.1.tar.gz", hash = "sha256:81b2c9071a49367a7f770170e5eec8cb66567cfbbc8c73d20ce5ca4a8d71cf11", size = 14227, upload-time = "2022-07-08T18:31:40.459Z" }
-
-[[package]]
 name = "attrs"
 version = "26.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1092,7 +1086,6 @@ docs = [
     { name = "sphinx-rtd-theme" },
 ]
 e2e = [
-    { name = "atomicwrites" },
     { name = "cachetools" },
     { name = "peewee" },
     { name = "vodozemac" },
@@ -1121,7 +1114,6 @@ requires-dist = [
     { name = "aiofiles", specifier = ">=24.1" },
     { name = "aiohttp", specifier = ">=3.10" },
     { name = "aiohttp-socks", specifier = ">=0.8" },
-    { name = "atomicwrites", marker = "extra == 'e2e'", specifier = "~=1.4" },
     { name = "cachetools", marker = "extra == 'e2e'", specifier = ">=5.3" },
     { name = "h11", specifier = ">=0.14" },
     { name = "h2", specifier = ">=4.0" },

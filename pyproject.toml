@@ -34,7 +34,6 @@ dependencies = [
 
 [project.optional-dependencies]
 e2e = [
-    "atomicwrites~=1.4",
     "cachetools>=5.3",
     "peewee~=3.14",
     "vodozemac>=0.9.0.post2",
