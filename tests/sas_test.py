@@ -1,8 +1,11 @@
 from datetime import timedelta
+from hashlib import sha256
 
 import pytest
 from helpers import faker
+from unpaddedbase64 import decode_base64
 
+from nio.api import Api
 from nio.crypto import OlmDevice, Sas, SasState
 from nio.events import (
     KeyVerificationAccept,
@@ -131,6 +134,53 @@ class TestClass:
         bob.establish_sas(alice.pubkey)
 
         assert alice.get_decimals() == bob.get_decimals()
+
+    def test_accept_commitment_is_unpadded_base64(self):
+        """The commitment must be unpadded base64, not hex.
+
+        The specification defines `m.key.verification.accept`'s commitment as
+        "the hash (encoded as unpadded base64) of the concatenation of the
+        device's ephemeral public key (encoded as unpadded base64) and the
+        canonical JSON representation of the content object of the
+        m.key.verification.start message".
+
+        This is asserted separately from the nio-to-nio flows above because
+        those cannot see it: `from_key_verification_start` and
+        `_check_commitment` compute the commitment the same way, so any
+        encoding at all makes the two ends of the check agree with each other
+        while disagreeing with every other implementation. That is what
+        happened in 0.26.0, and no existing test could fail.
+
+        The assertions below therefore avoid `encode_base64` entirely and
+        check the property rather than the implementation: the length is the
+        43 characters an unpadded base64 SHA-256 digest occupies, hex would be
+        64, and decoding must reproduce the digest byte for byte.
+        """
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys["ed25519"],
+            bob_device,
+        )
+        start = {"sender": alice_id, "content": alice.start_verification().content}
+        start_event = KeyVerificationStart.from_dict(start)
+
+        bob = Sas.from_key_verification_start(
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
+        )
+
+        commitment = bob.accept_verification().content["commitment"]
+
+        expected = sha256(
+            bob.pubkey.encode()
+            + Api.to_canonical_json(start_event.source["content"]).encode()
+        ).digest()
+
+        assert len(commitment) == 43, (
+            f"a SHA-256 digest in unpadded base64 is 43 characters; got "
+            f"{len(commitment)} ({commitment!r}). 64 means hex."
+        )
+        assert decode_base64(commitment) == expected
 
     def test_sas_invalid_commitment(self):
         alice = Sas(
