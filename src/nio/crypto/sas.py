@@ -21,6 +21,7 @@ from itertools import zip_longest
 from uuid import uuid4
 
 import vodozemac
+from unpaddedbase64 import encode_base64
 
 from ..api import Api
 from ..event_builders import ToDeviceMessage
@@ -245,9 +246,9 @@ class Sas:
         obj.state = SasState.started
 
         string_content = Api.to_canonical_json(event.source["content"])
-        obj.commitment = sha256(
-            obj.pubkey.encode() + string_content.encode()
-        ).hexdigest()
+        obj.commitment = encode_base64(
+            sha256(obj.pubkey.encode() + string_content.encode()).digest()
+        )
         obj.key_agreement_protocols = event.key_agreement_protocols
 
         if (
@@ -350,10 +351,12 @@ class Sas:
 
     def _check_commitment(self, key: str):
         assert self.commitment
-        calculated_commitment = sha256(
-            key.encode()
-            + Api.to_canonical_json(self.start_verification().content).encode()
-        ).hexdigest()
+        calculated_commitment = encode_base64(
+            sha256(
+                key.encode()
+                + Api.to_canonical_json(self.start_verification().content).encode()
+            ).digest()
+        )
         return self.commitment == calculated_commitment
 
     def _grouper(self, iterable, n, fillvalue=None):
