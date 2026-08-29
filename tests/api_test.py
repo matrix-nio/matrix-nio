@@ -12,6 +12,7 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+import json
 
 from nio.api import MATRIX_API_PATH_V3, Api
 
@@ -76,3 +77,27 @@ class TestClass:
         resp = api.put_room_alias(token, room_alias, room_id)
 
         assert resp == ("PUT", expected_path, expected_data)
+
+    def test_change_password(self) -> None:
+        """Test that change_password returns the right request data."""
+        api = Api()
+        token = "abcd"
+        auth_dict = {
+            "type": "m.login.password",
+            "identifier": {"type": "m.id.user", "user": "testuser"},
+            "password": "currentpassword"
+        }
+        new_password = "newpassword"
+
+        expected_path = f"{MATRIX_API_PATH_V3}/account/password?access_token={token}"
+        resp = api.change_password(token, auth_dict, new_password)
+
+        assert resp[0] == "POST"
+        assert resp[1] == expected_path
+
+        data_dict = json.loads(resp[2])
+        expected_dict = {
+            "auth": auth_dict,
+            "new_password": new_password
+        }
+        assert data_dict == expected_dict

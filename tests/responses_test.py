@@ -5,6 +5,8 @@ from typing import Type
 import pytest
 
 from nio.responses import (
+    ChangePasswordError,
+    ChangePasswordResponse,
     DeleteDevicesAuthResponse,
     DevicesResponse,
     DiskDownloadResponse,
@@ -75,6 +77,21 @@ class TestClass:
         parsed_dict = _load_response("tests/data/logout_response.json")
         response = LogoutResponse.from_dict(parsed_dict)
         assert isinstance(response, LogoutResponse)
+
+    def test_change_password_parse(self):
+        parsed_dict = {}
+        response = ChangePasswordResponse.from_dict(parsed_dict)
+        assert isinstance(response, ChangePasswordResponse)
+
+    def test_change_password_failure_parse(self):
+        parsed_dict = {
+            "errcode": "M_FORBIDDEN",
+            "error": "Current password incorrect"
+        }
+        response = ChangePasswordResponse.from_dict(parsed_dict)
+        assert isinstance(response, ChangePasswordError)
+        assert response.status_code == "M_FORBIDDEN"
+        assert response.message == "Current password incorrect"
 
     def test_room_messages(self):
         parsed_dict = _load_response("tests/data/room_messages.json")

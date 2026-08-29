@@ -524,6 +524,40 @@ class Api:
         return "POST", Api._build_path(path, query_parameters)
 
     @staticmethod
+    def change_password(
+        access_token: str,
+        auth: Dict[str, Any],
+        new_password: str,
+    ) -> Tuple[str, str, str]:
+        """Change the password of the current user.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Example ``auth`` dict::
+
+            auth= {
+                "type": "m.login.password",
+                "identifier": {"type": "m.id.user", "user": "cheeky_monkey"},
+                "password": "ilovebananas"
+            }
+
+        :param access_token: The access token to be used with the request.
+        :param auth: The authentication dictionary containing the elements for user
+            identification and authentication. See the example or
+            https://matrix.org/docs/spec/client_server/r0.6.0#authentication-types.
+        :param new_password: The new password for the user.
+        """
+        query_parameters = {"access_token": access_token}
+        path = ["account", "password"]
+
+        content_dict = {
+            "auth": auth,
+            "new_password": new_password,
+        }
+
+        return "POST", Api._build_path(path, query_parameters), Api.to_json(content_dict)
+
+    @staticmethod
     def sync(
         access_token: str,
         since: str | None = None,
