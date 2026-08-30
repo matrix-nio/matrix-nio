@@ -17,10 +17,10 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from enum import Enum
 from hashlib import sha256
-from itertools import zip_longest
 from uuid import uuid4
 
 import vodozemac
+from unpaddedbase64 import encode_base64
 
 from ..api import Api
 from ..event_builders import ToDeviceMessage
@@ -79,8 +79,9 @@ class Sas:
     _key_agreement_v2 = "curve25519-hkdf-sha256"
     _key_agreeemnt_protocols = [_key_agreement_v1, _key_agreement_v2]
     _hash_v1 = "sha256"
-    _mac_normal = "hkdf-hmac-sha256"
-    _mac_v1 = [_mac_normal]
+    _mac_normal = "hkdf-hmac-sha256.v2"
+    _mac_old = "hkdf-hmac-sha256"
+    _mac_v1 = [_mac_normal, _mac_old]
     _strings_v1 = ["emoji", "decimal"]
 
     _user_cancel_error = ("m.user", "Canceled by user")
@@ -245,9 +246,9 @@ class Sas:
         obj.state = SasState.started
 
         string_content = Api.to_canonical_json(event.source["content"])
-        obj.commitment = sha256(
-            obj.pubkey.encode() + string_content.encode()
-        ).hexdigest()
+        obj.commitment = encode_base64(
+            sha256(obj.pubkey.encode() + string_content.encode()).digest()
+        )
         obj.key_agreement_protocols = event.key_agreement_protocols
 
         if (
@@ -257,7 +258,10 @@ class Sas:
                 and Sas._key_agreement_v2 not in event.key_agreement_protocols
             )
             or Sas._hash_v1 not in event.hashes
-            or (Sas._mac_normal not in event.message_authentication_codes)
+            or (
+                Sas._mac_normal not in event.message_authentication_codes
+                and Sas._mac_old not in event.message_authentication_codes
+            )
             or (
                 "emoji" not in event.short_authentication_string
                 and "decimal" not in event.short_authentication_string
@@ -350,17 +354,13 @@ class Sas:
 
     def _check_commitment(self, key: str):
         assert self.commitment
-        calculated_commitment = sha256(
-            key.encode()
-            + Api.to_canonical_json(self.start_verification().content).encode()
-        ).hexdigest()
+        calculated_commitment = encode_base64(
+            sha256(
+                key.encode()
+                + Api.to_canonical_json(self.start_verification().content).encode()
+            ).digest()
+        )
         return self.commitment == calculated_commitment
-
-    def _grouper(self, iterable, n, fillvalue=None):
-        """Collect data into fixed-length chunks or blocks."""
-        # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
-        args = [iter(iterable)] * n
-        return zip_longest(*args, fillvalue=fillvalue)
 
     @property
     def _extra_info_v1(self) -> str:
@@ -416,14 +416,10 @@ class Sas:
         return self._generate_decimals(self._extra_info)
 
     def _generate_emoji(self, extra_info: str) -> list[tuple[str, str]]:
-        """Create a list of emojies from our shared secret."""
+        """Create a list of emojis from our shared secret."""
         assert self.established_sas
-        generated_bytes = self.established_sas.bytes(extra_info).emoji_indices
-        number = "".join([format(x, "08b") for x in generated_bytes])
-        return [
-            self.emoji[int(x, 2)]
-            for x in map("".join, list(self._grouper(number[:42], 6)))
-        ]
+        indices = self.established_sas.bytes(extra_info).emoji_indices
+        return [self.emoji[i] for i in indices]
 
     def _generate_decimals(self, extra_info: str) -> tuple[int, ...]:
         """Create a decimal number from our shared secret."""
@@ -483,7 +479,10 @@ class Sas:
         if "decimal" in self.short_auth_string:
             sas_methods.append("decimal")
 
-        self.chosen_mac_method = self._mac_normal
+        if self._mac_normal in self.mac_methods:
+            self.chosen_mac_method = self._mac_normal
+        else:
+            self.chosen_mac_method = self._mac_old
 
         if Sas._key_agreement_v2 in self.key_agreement_protocols:
             self.chosen_key_agreement = Sas._key_agreement_v2
@@ -492,6 +491,7 @@ class Sas:
 
         content = {
             "transaction_id": self.transaction_id,
+            "method": self._sas_method_v1,
             "key_agreement_protocol": self.chosen_key_agreement,
             "hash": self._hash_v1,
             "message_authentication_code": self.chosen_mac_method,
@@ -544,7 +544,10 @@ class Sas:
         assert self.established_sas
         assert self.chosen_mac_method
 
-        calculate_mac = self.established_sas.calculate_mac
+        if self.chosen_mac_method == self._mac_normal:
+            calculate_mac = self.established_sas.calculate_mac
+        else:
+            calculate_mac = self.established_sas.calculate_mac_invalid_base64
 
         info = (
             "MATRIX_KEY_VERIFICATION_MAC"
@@ -699,7 +702,10 @@ class Sas:
         assert self.established_sas
         assert self.chosen_mac_method
 
-        calculate_mac = self.established_sas.calculate_mac
+        if self.chosen_mac_method == self._mac_normal:
+            calculate_mac = self.established_sas.calculate_mac
+        else:
+            calculate_mac = self.established_sas.calculate_mac_invalid_base64
 
         if event.keys != calculate_mac(key_ids, info + "KEY_IDS"):
             self.state = SasState.canceled
