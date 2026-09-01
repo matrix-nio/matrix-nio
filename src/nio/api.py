@@ -209,7 +209,7 @@ class Api:
                     else f"https://{url.netloc}"
                 ),
                 path=MATRIX_MEDIA_API_PATH,
-                server_name=url.hostname,
+                server_name=url.netloc,
                 mediaId=url.path,
             )
             return http_url
@@ -222,7 +222,7 @@ class Api:
                 else f"https://{url.netloc}"
             ),
             path=Api._build_path(
-                ["download", url.hostname, url.path.lstrip("/")],
+                ["download", url.netloc, url.path.lstrip("/")],
                 {"access_token": access_token},
                 base_path=MATRIX_MEDIA_API_PATH,
             ),
@@ -283,7 +283,7 @@ class Api:
         plumb_url = ("{homeserver}{_path}/download/{server_name}{mediaId}").format(
             homeserver=host or f"emxc://{url.netloc}",
             _path=_path,
-            server_name=url.hostname,
+            server_name=url.netloc,
             mediaId=url.path,
         )
 
