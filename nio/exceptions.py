@@ -70,3 +70,11 @@ class GroupEncryptionError(Exception):
 
 class TransferCancelledError(Exception):
     pass
+
+
+class StoreVersionError(Exception):
+    """Raised when an existing store's on-disk version is newer than the
+    version this version of nio knows how to read.
+    """
+
+    pass

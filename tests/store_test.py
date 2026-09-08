@@ -18,7 +18,7 @@ from nio.crypto import (
     OutgoingKeyRequest,
     TrustState,
 )
-from nio.exceptions import OlmTrustError
+from nio.exceptions import OlmTrustError, StoreVersionError
 from nio.store import (
     DefaultStore,
     Ed25519Key,
@@ -535,6 +535,14 @@ class TestClass:
         version = store._get_store_version()
 
         assert version == 2
+
+    def test_store_refuses_future_version(self, tempdir):
+        store = DefaultStore("ephemeral", "DEVICEID", tempdir)
+        store._update_version(store.store_version + 1)
+        del store
+
+        with pytest.raises(StoreVersionError):
+            DefaultStore("ephemeral", "DEVICEID", tempdir)
 
     def test_sqlitestore_verification(self, sqlstore):
         devices = self.example_devices

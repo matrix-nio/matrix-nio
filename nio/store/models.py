@@ -133,6 +133,7 @@ class Keys(Model):
         model=DeviceKeys,
         column_name="device_id",
         backref="keys",
+        on_delete="CASCADE",
     )
 
     class Meta:
@@ -146,6 +147,7 @@ class DeviceTrustState(Model):
         primary_key=True,
         backref="trust_state",
         column_name="device_id",
+        on_delete="CASCADE",
     )
 
 

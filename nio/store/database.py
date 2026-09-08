@@ -32,6 +32,7 @@ from ..crypto import (
     SessionStore,
     TrustState,
 )
+from ..exceptions import StoreVersionError
 from . import (
     Accounts,
     DeviceKeys,
@@ -117,7 +118,7 @@ class MatrixStore:
             },
         )
 
-    def upgrate_to_v2(self):
+    def upgrade_to_v2(self):
         with self.database.bind_ctx([DeviceKeys_v1]):
             self.database.drop_tables(
                 [
@@ -139,9 +140,17 @@ class MatrixStore:
 
         store_version = self._get_store_version()
 
+        if store_version > self.store_version:
+            raise StoreVersionError(
+                f"The store at {self.database_path} was created by a newer "
+                f"version of nio (store version {store_version}) than this "
+                f"one supports (store version {self.store_version}). "
+                "Refusing to open it to avoid corrupting or losing data."
+            )
+
         # Update the store if it's an old version here.
         if store_version == 1:
-            self.upgrate_to_v2()
+            self.upgrade_to_v2()
 
         with self.database.bind_ctx(self.models):
             self.database.create_tables(self.models)
