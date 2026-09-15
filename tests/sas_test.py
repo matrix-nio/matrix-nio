@@ -207,6 +207,49 @@ class TestClass:
         bob.accept_sas()
         assert bob.verified
 
+    def test_sas_mac_includes_master_key(self):
+        master_key = "M" * 43
+
+        alice = Sas(
+            alice_id,
+            alice_device_id,
+            alice_keys["ed25519"],
+            bob_device,
+        )
+        alice._master_key = master_key
+
+        start = {"sender": alice_id, "content": alice.start_verification().content}
+        start_event = KeyVerificationStart.from_dict(start)
+
+        bob = Sas.from_key_verification_start(
+            bob_id, bob_device_id, bob_keys["ed25519"], alice_device, start_event
+        )
+
+        alice.establish_sas(bob.pubkey)
+        alice.state = SasState.key_received
+        alice.chosen_mac_method = Sas._mac_normal
+
+        alice.accept_sas()
+        mac = alice.get_mac().content
+
+        info = (
+            f"MATRIX_KEY_VERIFICATION_MAC{alice_id}{alice_device_id}"
+            f"{bob_id}{bob_device_id}{alice.transaction_id}"
+        )
+        device_key_id = f"ed25519:{alice_device_id}"
+        master_key_id = f"ed25519:{master_key}"
+        calculate_mac = alice.established_sas.calculate_mac
+
+        assert mac["mac"][device_key_id] == calculate_mac(
+            alice_keys["ed25519"], info + device_key_id
+        )
+        assert mac["mac"][master_key_id] == calculate_mac(
+            master_key, info + master_key_id
+        )
+        assert mac["keys"] == calculate_mac(
+            ",".join(sorted(mac["mac"])), info + "KEY_IDS"
+        )
+
     def test_sas_cancellation(self):
         alice = Sas(
             alice_id,

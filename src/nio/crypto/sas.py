@@ -185,6 +185,7 @@ class Sas:
         self.own_user = own_user
         self.own_device = own_device
         self.own_fp_key = own_fp_key
+        self._master_key: str | None = None
 
         self.other_olm_device = other_olm_device
 
@@ -530,7 +531,11 @@ class Sas:
         return message
 
     def get_mac(self) -> ToDeviceMessage:
-        """Create a dictionary containing our MAC."""
+        """Create a dictionary containing our MAC.
+
+        If a cross-signing master key is set on this SAS object, its MAC is
+        included as well so the other side can trust it.
+        """
         if not self.sas_accepted:
             raise LocalProtocolError("SAS string wasn't yet accepted")
 
@@ -539,7 +544,7 @@ class Sas:
                 "SAS verification was canceled, can't " "generate MAC."
             )
 
-        key_id = f"ed25519:{self.own_device}"
+        device_key_id = f"ed25519:{self.own_device}"
 
         assert self.established_sas
         assert self.chosen_mac_method
@@ -552,11 +557,19 @@ class Sas:
             f"{self.other_olm_device.user_id}{self.other_olm_device.id}{self.transaction_id}"
         )
 
-        mac = {key_id: calculate_mac(self.own_fp_key, info + key_id)}
+        mac = {device_key_id: calculate_mac(self.own_fp_key, info + device_key_id)}
+
+        if self._master_key is not None:
+            master_key_id = f"ed25519:{self._master_key}"
+            mac[master_key_id] = calculate_mac(
+                self._master_key, info + master_key_id
+            )
+
+        key_ids = ",".join(sorted(mac))
 
         content = {
             "mac": mac,
-            "keys": calculate_mac(key_id, info + "KEY_IDS"),
+            "keys": calculate_mac(key_ids, info + "KEY_IDS"),
             "transaction_id": self.transaction_id,
         }
 
