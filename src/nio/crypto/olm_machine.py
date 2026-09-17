@@ -80,6 +80,15 @@ from . import (
     SessionStore,
     logger,
 )
+from .cross_signing import (
+    MASTER_KEY_USAGE,
+    SELF_SIGNING_KEY_USAGE,
+    USER_SIGNING_KEY_USAGE,
+    CrossSigningKey,
+    CrossSigningPrivateKeys,
+    UserIdentity,
+    verify_signed_json,
+)
 from .key_export import decrypt_and_read, encrypt_and_save
 from .sas import Sas
 
@@ -143,6 +152,14 @@ class Olm:
 
         # A store holding all the Olm devices of differing users we know about.
         self.device_store = DeviceStore()
+
+        # The cross-signing identities of the users we know about, a mapping
+        # from a user id to the public cross-signing keys of the user.
+        self.user_identities: dict[str, UserIdentity] = {}
+
+        # The private cross-signing keys of our own user, empty until they
+        # are imported from secret storage or freshly generated.
+        self.cross_signing_private_keys = CrossSigningPrivateKeys()
 
         # A store holding all our 1on1 Olm sessions. These sessions are used to
         # exchange encrypted messages between two devices (e.g. encryption keys
@@ -286,6 +303,26 @@ class Olm:
 
         return True
 
+    def own_device_keys(self) -> dict[str, Any]:
+        """Get the device keys object of our own device, signed by the device."""
+        device_keys: dict[str, Any] = {
+            "algorithms": self._algorithms,
+            "device_id": self.device_id,
+            "user_id": self.user_id,
+            "keys": {
+                "curve25519:"
+                + self.device_id: self.account.identity_keys["curve25519"],
+                "ed25519:" + self.device_id: self.account.identity_keys["ed25519"],
+            },
+        }
+
+        signature = self.sign_json(device_keys)
+
+        device_keys["signatures"] = {
+            self.user_id: {"ed25519:" + self.device_id: signature}
+        }
+        return device_keys
+
     def share_keys(self) -> dict[str, Any]:
         def generate_one_time_keys(current_key_count: int) -> None:
             key_count = self.account.max_one_time_keys - current_key_count
@@ -296,25 +333,6 @@ class Olm:
                 )
 
             self.account.generate_one_time_keys(key_count)
-
-        def device_keys():
-            device_keys = {
-                "algorithms": self._algorithms,
-                "device_id": self.device_id,
-                "user_id": self.user_id,
-                "keys": {
-                    "curve25519:"
-                    + self.device_id: self.account.identity_keys["curve25519"],
-                    "ed25519:" + self.device_id: self.account.identity_keys["ed25519"],
-                },
-            }
-
-            signature = self.sign_json(device_keys)
-
-            device_keys["signatures"] = {
-                self.user_id: {"ed25519:" + self.device_id: signature}
-            }
-            return device_keys
 
         def one_time_keys():
             one_time_key_dict = {}
@@ -339,7 +357,7 @@ class Olm:
         # We're sharing our account for the first time, upload the identity
         # keys and one-time keys as well.
         if not self.account.shared:
-            content["device_keys"] = device_keys()
+            content["device_keys"] = self.own_device_keys()
             generate_one_time_keys(0)
             content["one_time_keys"] = one_time_keys()
 
@@ -695,9 +713,162 @@ class Olm:
                         "Olm session."
                     )
 
+    def _parse_cross_signing_key(
+        self,
+        user_id: str,
+        usage: str,
+        key_dict: dict[str, Any] | None,
+        master_key: CrossSigningKey | None = None,
+    ) -> CrossSigningKey | None:
+        """Parse a cross-signing key of a key query response.
+
+        Returns the key if it is well formed and, for the self-signing and
+        user-signing keys, signed by the given master key.
+        """
+        if not key_dict:
+            return None
+
+        try:
+            key = CrossSigningKey.from_dict(key_dict)
+        except (KeyError, ValueError) as e:
+            logger.warning(f"Invalid {usage} key for user {user_id}: {e}.")
+            return None
+
+        if key.user_id != user_id or usage not in key.usage:
+            logger.warning(f"Mismatch in {usage} key payload of user {user_id}.")
+            return None
+
+        if master_key and not key.is_signed_by(
+            user_id, master_key.key_id, master_key.public_key
+        ):
+            logger.warning(
+                f"Signature verification failed for the {usage} key of user "
+                f"{user_id}."
+            )
+            return None
+
+        return key
+
+    def _handle_cross_signing_keys(self, response: KeysQueryResponse) -> None:
+        for user_id, master_dict in response.master_keys.items():
+            master_key = self._parse_cross_signing_key(
+                user_id, MASTER_KEY_USAGE, master_dict
+            )
+
+            if not master_key:
+                continue
+
+            self_signing_key = self._parse_cross_signing_key(
+                user_id,
+                SELF_SIGNING_KEY_USAGE,
+                response.self_signing_keys.get(user_id),
+                master_key,
+            )
+
+            # The user-signing key is only ever returned for our own user.
+            user_signing_key = None
+            if user_id == self.user_id:
+                user_signing_key = self._parse_cross_signing_key(
+                    user_id,
+                    USER_SIGNING_KEY_USAGE,
+                    response.user_signing_keys.get(user_id),
+                    master_key,
+                )
+
+            identity = UserIdentity(
+                user_id, master_key, self_signing_key, user_signing_key
+            )
+            previous = self.user_identities.get(user_id)
+
+            if previous == identity:
+                continue
+
+            if previous and previous.master_key.public_key != master_key.public_key:
+                logger.warning(f"Master key has changed for user {user_id}.")
+                response.changed_identities[user_id] = identity
+
+                if user_id == self.user_id and self.cross_signing_private_keys:
+                    logger.warning(
+                        "Discarding the stored private cross-signing keys, "
+                        "they don't belong to the new master key."
+                    )
+                    self.cross_signing_private_keys = CrossSigningPrivateKeys()
+                    self.store.save_cross_signing_private_keys(
+                        self.cross_signing_private_keys
+                    )
+            else:
+                logger.info(f"Updating the cross-signing identity of user {user_id}")
+
+            self.user_identities[user_id] = identity
+            self.store.save_user_identity(identity)
+
+    def is_device_payload_cross_signed(
+        self, user_id: str, payload: dict[str, Any]
+    ) -> bool:
+        """Check if a device keys object is signed by the owner's self-signing key.
+
+        Args:
+            user_id (str): The owner of the device.
+            payload (Dict): The device keys object as returned by the
+                ``/keys/query`` endpoint.
+        """
+        identity = self.user_identities.get(user_id)
+
+        if not identity or not identity.self_signing_key:
+            return False
+
+        key = identity.self_signing_key
+        return verify_signed_json(payload, user_id, key.key_id, key.public_key)
+
+    def is_user_verified(self, user_id: str) -> bool:
+        """Check if the cross-signing identity of a user is trusted.
+
+        Our own identity is trusted if we hold the private master key that
+        matches the published one. Another user's identity is trusted if
+        their master key is signed by our user-signing key and our own
+        identity is trusted.
+
+        Note that this doesn't affect which devices receive room keys, that
+        is still decided by the manual ``TrustState`` of a device. A device
+        can be considered trusted if its user is verified and the device is
+        ``cross_signed``.
+
+        Args:
+            user_id (str): The user for which the trust should be checked.
+        """
+        identity = self.user_identities.get(user_id)
+
+        if not identity:
+            return False
+
+        if user_id == self.user_id:
+            # Holding only the self-signing key doesn't prove that the
+            # published master key is ours, anyone could have signed our
+            # self-signing key with a fresh master key.
+            master_public_key = self.cross_signing_private_keys.public_key(
+                MASTER_KEY_USAGE
+            )
+            return master_public_key == identity.master_key.public_key
+
+        own_identity = self.user_identities.get(self.user_id)
+
+        if (
+            not own_identity
+            or not own_identity.user_signing_key
+            or not self.is_user_verified(self.user_id)
+        ):
+            return False
+
+        user_signing_key = own_identity.user_signing_key
+        return identity.master_key.is_signed_by(
+            self.user_id, user_signing_key.key_id, user_signing_key.public_key
+        )
+
     # This function is copyrighted under the Apache 2.0 license Zil0
     def _handle_key_query(self, response: KeysQueryResponse) -> None:
         changed: defaultdict[str, dict[str, OlmDevice]] = defaultdict(dict)
+
+        self._handle_cross_signing_keys(response)
 
         for user_id, device_dict in response.device_keys.items():
             try:
@@ -746,6 +917,8 @@ class Olm:
                     )
                     continue
 
+                cross_signed = self.is_device_payload_cross_signed(user_id, payload)
+
                 user_devices = self.device_store[user_id]
 
                 try:
@@ -761,6 +934,7 @@ class Olm:
                             device_id,
                             {"ed25519": signing_key, "curve25519": curve_key},
                             display_name=display_name,
+                            cross_signed=cross_signed,
                         )
                     )
                 else:
@@ -774,6 +948,7 @@ class Olm:
                     if (
                         device.curve25519 == curve_key
                         and device.display_name == display_name
+                        and device.cross_signed == cross_signed
                     ):
                         continue
 
@@ -788,6 +963,13 @@ class Olm:
                         device.display_name = display_name
                         logger.info(
                             "Updating display name in the device "
+                            f"store for user {user_id} with device id {device_id}"
+                        )
+
+                    if device.cross_signed != cross_signed:
+                        device.cross_signed = cross_signed
+                        logger.info(
+                            "Updating cross-signing state in the device "
                             f"store for user {user_id} with device id {device_id}"
                         )
 
@@ -1815,6 +1997,8 @@ class Olm:
         self.inbound_group_store = self.store.load_inbound_group_sessions()
         self.device_store = self.store.load_device_keys()
         self.outgoing_key_requests = self.store.load_outgoing_key_requests()
+        self.user_identities = self.store.load_user_identities()
+        self.cross_signing_private_keys = self.store.load_cross_signing_private_keys()
 
     def save_session(self, curve_key: str, session: Session) -> None:
         self.store.save_session(curve_key, session)
@@ -1847,34 +2031,7 @@ class Olm:
         Returns:
             True if the verification was successful, False if not.
         """
-        try:
-            signatures = json.pop("signatures")
-        except (KeyError, ValueError):
-            return False
-
-        key_id = f"ed25519:{device_id}"
-        try:
-            signature_base64 = signatures[user_id][key_id]
-        except KeyError:
-            json["signatures"] = signatures
-            return False
-
-        unsigned = json.pop("unsigned", None)
-
-        try:
-            user_key = vodozemac.Ed25519PublicKey.from_base64(user_key)
-            signature = vodozemac.Ed25519Signature.from_base64(signature_base64)
-            message = Api.to_canonical_json(json).encode()
-            user_key.verify_signature(message, signature)
-            success = True
-        except vodozemac.SignatureException:
-            success = False
-
-        json["signatures"] = signatures
-        if unsigned:
-            json["unsigned"] = unsigned
-
-        return success
+        return verify_signed_json(json, user_id, f"ed25519:{device_id}", user_key)
 
     def mark_keys_as_published(self) -> None:
         self.account.mark_keys_as_published()

@@ -29,6 +29,7 @@ if package_installed("vodozemac"):
         OutboundSession,
         Session,
     )
+    from .cross_signing import CrossSigningKey, CrossSigningPrivateKeys, UserIdentity
     from .device import DeviceStore, OlmDevice, TrustState
     from .key_request import OutgoingKeyRequest
     from .log import logger

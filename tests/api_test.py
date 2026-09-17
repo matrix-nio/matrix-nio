@@ -13,6 +13,8 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+import json
+
 from nio.api import MATRIX_API_PATH_V3, Api
 
 
@@ -76,3 +78,58 @@ class TestClass:
         resp = api.put_room_alias(token, room_alias, room_id)
 
         assert resp == ("PUT", expected_path, expected_data)
+
+    def test_get_account_data(self) -> None:
+        api = Api()
+        token = "SECRET_TOKEN"
+
+        expected = (
+            f"{MATRIX_API_PATH_V3}/user/%40bob%3Aexample.com/account_data/"
+            f"m.secret_storage.default_key?access_token={token}"
+        )
+        resp = api.get_account_data(
+            token, "@bob:example.com", "m.secret_storage.default_key"
+        )
+
+        assert resp == ("GET", expected)
+
+    def test_keys_device_signing_upload(self) -> None:
+        api = Api()
+        token = "SECRET_TOKEN"
+        master_key = {"user_id": "@bob:example.com", "usage": ["master"], "keys": {}}
+        auth = {"type": "m.login.password", "session": "xyz"}
+
+        expected_path = (
+            f"{MATRIX_API_PATH_V3}/keys/device_signing/upload?access_token={token}"
+        )
+        method, path, data = api.keys_device_signing_upload(
+            token, master_key=master_key
+        )
+        assert (method, path) == ("POST", expected_path)
+        assert json.loads(data) == {"master_key": master_key}
+
+        method, path, data = api.keys_device_signing_upload(
+            token,
+            master_key=master_key,
+            self_signing_key=master_key,
+            user_signing_key=master_key,
+            auth_dict=auth,
+        )
+        assert json.loads(data) == {
+            "master_key": master_key,
+            "self_signing_key": master_key,
+            "user_signing_key": master_key,
+            "auth": auth,
+        }
+
+    def test_keys_signatures_upload(self) -> None:
+        api = Api()
+        token = "SECRET_TOKEN"
+        signatures = {"@bob:example.com": {"DEVICEID": {"signatures": {}}}}
+
+        expected_path = (
+            f"{MATRIX_API_PATH_V3}/keys/signatures/upload?access_token={token}"
+        )
+        method, path, data = api.keys_signatures_upload(token, signatures)
+        assert (method, path) == ("POST", expected_path)
+        assert json.loads(data) == signatures

@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 from dataclasses import dataclass, field
@@ -21,6 +22,8 @@ from peewee import DoesNotExist, SqliteDatabase
 from playhouse.sqliteq import SqliteQueueDatabase
 
 from ..crypto import (
+    CrossSigningKey,
+    CrossSigningPrivateKeys,
     DeviceStore,
     GroupSessionStore,
     InboundGroupSession,
@@ -30,9 +33,14 @@ from ..crypto import (
     Session,
     SessionStore,
     TrustState,
+    UserIdentity,
 )
+from ..crypto.sessions import derive_pickle_key
+from ..crypto.ssss import decrypt_secret, encrypt_secret
 from . import (
     Accounts,
+    CrossSigningKeys,
+    CrossSigningSeeds,
     DeviceKeys,
     DeviceKeys_v1,
     DeviceTrustState,
@@ -96,8 +104,10 @@ class MatrixStore:
         StoreVersion,
         Keys,
         SyncTokens,
+        CrossSigningKeys,
+        CrossSigningSeeds,
     ]
-    store_version = 2
+    store_version = 3
 
     user_id: str = field()
     device_id: str = field()
@@ -130,6 +140,19 @@ class MatrixStore:
             self.database.create_tables([DeviceKeys, DeviceTrustState])
         self._update_version(2)
 
+    def upgrade_to_v3(self):
+        # The column already exists if the device keys table was recreated
+        # by the v2 upgrade.
+        columns = [c.name for c in self.database.get_columns("devicekeys")]
+
+        if "cross_signed" not in columns:
+            self.database.execute_sql(
+                "ALTER TABLE devicekeys "
+                "ADD COLUMN cross_signed INTEGER NOT NULL DEFAULT 0"
+            )
+
+        self._update_version(3)
+
     def __post_init__(self):
         self.database_name = self.database_name or f"{self.user_id}_{self.device_id}.db"
         self.database_path = os.path.join(self.store_path, self.database_name)
@@ -141,6 +164,10 @@ class MatrixStore:
         # Update the store if it's an old version here.
         if store_version == 1:
             self.upgrade_to_v2()
+            store_version = 2
+
+        if store_version == 2:
+            self.upgrade_to_v3()
 
         with self.database.bind_ctx(self.models):
             self.database.create_tables(self.models)
@@ -341,6 +368,7 @@ class MatrixStore:
                     {k.key_type: k.key for k in d.keys},
                     display_name=d.display_name,
                     deleted=d.deleted,
+                    cross_signed=d.cross_signed,
                 )
             )
 
@@ -368,6 +396,7 @@ class MatrixStore:
                         "device_id": device_id,
                         "display_name": device.display_name,
                         "deleted": device.deleted,
+                        "cross_signed": device.cross_signed,
                     }
                 )
 
@@ -387,10 +416,130 @@ class MatrixStore:
                 )
 
                 d.deleted = device.deleted
+                d.cross_signed = device.cross_signed
                 d.save()
 
                 for key_type, key in device.keys.items():
                     Keys.replace(key_type=key_type, key=key, device=d).execute()
+
+    @use_database
+    def load_user_identities(self) -> dict[str, UserIdentity]:
+        """Load the cross-signing identities of all known users.
+
+        Returns a dictionary mapping user ids to their ``UserIdentity``.
+        """
+        account = self._get_account()
+
+        if not account:
+            return {}
+
+        keys: dict[str, dict[str, CrossSigningKey]] = {}
+
+        for k in account.cross_signing_keys:
+            keys.setdefault(k.user_id, {})[k.usage] = CrossSigningKey.from_dict(
+                json.loads(k.key)
+            )
+
+        identities = {}
+
+        for user_id, user_keys in keys.items():
+            if "master" not in user_keys:
+                continue
+
+            identities[user_id] = UserIdentity(
+                user_id,
+                user_keys["master"],
+                user_keys.get("self_signing"),
+                user_keys.get("user_signing"),
+            )
+
+        return identities
+
+    @use_database_atomic
+    def save_user_identity(self, identity: UserIdentity) -> None:
+        """Save the cross-signing identity of a user.
+
+        Args:
+            identity (UserIdentity): The identity that should be saved, keys
+                that are missing from the identity are removed from the
+                store.
+        """
+        account = self._get_account()
+        assert account
+
+        CrossSigningKeys.delete().where(
+            (CrossSigningKeys.account == account)
+            & (CrossSigningKeys.user_id == identity.user_id)
+        ).execute()
+
+        for usage, key in (
+            ("master", identity.master_key),
+            ("self_signing", identity.self_signing_key),
+            ("user_signing", identity.user_signing_key),
+        ):
+            if not key:
+                continue
+
+            CrossSigningKeys.create(
+                account=account,
+                user_id=identity.user_id,
+                usage=usage,
+                key=json.dumps(key.as_dict()),
+            )
+
+    @use_database
+    def load_cross_signing_private_keys(self) -> CrossSigningPrivateKeys:
+        """Load our own private cross-signing keys.
+
+        Raises:
+            ValueError if the stored keys can't be decrypted with the pickle
+                key.
+        """
+        keys = CrossSigningPrivateKeys()
+        account = self._get_account()
+
+        if not account:
+            return keys
+
+        pickle_key = derive_pickle_key(self.pickle_key)
+
+        for seed in account.cross_signing_seeds:
+            encrypted = {
+                "iv": seed.iv,
+                "ciphertext": seed.ciphertext,
+                "mac": seed.mac,
+            }
+            setattr(keys, seed.usage, decrypt_secret(pickle_key, seed.usage, encrypted))
+
+        return keys
+
+    @use_database_atomic
+    def save_cross_signing_private_keys(self, keys: CrossSigningPrivateKeys) -> None:
+        """Save our own private cross-signing keys.
+
+        The key seeds are encrypted with the pickle key before they are
+        stored.
+
+        Args:
+            keys (CrossSigningPrivateKeys): The keys that should be saved,
+                keys that are missing are removed from the store.
+        """
+        account = self._get_account()
+        assert account
+
+        pickle_key = derive_pickle_key(self.pickle_key)
+
+        CrossSigningSeeds.delete().where(CrossSigningSeeds.account == account).execute()
+
+        for usage in ("master", "self_signing", "user_signing"):
+            seed = keys.seed(usage)
+
+            if not seed:
+                continue
+
+            CrossSigningSeeds.create(
+                account=account, usage=usage, **encrypt_secret(pickle_key, usage, seed)
+            )
 
     @use_database
     def load_encrypted_rooms(self):
@@ -730,6 +879,7 @@ class DefaultStore(MatrixStore):
                 {k.key_type: k.key for k in d.keys},
                 display_name=d.display_name,
                 deleted=d.deleted,
+                cross_signed=d.cross_signed,
             )
 
             trust_state = TrustState.unset
@@ -995,6 +1145,7 @@ class SqliteStore(MatrixStore):
                     {k.key_type: k.key for k in d.keys},
                     display_name=d.display_name,
                     deleted=d.deleted,
+                    cross_signed=d.cross_signed,
                     trust_state=trust_state,
                 )
             )

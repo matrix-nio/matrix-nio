@@ -28,7 +28,7 @@ dependencies = [
     "h2>=4.0",
     "jsonschema>=4.14",
     "unpaddedbase64>=2.1",
-    "pycryptodome>=3.10",
+    "pycryptodome>=3.15",
     "aiohttp-socks>=0.8",
 ]
 

@@ -57,6 +57,8 @@ class OlmDevice:
         deleted (bool): A boolean signaling if this device has been deleted by
             its owner.
         trust_state (TrustState): The trust state of this device.
+        cross_signed (bool): A boolean signaling if the device keys are
+            signed by the owner's self-signing cross-signing key.
 
     """
 
@@ -66,6 +68,7 @@ class OlmDevice:
     display_name: str = ""
     deleted: bool = False
     trust_state: TrustState = TrustState.unset
+    cross_signed: bool = False
 
     @property
     def id(self) -> str:

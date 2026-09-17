@@ -112,6 +112,7 @@ class DeviceKeys(Model):
     user_id = TextField()
     display_name = TextField(default="")
     deleted = BooleanField()
+    cross_signed = BooleanField(default=False)
     account = ForeignKeyField(
         model=Accounts,
         column_name="account_id",
@@ -144,6 +145,37 @@ class DeviceTrustState(Model):
         backref="trust_state",
         column_name="device_id",
     )
+
+
+class CrossSigningKeys(Model):
+    user_id = TextField()
+    usage = TextField()
+    key = TextField()
+    account = ForeignKeyField(
+        model=Accounts,
+        column_name="account_id",
+        backref="cross_signing_keys",
+        on_delete="CASCADE",
+    )
+
+    class Meta:
+        constraints = [SQL("UNIQUE(account_id,user_id,usage)")]
+
+
+class CrossSigningSeeds(Model):
+    usage = TextField()
+    iv = TextField()
+    ciphertext = TextField()
+    mac = TextField()
+    account = ForeignKeyField(
+        model=Accounts,
+        column_name="account_id",
+        backref="cross_signing_seeds",
+        on_delete="CASCADE",
+    )
+
+    class Meta:
+        constraints = [SQL("UNIQUE(account_id,usage)")]
 
 
 class MegolmInboundSessions(Model):

@@ -1,11 +1,14 @@
 import copy
 import os
 from collections import defaultdict
+from shutil import copyfile
 
 import pytest
 from helpers import ephemeral, ephemeral_dir, faker
 
 from nio.crypto import (
+    CrossSigningKey,
+    CrossSigningPrivateKeys,
     InboundGroupSession,
     OlmAccount,
     OlmDevice,
@@ -13,9 +16,11 @@ from nio.crypto import (
     OutboundSession,
     OutgoingKeyRequest,
     TrustState,
+    UserIdentity,
 )
 from nio.exceptions import OlmTrustError
 from nio.store import (
+    CrossSigningKeys,
     DefaultStore,
     Ed25519Key,
     Key,
@@ -33,6 +38,7 @@ BOB_ONETIME = "6QlQw3mGUveS735k/JDaviuoaih5eEi6S1J65iHjfgU"
 TEST_ROOM = "!test:example.org"
 TEST_ROOM_2 = "!test2:example.org"
 TEST_FORWARDING_CHAIN = [BOB_CURVE, BOB_ONETIME]
+PICKLE_KEY = "DEFAULT_KEY"
 
 
 @pytest.fixture
@@ -530,7 +536,7 @@ class TestClass:
     def test_store_versioning(self, store):
         version = store._get_store_version()
 
-        assert version == 2
+        assert version == 3
 
     def test_sqlitestore_verification(self, sqlstore):
         devices = self.example_devices
@@ -725,3 +731,120 @@ class TestClass:
         sqlstore.save_sync_token(token)
         loaded_token = sqlstore.load_sync_token()
         assert token == loaded_token
+
+    @pytest.mark.parametrize("store_class", [DefaultStore, SqliteStore])
+    def test_db_upgrade_v2_to_v3(self, tempdir, store_class):
+        source = os.path.join(ephemeral_dir, "example_DEVICEID.db")
+        copyfile(source, os.path.join(tempdir, "example_DEVICEID.db"))
+
+        store = store_class("example", "DEVICEID", tempdir, PICKLE_KEY)
+        assert store._get_store_version() == 3
+
+        columns = [c.name for c in store.database.get_columns("devicekeys")]
+        assert "cross_signed" in columns
+        assert store.load_account()
+        assert store.load_user_identities() == {}
+        assert not store.load_cross_signing_private_keys()
+
+        devices = self.example_devices
+        store.save_device_keys(devices)
+        device_store = store.load_device_keys()
+        assert not any(device.cross_signed for device in device_store)
+
+        # Reopening doesn't run the upgrade again.
+        store = store_class("example", "DEVICEID", tempdir, PICKLE_KEY)
+        assert store._get_store_version() == 3
+
+    def test_db_upgrade_v1_to_v3(self, store):
+        store._update_version(1)
+
+        store = DefaultStore(store.user_id, store.device_id, store.store_path)
+        assert store._get_store_version() == 3
+
+        columns = [c.name for c in store.database.get_columns("devicekeys")]
+        assert columns.count("cross_signed") == 1
+
+    @pytest.mark.parametrize("store_class", [DefaultStore, SqliteStore])
+    def test_cross_signed_device_loading(self, tempdir, store_class):
+        store = store_class("ephemeral", "DEVICEID", tempdir)
+        store.save_account(OlmAccount())
+
+        devices = self.example_devices
+        bob_device = devices[BOB_ID][BOB_DEVICE]
+        bob_device.cross_signed = True
+        store.save_device_keys(devices)
+
+        store2 = store_class(store.user_id, store.device_id, store.store_path)
+        loaded_devices = store2.load_device_keys()
+        assert loaded_devices[BOB_ID][BOB_DEVICE].cross_signed
+        assert sum(device.cross_signed for device in loaded_devices) == 1
+
+        bob_device.cross_signed = False
+        store.save_device_keys(devices)
+        assert not store2.load_device_keys()[BOB_ID][BOB_DEVICE].cross_signed
+
+    def test_cross_signing_loading_without_account(self, matrix_store):
+        assert matrix_store.load_user_identities() == {}
+        assert not matrix_store.load_cross_signing_private_keys()
+
+    def test_user_identity_loading_without_master_key(self, sqlmemorystore):
+        store = sqlmemorystore
+        master = CrossSigningKey(BOB_ID, ["master"], "master_key")
+        store.save_user_identity(UserIdentity(BOB_ID, master))
+
+        with store.database.bind_ctx([CrossSigningKeys]):
+            CrossSigningKeys.delete().execute()
+
+        assert store.load_user_identities() == {}
+
+    def test_user_identity_saving(self, sqlmemorystore):
+        store = sqlmemorystore
+        master = CrossSigningKey(BOB_ID, ["master"], "master_key")
+        self_signing = CrossSigningKey(
+            BOB_ID,
+            ["self_signing"],
+            "self_signing_key",
+            {BOB_ID: {"ed25519:master_key": "signature"}},
+        )
+        identity = UserIdentity(BOB_ID, master, self_signing)
+
+        store.save_user_identity(identity)
+        assert store.load_user_identities() == {BOB_ID: identity}
+
+        identity = UserIdentity(BOB_ID, master)
+        store.save_user_identity(identity)
+        assert store.load_user_identities() == {BOB_ID: identity}
+
+        # The key object is stored as is, so signatures over it keep verifying.
+        master = CrossSigningKey(BOB_ID, ["master", "extra"], "master_key")
+        identity = UserIdentity(BOB_ID, master)
+        store.save_user_identity(identity)
+        assert store.load_user_identities() == {BOB_ID: identity}
+
+        alice_master = CrossSigningKey("@alice:example.org", ["master"], "alice")
+        alice = UserIdentity("@alice:example.org", alice_master)
+        store.save_user_identity(alice)
+        assert store.load_user_identities() == {
+            BOB_ID: identity,
+            "@alice:example.org": alice,
+        }
+
+    @pytest.mark.parametrize("pickle_key", ["", "secret"])
+    def test_cross_signing_private_keys_saving(self, tempdir, pickle_key):
+        store = SqliteStore("ephemeral", "DEVICEID", tempdir, pickle_key)
+        store.save_account(OlmAccount())
+        assert not store.load_cross_signing_private_keys()
+
+        keys = CrossSigningPrivateKeys.generate()
+        store.save_cross_signing_private_keys(keys)
+
+        store2 = SqliteStore("ephemeral", "DEVICEID", tempdir, pickle_key)
+        assert store2.load_cross_signing_private_keys() == keys
+
+        keys = CrossSigningPrivateKeys(self_signing=keys.self_signing)
+        store.save_cross_signing_private_keys(keys)
+        assert store2.load_cross_signing_private_keys() == keys
+
+        wrong_key_store = SqliteStore("ephemeral", "DEVICEID", tempdir, "wrong")
+        with pytest.raises(ValueError, match="MAC check failed"):
+            wrong_key_store.load_cross_signing_private_keys()

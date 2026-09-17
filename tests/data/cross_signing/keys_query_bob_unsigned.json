@@ -1,0 +1,62 @@
+{
+  "device_keys": {
+    "@bob:example.org": {
+      "QWERTZUIOP": {
+        "algorithms": [
+          "m.olm.v1.curve25519-aes-sha2",
+          "m.megolm.v1.aes-sha2"
+        ],
+        "device_id": "QWERTZUIOP",
+        "keys": {
+          "curve25519:QWERTZUIOP": "zZJc7fFaRunkOffjp7H+L+0i6XQQ+G4d6g6soXw9cww",
+          "ed25519:QWERTZUIOP": "YkK1vZ0EYw5KiWeA4iQT1dJjfsHmIuSd12jEITkoc7o"
+        },
+        "signatures": {
+          "@bob:example.org": {
+            "ed25519:QWERTZUIOP": "F3cIyaLgPiikhTQbhY0N1pkV1h31lfQOJwwGM9XBK6MvRnu47t0wuPVZxCjlQWPSWXTZrbMaF1UkCHZ/ey2XBw"
+          }
+        },
+        "unsigned": {
+          "device_display_name": "Bob's laptop"
+        },
+        "user_id": "@bob:example.org"
+      }
+    }
+  },
+  "failures": {},
+  "master_keys": {
+    "@bob:example.org": {
+      "keys": {
+        "ed25519:zzEV4/hV8ByKnsQvl7/ii3H1nmwA1oqSKokinGWtylY": "zzEV4/hV8ByKnsQvl7/ii3H1nmwA1oqSKokinGWtylY"
+      },
+      "signatures": {
+        "@alice:example.org": {
+          "ed25519:cX4mdBiW+c8iLFpBlRKjBrVGVCJil/JvQC+xbrIzmJI": "rq67mKg8KYYnRdBi7+kyHLH+m+Xz82tDFfowf6CbneC/bjCD/DD4cpt+i81SQrcjhK+6BZi3fomI3N5P3Q5XDA"
+        },
+        "@bob:example.org": {
+          "ed25519:QWERTZUIOP": "5TMYhwxBKmFu3w13FulUAM55sC3Uxe6HCVYNF7HceJWwj9MHj1xRnwskcOPw1k5B6VqsRfynb8VZPvZG3y/RAw"
+        }
+      },
+      "usage": [
+        "master"
+      ],
+      "user_id": "@bob:example.org"
+    }
+  },
+  "self_signing_keys": {
+    "@bob:example.org": {
+      "keys": {
+        "ed25519:fAN7xzL6a+4qH7OC1VyqPcYZv58yzcUCda0v7mUlbMQ": "fAN7xzL6a+4qH7OC1VyqPcYZv58yzcUCda0v7mUlbMQ"
+      },
+      "signatures": {
+        "@bob:example.org": {
+          "ed25519:zzEV4/hV8ByKnsQvl7/ii3H1nmwA1oqSKokinGWtylY": "SS+pFRbuoJFAArf5ZQ/rcqrBH2sP+EK21pIEMiU6w18Q5uE/a8s6NWBnVlnUmKtC1KvDakXlk72gsvnw47Y6Cg"
+        }
+      },
+      "usage": [
+        "self_signing"
+      ],
+      "user_id": "@bob:example.org"
+    }
+  }
+}

@@ -1128,7 +1128,7 @@ requires-dist = [
     { name = "jsonschema", specifier = ">=4.14" },
     { name = "matrix-nio", extras = ["dev"], marker = "extra == 'docs'" },
     { name = "peewee", marker = "extra == 'e2e'", specifier = "~=3.14" },
-    { name = "pycryptodome", specifier = ">=3.10" },
+    { name = "pycryptodome", specifier = ">=3.15" },
     { name = "setuptools", marker = "extra == 'docs'", specifier = ">=61.0" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.4" },
     { name = "sphinx-autodoc-typehints", marker = "extra == 'docs'", specifier = "~=2.1" },

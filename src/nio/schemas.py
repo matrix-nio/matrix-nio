@@ -1327,6 +1327,13 @@ class Schemas:
         "required": ["one_time_key_counts"],
     }
 
+    # Malformed cross-signing keys are skipped per key when the response is
+    # handled, so a single bad key doesn't invalidate the whole response.
+    cross_signing_keys = {
+        "type": "object",
+        "patternProperties": {UserIdRegex: {"type": "object"}},
+    }
+
     keys_query = {
         "type": "object",
         "properties": {
@@ -1370,8 +1377,16 @@ class Schemas:
                 },
             },
             "failures": {"type": "object"},
+            "master_keys": cross_signing_keys,
+            "self_signing_keys": cross_signing_keys,
+            "user_signing_keys": cross_signing_keys,
         },
         "required": ["device_keys"],
+    }
+
+    keys_signatures_upload = {
+        "type": "object",
+        "properties": {"failures": {"type": "object"}},
     }
 
     keys_claim = {
@@ -1444,7 +1459,7 @@ class Schemas:
         "required": ["devices"],
     }
 
-    delete_devices = {
+    uiaa = {
         "type": "object",
         "properties": {
             "session": {"type": "string"},
@@ -1467,9 +1482,11 @@ class Schemas:
                     }
                 },
             },
-            "required": ["session", "flows", "params"],
         },
+        "required": ["flows"],
     }
+
+    delete_devices = uiaa
 
     joined_members = {
         "type": "object",

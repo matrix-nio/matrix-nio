@@ -11,11 +11,19 @@ from nio.responses import (
     DownloadError,
     DownloadResponse,
     ErrorResponse,
+    GetAccountDataError,
+    GetAccountDataResponse,
     JoinedMembersError,
     JoinedMembersResponse,
     JoinResponse,
     KeysClaimResponse,
+    KeysDeviceSigningUploadAuthResponse,
+    KeysDeviceSigningUploadError,
+    KeysDeviceSigningUploadResponse,
+    KeysQueryError,
     KeysQueryResponse,
+    KeysSignaturesUploadError,
+    KeysSignaturesUploadResponse,
     KeysUploadResponse,
     LoginError,
     LoginInfoResponse,
@@ -90,6 +98,97 @@ class TestClass:
         parsed_dict = _load_response("tests/data/keys_query.json")
         response = KeysQueryResponse.from_dict(parsed_dict)
         assert isinstance(response, KeysQueryResponse)
+        assert response.master_keys == {}
+        assert response.self_signing_keys == {}
+        assert response.user_signing_keys == {}
+
+    def test_keys_query_cross_signing(self):
+        parsed_dict = _load_response(
+            "tests/data/cross_signing/keys_query_cross_signing.json"
+        )
+        response = KeysQueryResponse.from_dict(parsed_dict)
+        assert isinstance(response, KeysQueryResponse)
+        assert set(response.master_keys) == {"@alice:example.org", "@bob:example.org"}
+        assert set(response.self_signing_keys) == set(response.master_keys)
+        assert set(response.user_signing_keys) == {"@alice:example.org"}
+        assert response.master_keys["@bob:example.org"]["usage"] == ["master"]
+
+    def test_keys_query_invalid_cross_signing_key(self):
+        parsed_dict = _load_response(
+            "tests/data/cross_signing/keys_query_cross_signing.json"
+        )
+        # A malformed key is skipped when the response is handled, it doesn't
+        # invalidate the whole response.
+        del parsed_dict["master_keys"]["@bob:example.org"]["keys"]
+        response = KeysQueryResponse.from_dict(parsed_dict)
+        assert isinstance(response, KeysQueryResponse)
+
+        parsed_dict["master_keys"]["@bob:example.org"] = "invalid"
+        response = KeysQueryResponse.from_dict(parsed_dict)
+        assert isinstance(response, KeysQueryError)
+
+    def test_keys_device_signing_upload(self):
+        response = KeysDeviceSigningUploadResponse.from_dict({})
+        assert isinstance(response, KeysDeviceSigningUploadResponse)
+
+        response = KeysDeviceSigningUploadResponse.from_dict(
+            {"errcode": "M_FORBIDDEN", "error": "Key ID in use"}
+        )
+        assert isinstance(response, KeysDeviceSigningUploadError)
+
+    def test_keys_device_signing_upload_auth(self):
+        parsed_dict = _load_response("tests/data/cross_signing/uiaa_401.json")
+        response = KeysDeviceSigningUploadAuthResponse.from_dict(parsed_dict)
+        assert isinstance(response, KeysDeviceSigningUploadAuthResponse)
+        assert response.session == "xxxxxxyz"
+        assert response.flows == [{"stages": ["m.login.password"]}]
+
+        # Only the flows are required by the spec.
+        response = KeysDeviceSigningUploadAuthResponse.from_dict({"flows": []})
+        assert isinstance(response, KeysDeviceSigningUploadAuthResponse)
+        assert response.session is None
+        assert response.params == {}
+
+        response = KeysDeviceSigningUploadAuthResponse.from_dict({"session": "x"})
+        assert isinstance(response, KeysDeviceSigningUploadError)
+
+    def test_keys_signatures_upload(self):
+        response = KeysSignaturesUploadResponse.from_dict({})
+        assert isinstance(response, KeysSignaturesUploadResponse)
+        assert response.failures == {}
+
+        failures = {
+            "@alice:example.org": {
+                "DEVICEID": {"errcode": "M_INVALID_SIGNATURE", "error": "Invalid"}
+            }
+        }
+        response = KeysSignaturesUploadResponse.from_dict({"failures": failures})
+        assert isinstance(response, KeysSignaturesUploadResponse)
+        assert response.failures == failures
+
+        response = KeysSignaturesUploadResponse.from_dict(
+            {"errcode": "M_FORBIDDEN", "error": "Forbidden"}
+        )
+        assert isinstance(response, KeysSignaturesUploadError)
+
+        response = KeysSignaturesUploadResponse.from_dict({"failures": "invalid"})
+        assert isinstance(response, KeysSignaturesUploadError)
+
+    def test_get_account_data(self):
+        parsed_dict = _load_response("tests/data/cross_signing/default_key.json")
+        response = GetAccountDataResponse.from_dict(
+            parsed_dict, "m.secret_storage.default_key"
+        )
+        assert isinstance(response, GetAccountDataResponse)
+        assert response.event_type == "m.secret_storage.default_key"
+        assert response.content == {"key": "nio_test_key"}
+
+        response = GetAccountDataResponse.from_dict(
+            {"errcode": "M_NOT_FOUND", "error": "Not found"},
+            "m.secret_storage.default_key",
+        )
+        assert isinstance(response, GetAccountDataError)
+        assert response.status_code == "M_NOT_FOUND"
 
     def test_keys_claim(self):
         parsed_dict = _load_response("tests/data/keys_claim.json")

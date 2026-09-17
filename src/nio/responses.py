@@ -63,6 +63,8 @@ __all__ = [
     "EnablePushRuleResponse",
     "EnablePushRuleError",
     "ErrorResponse",
+    "GetAccountDataError",
+    "GetAccountDataResponse",
     "GetOpenIDTokenError",
     "GetOpenIDTokenResponse",
     "InviteInfo",
@@ -74,8 +76,13 @@ __all__ = [
     "JoinedRoomsError",
     "KeysClaimResponse",
     "KeysClaimError",
+    "KeysDeviceSigningUploadAuthResponse",
+    "KeysDeviceSigningUploadResponse",
+    "KeysDeviceSigningUploadError",
     "KeysQueryResponse",
     "KeysQueryError",
+    "KeysSignaturesUploadResponse",
+    "KeysSignaturesUploadError",
     "KeysUploadResponse",
     "KeysUploadError",
     "RegisterResponse",
@@ -585,6 +592,18 @@ class KeysQueryError(ErrorResponse):
 
 
 class KeysClaimError(_ErrorWithRoomId):
+    pass
+
+
+class KeysDeviceSigningUploadError(ErrorResponse):
+    pass
+
+
+class KeysSignaturesUploadError(ErrorResponse):
+    pass
+
+
+class GetAccountDataError(ErrorResponse):
     pass
 
 
@@ -1389,7 +1408,7 @@ class RoomReadMarkersResponse(_EmptyResponseWithRoomId):
 
 @dataclass
 class DeleteDevicesAuthResponse(Response):
-    session: str = field()
+    session: str | None = field()
     flows: dict = field()
     params: dict = field()
 
@@ -1399,7 +1418,11 @@ class DeleteDevicesAuthResponse(Response):
         cls,
         parsed_dict: dict[Any, Any],
     ) -> DeleteDevicesAuthResponse | ErrorResponse:
-        return cls(parsed_dict["session"], parsed_dict["flows"], parsed_dict["params"])
+        return cls(
+            parsed_dict.get("session"),
+            parsed_dict["flows"],
+            parsed_dict.get("params", {}),
+        )
 
 
 class DeleteDevicesResponse(EmptyResponse):
@@ -1527,9 +1550,35 @@ class KeysUploadResponse(Response):
 
 @dataclass
 class KeysQueryResponse(Response):
+    """A response to a key query.
+
+    Attributes:
+        device_keys (Dict): The device keys, a map from user id to a map from
+            device id to the device keys object.
+        failures (Dict): The servers that could not be reached.
+        master_keys (Dict): The master cross-signing keys, a map from user
+            id to the key object.
+        self_signing_keys (Dict): The self-signing cross-signing keys.
+        user_signing_keys (Dict): The user-signing cross-signing key of our
+            own user.
+        changed (Dict): The devices that were added, changed or deleted by
+            this response, filled in by the client.
+        changed_identities (Dict): The users whose master cross-signing key
+            has changed compared to the one we knew before, mapped to their
+            new ``UserIdentity``, filled in by the client. Such a user should
+            be verified again.
+    """
+
     device_keys: dict = field()
     failures: dict = field()
+    master_keys: dict = field(default_factory=dict)
+    self_signing_keys: dict = field(default_factory=dict)
+    user_signing_keys: dict = field(default_factory=dict)
     changed: dict[str, dict[str, Any]] = field(
+        init=False,
+        default_factory=dict,
+    )
+    changed_identities: dict[str, Any] = field(
         init=False,
         default_factory=dict,
     )
@@ -1542,7 +1591,13 @@ class KeysQueryResponse(Response):
         device_keys = parsed_dict["device_keys"]
         failures = parsed_dict.get("failures", {})
 
-        return cls(device_keys, failures)
+        return cls(
+            device_keys,
+            failures,
+            parsed_dict.get("master_keys", {}),
+            parsed_dict.get("self_signing_keys", {}),
+            parsed_dict.get("user_signing_keys", {}),
+        )
 
 
 @dataclass
@@ -1562,6 +1617,86 @@ class KeysClaimResponse(Response):
         failures = parsed_dict.get("failures", {})
 
         return cls(one_time_keys, failures, room_id)
+
+
+@dataclass
+class KeysDeviceSigningUploadAuthResponse(Response):
+    """A response requesting user-interactive authentication for a cross-signing key upload.
+
+    Attributes:
+        session (str): The session id of the user-interactive authentication.
+        flows (List): The authentication flows the server supports.
+        params (Dict): Additional parameters for the authentication stages.
+    """
+
+    session: str | None = field()
+    flows: list = field()
+    params: dict = field()
+
+    @classmethod
+    @verify(Schemas.uiaa, KeysDeviceSigningUploadError)
+    def from_dict(
+        cls,
+        parsed_dict: dict[Any, Any],
+    ) -> KeysDeviceSigningUploadAuthResponse | ErrorResponse:
+        return cls(
+            parsed_dict.get("session"),
+            parsed_dict["flows"],
+            parsed_dict.get("params", {}),
+        )
+
+
+class KeysDeviceSigningUploadResponse(EmptyResponse):
+    @staticmethod
+    def create_error(parsed_dict):
+        return KeysDeviceSigningUploadError.from_dict(parsed_dict)
+
+
+@dataclass
+class KeysSignaturesUploadResponse(Response):
+    """A response for a successful cross-signing signature upload.
+
+    Attributes:
+        failures (Dict): A map from user id to a map from device id or
+            cross-signing public key to an error object, holding the
+            signatures that the server rejected.
+    """
+
+    failures: dict[str, Any] = field()
+
+    @classmethod
+    @verify(Schemas.keys_signatures_upload, KeysSignaturesUploadError)
+    def from_dict(
+        cls, parsed_dict: dict[Any, Any]
+    ) -> KeysSignaturesUploadResponse | ErrorResponse:
+        if parsed_dict.get("errcode") is not None:
+            return KeysSignaturesUploadError.from_dict(parsed_dict)
+
+        return cls(parsed_dict.get("failures", {}))
+
+
+@dataclass
+class GetAccountDataResponse(Response):
+    """A response for a successful account data request.
+
+    Attributes:
+        event_type (str): The type of the account data event.
+        content (Dict): The content of the account data event.
+    """
+
+    event_type: str = field()
+    content: dict[str, Any] = field()
+
+    @classmethod
+    def from_dict(
+        cls, parsed_dict: dict[Any, Any], event_type: str
+    ) -> GetAccountDataResponse | ErrorResponse:
+        # The content is free-form, so an error can only be told apart by its
+        # errcode.
+        if parsed_dict.get("errcode") is not None:
+            return GetAccountDataError.from_dict(parsed_dict)
+
+        return cls(event_type, parsed_dict)
 
 
 @dataclass

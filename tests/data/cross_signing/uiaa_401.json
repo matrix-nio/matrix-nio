@@ -1,0 +1,11 @@
+{
+  "flows": [
+    {
+      "stages": [
+        "m.login.password"
+      ]
+    }
+  ],
+  "params": {},
+  "session": "xxxxxxyz"
+}

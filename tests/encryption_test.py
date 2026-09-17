@@ -143,8 +143,15 @@ class TestClass:
     def _load(self, user_id, device_id, pickle_key=""):
         return Olm(user_id, device_id, self._get_store(user_id, device_id, pickle_key))
 
-    def test_account_loading(self):
-        olm = self._load("example", "DEVICEID", PICKLE_KEY)
+    def _load_example(self, tempdir):
+        # Copy the store first, opening it upgrades the store version.
+        source = os.path.join(ephemeral_dir, "example_DEVICEID.db")
+        copyfile(source, os.path.join(tempdir, "example_DEVICEID.db"))
+        store = DefaultStore("example", "DEVICEID", tempdir, PICKLE_KEY)
+        return Olm("example", "DEVICEID", store)
+
+    def test_account_loading(self, tempdir):
+        olm = self._load_example(tempdir)
         assert isinstance(olm.account, OlmAccount)
         assert isinstance(olm.account._account, vodozemac.Account)
         assert (
@@ -329,8 +336,8 @@ class TestClass:
             olm.session_store.get(bob.identity_keys["curve25519"]), OutboundSession
         )
 
-    def test_olm_session_load(self):
-        olm = self._load("example", "DEVICEID", PICKLE_KEY)
+    def test_olm_session_load(self, tempdir):
+        olm = self._load_example(tempdir)
 
         bob_session = olm.session_store.get(
             "+Qs131S/odNdWG6VJ8hiy9YZW0us24wnsDjYQbaxLk4"

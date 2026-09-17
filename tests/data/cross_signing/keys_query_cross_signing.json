@@ -1,0 +1,130 @@
+{
+  "device_keys": {
+    "@alice:example.org": {
+      "JLAFKJWSCS": {
+        "algorithms": [
+          "m.olm.v1.curve25519-aes-sha2",
+          "m.megolm.v1.aes-sha2"
+        ],
+        "device_id": "JLAFKJWSCS",
+        "keys": {
+          "curve25519:JLAFKJWSCS": "SowZYg9kPUaQicRxPgvU25v7wGXu8F5jV15Vfl1hfMg",
+          "ed25519:JLAFKJWSCS": "y78BR2PKT9CGsSQuL0hIFDl/JYbcSSt0e1XfIE9/kFI"
+        },
+        "signatures": {
+          "@alice:example.org": {
+            "ed25519:JLAFKJWSCS": "4NTMphP8RXbOW6eDmhdy4+Kxt/tPPxNpxUi3LBIsxJQvfCmc4ZIT0TRQ5Hpj/8S+KMLQOdiKZFdNbv1ef1g+AQ",
+            "ed25519:p/4lYebofQJ0QXkYcAlXp7faHKMySqUPPqpi0LgI21o": "1+H5Hhw4FVWZMronTsEReme46cWYrFa4tH5vqKRrOy5OddM0SMJjSWwSVzJTHU73pJT+FFFV5QOMoLpez4FMDA"
+          }
+        },
+        "unsigned": {
+          "device_display_name": "Alice's phone"
+        },
+        "user_id": "@alice:example.org"
+      }
+    },
+    "@bob:example.org": {
+      "QWERTZUIOP": {
+        "algorithms": [
+          "m.olm.v1.curve25519-aes-sha2",
+          "m.megolm.v1.aes-sha2"
+        ],
+        "device_id": "QWERTZUIOP",
+        "keys": {
+          "curve25519:QWERTZUIOP": "zZJc7fFaRunkOffjp7H+L+0i6XQQ+G4d6g6soXw9cww",
+          "ed25519:QWERTZUIOP": "YkK1vZ0EYw5KiWeA4iQT1dJjfsHmIuSd12jEITkoc7o"
+        },
+        "signatures": {
+          "@bob:example.org": {
+            "ed25519:QWERTZUIOP": "F3cIyaLgPiikhTQbhY0N1pkV1h31lfQOJwwGM9XBK6MvRnu47t0wuPVZxCjlQWPSWXTZrbMaF1UkCHZ/ey2XBw",
+            "ed25519:fAN7xzL6a+4qH7OC1VyqPcYZv58yzcUCda0v7mUlbMQ": "96AqGdyJnswso7P0UxzZzYY5ZyK3RFPWlIR6VCf2f7YP+u0DPksHe51bXZn/gEwXl8ydD6OHXtN/mHQvBkKDAQ"
+          }
+        },
+        "unsigned": {
+          "device_display_name": "Bob's laptop"
+        },
+        "user_id": "@bob:example.org"
+      }
+    }
+  },
+  "failures": {},
+  "master_keys": {
+    "@alice:example.org": {
+      "keys": {
+        "ed25519:049WtREIi22XEGZnwXQz0RGDoTNGMhkI9Px8PMVExUA": "049WtREIi22XEGZnwXQz0RGDoTNGMhkI9Px8PMVExUA"
+      },
+      "signatures": {
+        "@alice:example.org": {
+          "ed25519:JLAFKJWSCS": "Hcv+ETxQcdW1T0+QiG4rgn6qkI3/P491W0zwIJY01Dsv0Yc/KTXpqfuCaqNspMK0k+bnno1/+Ez4tH2kGzXyAQ"
+        }
+      },
+      "usage": [
+        "master"
+      ],
+      "user_id": "@alice:example.org"
+    },
+    "@bob:example.org": {
+      "keys": {
+        "ed25519:zzEV4/hV8ByKnsQvl7/ii3H1nmwA1oqSKokinGWtylY": "zzEV4/hV8ByKnsQvl7/ii3H1nmwA1oqSKokinGWtylY"
+      },
+      "signatures": {
+        "@alice:example.org": {
+          "ed25519:cX4mdBiW+c8iLFpBlRKjBrVGVCJil/JvQC+xbrIzmJI": "rq67mKg8KYYnRdBi7+kyHLH+m+Xz82tDFfowf6CbneC/bjCD/DD4cpt+i81SQrcjhK+6BZi3fomI3N5P3Q5XDA"
+        },
+        "@bob:example.org": {
+          "ed25519:QWERTZUIOP": "5TMYhwxBKmFu3w13FulUAM55sC3Uxe6HCVYNF7HceJWwj9MHj1xRnwskcOPw1k5B6VqsRfynb8VZPvZG3y/RAw"
+        }
+      },
+      "usage": [
+        "master"
+      ],
+      "user_id": "@bob:example.org"
+    }
+  },
+  "self_signing_keys": {
+    "@alice:example.org": {
+      "keys": {
+        "ed25519:p/4lYebofQJ0QXkYcAlXp7faHKMySqUPPqpi0LgI21o": "p/4lYebofQJ0QXkYcAlXp7faHKMySqUPPqpi0LgI21o"
+      },
+      "signatures": {
+        "@alice:example.org": {
+          "ed25519:049WtREIi22XEGZnwXQz0RGDoTNGMhkI9Px8PMVExUA": "WzuFSeh/jE0PDD5627WIohb/fEhGC7id3+MsOsILtaZFQaFdxcgARjBkz8lF9rU/eazND7VHmZK5oUJrL5LhDw"
+        }
+      },
+      "usage": [
+        "self_signing"
+      ],
+      "user_id": "@alice:example.org"
+    },
+    "@bob:example.org": {
+      "keys": {
+        "ed25519:fAN7xzL6a+4qH7OC1VyqPcYZv58yzcUCda0v7mUlbMQ": "fAN7xzL6a+4qH7OC1VyqPcYZv58yzcUCda0v7mUlbMQ"
+      },
+      "signatures": {
+        "@bob:example.org": {
+          "ed25519:zzEV4/hV8ByKnsQvl7/ii3H1nmwA1oqSKokinGWtylY": "SS+pFRbuoJFAArf5ZQ/rcqrBH2sP+EK21pIEMiU6w18Q5uE/a8s6NWBnVlnUmKtC1KvDakXlk72gsvnw47Y6Cg"
+        }
+      },
+      "usage": [
+        "self_signing"
+      ],
+      "user_id": "@bob:example.org"
+    }
+  },
+  "user_signing_keys": {
+    "@alice:example.org": {
+      "keys": {
+        "ed25519:cX4mdBiW+c8iLFpBlRKjBrVGVCJil/JvQC+xbrIzmJI": "cX4mdBiW+c8iLFpBlRKjBrVGVCJil/JvQC+xbrIzmJI"
+      },
+      "signatures": {
+        "@alice:example.org": {
+          "ed25519:049WtREIi22XEGZnwXQz0RGDoTNGMhkI9Px8PMVExUA": "1D7sGnZNEPpXXfCjq751L57yc/9nYMzofiW8alGOrZFt0Hoys9D8Cvk9akm6zi9uJbDtv70CtlfyPP0fpTQGAQ"
+        }
+      },
+      "usage": [
+        "user_signing"
+      ],
+      "user_id": "@alice:example.org"
+    }
+  }
+}

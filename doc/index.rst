@@ -13,6 +13,7 @@ Api Documentation
    :maxdepth: 2
 
    nio
+   cross-signing
    examples
    contributing
 

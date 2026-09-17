@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Features
+- [[#579]] Add cross-signing and Secret Storage (SSSS) support
+  - Cross-signing keys from `/keys/query` are verified and stored as `UserIdentity` objects, devices signed by their
+    owner's self-signing key are flagged as `OlmDevice.cross_signed` and `Client.is_user_verified()` reports the
+    trust in a user's identity. Changed master keys are reported in `KeysQueryResponse.changed_identities`.
+    Room key sharing still follows the manual `TrustState` of a device.
+  - `AsyncClient` gains `import_cross_signing_keys_from_recovery_key()` / `_from_passphrase()`, `sign_own_device()`,
+    `bootstrap_cross_signing()`, `verify_user()`, `is_own_device_cross_signed()`, the Secret Storage helpers
+    `get_secret_storage_default_key()` / `get_secret()` and the low-level `keys_device_signing_upload()`,
+    `keys_signatures_upload()` and `get_account_data()` calls.
+  - The encryption store is upgraded to version 3, existing stores are migrated automatically.
+  - `pycryptodome >= 3.15` is now required.
+
+[#579]: https://github.com/matrix-nio/matrix-nio/pull/579
+
 ## [0.26.0] - 2026-07-23
 
 ### Breaking Changes

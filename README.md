@@ -41,7 +41,7 @@ nio has most of the features you'd expect in a Matrix library, but it's still a 
 - ✅ live syncing
 - ✅ `m.reaction`s
 - ✅ `m.tag`s
-- ❌ cross-signing support
+- ✅ cross-signing support
 - ❌ server-side key backups (room key backup, "Secure Backup")
 - ❌ user deactivation ([#112](https://github.com/matrix-nio/matrix-nio/issues/112))
 - ❌ in-room emoji verification

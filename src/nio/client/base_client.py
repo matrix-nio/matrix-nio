@@ -71,7 +71,7 @@ if ENCRYPTION_ENABLED:
     from ..crypto import Olm
     from ..store import DefaultStore, MatrixStore, SqliteMemoryStore
 if TYPE_CHECKING:
-    from ..crypto import OlmDevice, Sas
+    from ..crypto import OlmDevice, Sas, UserIdentity
 
 
 from ..event_builders import ToDeviceMessage
@@ -266,6 +266,35 @@ class Client:
         """
         assert self.olm
         return self.olm.device_store
+
+    @property  # type: ignore
+    @store_loaded
+    def user_identities(self) -> dict[str, UserIdentity]:
+        """The known cross-signing identities.
+
+        Returns a dictionary mapping user ids to their ``UserIdentity``.
+        """
+        assert self.olm
+        return self.olm.user_identities
+
+    @store_loaded
+    def is_user_verified(self, user_id: str) -> bool:
+        """Check if the cross-signing identity of a user is trusted.
+
+        Our own identity is trusted if we hold the private master key that
+        matches the published one, see
+        ``AsyncClient.import_cross_signing_keys_from_recovery_key()``.
+        Another user's identity is trusted if their master key is signed by
+        our user-signing key, see ``AsyncClient.verify_user()``.
+
+        A device of a trusted user can be considered trusted if it is
+        ``cross_signed``, that is, signed by the user's self-signing key.
+
+        Args:
+            user_id (str): The user for which the trust should be checked.
+        """
+        assert self.olm
+        return self.olm.is_user_verified(user_id)
 
     @property  # type: ignore
     @store_loaded
@@ -1004,7 +1033,7 @@ class Client:
             session.shared = True
 
         elif isinstance(response, KeysQueryResponse):
-            for user_id in response.changed:
+            for user_id in response.changed.keys() | response.changed_identities.keys():
                 for room in self.rooms.values():
                     if room.encrypted and user_id in room.users:
                         self.invalidate_outbound_session(room.room_id)

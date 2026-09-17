@@ -665,6 +665,27 @@ class Api:
         return "GET", Api._build_path(path, query_parameters)
 
     @staticmethod
+    def get_account_data(
+        access_token: str, user_id: str, event_type: str
+    ) -> tuple[str, str]:
+        """Get an account data event of the given type.
+
+        Returns the HTTP method and HTTP path for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            user_id (str): The user id of the user to get the account data
+                for.
+            event_type (str): The event type of the account data to get, e.g.
+                ``m.secret_storage.default_key``.
+        """
+        query_parameters = {"access_token": access_token}
+
+        path = ["user", user_id, "account_data", event_type]
+
+        return "GET", Api._build_path(path, query_parameters)
+
+    @staticmethod
     def room_get_event(
         access_token: str, room_id: str, event_id: str
     ) -> tuple[str, str]:
@@ -1289,6 +1310,69 @@ class Api:
         content = {"one_time_keys": payload}
 
         return "POST", Api._build_path(path, query_parameters), Api.to_json(content)
+
+    @staticmethod
+    def keys_device_signing_upload(
+        access_token: str,
+        master_key: dict[str, Any] | None = None,
+        self_signing_key: dict[str, Any] | None = None,
+        user_signing_key: dict[str, Any] | None = None,
+        auth_dict: dict[str, Any] | None = None,
+    ) -> tuple[str, str, str]:
+        """Publish cross-signing keys.
+
+        This API endpoint uses the User-Interactive Authentication API, unless
+        no cross-signing keys have been uploaded yet or the uploaded keys are
+        identical to the existing ones.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            master_key (Dict, optional): The master cross-signing key object.
+            self_signing_key (Dict, optional): The self-signing key object,
+                signed by the master key.
+            user_signing_key (Dict, optional): The user-signing key object,
+                signed by the master key.
+            auth_dict (Dict, optional): Additional authentication information
+                for the user-interactive authentication API.
+        """
+        query_parameters = {"access_token": access_token}
+        path = ["keys", "device_signing", "upload"]
+
+        content: dict[str, Any] = {}
+
+        if master_key:
+            content["master_key"] = master_key
+
+        if self_signing_key:
+            content["self_signing_key"] = self_signing_key
+
+        if user_signing_key:
+            content["user_signing_key"] = user_signing_key
+
+        if auth_dict:
+            content["auth"] = auth_dict
+
+        return "POST", Api._build_path(path, query_parameters), Api.to_json(content)
+
+    @staticmethod
+    def keys_signatures_upload(
+        access_token: str, signatures: dict[str, dict[str, dict[str, Any]]]
+    ) -> tuple[str, str, str]:
+        """Publish cross-signing signatures.
+
+        Returns the HTTP method, HTTP path and data for the request.
+
+        Args:
+            access_token (str): The access token to be used with the request.
+            signatures (Dict): A map from user id to a map from device id or
+                cross-signing public key to the signed key object.
+        """
+        query_parameters = {"access_token": access_token}
+        path = ["keys", "signatures", "upload"]
+
+        return "POST", Api._build_path(path, query_parameters), Api.to_json(signatures)
 
     @staticmethod
     def to_device(

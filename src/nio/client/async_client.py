@@ -44,6 +44,7 @@ from aiohttp import (
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.connector import Connection
 from aiohttp_socks import ProxyConnector
+from unpaddedbase64 import decode_base64
 
 from ..api import (
     Api,
@@ -59,11 +60,13 @@ from ..api import (
     _FilterT,
 )
 from ..crypto import (
+    ENCRYPTION_ENABLED,
     AsyncDataT,
     OlmDevice,
     async_encrypt_attachment,
     async_generator_from_data,
 )
+from ..crypto.ssss import SecretStorageKeyInfo, decode_recovery_key, decrypt_secret
 from ..event_builders import ToDeviceMessage
 from ..events import (
     AccountDataEvent,
@@ -100,6 +103,8 @@ from ..responses import (
     EnablePushRuleResponse,
     ErrorResponse,
     FileResponse,
+    GetAccountDataError,
+    GetAccountDataResponse,
     GetOpenIDTokenError,
     GetOpenIDTokenResponse,
     JoinedMembersError,
@@ -110,8 +115,13 @@ from ..responses import (
     JoinResponse,
     KeysClaimError,
     KeysClaimResponse,
+    KeysDeviceSigningUploadAuthResponse,
+    KeysDeviceSigningUploadError,
+    KeysDeviceSigningUploadResponse,
     KeysQueryError,
     KeysQueryResponse,
+    KeysSignaturesUploadError,
+    KeysSignaturesUploadResponse,
     KeysUploadError,
     KeysUploadResponse,
     LoginError,
@@ -226,6 +236,9 @@ from .base_client import (
     logged_in_async,
     store_loaded,
 )
+
+if ENCRYPTION_ENABLED:
+    from ..crypto import CrossSigningPrivateKeys, UserIdentity
 
 _ShareGroupSessionT = ShareGroupSessionError | ShareGroupSessionResponse
 
@@ -556,6 +569,13 @@ class AsyncClient(Client):
         ):
             parsed_dict = await self.parse_body(transport_response)
             resp = DeleteDevicesAuthResponse.from_dict(parsed_dict)
+
+        elif (
+            transport_response.status == 401
+            and response_class == KeysDeviceSigningUploadResponse
+        ):
+            parsed_dict = await self.parse_body(transport_response)
+            resp = KeysDeviceSigningUploadAuthResponse.from_dict(parsed_dict)
 
         else:
             parsed_dict = await self.parse_body(transport_response)
@@ -1571,6 +1591,568 @@ class AsyncClient(Client):
         method, path, data = Api.keys_query(self.access_token, user_list)
 
         return await self._send(KeysQueryResponse, method, path, data)
+
+    @logged_in_async
+    async def keys_device_signing_upload(
+        self,
+        master_key: dict[str, Any] | None = None,
+        self_signing_key: dict[str, Any] | None = None,
+        user_signing_key: dict[str, Any] | None = None,
+        auth: dict[str, Any] | None = None,
+    ) -> (
+        KeysDeviceSigningUploadResponse
+        | KeysDeviceSigningUploadAuthResponse
+        | KeysDeviceSigningUploadError
+    ):
+        """Publish cross-signing keys.
+
+        This is the low-level upload, ``bootstrap_cross_signing()`` builds the
+        key objects and calls this for you.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `KeysDeviceSigningUploadResponse` if the request was
+        successful or a `KeysDeviceSigningUploadError` if there was an error
+        with the request.
+
+        This endpoint supports user-interactive auth if cross-signing keys
+        were uploaded before, calling this method without an auth dictionary
+        will then return a `KeysDeviceSigningUploadAuthResponse` which can be
+        used to introspect the valid authentication methods that the server
+        supports.
+
+        Args:
+            master_key (Dict, optional): The master cross-signing key object.
+            self_signing_key (Dict, optional): The self-signing key object,
+                signed by the master key.
+            user_signing_key (Dict, optional): The user-signing key object,
+                signed by the master key.
+            auth (Dict, optional): Additional authentication information for
+                the user-interactive authentication API.
+        """
+        method, path, data = Api.keys_device_signing_upload(
+            self.access_token,
+            master_key,
+            self_signing_key,
+            user_signing_key,
+            auth_dict=auth,
+        )
+
+        return await self._send(KeysDeviceSigningUploadResponse, method, path, data)
+
+    @logged_in_async
+    async def keys_signatures_upload(
+        self, signatures: dict[str, dict[str, dict[str, Any]]]
+    ) -> KeysSignaturesUploadResponse | KeysSignaturesUploadError:
+        """Publish cross-signing signatures.
+
+        This is the low-level upload, ``sign_own_device()`` and
+        ``verify_user()`` build the signed objects and call this for you.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `KeysSignaturesUploadResponse` if the request was
+        successful or a `KeysSignaturesUploadError` if there was an error
+        with the request. Signatures the server rejected are listed in the
+        ``failures`` attribute of the response.
+
+        Args:
+            signatures (Dict): A map from user id to a map from device id or
+                cross-signing public key to the signed key object.
+        """
+        method, path, data = Api.keys_signatures_upload(self.access_token, signatures)
+
+        return await self._send(KeysSignaturesUploadResponse, method, path, data)
+
+    @logged_in_async
+    async def get_account_data(
+        self, event_type: str
+    ) -> GetAccountDataResponse | GetAccountDataError:
+        """Get an account data event of the logged in user.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `GetAccountDataResponse` if the request was
+        successful or a `GetAccountDataError` if there was an error with the
+        request.
+
+        Args:
+            event_type (str): The type of the account data event, e.g.
+                ``m.secret_storage.default_key``.
+        """
+        method, path = Api.get_account_data(self.access_token, self.user_id, event_type)
+
+        return await self._send(
+            GetAccountDataResponse, method, path, response_data=(event_type,)
+        )
+
+    @logged_in_async
+    async def get_secret_storage_default_key(
+        self,
+    ) -> SecretStorageKeyInfo | GetAccountDataError:
+        """Get the description of the default secret storage key.
+
+        Returns either a `SecretStorageKeyInfo` or a `GetAccountDataError` if
+        there was an error with the request.
+
+        Raises LocalProtocolError if the account has no default secret
+        storage key and ValueError if the key uses an unsupported algorithm.
+        """
+        response = await self.get_account_data("m.secret_storage.default_key")
+
+        if isinstance(response, GetAccountDataError):
+            return response
+
+        key_id = response.content.get("key")
+
+        if not key_id:
+            raise LocalProtocolError("The account has no default secret storage key.")
+
+        response = await self.get_account_data(f"m.secret_storage.key.{key_id}")
+
+        if isinstance(response, GetAccountDataError):
+            return response
+
+        return SecretStorageKeyInfo.from_dict(key_id, response.content)
+
+    @logged_in_async
+    async def get_secret(
+        self, name: str, key: bytes, key_info: SecretStorageKeyInfo
+    ) -> bytes | GetAccountDataError:
+        """Get and decrypt a secret from secret storage.
+
+        Returns either the decrypted secret or a `GetAccountDataError` if
+        there was an error with the request.
+
+        Raises LocalProtocolError if the secret isn't encrypted with the given
+        key and ValueError if the decryption fails, usually because the key
+        is wrong.
+
+        Args:
+            name (str): The name of the secret, e.g.
+                ``m.cross_signing.self_signing``.
+            key (bytes): The secret storage key, see
+                ``nio.crypto.ssss.decode_recovery_key()``.
+            key_info (SecretStorageKeyInfo): The description of the key, see
+                ``get_secret_storage_default_key()``.
+        """
+        response = await self.get_account_data(name)
+
+        if isinstance(response, GetAccountDataError):
+            return response
+
+        encrypted = response.content.get("encrypted")
+        encrypted = (
+            encrypted.get(key_info.key_id) if isinstance(encrypted, dict) else None
+        )
+
+        if not encrypted:
+            raise LocalProtocolError(
+                f"The secret {name} isn't encrypted with the key {key_info.key_id}."
+            )
+
+        return decrypt_secret(key, name, encrypted)
+
+    @logged_in_async
+    @store_loaded
+    async def import_cross_signing_keys_from_recovery_key(
+        self, recovery_key: str
+    ) -> CrossSigningPrivateKeys | ErrorResponse:
+        """Import our private cross-signing keys from secret storage.
+
+        The recovery key is checked against the default secret storage key,
+        the private cross-signing keys are decrypted, checked against the
+        cross-signing keys the server publishes for us and stored in the
+        encryption store. Afterwards ``sign_own_device()`` can be used to
+        cross-sign this device and ``is_user_verified()`` returns True for
+        our own user.
+
+        Returns either the imported `CrossSigningPrivateKeys` or an
+        `ErrorResponse` if one of the requests failed.
+
+        Raises ValueError if the recovery key is malformed or doesn't match
+        the account's secret storage key and LocalProtocolError if secret
+        storage or cross-signing isn't set up for the account.
+
+        Args:
+            recovery_key (str): The recovery key as shown to the user by the
+                client that set up secret storage.
+        """
+        key = decode_recovery_key(recovery_key)
+        key_info = await self.get_secret_storage_default_key()
+
+        if isinstance(key_info, ErrorResponse):
+            return key_info
+
+        return await self._import_cross_signing_keys(key, key_info)
+
+    @logged_in_async
+    @store_loaded
+    async def import_cross_signing_keys_from_passphrase(
+        self, passphrase: str
+    ) -> CrossSigningPrivateKeys | ErrorResponse:
+        """Import our private cross-signing keys from secret storage.
+
+        Like ``import_cross_signing_keys_from_recovery_key()`` but the secret
+        storage key is derived from a passphrase.
+
+        Raises ValueError if the passphrase doesn't match the account's secret
+        storage key or the key can't be derived from a passphrase.
+
+        Args:
+            passphrase (str): The secret storage passphrase.
+        """
+        key_info = await self.get_secret_storage_default_key()
+
+        if isinstance(key_info, ErrorResponse):
+            return key_info
+
+        key = key_info.key_from_passphrase(passphrase)
+
+        return await self._import_cross_signing_keys(key, key_info)
+
+    async def _import_cross_signing_keys(
+        self, key: bytes, key_info: SecretStorageKeyInfo
+    ) -> CrossSigningPrivateKeys | ErrorResponse:
+        assert self.olm
+        assert self.store
+
+        if not key_info.check_key(key):
+            raise ValueError("The key doesn't match the account's secret storage key.")
+
+        seeds = {}
+
+        for usage in ("master", "self_signing", "user_signing"):
+            response = await self.get_secret(f"m.cross_signing.{usage}", key, key_info)
+
+            if isinstance(response, GetAccountDataError):
+                if response.status_code == "M_NOT_FOUND":
+                    continue
+                return response
+
+            seed = decode_base64(response.decode())
+
+            if len(seed) != 32:
+                raise ValueError(f"The {usage} key in secret storage isn't 32 bytes.")
+
+            seeds[usage] = seed
+
+        if not seeds:
+            raise LocalProtocolError("No cross-signing keys found in secret storage.")
+
+        keys = CrossSigningPrivateKeys(**seeds)
+
+        # Make sure the imported keys match the keys the server publishes for
+        # us.
+        self.olm.users_for_key_query.add(self.user_id)
+        response = await self.keys_query()
+
+        if isinstance(response, KeysQueryError):
+            return response
+
+        identity = self.olm.user_identities.get(self.user_id)
+
+        if not identity:
+            raise LocalProtocolError("The account has no cross-signing keys.")
+
+        for usage, public_key in (
+            ("master", identity.master_key),
+            ("self_signing", identity.self_signing_key),
+            ("user_signing", identity.user_signing_key),
+        ):
+            private_key = keys.public_key(usage)
+
+            if private_key and (not public_key or private_key != public_key.public_key):
+                raise LocalProtocolError(
+                    f"The imported {usage} key doesn't match the published one."
+                )
+
+        self.olm.cross_signing_private_keys = keys
+        self.store.save_cross_signing_private_keys(keys)
+
+        return keys
+
+    @logged_in_async
+    @store_loaded
+    async def bootstrap_cross_signing(
+        self, auth: dict[str, Any] | None = None
+    ) -> (
+        KeysDeviceSigningUploadResponse
+        | KeysDeviceSigningUploadAuthResponse
+        | KeysDeviceSigningUploadError
+    ):
+        """Create and publish a new set of cross-signing keys.
+
+        A master, self-signing and user-signing key are generated and
+        uploaded, they are stored in the encryption store once the server
+        accepted them. If private keys are already known, e.g. from a
+        previous call that ended in a `KeysDeviceSigningUploadAuthResponse`,
+        those keys are uploaded again.
+
+        Replacing existing cross-signing keys of the account requires
+        user-interactive auth and voids the trust other users and devices
+        had in the account. The keys are not stored in secret storage, other
+        clients of the user can't import them. Call ``sign_own_device()``
+        afterwards to cross-sign this device.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `KeysDeviceSigningUploadResponse` if the request was
+        successful, a `KeysDeviceSigningUploadAuthResponse` if the server
+        requires user-interactive auth, which it does if the account already
+        has cross-signing keys, or a `KeysDeviceSigningUploadError` if there
+        was an error with the request.
+
+        Raises LocalProtocolError if only some of the private keys are known,
+        e.g. after importing just the self-signing key.
+
+        Args:
+            auth (Dict, optional): Additional authentication information for
+                the user-interactive authentication API.
+
+        Example:
+            >>> resp = await client.bootstrap_cross_signing()
+            >>> if isinstance(resp, KeysDeviceSigningUploadAuthResponse):
+            ...     auth = {"type": "m.login.password",
+            ...             "identifier": {"type": "m.id.user", "user": user},
+            ...             "password": "hunter1",
+            ...             "session": resp.session}
+            ...     resp = await client.bootstrap_cross_signing(auth)
+        """
+        assert self.olm
+        assert self.store
+
+        keys = self.olm.cross_signing_private_keys
+
+        if not keys:
+            keys = CrossSigningPrivateKeys.generate()
+            self.olm.cross_signing_private_keys = keys
+        elif not (keys.master and keys.self_signing and keys.user_signing):
+            raise LocalProtocolError(
+                "Only some of the private cross-signing keys are known."
+            )
+
+        identity = keys.as_identity(self.user_id)
+        assert identity.self_signing_key
+        assert identity.user_signing_key
+
+        response = await self.keys_device_signing_upload(
+            identity.master_key.as_dict(),
+            identity.self_signing_key.as_dict(),
+            identity.user_signing_key.as_dict(),
+            auth,
+        )
+
+        if isinstance(response, KeysDeviceSigningUploadResponse):
+            self.store.save_cross_signing_private_keys(keys)
+            self.olm.user_identities[self.user_id] = identity
+            self.store.save_user_identity(identity)
+
+        return response
+
+    @logged_in_async
+    @store_loaded
+    async def sign_own_device(
+        self,
+    ) -> KeysSignaturesUploadResponse | KeysSignaturesUploadError:
+        """Cross-sign our own device.
+
+        The device keys are signed with our private self-signing key and the
+        signature is uploaded, afterwards other clients of the user and
+        clients of verified users consider this device as verified. If we
+        hold the private master key, the master key is additionally signed
+        with the device key.
+
+        The private keys need to be imported or created first, see
+        ``import_cross_signing_keys_from_recovery_key()`` and
+        ``bootstrap_cross_signing()``.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `KeysSignaturesUploadResponse` if the request was
+        successful or a `KeysSignaturesUploadError` if there was an error
+        with the request.
+
+        Raises LocalProtocolError if the private self-signing key isn't known
+        or doesn't match the published one.
+        """
+        assert self.olm
+
+        keys = self.olm.cross_signing_private_keys
+
+        if not keys.self_signing:
+            raise LocalProtocolError("The private self-signing key isn't known.")
+
+        identity = await self._get_own_identity()
+
+        if isinstance(identity, ErrorResponse):
+            return KeysSignaturesUploadError(identity.message, identity.status_code)
+
+        self_signing_key = identity.self_signing_key
+
+        if not self_signing_key or self_signing_key.public_key != keys.public_key(
+            "self_signing"
+        ):
+            raise LocalProtocolError(
+                "The private self-signing key doesn't match the published one."
+            )
+
+        device_keys = self.olm.own_device_keys()
+        signature = keys.sign("self_signing", device_keys)
+        device_keys["signatures"] = {self.user_id: {self_signing_key.key_id: signature}}
+
+        signatures = {self.user_id: {self.device_id: device_keys}}
+
+        if self.olm.is_user_verified(self.user_id):
+            master_key = identity.master_key.as_dict()
+            master_key.pop("signatures", None)
+            master_key["signatures"] = {
+                self.user_id: {
+                    f"ed25519:{self.device_id}": self.olm.sign_json(master_key)
+                }
+            }
+            signatures[self.user_id][identity.master_key.public_key] = master_key
+
+        return await self.keys_signatures_upload(signatures)
+
+    @logged_in_async
+    @store_loaded
+    async def verify_user(
+        self, user_id: str
+    ) -> KeysSignaturesUploadResponse | KeysSignaturesUploadError:
+        """Cross-sign the master key of another user.
+
+        The user's master key is signed with our private user-signing key
+        and the signature is uploaded, afterwards ``is_user_verified()``
+        returns True for the user. This should only be done after the user's
+        identity was verified out of band, e.g. by comparing the master key
+        fingerprint.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns either a `KeysSignaturesUploadResponse` if the request was
+        successful or a `KeysSignaturesUploadError` if there was an error
+        with the request.
+
+        Raises LocalProtocolError if our private user-signing key isn't known
+        or our own identity isn't trusted, if the cross-signing keys of the
+        user aren't known or if one of the user's devices uses a
+        cross-signing key id as its device id.
+
+        Args:
+            user_id (str): The user whose master key should be signed.
+        """
+        assert self.olm
+        assert self.store
+
+        keys = self.olm.cross_signing_private_keys
+        own_identity = self.olm.user_identities.get(self.user_id)
+
+        if not keys.user_signing:
+            raise LocalProtocolError("The private user-signing key isn't known.")
+
+        if not own_identity or not self.olm.is_user_verified(self.user_id):
+            raise LocalProtocolError("Our own cross-signing identity isn't trusted.")
+
+        user_signing_key = own_identity.user_signing_key
+
+        if not user_signing_key or user_signing_key.public_key != keys.public_key(
+            "user_signing"
+        ):
+            raise LocalProtocolError(
+                "The private user-signing key doesn't match the published one."
+            )
+
+        identity = self.olm.user_identities.get(user_id)
+
+        if not identity:
+            raise LocalProtocolError(
+                f"The cross-signing keys of {user_id} aren't known, "
+                "query the keys first."
+            )
+
+        # The spec forbids verifying a user with a device id that collides
+        # with one of their cross-signing key ids.
+        key_ids = {key.public_key for key in identity.keys}
+        for device in self.olm.device_store.active_user_devices(user_id):
+            if device.id in key_ids:
+                raise LocalProtocolError(
+                    f"Device {device.id} of {user_id} collides with a "
+                    "cross-signing key id."
+                )
+
+        master_key = identity.master_key.as_dict()
+        master_key.pop("signatures", None)
+        signature = keys.sign("user_signing", master_key)
+        master_key["signatures"] = {self.user_id: {user_signing_key.key_id: signature}}
+
+        response = await self.keys_signatures_upload(
+            {user_id: {identity.master_key.public_key: master_key}}
+        )
+
+        if isinstance(response, KeysSignaturesUploadResponse) and not response.failures:
+            identity.master_key.signatures.setdefault(self.user_id, {})[
+                user_signing_key.key_id
+            ] = signature
+            self.store.save_user_identity(identity)
+
+        return response
+
+    @logged_in_async
+    @store_loaded
+    async def is_own_device_cross_signed(self) -> bool:
+        """Check if our own device is cross-signed.
+
+        Queries the server and checks if the published keys of this device
+        are signed by our self-signing key. This is what other clients check
+        to decide if this device is verified.
+
+        Calls receive_response() to update the client state if necessary.
+
+        Returns True if the device is cross-signed, False if it isn't or if
+        the key query failed.
+        """
+        assert self.olm
+
+        self.olm.users_for_key_query.add(self.user_id)
+        response = await self.keys_query()
+
+        if isinstance(response, KeysQueryError):
+            return False
+
+        payload = response.device_keys.get(self.user_id, {}).get(self.device_id)
+
+        if not payload:
+            return False
+
+        signing_key = payload.get("keys", {}).get(f"ed25519:{self.device_id}")
+
+        if signing_key != self.olm.account.identity_keys["ed25519"]:
+            return False
+
+        return self.olm.is_device_payload_cross_signed(self.user_id, payload)
+
+    async def _get_own_identity(self) -> UserIdentity | KeysQueryError:
+        """Get our own cross-signing identity, querying the server if needed."""
+        assert self.olm
+
+        identity = self.olm.user_identities.get(self.user_id)
+
+        if identity:
+            return identity
+
+        self.olm.users_for_key_query.add(self.user_id)
+        response = await self.keys_query()
+
+        if isinstance(response, KeysQueryError):
+            return response
+
+        identity = self.olm.user_identities.get(self.user_id)
+
+        if not identity:
+            raise LocalProtocolError("The account has no cross-signing keys.")
+
+        return identity
 
     @logged_in_async
     async def devices(self) -> DevicesResponse | DevicesError:

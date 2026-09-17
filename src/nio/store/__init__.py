@@ -20,6 +20,8 @@ if package_installed("vodozemac"):
     from .file_trustdb import Ed25519Key, Key, KeyStore
     from .models import (
         Accounts,
+        CrossSigningKeys,
+        CrossSigningSeeds,
         DeviceKeys,
         DeviceKeys_v1,
         DeviceTrustField,

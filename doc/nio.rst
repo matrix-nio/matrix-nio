@@ -209,3 +209,19 @@ Encryption
 
 .. autoclass:: nio.crypto.Sas
     :members:
+
+Cross-signing
+-------------
+.. autoclass:: nio.crypto.CrossSigningKey
+    :members:
+
+.. autoclass:: nio.crypto.UserIdentity
+    :members:
+
+.. autoclass:: nio.crypto.CrossSigningPrivateKeys
+    :members:
+
+Secret Storage
+--------------
+.. automodule:: nio.crypto.ssss
+    :members:
