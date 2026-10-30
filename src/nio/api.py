@@ -1051,11 +1051,14 @@ class Api:
 
             preset (RoomPreset, optional): The selected preset will set various
                 rules for the room.
-                If unspecified, the server will choose a preset from the
+                If unspecified, the preset is left to the homeserver. The
+                Matrix spec says it should be derived from the
                 ``visibility``: ``RoomVisibility.public`` equates to
                 ``RoomPreset.public_chat``, and
                 ``RoomVisibility.private`` equates to a
-                ``RoomPreset.private_chat``.
+                ``RoomPreset.private_chat``. However, not every homeserver
+                implements this (e.g. Dendrite), so pass a preset explicitly
+                if you rely on its join rules or history visibility.
 
             invite (list): A list of user id to invite to the room.
 
