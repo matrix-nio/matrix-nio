@@ -528,7 +528,6 @@ class Schemas:
     sync_room_state = {
         "type": "object",
         "properties": {"events": {"type": "array"}},
-        "required": ["events"],
     }
 
     to_device = {
