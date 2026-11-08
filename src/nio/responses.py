@@ -2050,7 +2050,7 @@ class SyncResponse(Response):
 
         for room_id, room_dict in parsed_dict.get("leave", {}).items():
             state = SyncResponse._get_state(room_dict.get("state", {}))
-            timeline = SyncResponse._get_timeline(room_dict.get("timeline", {}))
+            timeline = SyncResponse._get_timeline(room_dict.get("timeline", {"events": []}))
             leave_info = RoomInfo(timeline, state, [], [])
             left_rooms[room_id] = leave_info
 
