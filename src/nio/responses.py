@@ -2095,10 +2095,16 @@ class SyncResponse(Response):
     ) -> SyncResponse | ErrorResponse:
         to_device = cls._get_to_device(parsed_dict.get("to_device", {}))
 
-        key_count_dict = parsed_dict.get("device_one_time_keys_count", {})
-        key_count = DeviceOneTimeKeyCount(
-            key_count_dict.get("curve25519"), key_count_dict.get("signed_curve25519")
-        )
+        # Per the spec, an algorithm missing from device_one_time_keys_count
+        # has a count of 0, but a missing field means the count did not change.
+        key_count_dict = parsed_dict.get("device_one_time_keys_count")
+        if key_count_dict is None:
+            key_count = DeviceOneTimeKeyCount(None, None)
+        else:
+            key_count = DeviceOneTimeKeyCount(
+                key_count_dict.get("curve25519", 0),
+                key_count_dict.get("signed_curve25519", 0),
+            )
 
         devices = DeviceList(
             parsed_dict.get("device_lists", {}).get("changed", []),

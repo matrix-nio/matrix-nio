@@ -570,6 +570,30 @@ class TestClass:
         assert client.olm.uploaded_key_count == 0
         assert client.should_upload_keys
 
+    def test_client_keeps_key_count_when_sync_has_no_count(self, client):
+        client.receive_response(self.login_response)
+        client.receive_response(KeysUploadResponse(50, 50))
+
+        # The server left out device_one_time_keys_count: no change.
+        client.receive_response(SyncResponse.from_dict({"next_batch": "token123"}))
+
+        assert client.olm.uploaded_key_count == 50
+        assert not client.should_upload_keys
+
+    def test_client_uploads_keys_when_sync_omits_algorithm(self, client):
+        client.receive_response(self.login_response)
+        client.receive_response(KeysUploadResponse(50, 50))
+
+        # signed_curve25519 is not listed, so its count is 0.
+        client.receive_response(
+            SyncResponse.from_dict(
+                {"next_batch": "token123", "device_one_time_keys_count": {}}
+            )
+        )
+
+        assert client.olm.uploaded_key_count == 0
+        assert client.should_upload_keys
+
     def test_client_room_creation(self, client):
         client.receive_response(self.login_response)
         client.receive_response(KeysUploadResponse(50, 50))
