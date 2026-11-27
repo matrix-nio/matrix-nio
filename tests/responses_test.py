@@ -172,6 +172,26 @@ class TestClass:
         response = SyncResponse.from_dict(parsed_dict)
         assert isinstance(response, SyncResponse)
 
+    @pytest.mark.parametrize(
+        ("extra", "expected"),
+        [
+            # Field missing: the count did not change.
+            ({}, (None, None)),
+            # Field present: a missing algorithm has a count of 0.
+            ({"device_one_time_keys_count": {}}, (0, 0)),
+            ({"device_one_time_keys_count": {"curve25519": 3}}, (3, 0)),
+            ({"device_one_time_keys_count": {"signed_curve25519": 0}}, (0, 0)),
+            ({"device_one_time_keys_count": {"signed_curve25519": 42}}, (0, 42)),
+        ],
+    )
+    def test_sync_one_time_key_count(self, extra, expected):
+        response = SyncResponse.from_dict({"next_batch": "token123", **extra})
+        assert isinstance(response, SyncResponse)
+        assert (
+            response.device_key_count.curve25519,
+            response.device_key_count.signed_curve25519,
+        ) == expected
+
     def test_keyshare_request(self):
         parsed_dict = {
             "errcode": "M_LIMIT_EXCEEDED",

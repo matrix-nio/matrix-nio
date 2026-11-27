@@ -338,8 +338,10 @@ class Schemas:
         "type": "object",
         "properties": {
             "device_one_time_keys_count": {
+                # No default: a missing field means "no change in the count",
+                # which SyncResponse.from_dict must tell apart from an empty
+                # object (every count is 0).
                 "type": "object",
-                "default": {},
                 "properties": {
                     "curve25519": {"type": "integer"},
                     "signed_curve25519": {"type": "integer"},
