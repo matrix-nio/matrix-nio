@@ -4963,15 +4963,17 @@ class TestClass:
         response = await async_client.has_permission(TEST_ROOM_ID, "kick")
         assert response is True
 
-    async def test_room_upgrade__upgrade_to_v12_excludes_creator_from_new_power_levels(self, async_client, aioresponse):
+    async def test_room_upgrade__upgrade_to_v12_excludes_creator_from_new_power_levels(
+        self, async_client, aioresponse
+    ):
         room_create_event_dict = {
-                "event_id": "$create_event_id",
-                "origin_server_ts": 1,
-                "type": "m.room.create",
-                "sender": ALICE_ID,
-                "state_key": "",
-                "content": {"room_version": "11"},
-            }
+            "event_id": "$create_event_id",
+            "origin_server_ts": 1,
+            "type": "m.room.create",
+            "sender": ALICE_ID,
+            "state_key": "",
+            "content": {"room_version": "11"},
+        }
         room_create_event = RoomCreateEvent.from_dict(room_create_event_dict)
         power_levels_event_content = {
             "users": {
@@ -5009,14 +5011,14 @@ class TestClass:
             f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state",
             status=200,
             payload=[room_create_event_dict, power_levels_event_dict],
-            repeat=True
+            repeat=True,
         )
         # Room has no alias
         aioresponse.get(
             f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.canonical_alias",
             status=404,
             payload={},
-            repeat=True
+            repeat=True,
         )
         # I am joined in the TEST_ROOM
         await async_client.receive_response(
@@ -5057,8 +5059,8 @@ class TestClass:
             if isinstance(data, str):
                 data = json.loads(data)
             assert data.get("room_version") == "12"
-            assert (
-                ALICE_ID not in data.get("power_level_content_override", {}).get("users", {})
+            assert ALICE_ID not in data.get("power_level_content_override", {}).get(
+                "users", {}
             )
             for event in data.get("initial_state", []):
                 if event["type"] == "m.room.power_levels":
@@ -5067,13 +5069,14 @@ class TestClass:
             return CallbackResult(
                 status=200, payload=self.room_id_response(TEST_ROOM_ID_V12)
             )
+
         aioresponse.post(f"{BASE_URL_V3}/createRoom", callback=room_create_cb)
         # Expect to tombstone the old room
         aioresponse.put(
             f"{BASE_URL_V3}/rooms/{TEST_ROOM_ID}/state/m.room.tombstone",
             status=200,
             payload={"event_id": "$tombstone_event_id"},
-            repeat=False
+            repeat=False,
         )
 
         await async_client.room_upgrade(TEST_ROOM_ID, "12")
